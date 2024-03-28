@@ -1544,10 +1544,15 @@ components:
         name:
           type: string
           description: "Имя файла"
+          maxLength: 254
           example: "rmc_nastroika_radio_bez_brenda.mp3"
-        hash:
+        md5hash:
           type: string
-          description: "Хэш файла"
+          description: "Хэш файла в формате md5"
+          example: "306c61b2c2fb3839be8e08a05055b768"
+        sha256hash:
+          type: string
+          description: "Хэш файла в формате md5"
           example: "306c61b2c2fb3839be8e08a05055b768"
         length:
           type: time
