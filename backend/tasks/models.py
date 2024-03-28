@@ -2,25 +2,29 @@ from django.db import models
 from backend.nomenclatures.models import Nomenclature
 from backend.users.models import User
 
-TYPES = [
-    (0, "DOWNLOADS"),
-    (1, "PLAYLIST.MUSIC"),
-    (2, "UPDATE"),
-    (3, "DEL.TASK"),
-    (4, "Всё остальное")
-]
-
 STATUSES = [
     (0, "Ожидает обработки"),
-    (1, "Выполнена"),
-    (2, "Ошибка"),
+    (1, "В обработке"),
+    (2, "Выполнена"),
     (3, "Отменена"),
-    (4, "Всё стальное")
+    (4, "Ошибка")
 ]
+
+
+class TaskType(models.Model):
+    """Тип репликации."""
+
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        blank=False,
+        null=True,
+        verbose_name="Наименование"
+    )
 
 
 class Task(models.Model):
-    """tasks."""
+    """Репликация."""
 
     id = models.UUIDField(
         primary_key=True,
@@ -45,12 +49,12 @@ class Task(models.Model):
     parameters = models.JSONField(
         blank=True,
         null=True,
-        verbose_name="Тело"
+        verbose_name="Параметры"
     )
-    task_type = models.CharField(
-        choices=TYPES,
-        max_length=50,
-        verbose_name="Тип"
+    task_type = models.ManyToManyField(
+        TaskType,
+        related_name="files",
+        verbose_name="Тематика"
     )
     status = models.CharField(
         choices=STATUSES,
@@ -62,5 +66,6 @@ class Task(models.Model):
         verbose_name="Время создания"
     )
     updated = models.DateTimeField(
+        auto_now=True,
         verbose_name="Время выполнения"
     )

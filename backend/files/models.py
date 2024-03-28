@@ -6,22 +6,14 @@ TYPES = [
     (0, "Ad"),
     (1, "Music"),
     (2, "BG Image"),
-    (3, "BG Video")
-]
-
-THEMES = [
-    (0, "Без тематики"),
-    (1, "Новый год"),
-    (2, "8 марта"),
-    (3, "9 мая"),
-    (4, "всё остальное")
+    (3, "BG Video"),
+    (4, "Ticker")
 ]
 
 
 class Theme(models.Model):
     """themes."""
 
-    id = models.AutoField()
     name = models.CharField(
         max_length=255,
         unique=True,
