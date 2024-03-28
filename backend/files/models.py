@@ -1,7 +1,6 @@
 from django.db import models
 from backend.users.models import User
 
-
 TYPES = (
     {"0": "Ad"},
     {"1": "Music"},
@@ -20,7 +19,7 @@ THEMES = (
 
 class File(models.Model):
 
-    uuid = models.UUIDField()
+    uuid = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=254)
     hash = models.CharField()
     length = models.TimeField()
@@ -32,5 +31,5 @@ class File(models.Model):
     )
     file_type = models.Choices(TYPES)
     theme = models.Choices(THEMES)
-    created = models.DateTimeField()
+    created = models.DateTimeField(auto_now_add=True)
     
