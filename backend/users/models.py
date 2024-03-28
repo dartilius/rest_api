@@ -14,7 +14,7 @@ ROLES = [
 
 
 class User(AbstractUser):
-    """users."""
+    """Пользователи."""
 
     username_validator = UnicodeUsernameValidator
 
@@ -64,7 +64,7 @@ class User(AbstractUser):
 
 
 class RMPIUser(AbstractUser):
-    """rmpi users."""
+    """Разбы."""
 
     id = models.ForeignKey(
         Nomenclature,

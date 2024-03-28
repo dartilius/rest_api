@@ -12,7 +12,7 @@ TYPES = [
 
 
 class Theme(models.Model):
-    """themes."""
+    """Тематики."""
 
     name = models.CharField(
         max_length=255,
@@ -24,7 +24,7 @@ class Theme(models.Model):
 
 
 class File(models.Model):
-    """files."""
+    """Файлы."""
 
     id = models.UUIDField(
         primary_key=True,
