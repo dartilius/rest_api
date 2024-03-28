@@ -26,6 +26,7 @@ class File(models.Model):
     size = models.IntegerField()
     owner = models.ForeignKey(
         User,
+        related_name="files",
         verbose_name="Владелец",
         on_delete=models.CASCADE
     )
