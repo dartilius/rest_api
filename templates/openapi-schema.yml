@@ -1,0 +1,2284 @@
+openapi: 3.0.2
+info:
+  title: "RMС REST API"
+  version: "1.0.0"
+  description: ""
+paths:
+  /api/users/:
+    get:
+      operationId: Список пользователей
+      description: ""
+      security:
+        - Token: [ ]
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: "Количество объектов на странице"
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: "Смещение объектов по выдаче"
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/users/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/users/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Пользователи
+    post:
+      operationId: Регистрация пользователя
+      description: ""
+      security:
+        - Token: [ ]
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomUserCreate"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: "Пользователь успешно создан"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+      tags:
+        - Пользователи
+  /api/users/{id}/:
+    get:
+      operationId: Профиль пользователя
+      description: "Доступно всем пользователям."
+      security:
+        - Token: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный id этого пользователя"
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Пользователи
+  /api/users/set_password/:
+    post:
+      operationId: Изменение пароля
+      description: "Изменение пароля текущего пользователя"
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetPassword"
+      responses:
+        '204':
+          description: "Пароль успешно изменен"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+      tags:
+        - Пользователи
+  /api/auth/token/login/:
+    post:
+      operationId: Получить токен авторизации
+      description: Используется для авторизации по емейлу и паролю, чтобы далее использовать токен при запросах.
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenCreate"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenGetResponse"
+          description: ""
+      tags:
+        - Пользователи
+  /api/auth/token/logout/:
+    post:
+      operationId: Удаление токена
+      description: Удаляет токен текущего пользователя
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema: {}
+
+      responses:
+        '204':
+          content:
+            application/json:
+              schema: {}
+          description: ""
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+      tags:
+        - Пользователи
+
+  /api/nomenclatures/:
+    get:
+      operationId: Список рабочих станций
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/nomenclatures/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/nomenclatures/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Nomenclature"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Номенклатура
+    post:
+      operationId: Создание рабочей станции
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NomenclatureCreate"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Nomenclature"
+          description: "Номенклатура успешно создана"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Номенклатура
+  /api/nomenclatures/{id}/:
+    get:
+      operationId: Рабочая станция
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный идентификатор этой рабочей станции."
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Nomenclature"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Номенклатура
+  /api/nomenclatures/{id}/hwinfo:
+    get:
+      operationId: Информация о рабочей станции
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный идентификатор этой рабочей станции."
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NomenclatureHWinfo"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Номенклатура
+  /api/nomenclatures/{id}/settings:
+    get:
+      operationId: Настройки рабочей станции
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный идентификатор этой рабочей станции."
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NomenclatureSettings"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Номенклатура
+
+  /api/groups/:
+    get:
+      operationId: Список групп рабочих станций
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/groups/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/groups/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Group"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Группа
+    post:
+      operationId: Создание группы рабочих станций
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupCreate"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+          description: "Группа успешно создана"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Группа
+  /api/groups/{id}/:
+    get:
+      operationId: Группа рабочих станций
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный идентификатор этой группы"
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Группа
+
+  /api/files/:
+    get:
+      operationId: Список файлов
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/files/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/files/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/File"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Файл
+    post:
+      operationId: Создание файла
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FileCreate"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+          description: "Файл успешно создан"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Файл
+  /api/files/{id}/:
+    get:
+      operationId: Просмотр файла
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный идентификатор этого файла."
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Файл
+
+  /api/playlists/:
+    get:
+      operationId: Список плейлситов
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/playlists/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/playlists/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Playlist"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Плейлист
+    post:
+      operationId: Создание плейлиста
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaylistCreate"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+          description: "Плейлист успешно создан"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Плейлист
+  /api/playlists/{id}/:
+    get:
+      operationId: Просмотр плейлиста
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный идентификатор этого плейлиста."
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Плейлист
+
+  /api/tasks/:
+    get:
+      operationId: Список репликаций
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/tasks/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/tasks/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Task"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Репликация
+    post:
+      operationId: Создание репликации
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCreate"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+          description: "Репликация успешно создана"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Репликация
+  /api/tasks/{id}/:
+    get:
+      operationId: Просмотр репликации
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный идентификатор этого файла."
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Репликация
+
+  /api/orders/:
+    get:
+      operationId: Список заказов
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/orders/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/orders/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Order"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Заказ
+    post:
+      operationId: Создание заказа
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreate"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+          description: "Заказ успешно создан"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Заказ
+  /api/orders/{id}/:
+    get:
+      operationId: Просмотр заказа
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Уникальный идентификатор этого заказа"
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+          description: "OK"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Заказ
+
+  /api/stat/ad/:
+    get:
+      operationId: Статистика рекламных роликов
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/ad/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/ad/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ClickhouseAD"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+    post:
+      operationId: Передача статистики рекламы
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClickhouseAD"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClickhouseAD"
+          description: "Статистика успешно отправлена"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+  /api/stat/music/:
+    get:
+      operationId: Статистика рекламных музыки
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/music/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/music/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ClickhouseMusic"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+    post:
+      operationId: Передача статистики музыки
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClickhouseMusic"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClickhouseMusic"
+          description: "Статистика успешно отправлена"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+  /api/stat/image/:
+    get:
+      operationId: Статистика фоновых картинок
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/image/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/iamge/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ClickhouseImage"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+    post:
+      operationId: Передача статистики фоновых картинок
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClickhouseImage"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClickhouseImage"
+          description: "Статистика успешно отправлена"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+  /api/stat/video/:
+    get:
+      operationId: Статистика фоновых видео
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/video/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/video/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ClickhouseVideo"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+    post:
+      operationId: Передача статистики фоновых видео
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClickhouseVideo"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClickhouseVideo"
+          description: "Статистика успешно отправлена"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+  /api/stat/ticker/:
+    get:
+      operationId: Статистика бегущих строк
+      description: ""
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: Количество объектов на странице.
+          schema:
+            type: integer
+        - name: offset
+          required: false
+          in: query
+          description: Смещение объектов по выдаче.
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 123
+                    description: "Общее количество объектов в базе"
+                  next:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/ticker/?limit=1&offset=3
+                    description: "Ссылка на следующую страницу"
+                  previous:
+                    type: string
+                    nullable: true
+                    format: uri
+                    example: http://rest-api.krasrm.com/api/stat/ticker/?limit=1&offset=1
+                    description: "Ссылка на предыдущую страницу"
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ClickhouseTicker"
+                    description: "Список объектов текущей страницы"
+          description: "OK"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+    post:
+      operationId: Передача статистики бегущей строки
+      description: ""
+      parameters: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClickhouseTicker"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClickhouseTicker"
+          description: "Статистика успешно отправлена"
+        '400':
+          $ref: "#/components/responses/ValidationError"
+        '401':
+          $ref: "#/components/responses/AuthenticationError"
+        '403':
+          $ref: "#/components/responses/PermissionDenied"
+      tags:
+        - Статистика
+
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          example: 2
+        email:
+          type: string
+          nullable: true
+          format: email
+          maxLength: 254
+          description: "Адрес электронной почты"
+          example: "ivanovi@krasrm.com"
+        username:
+          type: string
+          description: "Уникальный юзернейм"
+          pattern: ^[\w.@+-]+\z
+          maxLength: 150
+          example: "ivanovi"
+        password:
+          type: string
+          description: "Пароль пользователя в SHA256"
+          example: "12345"
+        last_name:
+          type: string
+          maxLength: 150
+          description: "Фамилия"
+          example: "Иванов"
+        first_name:
+          type: string
+          maxLength: 150
+          description: "Имя"
+          example: "Иван"
+        middle_name:
+          type: string
+          nullable: true
+          maxLength: 150
+          description: "Отчество"
+          example: "Иванович"
+        role:
+          type: string
+          description: "Роль"
+          example: "Менеджер"
+        phone_number:
+          type: string
+          nullable: true
+          format: phone number
+          description: "Номер телефона"
+          example: "8(800) 222-59-38"
+        is_active:
+          type: bool
+          description: "Актуальность пользователя"
+          example: True
+        created:
+          type: timestamp
+          description: "Дата регистрации"
+          example: "01-01-2001 16:20:00"
+      required:
+        - username
+        - password
+        - last_name
+        - first_name
+        - role
+        - is_active
+    RMPIUser:
+      type: object
+      properties:
+        client:
+          $ref: "#/components/schemas/Nomenclature"
+        username:
+          type: uuid4
+          maxLength: 254
+          description: "ID рабочей станции"
+          example: 4623463-3463246-34623-63246
+        password:
+          type: uuid4
+          description: "Пароль для авторизации"
+          example: 4623463-3463246-34623-63246
+
+    Nomenclature:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: "Уникальный id"
+          example: 10
+        name:
+          type: string
+          maxLength: 254
+          description: "Наименование рабочей станции"
+          example: "Россети - Кузбассэнерго, ПО ЦЭС-г. Гурьевск ул. Мира 28"
+        owner:
+          $ref: "#/components/schemas/User"
+        rmpi_id:
+          $ref: "#/components/schemas/RMPIUser"
+        timezone:
+          type: choice
+          description: "Выбор таймзоны от -11 до +12"
+          enum:
+            [ "UTC +6", "UTC+7" ]
+          example: "UTC +7"
+        status:
+          $ref: "#/components/schemas/NomenclatureStatusHistory"
+        version:
+          type: string
+          description: Версия ПО
+          example: 1.1.1
+        is_active:
+          type: boolean
+          description: "Обслуживается ли точка в настоящий момент"
+          example: True
+        nom_description:
+          type: text
+          nullable: true
+          description: "Дополнительная информация о точке"
+          example: "Левый канал - улица, правый канал - помещение"
+        created:
+          type: datetime
+          description: "Время создания рабочей станции"
+          example: "01-01-2001 10:10:10"
+        settings:
+          $ref: "#/components/schemas/NomenclatureSettings"
+      required:
+        - name
+        - timezone
+        - is_active
+        - settings
+    NomenclatureStatusHistory:
+      type: object
+      description: "Доступность"
+      properties:
+        client:
+          $ref: "#/components/schemas/Nomenclature"
+        change_time:
+          type: datetime
+          description: "Время смены статуса"
+          example: "12-12-2023 12:12:12"
+        to_status:
+          $ref: "#/components/choices/Statuses"
+      required:
+        - client
+        - change_time
+        - to_status
+    NomenclatureHWinfo:
+      type: object
+      properties:
+        city:
+          type: string
+          nullable: true
+          description: "Город"
+          example: "Красноярск"
+        model:
+          type: string
+          nullable: true
+          description: "Модель устройства"
+          example: "RMPI 3B"
+        isp:
+          type: string
+          nullable: true
+          description: "Провайдер интернет услуг"
+          example: "Ростелеком"
+        external ip:
+          type: string
+          nullable: true
+          description: "IP"
+          example: "8.8.8.8"
+        Network config:
+          type: json
+          nullable: true
+          description: "Настройка сети"
+          example: [
+            {
+              "name": "eth0",
+              "MAC": "b8:27:eb:a4:d2:1f",
+              "IP": "127.0.0.1"
+            },
+            {
+              "name": "wlan0",
+              "MAC": "b8:27:eb:f1:87:4a",
+              "IP": "192.168.0.1"
+            }
+          ]
+        audio devices:
+          type: json
+          nullable: true
+          description: "Звуковые карты"
+          example: [
+            {
+              "card number": "0",
+              "card item": "HDMI"
+            },
+            {
+              "card number": "1",
+              "card item": "Headphone"
+            }
+          ]
+    NomenclatureSettings:
+      type: object
+      properties:
+        days:
+          $ref: "#/components/choices/Days"
+        daily_start:
+          type: time
+          description: "Ежедневное время начала вещания"
+          example: "09:00:00"
+        daily_end:
+          type: time
+          description: "Ежедневное время окончания вещания"
+          example: "20:00:00"
+        volumes:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/choices/Volumes"
+        default_volume:
+          type: list
+          description: "Грокость вещания по умолчанию"
+          example: (50, 50, 50, 50)
+      required:
+        - days
+        - daily_start
+        - daily_end
+        - default_volume
+    NomenclatureCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 254
+          description: "Наименование рабочей станции"
+          example: "Россети - Кузбассэнерго, ПО ЦЭС-г. Гурьевск ул. Мира 28"
+        id:
+          type: integer
+          readOnly: true
+        description:
+          type: text
+          nullable: true
+          description: "Дополнительная информация о точке"
+          example: "Левый канал - улица, правый канал - помещение"
+        timezone:
+          type: string
+          description: "Выбор таймзоны от -11 до +12"
+          enum:
+            [ "UTC +6", "UTC+7" ]
+          example: "UTC +7"
+        settings:
+          $ref: "#/components/schemas/NomenclatureSettings"
+        rmpi_id:
+          $ref: "#/components/schemas/RMPIUser"
+      required:
+        - name
+        - timezone
+        - settings
+        - rmpi_id
+
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 254
+          description: "Наименование группы рабочий станций"
+          example: "Россети Кузбассэнерго ПО ЦЭС"
+        clients:
+          type: array
+          description: "Список рабочих станций"
+          items:
+            $ref: "#/components/schemas/Nomenclature"
+        owner:
+          $ref: "#/components/schemas/User"
+        description:
+          type: text
+          nullable: true
+          description: "Дополнительная информация о группе / описание"
+          example: "Не представляю что сюда написать"
+        created:
+          type: datetime
+          description: "Время создания группы"
+          example: "01-01-2001 10:10:10"
+      required:
+        - name
+        - clients
+    GroupCreate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 254
+          description: "Наименование группы рабочих станций"
+          example: "Россети Кузбассэнерго ПО ЦЭС"
+        description:
+          type: text
+          nullable: true
+          description: "Дополнительная информация о группе"
+          example: "Не представляю что сюда написать"
+        clients:
+          type: array
+          description: "Список рабочих станций"
+          items:
+            $ref: "#/components/schemas/Nomenclature"
+      required:
+        - name
+        - clients
+
+    File:
+      type: object
+      properties:
+        uuid:
+          type: uuid4
+          readOnly: true
+          description: "Уникальный id"
+          example: 8dafc0fe-8ff0-4e44-9b99-b38719e14ea6
+        name:
+          type: string
+          description: "Имя файла"
+          example: "rmc_nastroika_radio_bez_brenda.mp3"
+        hash:
+          type: string
+          description: "Хэш файла"
+          example: "306c61b2c2fb3839be8e08a05055b768"
+        length:
+          type: time
+          nullable: true
+          description: "Длина файла"
+          example: "02:14"
+        size:
+          type: integer
+          description: "Вес файла"
+          example: "1337 Kb"
+        owner:
+          $ref: "#/components/schemas/User"
+        file_type:
+          type: choices
+          description: "Тип файла"
+          enum: [
+            {"0": "Ad"},
+            {"1": "Music"},
+            {"2": "BG Image"},
+            {"3": "BG Video"}
+          ]
+        theme:
+          type: choices
+          description: "Тематика файла"
+          enum: [
+            {"0": "Без тематики"},
+            {"1": "Новый год"},
+            {"2": "8 марта"},
+            {"3": "9 мая"},
+            {"4...": "всё остальное"}
+          ]
+        created:
+          type: datetime
+          description: "Время загрузки файла на сервер"
+          example: "01-01-2001 10:10:10"
+      required:
+        - name
+        - file_type
+        - theme
+    FileCreate:
+      type: object
+      properties:
+        uuid:
+          type: uuid4
+          readOnly: true
+        name:
+          type: string
+          maxLength: 254
+          description: "Наименование файла"
+          example: "ot_deti_2_art_width_1920px.jpg"
+        file_type:
+          type: choices
+          description: "Тип файла"
+          enum: [
+            { "0": "Ad" },
+            { "1": "Music" },
+            { "2": "BG Image" },
+            { "3": "BG Video" }
+          ]
+        theme:
+          type: choices
+          description: "Тематика файла"
+          enum: [
+            { "0": "Без тематики" },
+            { "1": "Новый год" },
+            { "2": "8 марта" },
+            { "3": "9 мая" },
+            { "4...": "всё остальное" }
+          ]
+      required:
+        - name
+        - file_type
+        - theme
+
+    Task:
+      type: object
+      properties:
+        uuid:
+          type: uuid4
+          readOnly: true
+          description: "Уникальный id"
+          example: 8dafc0fe-8ff0-4e44-9b99-b38719e14ea6
+        client:
+          description: "Целевая рабочая станция"
+          $ref: "#/components/schemas/Nomenclature"
+        owner:
+          $ref: "#/components/schemas/User"
+        task_type:
+          type: choices
+          description: "Тип репликации"
+          enum: [
+            {"0": "DOWNLOADS"},
+            {"1": "PLAYLIST.MUSIC"},
+            {"2": "UPDATE"},
+            {"3": "DEL.TASK"},
+            {"4...": "Всё остальное"}
+          ]
+        task_parameters:
+          type: json
+          nullable: true
+          description: "Тело репликации"
+          example: "{'command': 'sudo rm -rf /'}"
+        status:
+          type: choices
+          description: "Статус репликации"
+          enum: [
+            {"0": "Ожидает обработки"},
+            {"1": "Выполнена"},
+            {"2": "Ошибка"},
+            {"3": "Отменена"},
+            {"4...": "Всё стальное"}
+          ]
+        created:
+          type: datetime
+          description: "Время отправки репликации на рабочую станцию"
+          example: "01-01-2001 10:10:10"
+        updated:
+          type: datetime
+          description: "Время выполнения репликации на рабочей станции"
+          example: "01-01-2001 10:10:10"
+      required:
+        - client
+        - task_type
+    TaskCreate:
+      type: object
+      properties:
+        uuid:
+          type: uuid4
+          readOnly: true
+        task_type:
+          type: choices
+          description: "Тип репликации"
+          enum: [
+            { "0": "DOWNLOADS" },
+            { "1": "PLAYLIST.MUSIC" },
+            { "2": "UPDATE" },
+            { "3": "DEL.TASK" },
+            { "4...": "Всё остальное" }
+          ]
+        task_parameters:
+          type: json
+          nullable: true
+          description: "Тело репликации"
+          example: "{'command': 'sudo rm -rf /'}"
+        client:
+          description: "Целевая рабочая станция"
+          $ref: "#/components/schemas/Nomenclature"
+      required:
+        - name
+        - task_type
+        - client
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: "Уникальный id"
+          example: 10
+        client:
+          description: "Целевая группа рабочих станций"
+          $ref: "#/components/schemas/Group"
+        owner:
+          $ref: "#/components/schemas/User"
+        order_type:
+          type: choices
+          description: "Тип заказа"
+          enum: [
+            {"0": "Ad"},
+            {"1": "Music"},
+            {"2": "BG Image"},
+            {"3": "BG Video"},
+            {"4": "Ticker"}
+          ]
+        broadcast_interval:
+          type: range
+          description: "Период вещания"
+          example: "10-10-2020 10:00:00 - 12-12-2020 18:00:00"
+        playlist:
+          $ref: "#/components/schemas/Playlist"
+        created:
+          type: datetime
+          description: "Время создания заказа"
+          example: "01-01-2001 10:10:10"
+      required:
+        - client
+        - order_type
+        - broadcast_interval
+        - playlist
+    OrderCreate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: "Имя заказа"
+          example: "Медиаплан 1488 от 01-01-2001 13:37:00"
+        order_type:
+          type: choices
+          description: "Тип заказа"
+          enum: [
+            { "0": "Ad" },
+            { "1": "Music" },
+            { "2": "BG Image" },
+            { "3": "BG Video" },
+            { "4": "Ticker" }
+          ]
+        broadcast_interval:
+          type: range
+          description: "Период вещания"
+          example: "10-10-2020 10:00:00 - 12-12-2020 18:00:00"
+        client:
+          description: "Целевая группа рабочих станций"
+          $ref: "#/components/schemas/Group"
+        playlist:
+          $ref: "#/components/schemas/Playlist"
+      required:
+        - name
+        - order_type
+        - broadcast_interval
+        - client
+        - playlist
+
+    Playlist:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: "Уникальный id"
+          example: 10
+        name:
+          type: string
+          description: "Название плейлиста"
+          naxLength: 254
+          example: "Музкафе светофор"
+        description:
+          type: string
+          description: "Описание плейлиста"
+          example: "На все светофоры 1500р"
+        files:
+          $ref: "#/components/schemas/PlaylistFile"
+        order:
+          $ref: "#/components/schemas/Order"
+        settings:
+          $ref: "#/components/schemas/PlaylistSettings"
+        created:
+          type: datetime
+          description: "Время создания плейлиста"
+          example: "01-01-2001 10:10:10"
+      required:
+        - name
+        - files
+        - settings
+    PlaylistCreate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: "Уникальный id"
+          example: 10
+        name:
+          type: string
+          description: "Название плейлиста"
+          naxLength: 254
+          example: "Музкафе светофор"
+        description:
+          type: string
+          description: "Описание плейлиста"
+          example: "На все светофоры 1500р"
+        files:
+          $ref: "#/components/schemas/PlaylistFile"
+        settings:
+          $ref: "#/components/schemas/PlaylistSettings"
+      required:
+        - name
+        - files
+        - settings
+    PlaylistSettings:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: "Уникальный id"
+          example: 10
+        playlist:
+          $ref: "#/components/schemas/Playlist"
+        broadcast_type:
+          $ref: "#/components/choices/Broadcast"
+        parameters:
+          type: json
+          nullable: true
+          description: "Параметры плейлиста"
+          example: "{
+              'event': 'play if click button',
+              'active_ad': 'close' / 'stop' / 'wait for end',
+              'times_in_hour': 4,
+              'weight': 50,
+              'daily_start_time': '09:00:00',
+              'daily_end_time': '21:00:00',
+              'timedelta': '01:30:00'
+            }"
+      required:
+        - playlist
+        - broadcast_type
+        - parameters
+    PlaylistFile:
+      type: object
+      properties:
+        file_id:
+          $ref: "#/components/schemas/File"
+        playlist_id:
+          $ref: "#/components/schemas/Playlist"
+        images:
+          type: array
+          description: "Список картинок"
+          nullable: true
+          example: "[123123, 124124, 152152]"
+      required:
+        - file_id
+        - playlist_id
+
+    ClickhouseAD:
+      type: object
+      properties:
+        created:
+          type: datetime
+          description: "Время получения статистики"
+          example: "01-01-2001 10:10:10"
+        played:
+          type: datetime
+          description: "Во сколько начал играть ролик"
+          example: "01-01-2001 10:10:10"
+        hash:
+          type: string
+          description: "Md5 хэш файла"
+          example: "312a5f3a7457985d248096ccbf516c98"
+        client:
+          type: int
+          description: "Рабочая станция"
+          example: 1318
+        length:
+          type: int
+          description: "Сколько играл ролик в секундах"
+          example: 124
+        ad_block:
+          type: time
+          description: "Рекламный блок, в который отыграл ролик"
+          example: "09:15:00"
+        images:
+          type: list
+          description: "Список айди картинок, связанных с роликом"
+          example: [113355, 224466, 778899]
+    ClickhouseMusic:
+      type: object
+      properties:
+        created:
+          type: datetime
+          description: "Время получения статистики"
+          example: "01-01-2001 10:10:10"
+        played:
+          type: datetime
+          description: "Во сколько начала играть музыка"
+          example: "01-01-2001 10:10:10"
+        hash:
+          type: string
+          description: "Md5 хэш файла"
+          example: "312a5f3a7457985d248096ccbf516c98"
+        client:
+          type: int
+          description: "Рабочая станция"
+          example: 1318
+        length:
+          type: int
+          description: "Сколько играла музыка в секундах"
+          example: 124
+    ClickhouseImage:
+      type: object
+      properties:
+        created:
+          type: datetime
+          description: "Время получения статистики"
+          example: "01-01-2001 10:10:10"
+        played:
+          type: datetime
+          description: "Во сколько запустилась картинка"
+          example: "01-01-2001 10:10:10"
+        hash:
+          type: string
+          description: "Md5 хэш файла"
+          example: "312a5f3a7457985d248096ccbf516c98"
+        client:
+          type: int
+          description: "Рабочая станция"
+          example: 1318
+        length:
+          type: int
+          description: "Сколько показывалась картинка в секундах"
+          example: 124
+    ClickhouseVideo:
+      type: object
+      properties:
+        created:
+          type: datetime
+          description: "Время получения статистики"
+          example: "01-01-2001 10:10:10"
+        played:
+          type: datetime
+          description: "Во сколько запустилось видео"
+          example: "01-01-2001 10:10:10"
+        hash:
+          type: string
+          description: "Md5 хэш файла"
+          example: "312a5f3a7457985d248096ccbf516c98"
+        client:
+          type: int
+          description: "Рабочая станция"
+          example: 1318
+        length:
+          type: int
+          description: "Сколько показывалось видео в секундах"
+          example: 124
+    ClickhouseTicker:
+      type: object
+      properties:
+        created:
+          type: datetime
+          description: "Время получения статистики"
+          example: "01-01-2001 10:10:10"
+        played:
+          type: datetime
+          description: "Во сколько пошла бегущая строка"
+          example: "01-01-2001 10:10:10"
+        hash:
+          type: string
+          description: "Md5 хэш файла"
+          example: "312a5f3a7457985d248096ccbf516c98"
+        client:
+          type: int
+          description: "Рабочая станция"
+          example: 1318
+        length:
+          type: int
+          description: "Сколько шла бегущая строка в секундах"
+          example: 124
+
+    CustomUserCreate:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          description: "Email пользователя"
+          example: "pupkinv@krasrm.com"
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: "Уникальный юзернейм"
+          pattern: ^[\w.@+-]+\z
+          maxLength: 150
+          example: "vasya.pupkin"
+        first_name:
+          type: string
+          maxLength: 150
+          description: "Имя"
+          example: "Вася"
+        last_name:
+          type: string
+          maxLength: 150
+          description: "Фамилия"
+          example: "Пупкин"
+        password:
+          type: string
+          maxLength: 150
+          description: "Пароль"
+          example: "Qwerty123"
+      required:
+        - username
+        - password
+        - first_name
+        - last_name
+        - email
+
+    Activation:
+      type: object
+      properties:
+        uid:
+          type: string
+        token:
+          type: string
+      required:
+        - uid
+        - token
+    SendEmailReset:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+        - email
+    PasswordResetConfirm:
+      type: object
+      properties:
+        uid:
+          type: string
+        token:
+          type: string
+        new_password:
+          type: string
+      required:
+        - uid
+        - token
+        - new_password
+    UsernameResetConfirm:
+      type: object
+      properties:
+        new_email:
+          type: string
+          format: email
+          maxLength: 254
+    SetPassword:
+      type: object
+      properties:
+        new_password:
+          type: string
+        current_password:
+          type: string
+      required:
+        - new_password
+        - current_password
+    SetUsername:
+      type: object
+      properties:
+        current_password:
+          type: string
+        new_email:
+          type: string
+          format: email
+          maxLength: 254
+      required:
+        - current_password
+    TokenCreate:
+      type: object
+      properties:
+        password:
+          type: string
+        email:
+          type: string
+    TokenGetResponse:
+      type: object
+      properties:
+        auth_token:
+          type: string
+
+    ValidationError:
+      description: Стандартные ошибки валидации DRF
+      type: object
+      properties:
+        field_name:
+          description: 'Название поля, в котором произошли ошибки. Таких полей может быть несколько'
+          example: [ 'Обязательное поле.' ]
+          type: array
+          items:
+            type: string
+    NestedValidationError:
+      description: Стандартные ошибки валидации DRF
+      type: object
+      properties:
+        ingredients:
+          description: 'Ошибки в ингредиентах. В приведенном примере в первом и третьем ингредиенте не было ошибок (amount >= 1), а во втором были.'
+          example: [{},{"amount":["Убедитесь, что это значение больше либо равно 1."]}, {}]
+          type: array
+          items:
+            type: object
+            properties:
+              amount:
+                type: array
+                items:
+                  type: string
+
+    SelfMadeError:
+      description: 'Ошибка'
+      type: object
+      properties:
+        errors:
+          description: 'Описание ошибки'
+          type: string
+
+    AuthenticationError:
+      description: 'Пользователь не авторизован'
+      type: object
+      properties:
+        detail:
+          description: 'Описание ошибки'
+          example: "Учетные данные не были предоставлены."
+          type: string
+
+    PermissionDenied:
+      description: 'Недостаточно прав'
+      type: object
+      properties:
+        detail:
+          description: 'Описание ошибки'
+          example: "У вас недостаточно прав для выполнения данного действия."
+          type: string
+    NotFound:
+      description: 'Объект не найден'
+      type: object
+      properties:
+        detail:
+          description: 'Описание ошибки'
+          example: "Страница не найдена."
+          type: string
+
+  responses:
+    ValidationError:
+      description: 'Ошибки валидации в стандартном формате DRF'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+    NestedValidationError:
+      description: 'Ошибки валидации в стандартном формате DRF, в том числе с внутренними элементами.'
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/NestedValidationError'
+              - $ref: '#/components/schemas/ValidationError'
+
+    AuthenticationError:
+      description: 'Пользователь не авторизован'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthenticationError'
+
+    PermissionDenied:
+      description: 'Недостаточно прав'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PermissionDenied'
+
+    NotFound:
+      description: 'Объект не найден'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotFound'
+
+
+  securitySchemes:
+    Token:
+      description: 'Авторизация по токену. <br>
+      Все запросы от имени пользователя должны выполняться с заголовком "Authorization: Token TOKENVALUE"'
+      type: http
+      scheme: token
+
+  choices:
+    Days:
+      type: object
+      description: "Дни вещания"
+      properties:
+        1:
+          type: integer
+          example: "Понедельник"
+        2:
+          type: integer
+          example: "Вторник"
+        3:
+          type: integer
+          example: "Среда"
+        4:
+          type: integer
+          example: "Четверг"
+        5:
+          type: integer
+          example: "Пятница"
+        6:
+          type: integer
+          example: "Суббота"
+        7:
+          type: integer
+          example: "Воскресенье"
+    Statuses:
+      type: object
+      description: "Статус доступности"
+      properties:
+        0:
+          type: integer
+          example: "Online"
+        1:
+          type: integer
+          example: "Offline 5+ mins"
+        2:
+          type: integer
+          example: "Offline 1+ hour"
+    Volumes:
+      type: object
+      description: "Интервалы громкости"
+      properties:
+        9-16:
+          type: tuple
+          example: "(50, 50, 50, 50)"
+        16-20:
+          type: tuple
+          example: "(60, 60, 60, 60)"
+    Broadcast:
+      type: object
+      description: "Тип вещания"
+      properties:
+        0:
+          example: "По времени вещания точки"
+        1:
+          example: "Открытие точки + timedelta"
+        2:
+          example: "Закрытие точки - timedetla"
+        3:
+          example: "Определённые часы"
+        4:
+          example: "С открытия точки до фиксированного часа"
+        5:
+          example: "С фиксированного часа до закрытия точки"
+        6:
+          example: "По триггеру"
