@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.db import models
 from django.db.models.functions import Concat
 from backend.users.models import User
@@ -28,7 +30,7 @@ class File(models.Model):
 
     id = models.UUIDField(
         primary_key=True,
-        unique=True,
+        default=uuid4,
         editable=False,
         verbose_name="Уникальный идентификатор"
     )

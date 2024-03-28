@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.db import models
 from backend.nomenclatures.models import Nomenclature
 from backend.users.models import User
@@ -16,7 +18,7 @@ class TaskType(models.Model):
 
     name = models.CharField(
         max_length=255,
-        unique=True,
+        default=uuid4,
         blank=False,
         null=True,
         verbose_name="Наименование"
@@ -28,7 +30,7 @@ class Task(models.Model):
 
     id = models.UUIDField(
         primary_key=True,
-        unique=True,
+        default=uuid4,
         editable=False,
         verbose_name="Уникальный идентификатор"
     )

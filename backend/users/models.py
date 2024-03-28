@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -74,5 +76,7 @@ class RMPIUser(AbstractUser):
     )
     username = models.UUIDField(
         max_length=36,
+        default=uuid4,
+        editable=False,
         verbose_name="Логин"
     )
