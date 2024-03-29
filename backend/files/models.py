@@ -1,15 +1,26 @@
 from uuid import uuid4
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.functions import Concat
 from backend.users.models import User
 
 TYPES = [
-    (0, "Ad"),
-    (1, "Music"),
-    (2, "BG Image"),
-    (3, "BG Video"),
-    (4, "Ticker")
+    (0, "Реклама"),
+    (1, "Музыка"),
+    (2, "Кртинка фон"),
+    (3, "Видео фон"),
+    (4, "Бегущая строка")
+]
+
+BROADCAST_TYPES = [
+    (0, "По времени работы точки"),
+    (1, "Начало работы + смещение по времени"),
+    (2, "Конец работы - смещение по времени"),
+    (3, "Конкретные часы"),
+    (4, "С открытия до фиксированного часа"),
+    (5, "С фиксированного часа до закрытия"),
+    (6, "Старт по событию")
 ]
 
 
@@ -69,9 +80,8 @@ class File(models.Model):
         verbose_name="Кто загрузил",
         on_delete=models.SET_NULL
     )
-    file_type = models.CharField(
+    file_type = models.PositiveSmallIntegerField(
         choices=TYPES,
-        max_length=100,
         verbose_name="Тип"
     )
     theme = models.ManyToManyField(
@@ -84,3 +94,64 @@ class File(models.Model):
         verbose_name="Дата создания"
     )
 
+
+class PlaylistSetting(models.Model):
+    """Натройки плейлиста."""
+
+    broadcast_type = models.PositiveSmallIntegerField(
+        choices=BROADCAST_TYPES,
+        verbose_name="Тип вещания"
+    )
+    parameters = models.JSONField(
+        verbose_name="Параметры заказа"
+    )
+
+
+class Playlist(models.Model):
+    """Плейлисты."""
+
+    name = models.CharField(
+        max_length=255,
+        verbose_name="Название"
+    )
+    description = models.TextField(
+        verbose_name="Описание"
+    )
+    files = models.ManyToManyField(
+        File,
+        through="PlaylistFiles",
+        related_name="playlist_files",
+        verbose_name="Файлы"
+    )
+    settings = models.ForeignKey(
+        PlaylistSetting,
+        related_name="playlist_settings",
+        verbose_name="Настройки",
+        on_delete=models.CASCADE,
+    )
+
+
+class PlaylistFiles(models.Model):
+    """Файл плейлиста."""
+
+    playlist = models.ForeignKey(
+        Playlist,
+        related_name="playlist",
+        verbose_name="Плейлист",
+        on_delete=models.CASCADE
+    )
+    file = models.ForeignKey(
+        File,
+        related_name="file",
+        verbose_name="Файл",
+        on_delete=models.CASCADE
+    )
+    images = ArrayField(
+        models.ForeignKey(
+            File,
+            related_name="slides",
+            verbose_name="Слайд",
+            on_delete=models.SET_NULL
+        ),
+        verbose_name="Слайды"
+    )

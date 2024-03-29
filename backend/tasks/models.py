@@ -58,9 +58,8 @@ class Task(models.Model):
         related_name="files",
         verbose_name="Тематика"
     )
-    status = models.CharField(
+    status = models.PositiveSmallIntegerField(
         choices=STATUSES,
-        max_length=50,
         verbose_name="Статус"
     )
     created = models.DateTimeField(
