@@ -9,7 +9,6 @@ from backend.nomenclatures.models import Nomenclature
 ROLES = [
     ("admin", "Сотрудник ТО"),
     ("manager", "Менеджер"),
-    ("rmpi", "Рабочая станция"),
     ("superuser", "Суперпользователь"),
     ("auth", "Аутентифицированный пользователь")
 ]
