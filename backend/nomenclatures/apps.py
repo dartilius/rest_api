@@ -1,4 +1,6 @@
 from django.apps import AppConfig
 
 
-pass
+class NomenclaturesConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'nomenclatures'
