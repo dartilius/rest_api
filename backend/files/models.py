@@ -5,11 +5,21 @@ from django.db.models.functions import Concat
 from backend.users.models import User
 
 TYPES = [
-    (0, "Ad"),
-    (1, "Music"),
-    (2, "BG Image"),
-    (3, "BG Video"),
-    (4, "Ticker")
+    (0, "Реклама"),
+    (1, "Музыка"),
+    (2, "Кртинка фон"),
+    (3, "Видео фон"),
+    (4, "Бегущая строка")
+]
+
+BROADCAST_TYPES = [
+    (0, "По времени работы точки"),
+    (1, "Начало работы + смещение по времени"),
+    (2, "Конец работы - смещение по времени"),
+    (3, "Конкретные часы"),
+    (4, "С открытия до фиксированного часа"),
+    (5, "С фиксированного часа до закрытия"),
+    (6, "Старт по событию")
 ]
 
 
@@ -71,7 +81,7 @@ class File(models.Model):
     )
     file_type = models.CharField(
         choices=TYPES,
-        max_length=100,
+        max_length=16,
         verbose_name="Тип"
     )
     theme = models.ManyToManyField(
@@ -82,5 +92,41 @@ class File(models.Model):
     created = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Дата создания"
+    )
+
+
+class PlaylistSetting(models.Model):
+    """Натройки плейлиста."""
+
+    broadcast_type = models.CharField(
+        choices=BROADCAST_TYPES,
+        max_length=36,
+        verbose_name="Тип вещания"
+    )
+    parameters = models.JSONField(
+        verbose_name="Параметры заказа"
+    )
+
+
+class Playlist(models.Model):
+    """Плейлисты."""
+
+    name = models.CharField(
+        max_length=255,
+        verbose_name="Название"
+    )
+    description = models.TextField(
+        verbose_name="Описание"
+    )
+    files = models.ManyToManyField(
+        File,
+        related_name="playlist_files",
+        verbose_name="Файлы"
+    )
+    settings = models.ForeignKey(
+        PlaylistSetting,
+        related_name="playlist_settings",
+        verbose_name="Настройки",
+        on_delete=models.CASCADE,
     )
 

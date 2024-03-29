@@ -2,50 +2,52 @@ from django.core.validators import MaxValueValidator
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
-from nomenclatures.fields import TimeRangeField
+from backend.nomenclatures.fields import TimeRangeField
+from backend.users.models import User
 
 TIMEZONES = [
-    ('Etc/GMT+11', "UTC-11"),
-    ('Etc/GMT+10', "UTC-10"),
-    ('Etc/GMT+9', "UTC-9"),
-    ('Etc/GMT+8', "UTC-8"),
-    ('Etc/GMT+7', "UTC-7"),
-    ('Etc/GMT+6', "UTC-6"),
-    ('Etc/GMT+5', "UTC-5"),
-    ('Etc/GMT+4', "UTC-4"),
-    ('Etc/GMT+3', "UTC-3"),
-    ('Etc/GMT+2', "UTC-2"),
-    ('Etc/GMT+1', "UTC-1"),
-    ('Etc/GMT+0', "UTC"),
-    ('Etc/GMT-1', "UTC+1"),
-    ('Etc/GMT-2', "UTC+2"),
-    ('Etc/GMT-3', "UTC+3"),
-    ('Etc/GMT-4', "UTC+4"),
-    ('Etc/GMT-5', "UTC+5"),
-    ('Etc/GMT-6', "UTC+6"),
-    ('Etc/GMT-7', "UTC+7"),
-    ('Etc/GMT-8', "UTC+8"),
-    ('Etc/GMT-9', "UTC+9"),
-    ('Etc/GMT-10', "UTC+10"),
-    ('Etc/GMT-11', "UTC+11"),
-    ('Etc/GMT-12', "UTC+12")
+    ("Etc/GMT+11", "UTC-11"),
+    ("Etc/GMT+10", "UTC-10"),
+    ("Etc/GMT+9", "UTC-9"),
+    ("Etc/GMT+8", "UTC-8"),
+    ("Etc/GMT+7", "UTC-7"),
+    ("Etc/GMT+6", "UTC-6"),
+    ("Etc/GMT+5", "UTC-5"),
+    ("Etc/GMT+4", "UTC-4"),
+    ("Etc/GMT+3", "UTC-3"),
+    ("Etc/GMT+2", "UTC-2"),
+    ("Etc/GMT+1", "UTC-1"),
+    ("Etc/GMT+0", "UTC"),
+    ("Etc/GMT-1", "UTC+1"),
+    ("Etc/GMT-2", "UTC+2"),
+    ("Etc/GMT-3", "UTC+3"),
+    ("Etc/GMT-4", "UTC+4"),
+    ("Etc/GMT-5", "UTC+5"),
+    ("Etc/GMT-6", "UTC+6"),
+    ("Etc/GMT-7", "UTC+7"),
+    ("Etc/GMT-8", "UTC+8"),
+    ("Etc/GMT-9", "UTC+9"),
+    ("Etc/GMT-10", "UTC+10"),
+    ("Etc/GMT-11", "UTC+11"),
+    ("Etc/GMT-12", "UTC+12")
 ]
 
 DAYS = [
-    (1, 'Понедельник'),
-    (2, 'Вторник'),
-    (3, 'Среда'),
-    (4, 'Четверг'),
-    (5, 'Пятница'),
-    (6, 'Суббота'),
-    (7, 'Воскресенье')
+    (1, "Понедельник"),
+    (2, "Вторник"),
+    (3, "Среда"),
+    (4, "Четверг"),
+    (5, "Пятница"),
+    (6, "Суббота"),
+    (7, "Воскресенье")
 ]
 
 STATUSES = [
-    (0, 'Online'),
-    (1, 'Offline 5+ minutes'),
-    (2, 'Offline 1+ hour')
+    (0, "Online"),
+    (1, "Offline 5+ minutes"),
+    (2, "Offline 1+ hour")
 ]
+
 
 class Settings(models.Model):
     """Настройки микрокомпьютера."""
@@ -54,15 +56,15 @@ class Settings(models.Model):
         models.PositiveSmallIntegerField(
             choices=DAYS
         ),
-        verbose_name='Дни недели',
+        verbose_name="Дни недели",
         size = 7
     )
     interval = TimeRangeField(
-        default_bounds='[)',
-        verbose_name='Интервал работы'
+        default_bounds="[)",
+        verbose_name="Интервал работы"
     )
     volumes = models.JSONField(
-        verbose_name='Настройки громкости'
+        verbose_name="Настройки громкости"
     )
     default_volume = ArrayField(
         models.PositiveSmallIntegerField(
@@ -71,7 +73,7 @@ class Settings(models.Model):
             ]
         ),
         size=4,
-        verbose_name='Громкость по умолчанию'
+        verbose_name="Громкость по умолчанию"
     )
 
 
@@ -82,47 +84,51 @@ class Nomenclature(models.Model):
         primary_key=True,
         unique=True,
         editable=False,
-        verbose_name='Уникальный идентификатор'
+        verbose_name="Уникальный идентификатор"
     )
-    # owner = models.ForeignKey(
-    #     User,
-    #     related_name='nomenclature',
-    #     verbose_name='Создатель',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True
-    # )
+    owner = models.ForeignKey(
+        User,
+        related_name="nomenclature",
+        verbose_name="Создатель",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
     name = models.CharField(
         max_length=255,
-        verbose_name='Наименование'
+        verbose_name="Наименование"
     )
     timezone = models.CharField(
         choices=TIMEZONES,
         max_length=31,
-        verbose_name='Часовой пояс',
-        default='Etc/GMT-7'
+        verbose_name="Часовой пояс",
+        default="Etc/GMT-7"
     )
     is_active = models.BooleanField(
-        verbose_name='Актуальность номенклтауры',
+        verbose_name="Актуальность номенклтауры",
         default=True
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
-        verbose_name='Статус',
+        verbose_name="Статус",
         default=2
     )
     version = models.CharField(
         max_length=127,
-        verbose_name='Версия ПО'
+        verbose_name="Версия ПО"
     )
     description = models.TextField(
-        verbose_name='Описание'
+        verbose_name="Описание"
     )
     created = models.DateTimeField(
         auto_now_add=True,
-        verbose_name='Дата создания'
+        verbose_name="Дата создания"
     )
-    settings = models.ManyToManyField()
+    settings = models.ManyToManyField(
+        Settings,
+        related_name="nomenclature_settings",
+        verbose_name="Настройки вещания"
+    )
 
 
 class HardWareInfo(models.Model):
@@ -131,29 +137,29 @@ class HardWareInfo(models.Model):
     client = models.ForeignKey(
         Nomenclature,
         primary_key=True,
-        verbose_name='Номенклатура',
+        verbose_name="Номенклатура",
         on_delete=models.CASCADE
     )
     Citi = models.CharField(
         max_length=255,
-        verbose_name='Город'
+        verbose_name="Город"
     )
     model = models.CharField(
         max_length=255,
-        verbose_name='Модель'
+        verbose_name="Модель"
     )
     internet_service_provider = models.CharField(
         max_length=255,
-        verbose_name='Интернет провайдер'
+        verbose_name="Интернет провайдер"
     )
     external_ip = models.IPAddressField(
-        verbose_name='IP адресс'
+        verbose_name="IP адресс"
     )
     network_config = models.JSONField(
-        verbose_name='Настройки сети'
+        verbose_name="Настройки сети"
     )
     audio_device = models.JSONField(
-        verbose_name='Звуковые карты'
+        verbose_name="Звуковые карты"
     )
 
 
@@ -162,25 +168,25 @@ class Group(models.Model):
 
     clients = models.ManyToManyField(
         Nomenclature,
-        verbose_name='Рабочие станции',
-        related_name='nomenclature_group'
+        verbose_name="Рабочие станции",
+        related_name="nomenclature_group"
     )
-    # owner = models.ForeignKey(
-    #     User,
-    #     verbose_name='Создатель',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True
-    # )
+    owner = models.ForeignKey(
+        User,
+        verbose_name="Создатель",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
     name = models.CharField(
         max_length=255,
-        verbose_name='Название'
+        verbose_name="Название"
     )
     description = models.TextField(
-        verbose_name='Описание'
+        verbose_name="Описание"
     )
     created = models.DateTimeField(
-        verbose_name='Дата создания',
+        verbose_name="Дата создания",
         auto_now_add=True
     )
 
@@ -190,14 +196,14 @@ class StatusHistory(models.Model):
 
     client = models.ForeignKey(
         Nomenclature,
-        verbose_name='Рабочая станция',
+        verbose_name="Рабочая станция",
         on_delete=models.CASCADE
     )
     change_time = models.DateTimeField(
-        verbose_name='Время изменения статуса',
+        verbose_name="Время изменения статуса",
         auto_now_add=True
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
-        verbose_name='Статус'
+        verbose_name="Статус"
     )
