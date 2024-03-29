@@ -3,8 +3,8 @@ from backend.templates import *
 
 
 def docs(request):
-    return render(request, 'redoc.html')
+    return render(request, "redoc.html")
 
 
 def openapi(request):
-    return render(request, 'openapi-schema.yml')
+    return render(request, "openapi-schema.yml")
