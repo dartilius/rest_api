@@ -1,6 +1,4 @@
 from django.apps import AppConfig
 
+pass
 
-class DocsConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'docs'
