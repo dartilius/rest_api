@@ -79,9 +79,8 @@ class File(models.Model):
         verbose_name="Кто загрузил",
         on_delete=models.SET_NULL
     )
-    file_type = models.CharField(
+    file_type = models.PositiveSmallIntegerField(
         choices=TYPES,
-        max_length=16,
         verbose_name="Тип"
     )
     theme = models.ManyToManyField(
@@ -98,9 +97,8 @@ class File(models.Model):
 class PlaylistSetting(models.Model):
     """Натройки плейлиста."""
 
-    broadcast_type = models.CharField(
+    broadcast_type = models.PositiveSmallIntegerField(
         choices=BROADCAST_TYPES,
-        max_length=36,
         verbose_name="Тип вещания"
     )
     parameters = models.JSONField(
