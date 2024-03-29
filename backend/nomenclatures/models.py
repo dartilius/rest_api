@@ -57,7 +57,7 @@ class Settings(models.Model):
             choices=DAYS
         ),
         verbose_name="Дни недели",
-        size = 7
+        size=7
     )
     interval = TimeRangeField(
         default_bounds="[)",

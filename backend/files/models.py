@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.functions import Concat
 from backend.users.models import User
@@ -118,6 +119,7 @@ class Playlist(models.Model):
     )
     files = models.ManyToManyField(
         File,
+        through="PlaylistFiles",
         related_name="playlist_files",
         verbose_name="Файлы"
     )
@@ -128,3 +130,28 @@ class Playlist(models.Model):
         on_delete=models.CASCADE,
     )
 
+
+class PlaylistFiles(models.Model):
+    """Файл плейлиста."""
+
+    playlist = models.ForeignKey(
+        Playlist,
+        related_name="playlist",
+        verbose_name="Плейлист",
+        on_delete=models.CASCADE
+    )
+    file = models.ForeignKey(
+        File,
+        related_name="file",
+        verbose_name="Файл",
+        on_delete=models.CASCADE
+    )
+    images = ArrayField(
+        models.ForeignKey(
+            File,
+            related_name="slides",
+            verbose_name="Слайд",
+            on_delete=models.SET_NULL
+        ),
+        verbose_name="Слайды"
+    )
