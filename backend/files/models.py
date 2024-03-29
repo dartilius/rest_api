@@ -3,7 +3,7 @@ from uuid import uuid4
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.functions import Concat
-from backend.users.models import User
+from users.models import User
 
 TYPES = [
     (0, "Реклама"),
@@ -62,7 +62,7 @@ class File(models.Model):
     hash = models.CharField(
         Concat(md5hash, sha256hash),
         max_length=288,
-        verbose_name="Комбинированная контрольная сумма"
+        # verbose_name="Комбинированная контрольная сумма"
     )
     length = models.TimeField(
         editable=False,
@@ -146,12 +146,8 @@ class PlaylistFiles(models.Model):
         verbose_name="Файл",
         on_delete=models.CASCADE
     )
-    images = ArrayField(
-        models.ForeignKey(
-            File,
-            related_name="slides",
-            verbose_name="Слайд",
-            on_delete=models.SET_NULL
-        ),
-        verbose_name="Слайды"
+    images = models.ManyToManyField(
+        File,
+        related_name="slides",
+        verbose_name="Слайд"
     )

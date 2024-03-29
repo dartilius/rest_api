@@ -2,8 +2,7 @@ from django.core.validators import MaxValueValidator
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
-from backend.nomenclatures.fields import TimeRangeField
-from backend.users.models import User
+from users.models import User
 
 TIMEZONES = [
     ("Etc/GMT+11", "UTC-11"),
@@ -59,9 +58,11 @@ class Settings(models.Model):
         verbose_name="Дни недели",
         size=7
     )
-    interval = TimeRangeField(
-        default_bounds="[)",
-        verbose_name="Интервал работы"
+    start_time = models.TimeField(
+        verbose_name="Время начала работы"
+    )
+    end_time = models.TimeField(
+        verbose_name="Время оончания работы"
     )
     volumes = models.JSONField(
         verbose_name="Настройки громкости"
@@ -134,9 +135,10 @@ class Nomenclature(models.Model):
 class HardWareInfo(models.Model):
     """Информация о железе."""
 
-    client = models.ForeignKey(
+    client = models.OneToOneField(
         Nomenclature,
         primary_key=True,
+        related_name="nomenclature_hwinfo",
         verbose_name="Номенклатура",
         on_delete=models.CASCADE
     )
@@ -152,7 +154,7 @@ class HardWareInfo(models.Model):
         max_length=255,
         verbose_name="Интернет провайдер"
     )
-    external_ip = models.IPAddressField(
+    external_ip = models.GenericIPAddressField(
         verbose_name="IP адресс"
     )
     network_config = models.JSONField(
@@ -163,7 +165,7 @@ class HardWareInfo(models.Model):
     )
 
 
-class Group(models.Model):
+class NomenclatureGroup(models.Model):
     """Группа номенклатур."""
 
     clients = models.ManyToManyField(

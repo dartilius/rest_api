@@ -1,10 +1,10 @@
-from uuid import uuid4
+# from uuid import uuid4
 
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from backend.nomenclatures.models import Nomenclature
+# from nomenclatures.models import Nomenclature
 
 ROLES = [
     ("admin", "Сотрудник ТО"),
@@ -64,18 +64,18 @@ class User(AbstractUser):
     )
 
 
-class RMPIUser(AbstractUser):
-    """Разбы."""
-
-    id = models.ForeignKey(
-        Nomenclature,
-        related_name="rmpi",
-        primary_key=True,
-        on_delete=models.CASCADE
-    )
-    username = models.UUIDField(
-        max_length=36,
-        default=uuid4,
-        editable=False,
-        verbose_name="Логин"
-    )
+# class RMPIUser(AbstractUser):
+#     """Разбы."""
+#
+#     id = models.ForeignKey(
+#         Nomenclature,
+#         related_name="rmpi",
+#         primary_key=True,
+#         on_delete=models.CASCADE
+#     )
+#     username = models.UUIDField(
+#         max_length=36,
+#         default=uuid4,
+#         editable=False,
+#         verbose_name="Логин"
+#     )

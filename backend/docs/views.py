@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from backend.templates import *
+from templates import *
 
 
 def docs(request):

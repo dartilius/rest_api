@@ -1,9 +1,9 @@
 from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
 
-from backend.nomenclatures.models import Group
-from backend.users.models import User
-from backend.files.models import Playlist
+from nomenclatures.models import NomenclatureGroup
+from users.models import User
+from files.models import Playlist
 
 ORDER_TYPES = [
     (0, "Реклама"),
@@ -18,7 +18,7 @@ class Order(models.Model):
     """Заказ."""
 
     group = models.ForeignKey(
-        Group,
+        NomenclatureGroup,
         verbose_name="Группа номенклатур",
         on_delete=models.CASCADE
     )

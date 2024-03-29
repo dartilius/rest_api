@@ -1,8 +1,8 @@
 from uuid import uuid4
 
 from django.db import models
-from backend.nomenclatures.models import Nomenclature
-from backend.users.models import User
+from nomenclatures.models import Nomenclature
+from users.models import User
 
 STATUSES = [
     (0, "Ожидает обработки"),
@@ -42,7 +42,7 @@ class Task(models.Model):
     )
     owner = models.ForeignKey(
         User,
-        related_name="files",
+        related_name="tasks",
         verbose_name="Кто создал",
         on_delete=models.SET_NULL,
         blank=True,
