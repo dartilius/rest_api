@@ -45,6 +45,12 @@ class File(models.Model):
         editable=False,
         verbose_name="Уникальный идентификатор"
     )
+    source = models.FileField(
+        verbose_name='Файл',
+        upload_to='files/source/',
+        blank=True,
+        null=True
+    )
     name = models.CharField(
         max_length=255,
         verbose_name="Наименование"
@@ -62,7 +68,6 @@ class File(models.Model):
     hash = models.CharField(
         Concat(md5hash, sha256hash),
         max_length=288,
-        # verbose_name="Комбинированная контрольная сумма"
     )
     length = models.TimeField(
         editable=False,

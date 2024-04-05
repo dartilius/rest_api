@@ -7,7 +7,7 @@ SECRET_KEY = 'django-insecure-#k^9kuxs4l(ojbtauslb5)vp#8(3*p^d*6fz(qrgh73tl%d@p*
 
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.0.180"]
+ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -18,11 +18,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.postgres',
     'rest_framework',
+    'debug_toolbar',
+    'djoser',
+    'minio_storage',
+    'phonenumber_field',
     'docs',
     'files',
     'nomenclatures',
     'orders',
-    'ch_statistics',
+    'ch_statistic',
     'tasks',
     'users'
 ]
@@ -35,6 +39,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
@@ -60,7 +65,7 @@ WSGI_APPLICATION = 'rmc_rest_api.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
+        'NAME': 'rest_api',
         'USER': 'postgres',
         'PASSWORD': 'postgres',
         'HOST': 'localhost',
@@ -99,7 +104,7 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
 ]
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
 TIME_ZONE = 'UTC'
 
@@ -110,3 +115,44 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+DEFAULT_FILE_STORAGE = "minio_storage.storage.MinioMediaStorage"
+STATICFILES_STORAGE = "minio_storage.storage.MinioStaticStorage"
+MINIO_STORAGE_ENDPOINT = '127.0.0.1:9000'
+MINIO_STORAGE_ACCESS_KEY = 'K5JBi1UzkyrE6XlJoGPY'
+MINIO_STORAGE_SECRET_KEY = 'JZl4Xh51IC4JLDijhqAJxE5eaeUcwQZliN3wEgZk'
+MINIO_STORAGE_USE_HTTPS = False
+MINIO_STORAGE_MEDIA_OBJECT_METADATA = {"Cache-Control": "max-age=1000"}
+MINIO_STORAGE_MEDIA_BUCKET_NAME = 'local-media'
+MINIO_STORAGE_MEDIA_BACKUP_BUCKET = 'Recycle Bin'
+MINIO_STORAGE_MEDIA_BACKUP_FORMAT = '%c/'
+MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
+MINIO_STORAGE_STATIC_BUCKET_NAME = 'local-static'
+MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
+
+# These settings should generally not be used:
+# MINIO_STORAGE_MEDIA_URL = 'http://localhost:9000/local-media'
+# MINIO_STORAGE_STATIC_URL = 'http://localhost:9000/local-static'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+SIMPLE_JWT = {
+   'AUTH_HEADER_TYPES': ('access_token',),
+}
+
+
+def show_toolbar(request):           # <-- NEW
+    return True                      # <-- NEW
+
+
+DEBUG_TOOLBAR_CONFIG = {                     # <-- NEW
+    "SHOW_TOOLBAR_CALLBACK": show_toolbar,   # <-- NEW
+}                                            # <-- NEW
+
+if DEBUG:                                                      # <-- NEW
+    import mimetypes                                           # <-- NEW
+    mimetypes.add_type("application/javascript", ".js", True)  # <-- NEW

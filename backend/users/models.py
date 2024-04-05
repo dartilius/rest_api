@@ -3,14 +3,14 @@
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from phonenumber_field.modelfields import PhoneNumberField
 
 # from nomenclatures.models import Nomenclature
 
 ROLES = [
     ("admin", "Сотрудник ТО"),
     ("manager", "Менеджер"),
-    ("superuser", "Суперпользователь"),
-    ("auth", "Аутентифицированный пользователь")
+    ("superuser", "Суперпользователь")
 ]
 
 
@@ -42,15 +42,16 @@ class User(AbstractUser):
     role = models.CharField(
         choices=ROLES,
         max_length=32,
-        verbose_name="Роль"
+        verbose_name="Роль",
+        null=True,
+        blank=True
     )
     email = models.EmailField(
         max_length=255,
         unique=True,
         verbose_name="Электронная почта"
     )
-    phone_number = models.CharField(
-        max_length=16,  # +7(908)023-99-57
+    phone_number = PhoneNumberField(
         unique=True,
         verbose_name="Номер телефона"
     )
@@ -63,9 +64,19 @@ class User(AbstractUser):
         verbose_name="Дата создания"
     )
 
+    @property
+    def is_manager(self):
+        """Проверяем что пользователь менеджер."""
+        return self.role == "manager"
+
+    @property
+    def is_admin(self):
+        """Проверяем что пользователь админ."""
+        return self.role == "admin"
+
 
 # class RMPIUser(AbstractUser):
-#     """Разбы."""
+#     """Пользователи разбы."""
 #
 #     id = models.ForeignKey(
 #         Nomenclature,
