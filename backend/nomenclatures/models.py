@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.core.validators import MaxValueValidator
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
@@ -53,7 +55,7 @@ class Settings(models.Model):
 
     days = ArrayField(
         models.PositiveSmallIntegerField(
-            choices=DAYS
+            # choices=DAYS
         ),
         verbose_name="Дни недели",
         size=7
@@ -64,6 +66,19 @@ class Settings(models.Model):
     end_time = models.TimeField(
         verbose_name="Время оончания работы"
     )
+    """
+        Методика хранения массива дней мне кажется неоптимальной,
+        возможны баги, к примеру будут указаны не все дни недели,
+        что поведет за собой отключение вещания в не указанные дни.
+        Хранить режим работы лучше в range field и использовать
+        целочисленный интервал с максимальным значением 86399 и
+        минимальным значением 0 (00:00:00 - 23:59:59)
+        
+        Для исключения бага можно вынести дефолтный режим работы
+        и громкость в модель номенклатуры, а настройки считать 
+        приоритетнее дефолтных настроек, в таком случае эта модель
+        будет использоваться для нестандартных случаев.
+    """
     volumes = models.JSONField(
         verbose_name="Настройки громкости"
     )
@@ -77,11 +92,19 @@ class Settings(models.Model):
         verbose_name="Громкость по умолчанию"
     )
 
+    class Meta:
+        verbose_name = 'Настройка номенклатуры'
+        verbose_name_plural = 'Настройки номенклатуры'
+
+    def __str__(self):
+        return f"{self.days}"
+
 
 class Nomenclature(models.Model):
     """Рабочая станция."""
 
     id = models.UUIDField(
+        default=uuid4,
         primary_key=True,
         unique=True,
         editable=False,
@@ -131,6 +154,13 @@ class Nomenclature(models.Model):
         verbose_name="Настройки вещания"
     )
 
+    class Meta:
+        verbose_name = 'Номенклатура'
+        verbose_name_plural = 'Номенклатуры'
+
+    def __str__(self):
+        return self.name
+
 
 class HardWareInfo(models.Model):
     """Информация о железе."""
@@ -142,7 +172,7 @@ class HardWareInfo(models.Model):
         verbose_name="Номенклатура",
         on_delete=models.CASCADE
     )
-    Citi = models.CharField(
+    city = models.CharField(
         max_length=255,
         verbose_name="Город"
     )
@@ -163,6 +193,13 @@ class HardWareInfo(models.Model):
     audio_device = models.JSONField(
         verbose_name="Звуковые карты"
     )
+
+    class Meta:
+        verbose_name = 'Информация о железе'
+        verbose_name_plural = 'Информация о железе'
+
+    def __str__(self):
+        return self.client.name
 
 
 class NomenclatureGroup(models.Model):
@@ -192,6 +229,13 @@ class NomenclatureGroup(models.Model):
         auto_now_add=True
     )
 
+    class Meta:
+        verbose_name = 'Группа'
+        verbose_name_plural = 'Группы'
+
+    def __str__(self):
+        return self.name
+
 
 class StatusHistory(models.Model):
     """История изменения доступности."""
@@ -209,3 +253,13 @@ class StatusHistory(models.Model):
         choices=STATUSES,
         verbose_name="Статус"
     )
+
+    class Meta:
+        verbose_name = 'История доступности'
+        verbose_name_plural = 'История доступности'
+
+    def __str__(self):
+        return (
+            f"{self.change_time}: " 
+            f"статус {self.client.id} изменился на {self.status}"
+        )

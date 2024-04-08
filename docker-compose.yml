@@ -1,0 +1,20 @@
+version: '3'
+
+volumes:
+  pg_data:
+  static:
+  media:
+
+services:
+  db:
+    image: postgres:16.2
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend/
+    volumes:
+      - static:/backend_static
+      - media:/var/www/rmc_rest_api/media/
+    depends_on:
+      - db
