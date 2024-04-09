@@ -7,7 +7,7 @@ SECRET_KEY = 'django-insecure-#k^9kuxs4l(ojbtauslb5)vp#8(3*p^d*6fz(qrgh73tl%d@p*
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.0.170']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -145,14 +145,14 @@ SIMPLE_JWT = {
 }
 
 
-def show_toolbar(request):           # <-- NEW
-    return True                      # <-- NEW
+def show_toolbar(request):
+    return True
 
 
-DEBUG_TOOLBAR_CONFIG = {                     # <-- NEW
-    "SHOW_TOOLBAR_CALLBACK": show_toolbar,   # <-- NEW
-}                                            # <-- NEW
+DEBUG_TOOLBAR_CONFIG = {
+    "SHOW_TOOLBAR_CALLBACK": show_toolbar,
+}
 
-if DEBUG:                                                      # <-- NEW
-    import mimetypes                                           # <-- NEW
-    mimetypes.add_type("application/javascript", ".js", True)  # <-- NEW
+if DEBUG:
+    import mimetypes
+    mimetypes.add_type("application/javascript", ".js", True)

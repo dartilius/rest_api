@@ -1,8 +1,12 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
-from nomenclatures.views import NomenclatureViewSet, HardWareInfoViewSet, SettingsViewSet, \
-    NomenclatureGroupSerializerViewSet
+from nomenclatures.views import (
+    NomenclatureViewSet,
+    HardWareInfoViewSet,
+    SettingsViewSet,
+    NomenclatureGroupViewSet
+)
 
 router = SimpleRouter()
 
@@ -23,7 +27,7 @@ router.register(
 )
 router.register(
     'groups',
-    NomenclatureGroupSerializerViewSet,
+    NomenclatureGroupViewSet,
     basename='nomenclature_groups'
 )
 
