@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from nomenclatures.models import Nomenclature, Settings, HardWareInfo, NomenclatureGroup, StatusHistory
+from nomenclatures.models import (
+    Nomenclature,
+    Settings,
+    HardWareInfo,
+    NomenclatureGroup,
+    StatusHistory
+)
 
 
 @admin.register(Nomenclature)
@@ -24,9 +30,9 @@ class NomenclatureAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return Nomenclature.objects.all().select_related('owner').prefetch_related(
-            'settings'
-        )
+        return Nomenclature.objects.all().select_related(
+            'owner'
+        ).prefetch_related('settings')
 
 
 @admin.register(Settings)
@@ -42,12 +48,20 @@ class HardWareInfoAdmin(admin.ModelAdmin):
 
     list_display = ('client',)
 
+    def get_queryset(self, request):
+        return HardWareInfo.objects.all().select_related('client')
+
 
 @admin.register(NomenclatureGroup)
 class NomenclatureGroupAdmin(admin.ModelAdmin):
     """Группы."""
 
     list_display = ('name',)
+
+    def get_queryset(self, request):
+        return NomenclatureGroup.objects.all().prefetch_related(
+            'clients'
+        ).select_related('owner')
 
 
 @admin.register(Nomenclature.settings.through)
@@ -64,3 +78,6 @@ class StatusHistoryAdmin(admin.ModelAdmin):
         'change_time',
         'status'
     )
+
+    def get_queryset(self, request):
+        return StatusHistory.objects.all().select_related('client')

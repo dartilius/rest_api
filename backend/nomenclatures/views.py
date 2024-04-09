@@ -9,7 +9,11 @@ from nomenclatures.serializers import (
     SettingsSerializer,
     NomenclatureGroupSerializer
 )
-from nomenclatures.models import Nomenclature, HardWareInfo, NomenclatureGroup
+from nomenclatures.models import (
+    Nomenclature,
+    HardWareInfo,
+    NomenclatureGroup
+)
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
@@ -21,7 +25,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     ).select_related('owner').prefetch_related('settings')
     serializer_class = NomenclatureSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = [AuthAndOnlySuperUserDelete, ]
+    # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
         nomenclature = serializer.save(owner=self.request.user)
@@ -56,14 +60,16 @@ class SettingsViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         nomenclature_id = self.kwargs.get('nomenclature_id')
         return get_object_or_404(
-            Nomenclature.objects.prefetch_related('settings'),
+            Nomenclature.objects,
             id=nomenclature_id
         ).settings
-        # return nomenclature.settings
 
 
-class NomenclatureGroupSerializerViewSet(viewsets.ModelViewSet):
+class NomenclatureGroupViewSet(viewsets.ModelViewSet):
     """Работа с группами номенклатур."""
 
     serializer_class = NomenclatureGroupSerializer
-    queryset = NomenclatureGroup.objects.all()
+    pagination_class = LimitOffsetPagination
+    queryset = NomenclatureGroup.objects.all().prefetch_related(
+        'clients', 'clients__settings'
+    ).select_related('owner')

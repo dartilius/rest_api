@@ -260,6 +260,7 @@ class StatusHistory(models.Model):
 
     def __str__(self):
         return (
-            f"{self.change_time}: " 
-            f"статус {self.client.id} изменился на {self.status}"
+            f"{self.change_time.strftime('%Y-%m-%d %H:%M:%S')}: " 
+            f"статус {self.client.name} "
+            f"изменился на {STATUSES[self.status][1]}"
         )
