@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.contrib.postgres.fields import HStoreField
 from django.db import models
 from nomenclatures.models import Nomenclature
 from users.models import User
@@ -13,14 +14,11 @@ STATUSES = [
 ]
 
 
-class TaskType(models.Model):
+class Type(models.Model):
     """Тип репликации."""
 
     name = models.CharField(
         max_length=255,
-        default=uuid4,
-        blank=False,
-        null=True,
         verbose_name="Наименование"
     )
 
@@ -48,15 +46,16 @@ class Task(models.Model):
         blank=True,
         null=True
     )
-    parameters = models.JSONField(
+    parameters = HStoreField(
         blank=True,
         null=True,
         verbose_name="Параметры"
     )
-    task_type = models.ManyToManyField(
-        TaskType,
-        related_name="files",
-        verbose_name="Тематика"
+    type = models.ForeignKey(
+        Type,
+        related_name="tasks",
+        verbose_name="Тематика",
+        on_delete=models.SET_NULL
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,

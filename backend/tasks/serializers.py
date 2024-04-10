@@ -1,0 +1,34 @@
+from rest_framework import serializers
+
+from tasks.models import Task
+
+from nomenclatures.serializers import NomenclatureSerializer
+from users.serializers import UserSerializer
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    """Сериализация репликаций."""
+
+    owner = UserSerializer(read_only=True)
+    client = NomenclatureSerializer()
+
+    class Meta:
+        fields = (
+            'id',
+            'owner',
+            'client',
+            'type',
+            'parameters',
+            'created',
+            'updated',
+            'status'
+        )
+        read_only_fields = (
+            'id',
+            'owner',
+            'created',
+            'updated',
+            'status'
+        )
+        model = Task
+
