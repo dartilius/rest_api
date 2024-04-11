@@ -11,7 +11,7 @@ class OrderSerializer(serializers.ModelSerializer):
     """Сериализация заказов."""
 
     owner = UserSerializer(read_only=True)
-    client = NomenclatureGroupSerializer()
+    group = NomenclatureGroupSerializer()
     playlist = PlaylistSerializer()
 
     class Meta:

@@ -26,6 +26,7 @@ class TaskSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'id',
             'owner',
+            'client',
             'created',
             'updated',
             'status'
