@@ -78,3 +78,11 @@ class Task(models.Model):
         auto_now=True,
         verbose_name='Время выполнения'
     )
+
+    class Meta:
+        db_table = 'task'
+        verbose_name = 'Репликация'
+        verbose_name_plural = 'Репликации'
+
+    def __str__(self):
+        return self.type

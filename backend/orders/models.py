@@ -34,6 +34,8 @@ class Order(models.Model):
         verbose_name='Название'
     )
     description = models.TextField(
+        null=True,
+        blank=True,
         verbose_name='Описание'
     )
     type = models.PositiveSmallIntegerField(
@@ -52,3 +54,11 @@ class Order(models.Model):
         verbose_name='Плейлист',
         on_delete=models.CASCADE
     )
+
+    class Meta:
+        db_table = "order"
+        verbose_name = 'Заказ'
+        verbose_name_plural = 'Заказы'
+
+    def __str__(self):
+        return self.name
