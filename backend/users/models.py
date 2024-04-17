@@ -8,9 +8,9 @@ from phonenumber_field.modelfields import PhoneNumberField
 # from nomenclatures.models import Nomenclature
 
 ROLES = [
-    ("admin", "Сотрудник ТО"),
-    ("manager", "Менеджер"),
-    ("superuser", "Суперпользователь")
+    ('admin', 'Сотрудник ТО'),
+    ('manager', 'Менеджер'),
+    ('superuser', 'Суперпользователь')
 ]
 
 
@@ -23,56 +23,64 @@ class User(AbstractUser):
         max_length=150,
         unique=True,
         validators=[username_validator],
-        verbose_name="Логин"
+        verbose_name='Логин'
     )
     last_name = models.CharField(
         max_length=150,
-        verbose_name="Фамилия"
+        verbose_name='Фамилия'
     )
     first_name = models.CharField(
         max_length=150,
-        verbose_name="Имя"
+        verbose_name='Имя'
     )
     middle_name = models.CharField(
         max_length=150,
         blank=True,
         null=True,
-        verbose_name="Отчество"
+        verbose_name='Отчество'
     )
     role = models.CharField(
         choices=ROLES,
         max_length=32,
-        verbose_name="Роль",
+        verbose_name='Роль',
         null=True,
         blank=True
     )
     email = models.EmailField(
         max_length=255,
         unique=True,
-        verbose_name="Электронная почта"
+        verbose_name='Электронная почта'
     )
     phone_number = PhoneNumberField(
         unique=True,
-        verbose_name="Номер телефона"
+        verbose_name='Номер телефона'
     )
     is_active = models.BooleanField(
         default=True,
-        verbose_name="Актуальность пользователя"
+        verbose_name='Актуальность пользователя'
     )
     created = models.DateTimeField(
         auto_now_add=True,
-        verbose_name="Дата создания"
+        verbose_name='Дата создания'
     )
 
     @property
     def is_manager(self):
         """Проверяем, что пользователь менеджер."""
-        return self.role == "manager"
+        return self.role == 'manager'
 
     @property
     def is_admin(self):
         """Проверяем, что пользователь админ."""
-        return self.role == "admin"
+        return self.role == 'admin'
+
+    class Meta:
+        db_table = 'user'
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+
+    def __str__(self):
+        return f'{self.last_name} {self.first_name}'
 
 
 # class RMPIUser(AbstractUser):

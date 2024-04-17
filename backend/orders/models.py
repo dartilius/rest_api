@@ -13,6 +13,16 @@ ORDER_TYPES = [
     (4, 'Бегущая строка')
 ]
 
+BROADCAST_TYPES = [
+    (0, 'По времени работы точки'),
+    (1, 'Начало работы + смещение по времени'),
+    (2, 'Конец работы - смещение по времени'),
+    (3, 'Конкретные часы'),
+    (4, 'С открытия до фиксированного часа'),
+    (5, 'С фиксированного часа до закрытия'),
+    (6, 'Старт по событию')
+]
+
 
 class Order(models.Model):
     """Заказ."""
@@ -45,6 +55,14 @@ class Order(models.Model):
     broadcast_interval = DateTimeRangeField(
         verbose_name='Интервал работы заказа'
     )
+    broadcast_type = models.PositiveSmallIntegerField(
+        choices=BROADCAST_TYPES,
+        verbose_name='Тип вещания'
+    )
+    parameters = models.JSONField(
+        verbose_name='Параметры заказа'
+    )
+
     created = models.DateTimeField(
         verbose_name='Дата создания',
         auto_now_add=True
@@ -56,7 +74,7 @@ class Order(models.Model):
     )
 
     class Meta:
-        db_table = "order"
+        db_table = 'order'
         verbose_name = 'Заказ'
         verbose_name_plural = 'Заказы'
 

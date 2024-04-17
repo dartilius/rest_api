@@ -10,10 +10,10 @@ class UserAdmin(admin.ModelAdmin):
     @admin.display(description='ФИО')
     def full_name(self, obj):
         """Возвращает полное имя пользователя одним полем."""
-        if obj.middle_name:
-            return f'{obj.last_name} {obj.first_name} {obj.middle_name}'
-        else:
-            return f'{obj.last_name} {obj.first_name}'
+        return (
+            f'{obj.last_name} {obj.first_name} {obj.middle_name}'
+            if obj.middle_name else f'{obj.last_name} {obj.first_name}'
+        )
 
     list_display = (
         'id',
@@ -30,3 +30,6 @@ class UserAdmin(admin.ModelAdmin):
         'role',
         'is_active'
     )
+
+    def get_queryset(self, request):
+        return User.objects.all().select_related('')

@@ -61,6 +61,7 @@ class Task(models.Model):
     )
     type = models.ForeignKey(
         Type,
+        default=0,
         related_name='tasks',
         verbose_name='Тип',
         on_delete=models.CASCADE
