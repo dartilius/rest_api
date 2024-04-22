@@ -57,9 +57,19 @@ class Order(models.Model):
     )
     broadcast_type = models.PositiveSmallIntegerField(
         choices=BROADCAST_TYPES,
+        default=0,
         verbose_name='Тип вещания'
     )
     parameters = models.JSONField(
+        default={
+            "event": "play if click button",
+            "active_ad": "close",
+            "times_in_hour": 4,
+            "weight": 50,
+            "daily_start_time": "09:00:00",
+            "daily_end_time": "21:00:00",
+            "timedelta": "01:30:00"
+        },
         verbose_name='Параметры заказа'
     )
 
