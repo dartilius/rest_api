@@ -106,12 +106,6 @@ class Playlist(models.Model):
         related_name='playlist_files',
         verbose_name='Файлы'
     )
-    settings = models.ForeignKey(
-        PlaylistSetting,
-        related_name='playlist_settings',
-        verbose_name='Настройки',
-        on_delete=models.CASCADE,
-    )
 
 
 class PlaylistFiles(models.Model):
@@ -129,7 +123,7 @@ class PlaylistFiles(models.Model):
         verbose_name='Файл',
         on_delete=models.CASCADE
     )
-    images = ArrayField(
+    images = models.ManyToManyField(
         File,
         related_name='slides',
         verbose_name='Слайды'
