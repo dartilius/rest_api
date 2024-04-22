@@ -3,11 +3,11 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-#k^9kuxs4l(ojbtauslb5)vp#8(3*p^d*6fz(qrgh73tl%d@p*'
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.0.170']
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS")
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -119,8 +119,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DEFAULT_FILE_STORAGE = "minio_storage.storage.MinioMediaStorage"
 STATICFILES_STORAGE = "minio_storage.storage.MinioStaticStorage"
 MINIO_STORAGE_ENDPOINT = '127.0.0.1:9000'
-MINIO_STORAGE_ACCESS_KEY = 'K5JBi1UzkyrE6XlJoGPY'
-MINIO_STORAGE_SECRET_KEY = 'JZl4Xh51IC4JLDijhqAJxE5eaeUcwQZliN3wEgZk'
+MINIO_STORAGE_ACCESS_KEY = os.environ.get("MINIO_STORAGE_ACCESS_KEY")
+MINIO_STORAGE_SECRET_KEY = os.environ.get("MINIO_STORAGE_SECRET_KEY")
 MINIO_STORAGE_USE_HTTPS = False
 MINIO_STORAGE_MEDIA_OBJECT_METADATA = {"Cache-Control": "max-age=1000"}
 MINIO_STORAGE_MEDIA_BUCKET_NAME = 'local-media'
