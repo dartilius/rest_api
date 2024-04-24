@@ -142,6 +142,8 @@ class Nomenclature(models.Model):
         verbose_name="Версия ПО"
     )
     description = models.TextField(
+        blank=True,
+        null=True,
         verbose_name="Описание"
     )
     created = models.DateTimeField(
@@ -151,7 +153,8 @@ class Nomenclature(models.Model):
     settings = models.ManyToManyField(
         Settings,
         related_name="nomenclature_settings",
-        verbose_name="Настройки вещания"
+        verbose_name="Настройки вещания",
+        blank=True
     )
 
     class Meta:

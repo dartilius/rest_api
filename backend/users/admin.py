@@ -31,5 +31,5 @@ class UserAdmin(admin.ModelAdmin):
         'is_active'
     )
 
-    def get_queryset(self, request):
-        return User.objects.all().select_related('')
+    # def get_queryset(self, request):
+    #     return User.objects.all().select_related('')

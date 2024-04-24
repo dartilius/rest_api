@@ -14,6 +14,7 @@ from nomenclatures.models import (
     HardWareInfo,
     NomenclatureGroup
 )
+from users.models import User
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
@@ -27,8 +28,17 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
+    def get_serializer(self, *args, **kwargs):
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return super().get_serializer(*args, **kwargs)
+
     def perform_create(self, serializer):
-        nomenclature = serializer.save(owner=self.request.user)
+        nomenclature = serializer.save(owner=User.objects.get(pk=1))
         group = NomenclatureGroup.objects.create(
             owner=self.request.user,
             name=nomenclature.name,
