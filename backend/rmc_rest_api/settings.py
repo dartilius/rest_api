@@ -65,9 +65,9 @@ WSGI_APPLICATION = 'rmc_rest_api.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'rest_api',
+        'NAME': 'postgres',
         'USER': 'postgres',
-        'PASSWORD': 'postgres',
+        'PASSWORD': '201120',
         'HOST': 'localhost',
         'PORT': '5432',
     },

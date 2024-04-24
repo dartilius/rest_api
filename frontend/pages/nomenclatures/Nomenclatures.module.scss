@@ -1,0 +1,17 @@
+.container {
+    display: flex;
+    width: 240px;
+    justify-content: center;
+    flex-direction: column;
+    position: absolute;
+    margin-top: 48px;
+    margin-left: 24%;
+    @media screen and (max-width: 768px) {
+        margin-top: 96px;
+        margin-left: 12%;
+    }
+}
+
+.breadcrumb {
+
+}
