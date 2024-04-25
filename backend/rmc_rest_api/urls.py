@@ -9,6 +9,7 @@ urlpatterns = [
     path('docs/openapi-schema.yml', openapi),
     path('api/', include('nomenclatures.urls')),
     path('api/', include('users.urls')),
+    path('api/', include('files.urls')),
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
     path("__debug__/", include("debug_toolbar.urls")),

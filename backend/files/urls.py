@@ -4,8 +4,8 @@ from rest_framework.routers import SimpleRouter
 from files.views import (
     FileViewSet,
     PlaylistViewSet,
-    PlaylistSettingsViewSet,
-    PlaylistFilesViewSet
+    PlaylistFilesViewSet,
+    TagViewSet
 )
 
 router = SimpleRouter()
@@ -21,14 +21,14 @@ router.register(
     basename='playlists'
 )
 router.register(
-    r'playlists/(?P<playlist_id>[^/.]+)/settings',
-    PlaylistSettingsViewSet,
-    basename='playlist_settings'
-)
-router.register(
     r'playlists/(?P<playlist_id>[^/.]+)/files',
     PlaylistFilesViewSet,
     basename='playlist_files'
+)
+router.register(
+    'files/theme',
+    TagViewSet,
+    basename='files_theme'
 )
 
 urlpatterns = [

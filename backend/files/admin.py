@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from files.models import File, Playlist, PlaylistSettings
+from files.models import File, Playlist, Tag, PlaylistFiles
 
 
 @admin.register(File)
@@ -13,29 +13,22 @@ class FileAdmin(admin.ModelAdmin):
         'owner',
         'length',
         'size',
-        'type',
-        'theme',
         'created'
     )
     search_fields = (
         'id',
         'name',
-        'owner',
-        'type',
-        'theme'
+        'owner'
     )
 
     def get_queryset(self, request):
-        return File.objects.all().select_related('owner').prefetch_related(
-            'settings'
-        )
+        return File.objects.all().select_related(
+            'owner'
+        ).prefetch_related('tag')
 
-
-@admin.register(PlaylistSettings)
-class PlaylistSettingsAdmin(admin.ModelAdmin):
-    """Настройки плейлиста."""
-
-    list_display = ('id', 'playlist', 'broadcast_type', 'parameters')
+    def save_model(self, request, obj, form, change):
+        obj.owner = obj.owner or request.user
+        obj.save()
 
 
 @admin.register(Playlist)
@@ -46,10 +39,7 @@ class PlaylistAdmin(admin.ModelAdmin):
         'id',
         'name',
         'description',
-        'files',
-        'settings',
-        'owner',
-        'created'
+        'owner'
     )
     search_fields = (
         'id',
@@ -57,7 +47,24 @@ class PlaylistAdmin(admin.ModelAdmin):
         'owner',
     )
 
+    def get_queryset(self, request):
+        return Playlist.objects.all().select_related(
+            'owner'
+        ).prefetch_related('files')
 
-@admin.register(Playlist.files.through)
+
+@admin.register(PlaylistFiles)
 class PlaylistFilesAdmin(admin.ModelAdmin):
     """Номенклатуры группы."""
+
+    def get_queryset(self, request):
+        return PlaylistFiles.objects.all().select_related(
+            'playlist', 'file'
+        ).prefetch_related('images')
+
+
+@admin.register(Tag)
+class ThemAdmin(admin.ModelAdmin):
+    """Тематика."""
+
+    list_display = ('id', 'name')

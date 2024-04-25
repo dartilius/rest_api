@@ -6,17 +6,26 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from files.serializers import (
     PlaylistSerializer,
     PlaylistFilesSerializer,
-    PlaylistSettingsSerializer,
-    FileSerializer
+    FileSerializer, TagSerializer
 )
-from files.models import File, Playlist, PlaylistFiles, PlaylistSettings
+from files.models import File, Playlist, PlaylistFiles, Tag
 from users.permissions import AuthAndOnlySuperUserDelete
+
+
+class TagViewSet(viewsets.ModelViewSet):
+    """Работа с темами файлов."""
+
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    pagination_class = LimitOffsetPagination
 
 
 class FileViewSet(viewsets.ModelViewSet):
     """Работа с файлами."""
 
-    queryset = File.objects.all().select_related('owner')
+    queryset = File.objects.all().select_related(
+        'owner'
+    ).prefetch_related('theme')
     serializer_class = FileSerializer
     pagination_class = LimitOffsetPagination
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
@@ -28,8 +37,10 @@ class FileViewSet(viewsets.ModelViewSet):
             name=file.name,
             description=file.name
         )
-        playlist.files.add(file)
-        playlist.save()
+        playlist_files = PlaylistFiles.objects.create(
+            playlist=playlist,
+            file=file
+        )
 
 
 class PlaylistViewSet(viewsets.ModelViewSet):
@@ -41,20 +52,6 @@ class PlaylistViewSet(viewsets.ModelViewSet):
     ).prefetch_related('files')
     pagination_class = LimitOffsetPagination
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
-
-
-class PlaylistSettingsViewSet(viewsets.ModelViewSet):
-    """Работа с настройками номенклатуры."""
-
-    serializer_class = PlaylistSettingsSerializer
-    queryset = Playlist.objects.select_related('playlist')
-
-    def get_queryset(self):
-        playlist_id = self.kwargs.get('playlist_id')
-        return get_object_or_404(
-            Playlist.objects.prefetch_related('settings'),
-            id=playlist_id
-        ).settings
 
 
 class PlaylistFilesViewSet(viewsets.ModelViewSet):

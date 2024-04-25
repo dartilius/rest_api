@@ -156,3 +156,16 @@ DEBUG_TOOLBAR_CONFIG = {                     # <-- NEW
 if DEBUG:                                                      # <-- NEW
     import mimetypes                                           # <-- NEW
     mimetypes.add_type("application/javascript", ".js", True)  # <-- NEW
+
+REDIS_HOST = 'localhost'
+REDIS_PORT = '6379'
+REDIS_URL = f'localhost:8001'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [REDIS_URL],
+        },
+    },
+}

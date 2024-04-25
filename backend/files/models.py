@@ -2,6 +2,8 @@ from uuid import uuid4
 
 from django.db import models
 from django.db.models.functions import Concat
+
+from files.file_info import GetFileInfo
 from users.models import User
 
 TYPES = [
@@ -23,15 +25,22 @@ BROADCAST_TYPES = [
 ]
 
 
-class Theme(models.Model):
+class Tag(models.Model):
     """Тематики."""
 
     name = models.CharField(
         max_length=255,
         unique=True,
-        null=True,
         verbose_name='Наименование'
     )
+    # сбда просится slug
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Тематика'
+        verbose_name_plural = 'Тематики'
 
 
 class File(models.Model):
@@ -45,9 +54,7 @@ class File(models.Model):
     )
     source = models.FileField(
         verbose_name='Файл',
-        upload_to='files/source/',
-        blank=True,
-        null=True
+        upload_to='files/source/'
     )
     name = models.CharField(
         max_length=255,
@@ -65,14 +72,17 @@ class File(models.Model):
     )
     hash = models.CharField(
         Concat(md5hash, sha256hash),
+        editable=False,
         max_length=288,
     )
     length = models.TimeField(
         editable=False,
+        default='00:00:00',
         verbose_name='Продолжительность'
     )
     size = models.IntegerField(
         editable=False,
+        default=0,
         verbose_name='Размер'
     )
     owner = models.ForeignKey(
@@ -87,8 +97,8 @@ class File(models.Model):
         choices=TYPES,
         verbose_name='Тип'
     )
-    theme = models.ManyToManyField(
-        Theme,
+    tag = models.ManyToManyField(
+        Tag,
         related_name='files',
         verbose_name='Тематика'
     )
@@ -104,17 +114,20 @@ class File(models.Model):
     def __str__(self):
         return self.name
 
-
-class PlaylistSettings(models.Model):
-    """Натройки плейлиста."""
-
-    broadcast_type = models.PositiveSmallIntegerField(
-        choices=BROADCAST_TYPES,
-        verbose_name='Тип вещания'
-    )
-    parameters = models.JSONField(
-        verbose_name='Параметры заказа'
-    )
+    @classmethod
+    def create(cls, **kwargs):
+        FILEINFO = GetFileInfo()
+        custom_criteria = {
+            'md5hash':    FILEINFO.get_md5(kwargs['source']),
+            'sha256hash': FILEINFO.get_sha256(kwargs['source']),
+            'length':     FILEINFO.get_length(kwargs['source']),
+            'size':       FILEINFO.get_file_size(kwargs['source'])
+        }
+        obj = cls.objects.create(
+            defaults=kwargs,
+            **custom_criteria
+        )
+        return obj
 
 
 class Playlist(models.Model):
@@ -132,20 +145,16 @@ class Playlist(models.Model):
     owner = models.ForeignKey(
         User,
         related_name='playlists',
-        verbose_name='Плейлисты',
-        on_delete=models.SET_NULL
+        verbose_name='Создатель',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
     )
     files = models.ManyToManyField(
         File,
         through='PlaylistFiles',
         related_name='playlist_files',
         verbose_name='Файлы'
-    )
-    settings = models.ForeignKey(
-        PlaylistSettings,
-        related_name='playlist_settings',
-        verbose_name='Настройки',
-        on_delete=models.CASCADE,
     )
 
     class Meta:
@@ -174,8 +183,7 @@ class PlaylistFiles(models.Model):
     images = models.ManyToManyField(
         File,
         related_name='slides',
-        verbose_name='Слайд',
-        on_delete=models.SET_NULL
+        verbose_name='Слайд'
     )
 
     class Meta:

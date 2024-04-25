@@ -7,9 +7,9 @@ from nomenclatures.serializers import (
     NomenclatureSerializer,
     HardWareInfoSerializer,
     SettingsSerializer,
-    NomenclatureGroupSerializer
+    NomenclatureGroupSerializer, NomenclatureListSerializer
 )
-from nomenclatures.models import Nomenclature, HardWareInfo, NomenclatureGroup
+from nomenclatures.models import Nomenclature, HardWareInfo, NomenclatureGroup, Settings
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
@@ -19,19 +19,33 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     queryset = Nomenclature.objects.filter(
         is_active=True
     ).select_related('owner').prefetch_related('settings')
-    serializer_class = NomenclatureSerializer
     pagination_class = LimitOffsetPagination
     permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
         nomenclature = serializer.save(owner=self.request.user)
+        settings = Settings.objects.get(id=serializer.data.get('settings'))
         group = NomenclatureGroup.objects.create(
             owner=self.request.user,
             name=nomenclature.name,
-            description=nomenclature.name
+            description=nomenclature.name,
+            settings=settings
         )
         group.clients.add(nomenclature)
         group.save()
+
+    def get_serializer(self, *args, **kwargs):
+        if self.request.method == 'GET' and not kwargs['detail']:
+            serializer = NomenclatureListSerializer
+        else:
+            serializer = NomenclatureSerializer
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return serializer(*args, **kwargs)
 
 
 class HardWareInfoViewSet(viewsets.ModelViewSet):
