@@ -34,7 +34,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация номенклатур."""
 
     owner = UserSerializer(read_only=True)
-    settings = SettingsSerializer(many=True)
+    settings = SettingsSerializer(many=True, required=False)
 
     class Meta:
         fields = (

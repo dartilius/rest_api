@@ -23,6 +23,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'group',
             'type',
             'broadcast_interval',
+            'broadcast_type',
+            'parameters',
             'playlist',
             'created'
         )
