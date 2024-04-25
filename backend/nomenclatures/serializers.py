@@ -1,6 +1,11 @@
 from rest_framework import serializers
 
-from nomenclatures.models import Nomenclature, HardWareInfo, Settings, NomenclatureGroup
+from nomenclatures.models import (
+    Nomenclature,
+    HardWareInfo,
+    Settings,
+    NomenclatureGroup
+)
 from users.serializers import UserSerializer
 
 
@@ -17,12 +22,19 @@ class SettingsSerializer(serializers.ModelSerializer):
         )
         model = Settings
 
+    def validate_default_volume(self, value):
+        if len(value) != 4:
+            raise serializers.ValidationError(
+                "Значение громкости по умолчанию должно содержать 4 значения"
+            )
+        return value
+
 
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация номенклатур."""
 
     owner = UserSerializer(read_only=True)
-    settings = SettingsSerializer()
+    settings = SettingsSerializer(many=True, required=False)
 
     class Meta:
         fields = (
@@ -81,6 +93,7 @@ class NomenclatureGroupSerializer(serializers.ModelSerializer):
     """Сериализация групп номенклатуры."""
 
     clients = NomenclatureSerializer(read_only=True, many=True)
+    owner = UserSerializer(read_only=True)
 
     class Meta:
         fields = (

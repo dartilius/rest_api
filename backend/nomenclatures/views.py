@@ -9,7 +9,12 @@ from nomenclatures.serializers import (
     SettingsSerializer,
     NomenclatureGroupSerializer, NomenclatureListSerializer
 )
-from nomenclatures.models import Nomenclature, HardWareInfo, NomenclatureGroup, Settings
+from nomenclatures.models import (
+    Nomenclature,
+    HardWareInfo,
+    NomenclatureGroup
+)
+from users.models import User
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
@@ -20,11 +25,19 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         is_active=True
     ).select_related('owner').prefetch_related('settings')
     pagination_class = LimitOffsetPagination
-    permission_classes = [AuthAndOnlySuperUserDelete, ]
+    # permission_classes = [AuthAndOnlySuperUserDelete, ]
+
+    def get_serializer(self, *args, **kwargs):
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return super().get_serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
-        nomenclature = serializer.save(owner=self.request.user)
-        settings = Settings.objects.get(id=serializer.data.get('settings'))
+        nomenclature = serializer.save(owner=User.objects.get(pk=1))
         group = NomenclatureGroup.objects.create(
             owner=self.request.user,
             name=nomenclature.name,
@@ -70,14 +83,16 @@ class SettingsViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         nomenclature_id = self.kwargs.get('nomenclature_id')
         return get_object_or_404(
-            Nomenclature.objects.prefetch_related('settings'),
+            Nomenclature.objects,
             id=nomenclature_id
         ).settings
-        # return nomenclature.settings
 
 
-class NomenclatureGroupSerializerViewSet(viewsets.ModelViewSet):
+class NomenclatureGroupViewSet(viewsets.ModelViewSet):
     """Работа с группами номенклатур."""
 
     serializer_class = NomenclatureGroupSerializer
-    queryset = NomenclatureGroup.objects.all()
+    pagination_class = LimitOffsetPagination
+    queryset = NomenclatureGroup.objects.all().prefetch_related(
+        'clients', 'clients__settings'
+    ).select_related('owner')
