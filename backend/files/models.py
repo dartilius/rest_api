@@ -1,8 +1,9 @@
 from uuid import uuid4
 
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.functions import Concat
+
+from files.file_info import GetFileInfo
 from users.models import User
 
 TYPES = [
@@ -14,16 +15,22 @@ TYPES = [
 ]
 
 
-class Theme(models.Model):
+class Tag(models.Model):
     """Тематики."""
 
     name = models.CharField(
         max_length=255,
         unique=True,
-        blank=False,
-        null=True,
         verbose_name='Наименование'
     )
+    # сбда просится slug
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Тематика'
+        verbose_name_plural = 'Тематики'
 
 
 class File(models.Model):
@@ -37,9 +44,7 @@ class File(models.Model):
     )
     source = models.FileField(
         verbose_name='Файл',
-        upload_to='files/source/',
-        blank=True,
-        null=True
+        upload_to='files/source/'
     )
     name = models.CharField(
         max_length=255,
@@ -57,14 +62,17 @@ class File(models.Model):
     )
     hash = models.CharField(
         Concat(md5hash, sha256hash),
+        editable=False,
         max_length=288,
     )
     length = models.TimeField(
         editable=False,
+        default='00:00:00',
         verbose_name='Продолжительность'
     )
     size = models.IntegerField(
         editable=False,
+        default=0,
         verbose_name='Размер'
     )
     owner = models.ForeignKey(
@@ -79,8 +87,8 @@ class File(models.Model):
         choices=TYPES,
         verbose_name='Тип'
     )
-    theme = models.ManyToManyField(
-        Theme,
+    tag = models.ManyToManyField(
+        Tag,
         related_name='files',
         verbose_name='Тематика'
     )
@@ -88,6 +96,28 @@ class File(models.Model):
         auto_now_add=True,
         verbose_name='Дата создания'
     )
+
+    class Meta:
+        verbose_name = 'Файл'
+        verbose_name_plural = 'Файлы'
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def create(cls, **kwargs):
+        FILEINFO = GetFileInfo()
+        custom_criteria = {
+            'md5hash':    FILEINFO.get_md5(kwargs['source']),
+            'sha256hash': FILEINFO.get_sha256(kwargs['source']),
+            'length':     FILEINFO.get_length(kwargs['source']),
+            'size':       FILEINFO.get_file_size(kwargs['source'])
+        }
+        obj = cls.objects.create(
+            defaults=kwargs,
+            **custom_criteria
+        )
+        return obj
 
 
 class Playlist(models.Model):
@@ -98,7 +128,17 @@ class Playlist(models.Model):
         verbose_name='Название'
     )
     description = models.TextField(
+        blank=True,
+        null=True,
         verbose_name='Описание'
+    )
+    owner = models.ForeignKey(
+        User,
+        related_name='playlists',
+        verbose_name='Создатель',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
     )
     files = models.ManyToManyField(
         File,
@@ -106,6 +146,13 @@ class Playlist(models.Model):
         related_name='playlist_files',
         verbose_name='Файлы'
     )
+
+    class Meta:
+        verbose_name = 'Плейлист'
+        verbose_name_plural = 'Плейлисты'
+
+    def __str__(self):
+        return self.name
 
 
 class PlaylistFiles(models.Model):
@@ -126,5 +173,12 @@ class PlaylistFiles(models.Model):
     images = models.ManyToManyField(
         File,
         related_name='slides',
-        verbose_name='Слайды'
+        verbose_name='Слайд'
     )
+
+    class Meta:
+        verbose_name = 'Файл плейлиста'
+        verbose_name_plural = 'Файлы плейлиста'
+
+    def __str__(self):
+        return f'{self.file.name} - {self.playlist.name}'

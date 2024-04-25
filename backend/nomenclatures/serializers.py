@@ -61,6 +61,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         model = Nomenclature
 
 
+class NomenclatureListSerializer(serializers.ModelSerializer):
+    """Сериализация всех номенклатур."""
+
+    class Meta:
+        fields = ()
+        read_only_fields = ()
+        model = Nomenclature
+
+
 class HardWareInfoSerializer(serializers.ModelSerializer):
     """Сериализация инфы о железе разбы."""
 
