@@ -1,18 +1,19 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     HardWareInfoSerializer,
     SettingsSerializer,
-    NomenclatureGroupSerializer, NomenclatureListSerializer
+    NomenclatureGroupSerializer,
+    NomenclatureListSerializer
 )
 from nomenclatures.models import (
     Nomenclature,
     HardWareInfo,
-    NomenclatureGroup
+    NomenclatureGroup,
+    Settings
 )
 from users.models import User
 from users.permissions import AuthAndOnlySuperUserDelete
@@ -23,12 +24,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     queryset = Nomenclature.objects.filter(
         is_active=True
-    ).select_related('owner').prefetch_related('settings')
-    pagination_class = LimitOffsetPagination
+    ).select_related('owner').prefetch_related(
+        'settings'
+    ).order_by('name')
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def get_serializer(self, *args, **kwargs):
-        if self.request.method == 'GET' and not kwargs.get('detail'):
+        if self.action == 'list':
             serializer = NomenclatureListSerializer
         else:
             serializer = NomenclatureSerializer
@@ -41,14 +43,21 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
-        nomenclature = serializer.save(owner=User.objects.get(pk=1))
+        nomenclature = serializer.save(owner=User.objects.get(pk=1))  # owner=self.request.user
         group = NomenclatureGroup.objects.create(
             owner=self.request.user,
             name=nomenclature.name,
-            description=nomenclature.name,
-            settings=serializer.data['settings']
+            description=nomenclature.name
         )
         group.clients.add(nomenclature)
+        group.save()
+
+    def perform_update(self, serializer):
+        nomenclature = serializer.instance
+        old_name = nomenclature.name
+        new_name = serializer.validated_data['name']
+        group = NomenclatureGroup.objects.get(name=old_name)
+        group.name = new_name
         group.save()
 
 
@@ -83,7 +92,6 @@ class NomenclatureGroupViewSet(viewsets.ModelViewSet):
     """Работа с группами номенклатур."""
 
     serializer_class = NomenclatureGroupSerializer
-    pagination_class = LimitOffsetPagination
     queryset = NomenclatureGroup.objects.all().prefetch_related(
         'clients', 'clients__settings'
-    ).select_related('owner')
+    ).select_related('owner').order_by('name')

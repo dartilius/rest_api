@@ -34,7 +34,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
     owner = UserSerializer(read_only=True)
-    settings = SettingsSerializer(many=True, required=False)
+    settings = SettingsSerializer(many=True, read_only=True)
 
     class Meta:
         fields = (
@@ -59,6 +59,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             'created'
         )
         model = Nomenclature
+
+        # def create(self, validated_data):
+        #     settings_data = validated_data.pop('settings', [])
+        #     nomenclature = Nomenclature.objects.create(**validated_data)
+        #
+        #     for setting_data in settings_data:
+        #         Settings.objects.create(nomenclature=nomenclature, **setting_data)
+        #
+        #     return nomenclature
 
 
 class NomenclatureListSerializer(serializers.ModelSerializer):

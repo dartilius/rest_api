@@ -227,6 +227,8 @@ class NomenclatureGroup(models.Model):
         verbose_name="Название"
     )
     description = models.TextField(
+        blank=True,
+        null=True,
         verbose_name="Описание"
     )
     created = models.DateTimeField(
