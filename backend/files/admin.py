@@ -64,7 +64,7 @@ class PlaylistFilesAdmin(admin.ModelAdmin):
 
 
 @admin.register(Tag)
-class ThemAdmin(admin.ModelAdmin):
+class TagAdmin(admin.ModelAdmin):
     """Тематика."""
 
     list_display = ('id', 'name')
