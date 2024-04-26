@@ -142,6 +142,8 @@ class Nomenclature(models.Model):
         verbose_name="Версия ПО"
     )
     description = models.TextField(
+        blank=True,
+        null=True,
         verbose_name="Описание"
     )
     created = models.DateTimeField(
@@ -151,10 +153,12 @@ class Nomenclature(models.Model):
     settings = models.ManyToManyField(
         Settings,
         related_name="nomenclature_settings",
-        verbose_name="Настройки вещания"
+        verbose_name="Настройки вещания",
+        blank=True
     )
 
     class Meta:
+        db_table = 'nomenclature'
         verbose_name = 'Номенклатура'
         verbose_name_plural = 'Номенклатуры'
 
@@ -195,6 +199,7 @@ class HardWareInfo(models.Model):
     )
 
     class Meta:
+        db_table = 'hwinfo'
         verbose_name = 'Информация о железе'
         verbose_name_plural = 'Информация о железе'
 
@@ -230,6 +235,7 @@ class NomenclatureGroup(models.Model):
     )
 
     class Meta:
+        db_table = 'group'
         verbose_name = 'Группа'
         verbose_name_plural = 'Группы'
 
@@ -255,6 +261,7 @@ class StatusHistory(models.Model):
     )
 
     class Meta:
+        db_table = 'status_history'
         verbose_name = 'История доступности'
         verbose_name_plural = 'История доступности'
 

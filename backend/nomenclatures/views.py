@@ -7,13 +7,14 @@ from nomenclatures.serializers import (
     NomenclatureSerializer,
     HardWareInfoSerializer,
     SettingsSerializer,
-    NomenclatureGroupSerializer
+    NomenclatureGroupSerializer, NomenclatureListSerializer
 )
 from nomenclatures.models import (
     Nomenclature,
     HardWareInfo,
     NomenclatureGroup
 )
+from users.models import User
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
@@ -23,16 +24,29 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     queryset = Nomenclature.objects.filter(
         is_active=True
     ).select_related('owner').prefetch_related('settings')
-    serializer_class = NomenclatureSerializer
     pagination_class = LimitOffsetPagination
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
+    def get_serializer(self, *args, **kwargs):
+        if self.request.method == 'GET' and not kwargs.get('detail'):
+            serializer = NomenclatureListSerializer
+        else:
+            serializer = NomenclatureSerializer
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return serializer(*args, **kwargs)
+
     def perform_create(self, serializer):
-        nomenclature = serializer.save(owner=self.request.user)
+        nomenclature = serializer.save(owner=User.objects.get(pk=1))
         group = NomenclatureGroup.objects.create(
             owner=self.request.user,
             name=nomenclature.name,
-            description=nomenclature.name
+            description=nomenclature.name,
+            settings=serializer.data['settings']
         )
         group.clients.add(nomenclature)
         group.save()
