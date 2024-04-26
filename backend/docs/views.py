@@ -6,5 +6,5 @@ def docs(request):
     return render(request, "redoc.html")
 
 
-def openapi(request):
+def openapi_scheme(request):
     return render(request, "openapi-schema.yml")

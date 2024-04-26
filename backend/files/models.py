@@ -146,6 +146,10 @@ class Playlist(models.Model):
         related_name='playlist_files',
         verbose_name='Файлы'
     )
+    created = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата создания'
+    )
 
     class Meta:
         verbose_name = 'Плейлист'

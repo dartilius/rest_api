@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'rest_framework',
     'debug_toolbar',
+    'drf_yasg',
     'djoser',
     'minio_storage',
     'phonenumber_field',
