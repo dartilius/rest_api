@@ -48,6 +48,7 @@ class FileSerializer(serializers.ModelSerializer):
             'size',
             'created'
         )
+        model = File
 
 
 class PlaylistSerializer(serializers.ModelSerializer):
