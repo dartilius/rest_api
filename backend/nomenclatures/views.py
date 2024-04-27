@@ -1,8 +1,10 @@
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
+from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     HardWareInfoSerializer,
@@ -23,12 +25,15 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     queryset = Nomenclature.objects.filter(
         is_active=True
-    ).select_related('owner').prefetch_related('settings')
-    pagination_class = LimitOffsetPagination
+    ).select_related('owner').prefetch_related(
+        'settings'
+    ).order_by('name')
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = NomenclatureFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def get_serializer(self, *args, **kwargs):
-        if self.request.method == 'GET' and not kwargs.get('detail'):
+        if self.action == 'list':
             serializer = NomenclatureListSerializer
         else:
             serializer = NomenclatureSerializer
@@ -41,15 +46,15 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
-        nomenclature = serializer.save(owner=User.objects.get(pk=1))
-        group = NomenclatureGroup.objects.create(
-            owner=self.request.user,
-            name=nomenclature.name,
-            description=nomenclature.name,
-            settings=serializer.data['settings']
-        )
-        group.clients.add(nomenclature)
-        group.save()
+        nomenclature = serializer.save(owner=self.request.user)
+        # group = NomenclatureGroup.objects.create(
+        #     owner=self.request.user,
+        #     name=nomenclature.name,
+        #     description=nomenclature.name,
+        #     settings=serializer.data['settings']
+        # )
+        # group.clients.add(nomenclature)
+        # group.save()
 
 
 class HardWareInfoViewSet(viewsets.ModelViewSet):
