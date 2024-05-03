@@ -64,11 +64,6 @@ class NomenclatureGroupAdmin(admin.ModelAdmin):
         ).select_related('owner')
 
 
-@admin.register(Nomenclature.settings.through)
-class NomenclatureSettingsAdmin(admin.ModelAdmin):
-    """Номенклатуры группы."""
-
-
 @admin.register(StatusHistory)
 class StatusHistoryAdmin(admin.ModelAdmin):
     """История доступности."""
