@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'django_filters',
     'rest_framework',
     'debug_toolbar',
     'drf_yasg',
@@ -139,8 +140,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PAGINATION_CLASS': 'rmc_rest_api.pagination.PageLimitPagination',
-    'PAGE_SIZE': 10
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
+    'PAGE_SIZE': 25
 }
 
 SIMPLE_JWT = {

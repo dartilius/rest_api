@@ -1,7 +1,10 @@
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
+from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     HardWareInfoSerializer,
@@ -27,6 +30,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     ).select_related('owner').prefetch_related(
         'settings'
     ).order_by('name')
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = NomenclatureFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def get_serializer(self, *args, **kwargs):
