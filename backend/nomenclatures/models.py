@@ -1,8 +1,9 @@
 from uuid import uuid4
 
+from django.contrib.postgres.validators import KeysValidator
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import ArrayField, HStoreField
 
 from users.models import User
 
@@ -79,8 +80,10 @@ class Settings(models.Model):
         приоритетнее дефолтных настроек, в таком случае эта модель
         будет использоваться для нестандартных случаев.
     """
-    volumes = models.JSONField(
-        verbose_name="Настройки громкости"
+    validator = KeysValidator(keys=['start', 'end', 'volumes'])
+    volumes = HStoreField(
+        verbose_name="Настройки громкости",
+        validators=(validator,)
     )
     default_volume = ArrayField(
         models.PositiveSmallIntegerField(
@@ -98,6 +101,40 @@ class Settings(models.Model):
 
     def __str__(self):
         return f"{self.days}"
+
+
+class HardWareInfo(models.Model):
+    """Информация о железе."""
+
+    city = models.CharField(
+        max_length=255,
+        verbose_name="Город"
+    )
+    model = models.CharField(
+        max_length=255,
+        verbose_name="Модель"
+    )
+    internet_service_provider = models.CharField(
+        max_length=255,
+        verbose_name="Интернет провайдер"
+    )
+    external_ip = models.GenericIPAddressField(
+        verbose_name="IP адресс"
+    )
+    network_config = HStoreField(
+        verbose_name="Настройки сети"
+    )
+    audio_device = HStoreField(
+        verbose_name="Звуковые карты"
+    )
+
+    class Meta:
+        db_table = 'hwinfo'
+        verbose_name = 'Информация о железе'
+        verbose_name_plural = 'Информация о железе'
+
+    def __str__(self):
+        return self.id
 
 
 class Nomenclature(models.Model):
@@ -156,6 +193,17 @@ class Nomenclature(models.Model):
         verbose_name="Настройки вещания",
         blank=True
     )
+    hw_info = models.ForeignKey(
+        HardWareInfo,
+        verbose_name='Информация о железе',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
+    )
+    last_answer_date = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Время последнего ответа'
+    )
 
     class Meta:
         db_table = 'nomenclature'
@@ -164,47 +212,6 @@ class Nomenclature(models.Model):
 
     def __str__(self):
         return self.name
-
-
-class HardWareInfo(models.Model):
-    """Информация о железе."""
-
-    client = models.OneToOneField(
-        Nomenclature,
-        primary_key=True,
-        related_name="nomenclature_hwinfo",
-        verbose_name="Номенклатура",
-        on_delete=models.CASCADE
-    )
-    city = models.CharField(
-        max_length=255,
-        verbose_name="Город"
-    )
-    model = models.CharField(
-        max_length=255,
-        verbose_name="Модель"
-    )
-    internet_service_provider = models.CharField(
-        max_length=255,
-        verbose_name="Интернет провайдер"
-    )
-    external_ip = models.GenericIPAddressField(
-        verbose_name="IP адресс"
-    )
-    network_config = models.JSONField(
-        verbose_name="Настройки сети"
-    )
-    audio_device = models.JSONField(
-        verbose_name="Звуковые карты"
-    )
-
-    class Meta:
-        db_table = 'hwinfo'
-        verbose_name = 'Информация о железе'
-        verbose_name_plural = 'Информация о железе'
-
-    def __str__(self):
-        return self.client.name
 
 
 class NomenclatureGroup(models.Model):

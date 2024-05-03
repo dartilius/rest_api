@@ -46,10 +46,10 @@ class SettingsAdmin(admin.ModelAdmin):
 class HardWareInfoAdmin(admin.ModelAdmin):
     """Информация о железе разбы."""
 
-    list_display = ('client',)
+    list_display = ('city', 'model', 'internet_service_provider')
 
     def get_queryset(self, request):
-        return HardWareInfo.objects.all().select_related('client')
+        return HardWareInfo.objects.all()
 
 
 @admin.register(NomenclatureGroup)
