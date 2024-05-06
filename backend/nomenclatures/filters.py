@@ -20,8 +20,9 @@ class NomenclatureFilter(FilterSet):
 
     def get_status(self, queryset, name, value):
         """Фильтрация по статусам."""
-        print(value)
-        if value not in ('0', '1', '2'):
+        if value == 'null':
+            return queryset.filter(availability__status=None)
+        elif value not in ('0', '1', '2'):
             return queryset
         else:
-            return queryset.filter(status=value)
+            return queryset.filter(availability__status=value)

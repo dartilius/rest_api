@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta as td
 import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,12 +18,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'corsheaders',
     'django_filters',
     'rest_framework',
     'debug_toolbar',
     'drf_yasg',
     'djoser',
-    'minio_storage',
+    # 'minio_storage',
     'phonenumber_field',
     'docs',
     'files',
@@ -36,6 +38,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -108,7 +111,7 @@ PASSWORD_HASHERS = [
 
 LANGUAGE_CODE = 'ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Krasnoyarsk'
 
 USE_I18N = True
 
@@ -118,19 +121,22 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-DEFAULT_FILE_STORAGE = "minio_storage.storage.MinioMediaStorage"
-STATICFILES_STORAGE = "minio_storage.storage.MinioStaticStorage"
-MINIO_STORAGE_ENDPOINT = '127.0.0.1:9000'
-MINIO_STORAGE_ACCESS_KEY = os.environ.get("MINIO_STORAGE_ACCESS_KEY")
-MINIO_STORAGE_SECRET_KEY = os.environ.get("MINIO_STORAGE_SECRET_KEY")
-MINIO_STORAGE_USE_HTTPS = False
-MINIO_STORAGE_MEDIA_OBJECT_METADATA = {"Cache-Control": "max-age=1000"}
-MINIO_STORAGE_MEDIA_BUCKET_NAME = 'local-media'
-MINIO_STORAGE_MEDIA_BACKUP_BUCKET = 'Recycle Bin'
-MINIO_STORAGE_MEDIA_BACKUP_FORMAT = '%c/'
-MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
-MINIO_STORAGE_STATIC_BUCKET_NAME = 'local-static'
-MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = ['http://localhost:3000',]
+
+# DEFAULT_FILE_STORAGE = "minio_storage.storage.MinioMediaStorage"
+# STATICFILES_STORAGE = "minio_storage.storage.MinioStaticStorage"
+# MINIO_STORAGE_ENDPOINT = '127.0.0.1:9000'
+# MINIO_STORAGE_ACCESS_KEY = os.environ.get("MINIO_STORAGE_ACCESS_KEY")
+# MINIO_STORAGE_SECRET_KEY = os.environ.get("MINIO_STORAGE_SECRET_KEY")
+# MINIO_STORAGE_USE_HTTPS = False
+# MINIO_STORAGE_MEDIA_OBJECT_METADATA = {"Cache-Control": "max-age=1000"}
+# MINIO_STORAGE_MEDIA_BUCKET_NAME = 'local-media'
+# MINIO_STORAGE_MEDIA_BACKUP_BUCKET = 'Recycle Bin'
+# MINIO_STORAGE_MEDIA_BACKUP_FORMAT = '%c/'
+# MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
+# MINIO_STORAGE_STATIC_BUCKET_NAME = 'local-static'
+# MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
 
 # These settings should generally not be used:
 # MINIO_STORAGE_MEDIA_URL = 'http://localhost:9000/local-media'
@@ -145,7 +151,9 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-   'AUTH_HEADER_TYPES': ('access_token',),
+    'ACCESS_TOKEN_LIFETIME': td(days=30),
+    'REFRESH_TOKEN_LIFETIME': td(days=60),
+    'AUTH_HEADER_TYPES': ('access_token',),
 }
 
 
