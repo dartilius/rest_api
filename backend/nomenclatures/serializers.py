@@ -7,9 +7,8 @@ from rest_framework import serializers
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureGroup,
-    TIMEZONES
+    TIMEZONES, StatusHistory
 )
-from users.serializers import UserSerializer
 
 
 class NomenclatureSerializer(serializers.ModelSerializer):
@@ -121,29 +120,32 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj):
         try:
-            return obj.availability.last_answer_date.strftime("%Y-%m-%d %H:%M:%S")
+            return obj.availability.last_answer_date.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
         except Exception:
             return "Не выходила в сеть"
 
     def to_representation(self, value):
-        value.timezone = TIMEZONES[value.timezone]
-        for day in value.settings:
-            j = json.loads(value.settings[day])
+        representation = super().to_representation(value)
+        representation['timezone'] = TIMEZONES[value.timezone]
+        for day, setting in representation['settings'].items():
+            j = json.loads(setting)
             to_literal = ast.literal_eval(j['worktime'])
             start = time(*to_literal[0]).strftime('%H:%M:%S')
             end = time(*to_literal[1]).strftime('%H:%M:%S')
             try:
-                value.settings[day] = {
+                representation['settings'][day] = {
                     'worktime': (start, end),
                     'custom_volume': ast.literal_eval(j['custom_volume']),
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
             except KeyError:
-                value.settings[day] = {
+                representation['settings'][day] = {
                     'worktime': (start, end),
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
-        return super().to_representation(value)
+        return representation
 
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
@@ -172,32 +174,77 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj):
         try:
-            return obj.availability.last_answer_date.strftime("%Y-%m-%d %H:%M:%S")
+            return obj.availability.last_answer_date.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
         except Exception:
             return "Не выходила в сеть"
 
     def to_representation(self, value):
-        value.timezone = TIMEZONES[value.timezone]
-        return super().to_representation(value)
+        representation = super().to_representation(value)
+        representation['timezone'] = TIMEZONES[value.timezone]
+        return representation
 
 
 class NomenclatureGroupSerializer(serializers.ModelSerializer):
     """Сериализация групп номенклатуры."""
 
-    clients = NomenclatureSerializer(read_only=True, many=True)
-    owner = UserSerializer(read_only=True)
+    clients = serializers.SlugRelatedField(
+        slug_field='id',
+        many=True,
+        queryset=Nomenclature.objects.all(),
+        write_only=True
+    )
+    owner = serializers.SerializerMethodField()
+    clients_info = serializers.SerializerMethodField()
+
+    def get_owner(self, obj):
+        return f'{obj.owner.last_name} {obj.owner.first_name}'
+
+    def get_clients_info(self, obj):
+        return [
+            {
+                "id": client.id, "name": client.name
+            } for client in obj.clients.all()
+        ]
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['created'] = value.created.strftime("%Y-%m-%d %H:%M:%S")
+        return representation
 
     class Meta:
         fields = (
             'clients',
+            'clients_info',
             'owner',
             'name',
             'description',
             'created'
         )
         read_only_fields = (
-            'clients',
             'owner',
-            'created'
+            'created',
+            'clients_info'
         )
         model = NomenclatureGroup
+
+
+class StatusHistorySerializer(serializers.ModelSerializer):
+    """Сериализация истории доступности."""
+
+    class Meta:
+        fields = (
+            'change_time',
+            'status'
+        )
+        read_only_fields = fields
+        model = StatusHistory
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['change_time'] = value.change_time.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        return representation
+

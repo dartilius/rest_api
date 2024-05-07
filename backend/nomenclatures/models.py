@@ -181,6 +181,7 @@ class NomenclatureAvailability(models.Model):
     )
 
     class Meta:
+        db_table = 'availability'
         verbose_name = 'Время последнего ответа'
         verbose_name_plural = 'Время последнего ответа'
 
@@ -194,6 +195,7 @@ class StatusHistory(models.Model):
     client = models.ForeignKey(
         Nomenclature,
         verbose_name="Рабочая станция",
+        related_name='history',
         on_delete=models.CASCADE
     )
     change_time = models.DateTimeField(

@@ -2,17 +2,20 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
 
 from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     NomenclatureGroupSerializer,
-    NomenclatureListSerializer
+    NomenclatureListSerializer, StatusHistorySerializer
 )
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup
+    NomenclatureGroup, StatusHistory
 )
 from users.models import User
 from users.permissions import AuthAndOnlySuperUserDelete
@@ -53,10 +56,23 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         nomenclature = serializer.instance
         new_name = serializer.validated_data['name']
-        group = NomenclatureGroup.objects.exclude(~Q(clients=nomenclature.id)).first()
+        group = NomenclatureGroup.objects.exclude(
+            ~Q(clients=nomenclature.id)
+        ).first()
         group.name = new_name
         group.save()
         serializer.save()
+
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='status_history'
+    )
+    def get_status_history(self, request, pk):
+        nomenclature = Nomenclature.objects.get(id=pk)
+        history = nomenclature.history.all()
+        serializer = StatusHistorySerializer(history, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
 
 
 class NomenclatureGroupViewSet(viewsets.ModelViewSet):
@@ -66,3 +82,6 @@ class NomenclatureGroupViewSet(viewsets.ModelViewSet):
     queryset = NomenclatureGroup.objects.all().prefetch_related(
         'clients',
     ).select_related('owner').order_by('name')
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
