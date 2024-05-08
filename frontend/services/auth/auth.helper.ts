@@ -2,8 +2,8 @@ import { ITokens } from "@/shared/interface/user.interface";
 import Cookies from 'js-cookie'
 
 export const saveTokensStorage = (data: ITokens) => {
-    Cookies.set("accessToken", data.accessToken);
-    Cookies.set("refreshToken", data.refreshToken);
+    Cookies.set("accessToken", data.access);
+    Cookies.set("refreshToken", data.refresh);
 }
 
 export const saveToStorage = (data: ITokens) => {

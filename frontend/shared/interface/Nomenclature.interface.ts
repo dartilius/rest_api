@@ -1,4 +1,4 @@
-export type NomenclatureInterface = {
+export type NomenclatureListInterface = {
     id: string
     name: string
     timezone: string
@@ -7,13 +7,26 @@ export type NomenclatureInterface = {
     version: string
 }
 
-export type NomenclatureResponseInterface = {
+export type NomenclatureListResponseInterface = {
     count: number
     next: string
     previous: string
-    results: NomenclatureInterface[]
+    results: NomenclatureListInterface[]
 }
 
 export type RequestNomenclatureFilterStatus = {
     status: number
+}
+
+export type NomenclatureInterface = {
+    id: string
+    owner: string
+    name: string
+    timezone: string
+    is_active: boolean
+    status: string
+    last_answer: string
+    version: string
+    description: string
+    created: string
 }

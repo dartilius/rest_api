@@ -1,14 +1,15 @@
 import { API_URL } from '@/config/api.config';
-import { NomenclatureResponseInterface } from '@/shared/interface/nomenclature.interface';
-import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import { GetServerSideProps } from 'next';
 import styles from './Nomenclatures.module.scss';
 import Custom500 from '../500';
-import { Button, Pagination, Select } from 'antd/lib';
+import { Pagination } from 'antd/lib';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { NomenclatureListResponseInterface } from '@/shared/interface/nomenclature.interface';
+import { AuthService } from '@/services/auth/auth.service';
 
 interface INomenclaturesProps {
-    data: NomenclatureResponseInterface | null
+    data: NomenclatureListResponseInterface | null
     error?: string
 }
 
@@ -33,29 +34,12 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
         return <Custom500 />
     }
 
-    const total_pages = Math.ceil(data.count / (limit as number));
-
-    console.log(data);
+    const logOut = () => {
+        AuthService.logout();
+        router.push('/auth');
+    }
     
-
-    const handleLimitChange = (value: number) => {
-        setLimit(value);
-        setPage(1);  // Reset to the first page when limit changes
-        router.push({
-            pathname: router.pathname,
-            query: { ...router.query, limit: value, page: 1 },
-        }, undefined, { shallow: true });
-    };
-    
-    const handlePageChange = (newPage: number) => {
-        setPage(newPage);
-        router.push({
-            pathname: router.pathname,
-            query: { ...router.query, page: newPage },
-        }, undefined, { shallow: true });
-    };
-    
-    const handlePageChangeNew = (page: number, pageSize?: number) => {
+    const handlePageChange = (page: number, pageSize?: number) => {
         const limit = pageSize || 10;
         router.push(`/nomenclatures?limit=${limit}&page=${page}`);
       };
@@ -84,13 +68,14 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
                     current={parseInt(router.query.page as string) || 1}
                     pageSize={parseInt(router.query.limit as string) || 10}
                     total={data.count}
-                    onChange={handlePageChangeNew}
+                    onChange={handlePageChange}
                     showSizeChanger
-                    onShowSizeChange={handlePageChangeNew}
+                    onShowSizeChange={handlePageChange}
                     pageSizeOptions={['10', '25', '50', '100']}
                     style={{ display: 'flex', justifyContent: 'center' }}
                 />
             </div>
+            <button onClick={logOut}>Выход</button>
         </>
     );
 }
@@ -100,6 +85,17 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     const { query } = context;
     const limit = parseInt(query.limit as string) || 10;
     const page = parseInt(query.page as string) || 1;
+    const isAuth = await AuthService.isAuthenticated(context.req);
+
+    if (!isAuth) {
+        return {
+            redirect: {
+                destination: '/auth',
+                permanent: false,
+            },
+        };
+    }
+
 
     try {
         const res = await fetch(`${API_URL}/api/nomenclatures/?limit=${limit}&page=${page}`);

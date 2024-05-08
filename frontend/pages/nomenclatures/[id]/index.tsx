@@ -66,7 +66,7 @@ export default function Nomenclature({ data, error }: InferGetServerSidePropsTyp
     
     return (
         <>
-            <div className={styles.breadcrumb}>
+            {/* <div className={styles.breadcrumb}>
                 <Breadcrumb>
                     <BreadcrumbList>
                         <BreadcrumbItem>
@@ -132,7 +132,7 @@ export default function Nomenclature({ data, error }: InferGetServerSidePropsTyp
                         <Input value={data.owner.middle_name}/>
                     </Form.Item>
                 </Form>
-            </div>
+            </div> */}
         </>
     );
 }
