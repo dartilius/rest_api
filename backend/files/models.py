@@ -6,13 +6,13 @@ from django.db.models.functions import Concat
 from files.file_info import GetFileInfo
 from users.models import User
 
-TYPES = [
-    (0, 'Реклама'),
-    (1, 'Музыка'),
-    (2, 'Кртинка фон'),
-    (3, 'Видео фон'),
-    (4, 'Бегущая строка')
-]
+TYPES = {
+    0: 'Реклама',
+    1: 'Музыка',
+    2: 'Кртинка фон',
+    3: 'Видео фон',
+    4: 'Бегущая строка'
+}
 
 
 class Tag(models.Model):
@@ -29,7 +29,7 @@ class Tag(models.Model):
         return self.name
 
     class Meta:
-        verbose_name = 'Тематика'
+        verbose_name = 'Тематику'
         verbose_name_plural = 'Тематики'
 
 

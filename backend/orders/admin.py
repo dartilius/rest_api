@@ -1,11 +1,11 @@
 from django.contrib import admin
 
-from orders.models import Order
+from orders.models import AdOrder, BgOrder
 
 
-@admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
-    """Заказ."""
+@admin.register(AdOrder)
+class AdOrderAdmin(admin.ModelAdmin):
+    """Рекламный заказ."""
 
     list_display = (
         'id',
@@ -13,8 +13,31 @@ class OrderAdmin(admin.ModelAdmin):
         'name',
         'description',
         'group',
-        'type',
         'broadcast_interval',
+        'file',
+        'created'
+    )
+    search_fields = (
+        'id',
+        'name',
+        'group',
+        'file'
+    )
+
+    def get_queryset(self, request):
+        return AdOrder.objects.all().select_related('owner')
+
+
+@admin.register(BgOrder)
+class BgOrderAdmin(admin.ModelAdmin):
+    """Фоновый заказ."""
+
+    list_display = (
+        'id',
+        'owner',
+        'name',
+        'description',
+        'group',
         'playlist',
         'created'
     )
@@ -22,9 +45,8 @@ class OrderAdmin(admin.ModelAdmin):
         'id',
         'name',
         'group',
-        'type',
         'playlist'
     )
 
     def get_queryset(self, request):
-        return Order.objects.all().select_related('owner')
+        return BgOrder.objects.all().select_related('owner')

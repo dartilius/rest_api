@@ -1,14 +1,18 @@
 import ast
 import json
-from datetime import time
 
+from datetime import time
 from rest_framework import serializers
+
+from api.logger import setup_logger
 
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureGroup,
     TIMEZONES, StatusHistory
 )
+
+logger = setup_logger('nomenclatures', '..nomenclatures.log')
 
 
 class NomenclatureSerializer(serializers.ModelSerializer):
@@ -55,10 +59,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 start = time(*args[0])
                 end = time(*args[1])
             except Exception as e:
+                logger.exception(f'Возникла ошибка: {e}')
                 raise serializers.ValidationError(e)
             if not time(0, 0, 0) <= start < end <= time(23, 59, 59):
                 raise serializers.ValidationError(
-                    'Неправильно задан режим работы'
+                    'Неправильно задан интервал времени'
                 )
 
         def __validate_volume(volume: tuple) -> None:
@@ -106,8 +111,56 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         __validate_time(*ast.literal_eval(k))
                         __validate_volume(ast.literal_eval(v))
             except Exception as e:
-                raise serializers.ValidationError(f'Возникла ошибка: {e}')
+                logger.exception(f'Возникла ошибка: {e}')
+                raise serializers.ValidationError(e)
         return value
+
+    def validate_hw_info(self, value):
+        """Валидирование информации о железе."""
+
+        def __validate_config(config: dict, keys: dict, validate_func) -> None:
+            try:
+                for key, val in keys.items():
+                    if key not in config:
+                        raise serializers.ValidationError(f'{key} не передан')
+                    if not isinstance(ast.literal_eval(config[key]), val):
+                        raise serializers.ValidationError(
+                            f'Не верный тип параметра {key}'
+                        )
+            except Exception as e:
+                logger.exception(f'Возникла ошибка: {e}')
+                raise serializers.ValidationError(e)
+            validate_func(config)
+
+        def __validate_network_config(config: dict) -> None:
+            ip_length = 4
+            mac_length = 6
+            if len(config['ip'].split('.')) != ip_length:
+                raise serializers.ValidationError('Не верный формат IP адрес')
+            if len(config['mac'].split(':')) != mac_length:
+                raise serializers.ValidationError('Не верный формат MAC адрес')
+
+        def __validate_audio_devices(device: dict) -> None:
+            possible_devices = ['default', 'Headphone', 'Speaker', 'HDMI']
+            if not isinstance(device['card_number'], int):
+                raise serializers.ValidationError(
+                    'Номер звуковой карты должен быть числом'
+                )
+            if device['card_item'] not in possible_devices:
+                raise serializers.ValidationError(
+                    'Звуковой карты нет в списке допустимых'
+                )
+
+        for config_type in ['network_config', 'audio_devices']:
+            for i in range(len(value[config_type])):
+                config_data = json.loads(value[config_type][i])
+                if config_type == 'network_config':
+                    validate_keys = {'name': str, 'mac': str, 'ip': str}
+                    validate_func = __validate_network_config
+                else:
+                    validate_keys = {'card_number': int, 'card_item': str}
+                    validate_func = __validate_audio_devices
+                __validate_config(config_data, validate_keys, validate_func)
 
     def get_owner(self, obj):
         return f'{obj.owner.last_name} {obj.owner.first_name}'
@@ -121,10 +174,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     def get_last_answer(self, obj):
         try:
             return obj.availability.last_answer_date.strftime(
-                "%Y-%m-%d %H:%M:%S"
+                '%Y-%m-%d %H:%M:%S'
             )
         except Exception:
-            return "Не выходила в сеть"
+            return 'Не выходила в сеть'
 
     def to_representation(self, value):
         representation = super().to_representation(value)
@@ -169,16 +222,16 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     def get_status(self, obj):
         try:
             return obj.availability.status
-        except Exception:
+        except AttributeError:
             return None
 
     def get_last_answer(self, obj):
         try:
             return obj.availability.last_answer_date.strftime(
-                "%Y-%m-%d %H:%M:%S"
+                '%Y-%m-%d %H:%M:%S'
             )
-        except Exception:
-            return "Не выходила в сеть"
+        except AttributeError:
+            return 'Не выходила в сеть'
 
     def to_representation(self, value):
         representation = super().to_representation(value)
@@ -204,13 +257,13 @@ class NomenclatureGroupSerializer(serializers.ModelSerializer):
     def get_clients_info(self, obj):
         return [
             {
-                "id": client.id, "name": client.name
+                'id': client.id, 'name': client.name
             } for client in obj.clients.all()
         ]
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['created'] = value.created.strftime("%Y-%m-%d %H:%M:%S")
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
     class Meta:
@@ -244,7 +297,7 @@ class StatusHistorySerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         representation = super().to_representation(value)
         representation['change_time'] = value.change_time.strftime(
-            "%Y-%m-%d %H:%M:%S"
+            '%Y-%m-%d %H:%M:%S'
         )
         return representation
 

@@ -34,21 +34,21 @@ TIMEZONES = {
     "Etc/GMT-12": "UTC +12"
 }
 
-DAYS = [
-    (1, "Понедельник"),
-    (2, "Вторник"),
-    (3, "Среда"),
-    (4, "Четверг"),
-    (5, "Пятница"),
-    (6, "Суббота"),
-    (7, "Воскресенье")
-]
+DAYS = {
+    1: "Понедельник",
+    2: "Вторник",
+    3: "Среда",
+    4: "Четверг",
+    5: "Пятница",
+    6: "Суббота",
+    7: "Воскресенье"
+}
 
-STATUSES = [
-    (0, "Online"),
-    (1, "Offline 5+ minutes"),
-    (2, "Offline 1+ hour")
-]
+STATUSES = {
+    0: "Online",
+    1: "Offline 5+ minutes",
+    2: "Offline 1+ hour"
+}
 
 
 class Nomenclature(models.Model):
@@ -118,7 +118,7 @@ class Nomenclature(models.Model):
 
     class Meta:
         db_table = 'nomenclature'
-        verbose_name = 'Номенклатура'
+        verbose_name = 'Номенклатуру'
         verbose_name_plural = 'Номенклатуры'
 
     def __str__(self):
@@ -156,7 +156,7 @@ class NomenclatureGroup(models.Model):
 
     class Meta:
         db_table = 'group'
-        verbose_name = 'Группа'
+        verbose_name = 'Группу'
         verbose_name_plural = 'Группы'
 
     def __str__(self):
@@ -209,7 +209,7 @@ class StatusHistory(models.Model):
 
     class Meta:
         db_table = 'status_history'
-        verbose_name = 'История доступности'
+        verbose_name = 'Историю доступности'
         verbose_name_plural = 'История доступности'
 
     def __str__(self):
