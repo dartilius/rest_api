@@ -1,219 +1,124 @@
-// pages/nomenclatures/index.tsx
-import { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import styles from './Nomenclatures.module.scss'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import {
-    ColumnDef,
-    ColumnFiltersState,
-    SortingState,
-    VisibilityState,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    useReactTable,
-  } from "@tanstack/react-table"
-  import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-  } from "@/components/ui/table"
+import { API_URL } from '@/config/api.config';
+import { NomenclatureResponseInterface } from '@/shared/interface/nomenclature.interface';
+import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import styles from './Nomenclatures.module.scss';
+import Custom500 from '../500';
+import { Button, Pagination, Select } from 'antd/lib';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 
-export type Nomenclatures = {
-    created: string
-    description: string
-    id: string
-    is_active: boolean
-    name: string
-    owner: {
-        email: string
-        first_name: string
-        id: string
-        last_name: string
-        middle_name: string
-        phone: string
-        role: null
-        username: string
-    }
-    status: number
-    timezone: string
-    version: string
+interface INomenclaturesProps {
+    data: NomenclatureResponseInterface | null
+    error?: string
 }
 
-interface NomenclaturesProps {
-  data: Nomenclatures[]
-}
+type Status = 0 | 1 | 2;
 
-export const getServerSideProps: GetServerSideProps<NomenclaturesProps> = async () => {
-    const res = await fetch('http://192.168.0.180:8000/api/nomenclatures/')
-    console.log(res);
+// 10 25 50 100
+
+export default function Nomenclatures({data, error}: INomenclaturesProps) {
     
-    const data = await res.json();
-  
-    // const data = json.data || []; // Provide a fallback as an empty array
-  
-    return {
-      props: {
-        data: data || [],
-      },
+    const router = useRouter()
+    const [limit, setLimit] = useState(router.query.limit || 10)
+    const [page, setPage] = useState(router.query.page || 1)
+
+    useEffect(() => {
+        if (router.isReady) {
+            setLimit(parseInt(router.query.limit as string) || 10);
+            setPage(parseInt(router.query.page as string) || 1);
+        }
+    }, [router.isReady, router.query.limit, router.query.page]);
+    
+    if (error || !data) {
+        return <Custom500 />
     }
+
+    const total_pages = Math.ceil(data.count / (limit as number));
+
+    console.log(data);
+    
+
+    const handleLimitChange = (value: number) => {
+        setLimit(value);
+        setPage(1);  // Reset to the first page when limit changes
+        router.push({
+            pathname: router.pathname,
+            query: { ...router.query, limit: value, page: 1 },
+        }, undefined, { shallow: true });
+    };
+    
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
+        router.push({
+            pathname: router.pathname,
+            query: { ...router.query, page: newPage },
+        }, undefined, { shallow: true });
+    };
+    
+    const handlePageChangeNew = (page: number, pageSize?: number) => {
+        const limit = pageSize || 10;
+        router.push(`/nomenclatures?limit=${limit}&page=${page}`);
+      };
+
+    return (
+        <>
+            <div className={styles['menu-table']}>
+                <div className={styles['menu-table_row']}>
+                    <div className={styles['menu-table_item']}>Наименование</div>
+                    <div className={styles['menu-table_item']}>Часовой пояс</div>
+                    <div className={styles['menu-table_item']}>Последнее время ответа</div>
+                    <div className={styles['menu-table_item']}>Версия</div>
+                </div>
+                {data.results.map(el => (
+                    <div className={styles['menu-table_row']} key={el.id} onClick={() => router.push(`/nomenclatures/${el.id}`)}>
+                        <div className={styles['menu-table_item']}>{el.name}</div>
+                        <div className={styles['menu-table_item']}>{el.timezone}</div>
+                        <div className={styles['menu-table_item']}>{el.last_answer}</div>
+                        <div className={styles['menu-table_item']}>{el.version}</div>
+                    </div>
+                ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'row', gap: '24px', alignItems: 'center', justifyContent: 'center' }}>
+                Общее кол-во: {data.count}
+                <Pagination
+                    current={parseInt(router.query.page as string) || 1}
+                    pageSize={parseInt(router.query.limit as string) || 10}
+                    total={data.count}
+                    onChange={handlePageChangeNew}
+                    showSizeChanger
+                    onShowSizeChange={handlePageChangeNew}
+                    pageSizeOptions={['10', '25', '50', '100']}
+                    style={{ display: 'flex', justifyContent: 'center' }}
+                />
+            </div>
+        </>
+    );
 }
 
-export const columns: ColumnDef<Nomenclatures>[] = [
-    {
-        accessorKey: 'name',
-        header: 'Название',
-        cell: ({ row }) => {
-            <div className='capilitate'>{row.getValue('name')}</div>
+export const getServerSideProps: GetServerSideProps = async (context) => {
+
+    const { query } = context;
+    const limit = parseInt(query.limit as string) || 10;
+    const page = parseInt(query.page as string) || 1;
+
+    try {
+        const res = await fetch(`${API_URL}/api/nomenclatures/?limit=${limit}&page=${page}`);
+        if (!res.ok) {
+            throw new Error('Failed to fetch data');
         }
-    },
-    {
-        accessorKey: 'description',
-        header: 'Описание',
-        cell: ({ row }) => {
-            <div className='capilitate'>{row.getValue('description')}</div>
+        const data = await res.json();
+        return {
+            props:{
+                data: data
+            }
         }
-    },
-    {
-        accessorKey: 'id',
-        header: 'id',
-        cell: ({ row }) => {
-            <div className='capilitate'>{row.getValue('id')}</div>
-        }
-    },
-    {
-        accessorKey: 'is_active',
-        header: 'Активность',
-        cell: ({ row }) => {
-            <div className='capilitate'>{row.getValue('is_active')}</div>
-        }
-    },
-    {
-        accessorKey: 'id',
-        header: 'id',
-        cell: ({ row }) => {
-            <div className='capilitate'>{row.getValue('id')}</div>
-        }
-    },
-    {
-        accessorKey: 'status',
-        header: 'status',
-        cell: ({ row }) => {
-            <div className='capilitate'>{row.getValue('status')}</div>
+    } catch (error: Error | any) {
+        console.log('Failed to fetch:', error)
+        return {
+            props: {
+                data: null,
+                error: error.message
+            }
         }
     }
-    
-]
-
-export default function Nomenclatures({ data }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-  })
-  
-
-  if (!data) {
-    return <div>Loading...</div>
-  }
-
-  console.log(data);
-
-
-  
-
-  return (
-    <>
-      <div className={styles.breadcrumb}>
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">Главная</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/nomenclatures">
-                <BreadcrumbPage>
-                  Номенклатуры
-                </BreadcrumbPage>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-      {/* <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div> */}
-      {/* <div className={styles.container}>
-        {data.map((user: any) => (
-          <div key={user.id}>
-            <p>Название: {user.name}</p>
-            <p>Описание: {user.price}</p>
-            <p>id: {user.id}</p>
-          </div>
-        ))}
-      </div> */}
-    </>
-  )
 }
