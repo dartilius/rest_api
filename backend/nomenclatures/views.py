@@ -55,7 +55,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         nomenclature = serializer.instance
-        new_name = serializer.validated_data['name']
+        new_name = serializer.validated_data['name'] or nomenclature.name
         group = NomenclatureGroup.objects.exclude(
             ~Q(clients=nomenclature.id)
         ).first()

@@ -37,14 +37,14 @@ class BgOrderAdmin(admin.ModelAdmin):
         'owner',
         'name',
         'description',
-        'group',
+        'client',
         'playlist',
         'created'
     )
     search_fields = (
         'id',
         'name',
-        'group',
+        'client',
         'playlist'
     )
 

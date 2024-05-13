@@ -2,21 +2,26 @@ from rest_framework import serializers
 from datetime import time
 
 from api.logger import setup_logger
+from nomenclatures.models import NomenclatureGroup
 
-from orders.models import AdOrder, BgOrder
+from orders.models import AdOrder, BgOrder, BROADCAST_TYPES
 
 from nomenclatures.serializers import NomenclatureGroupSerializer
 from files.serializers import PlaylistSerializer
 from users.serializers import UserSerializer
 
-logger = setup_logger('orders', '..orders.log')
+logger = setup_logger('orders', 'backend/logs/orders.log')
 
 
 class AdOrderSerializer(serializers.ModelSerializer):
     """Сериализация рекламных заказов."""
 
     owner = serializers.SerializerMethodField()
-    group = NomenclatureGroupSerializer()
+    group = serializers.SlugRelatedField(
+        slug_field='id',
+        queryset=NomenclatureGroup.objects.all(),
+        write_only=True
+    )
     playlist = PlaylistSerializer()
 
     class Meta:
@@ -43,42 +48,19 @@ class AdOrderSerializer(serializers.ModelSerializer):
     def get_owner(self, obj):
         return f'{obj.owner.last_name} {obj.owner.first_name}'
 
-    @staticmethod
-    def default_parameters():
-        return {
-            "event": "play if click button",
-            "active_ad": "close",
-            "times_in_hour": 4,
-            "weight": 50,
-            "daily_start_time": "09:00:00",
-            "daily_end_time": "21:00:00",
-            "timedelta": "01:30:00"
-        }
-
-    BROADCAST_TYPES = {
-        0: 'По времени работы точки',
-        1: 'Начало работы + смещение по времени',
-        2: 'Конец работы - смещение по времени',
-        3: 'Конкретные часы',
-        4: 'С открытия до фиксированного часа',
-        5: 'С фиксированного часа до закрытия',
-        6: 'Старт по событию'
-    }
+    def get_group_info(self, obj):
+        return {'id': obj.group.id, 'name': obj.group.name}
 
     def validate_broadcast_type(self, data):
         """Валидация типа вещания."""
         broadcast_type: int = data.get('broadcast_type')
 
-        match broadcast_type:
-            case 0 | 1 | 2 | 3 | 4 | 5 | 6: self.validate_parameters(
-                data.get('parameters'), broadcast_type
-            )
-            case _:
-                raise serializers.ValidationError(
-                    'Тип вещания задан неверно'
-                )
+        if broadcast_type not in BROADCAST_TYPES:
+            raise serializers.ValidationError('Тип вещания задан неверно')
 
-    def validate_parameters(self, value, brc_type: int) -> None:
+        self.custom_validate_parameters(data.get('parameters'), broadcast_type)
+
+    def custom_validate_parameters(self, value, brc_type: int) -> None:
         """Валидация параметров заказа."""
 
         def __validate_daily_times(start: int, end: int) -> None:
@@ -132,7 +114,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
 
         try:
             times_in_hour: int = value.get('times_in_hour')
-            weight_val: int = value.get('weight')
+            weight_val: int = value.get('weight') or 50
             event_val: str = value.get('event')
             ad_action: str = value.get('active_ad')
             start_time = (map(int, value.get('daily_start_time').split(':')))
@@ -178,7 +160,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
                         )
                     __validate_daily_times(*start_time, 0)
                 case 6:
-                    if event_val is None or ad_action:
+                    if event_val is None or ad_action is None:
                         raise serializers.ValidationError(
                             'Необходимо указать триггер запуска и поведение '
                             'текущей рекламы для данного типа вещания'
@@ -200,12 +182,11 @@ class BgOrderSerializer(serializers.ModelSerializer):
     class Meta:
         fields = (
             'id',
-            'group',
+            'client',
             'owner',
             'name',
             'description',
             'broadcast_interval',
-            'parameters',
             'playlist',
             'slides',
             'created'
@@ -219,20 +200,3 @@ class BgOrderSerializer(serializers.ModelSerializer):
 
     def get_owner(self, obj):
         return f'{obj.owner.last_name} {obj.owner.first_name}'
-
-    def validate_parameters(self, value):
-        def __validate_daily_times(start: int, end: int) -> None:
-            try:
-                start = time(start)
-                end = time(end)
-            except Exception as e:
-                raise serializers.ValidationError(e)
-            if not time(0, 0, 0) <= start < end <= time(23, 59, 59):
-                raise serializers.ValidationError(
-                    'Неправильно задан интервал времени ежедневного вещания'
-                )
-
-        __validate_daily_times(
-            *(map(int, value['daily_start_time'].split(':'))),
-            *(map(int, value['daily_end_time'].split(':')))
-        )

@@ -1,7 +1,7 @@
 from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
 from django.db import models
 
-from nomenclatures.models import NomenclatureGroup
+from nomenclatures.models import NomenclatureGroup, Nomenclature
 from users.models import User
 from files.models import Playlist, File
 
@@ -27,23 +27,6 @@ BROADCAST_TYPES = {
 class BaseOrder(models.Model):
     """Заказ."""
 
-    @staticmethod
-    def default_parameters():
-        return {
-            "event": "play if click button",
-            "active_ad": "close",
-            "times_in_hour": 4,
-            "weight": 50,
-            "daily_start_time": "09:00:00",
-            "daily_end_time": "21:00:00",
-            "timedelta": "01:30:00"
-        }
-
-    group = models.ForeignKey(
-        NomenclatureGroup,
-        verbose_name='Группа номенклатур',
-        on_delete=models.CASCADE
-    )
     owner = models.ForeignKey(
         User,
         verbose_name='Создатель',
@@ -63,10 +46,6 @@ class BaseOrder(models.Model):
     broadcast_interval = DateTimeRangeField(
         verbose_name='Интервал работы заказа'
     )
-    parameters = HStoreField(
-        default=default_parameters,
-        verbose_name='Параметры заказа'
-    )
     created = models.DateTimeField(
         verbose_name='Дата создания',
         auto_now_add=True
@@ -79,22 +58,42 @@ class BaseOrder(models.Model):
 class AdOrder(BaseOrder):
     """Рекламный заказ."""
 
+    @staticmethod
+    def default_parameters():
+        return {
+            "event": "play if click button",
+            "active_ad": "close",
+            "times_in_hour": 4,
+            "weight": 50,
+            "daily_start_time": "09:00:00",
+            "daily_end_time": "21:00:00",
+            "timedelta": "01:30:00"
+        }
+
+    group = models.ForeignKey(
+        NomenclatureGroup,
+        verbose_name='Группа номенклатур',
+        on_delete=models.CASCADE
+    )
     file = models.ForeignKey(
         File,
         verbose_name='Файл',
         related_name="ad_file",
         on_delete=models.CASCADE
     )
-    slides = models.ForeignKey(
+    slides = models.ManyToManyField(
         File,
         verbose_name="Слайды",
-        related_name="ad_slide",
-        on_delete=models.CASCADE
+        related_name="ad_slide"
     )
     broadcast_type = models.PositiveSmallIntegerField(
         choices=BROADCAST_TYPES,
         default=0,
         verbose_name='Тип вещания'
+    )
+    parameters = HStoreField(
+        default=default_parameters,
+        verbose_name='Параметры заказа'
     )
 
     class Meta:
@@ -106,6 +105,11 @@ class AdOrder(BaseOrder):
 class BgOrder(BaseOrder):
     """Фоновый заказ."""
 
+    client = models.ForeignKey(
+        Nomenclature,
+        verbose_name='Номенклатура',
+        on_delete=models.CASCADE
+    )
     playlist = models.ForeignKey(
         Playlist,
         verbose_name='Плейлист',
