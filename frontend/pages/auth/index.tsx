@@ -34,11 +34,11 @@ export default function LoginPage() {
                 <form onSubmit={handleLogin} className={styles.container_right_login}>
                     <h1 className={styles.container_right_login_title}>Вход</h1>
                     <div className={styles.container_right_login_email}>
-                        <label className={styles.container_right_login_email_label}>Email</label>
+                        <p className={styles.container_right_login_email_label}>Email</p>
                         <input className={styles.container_right_login_email_input} value={email} onChange={(e) => setEmail(e.target.value)} />
                     </div>
                     <div className={styles.container_right_login_password}>
-                        <label className={styles.container_right_login_password_label}>Пароль</label>
+                        <p className={styles.container_right_login_password_label}>Пароль</p>
                         <input className={styles.container_right_login_password_input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                     </div>
                     <button type="submit" className={styles.container_right_login_button}>

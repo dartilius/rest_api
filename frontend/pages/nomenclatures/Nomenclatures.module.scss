@@ -41,10 +41,18 @@
     }
 }
 
+.cont {
+    display: flex;
+    flex-direction: row;
+}
+
 .menu-table {
     display: table;
     border-collapse: collapse;
     width: 100%;
+    margin-left: 96px;
+    margin-right: 96px;
+    margin-top: 48px;
 
     &_row {
         display: table-row;

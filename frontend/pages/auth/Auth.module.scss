@@ -1,7 +1,7 @@
 .container {
     display: flex;
     height: 100vh;
-    font-family: Inter;
+    font-family: 'Inter medium';
     &_left {
         width: 50%;
         height: auto;
@@ -49,6 +49,7 @@
                     box-sizing: border-box;
                     border: 1px solid rgb(3, 17, 27);
                     border-radius: 5px;
+                    padding-left: 16px;
                     background: rgb(255, 255, 255);
                     width: 100%;
                 }
@@ -69,6 +70,7 @@
                     box-sizing: border-box;
                     border: 1px solid rgb(3, 17, 27);
                     border-radius: 5px;
+                    padding-left: 16px;
                     background: rgb(255, 255, 255);
                     width: 100%;
                 }

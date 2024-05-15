@@ -1,14 +1,12 @@
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { Layout } from "antd/lib";
-import { middleware } from "./_middleware";
+import LayoutAdmin from "@/components/myUi/LayoutAmin";
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    // <Layout>
-    //   <Header />
-      <Component {...pageProps} />
-    //   <Footer />
-    // </Layout>
+    <LayoutAdmin>
+        <Component {...pageProps} />
+    </LayoutAdmin>
   )
 }
