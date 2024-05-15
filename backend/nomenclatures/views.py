@@ -1,5 +1,4 @@
-from django.db.models import Count, Q
-from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -15,7 +14,7 @@ from nomenclatures.serializers import (
 )
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup, StatusHistory
+    NomenclatureGroup
 )
 from users.models import User
 from users.permissions import AuthAndOnlySuperUserDelete
@@ -45,17 +44,18 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
-        nomenclature = serializer.save(owner=self.request.user)
-        group = NomenclatureGroup.objects.create(
-            owner=self.request.user,
-            name=nomenclature.name,
-        )
-        group.clients.add(nomenclature)
-        group.save()
+        nomenclatures = serializer.save(owner=self.request.user)
+        for nomenclature in nomenclatures:
+            group = NomenclatureGroup.objects.create(
+                owner=self.request.user,
+                name=nomenclature.name,
+            )
+            group.clients.add(nomenclature)
+            group.save()
 
     def perform_update(self, serializer):
         nomenclature = serializer.instance
-        new_name = serializer.validated_data['name'] or nomenclature.name
+        new_name = serializer.validated_data['name']
         group = NomenclatureGroup.objects.exclude(
             ~Q(clients=nomenclature.id)
         ).first()

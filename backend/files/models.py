@@ -16,7 +16,7 @@ TYPES = {
 
 
 class Tag(models.Model):
-    """Тематики."""
+    """Тэги."""
 
     name = models.CharField(
         max_length=255,
@@ -29,8 +29,8 @@ class Tag(models.Model):
         return self.name
 
     class Meta:
-        verbose_name = 'Тематику'
-        verbose_name_plural = 'Тематики'
+        verbose_name = 'Тэг'
+        verbose_name_plural = 'Тэг'
 
 
 class File(models.Model):
@@ -90,7 +90,7 @@ class File(models.Model):
     tag = models.ManyToManyField(
         Tag,
         related_name='files',
-        verbose_name='Тематика'
+        verbose_name='Тэг'
     )
     created = models.DateTimeField(
         auto_now_add=True,

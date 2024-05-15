@@ -1,14 +1,11 @@
 from rest_framework import serializers
-from datetime import time
+from datetime import time, timedelta as td
 
 from api.logger import setup_logger
-from nomenclatures.models import NomenclatureGroup
 
+from files.models import Playlist
+from nomenclatures.models import NomenclatureGroup, Nomenclature
 from orders.models import AdOrder, BgOrder, BROADCAST_TYPES
-
-from nomenclatures.serializers import NomenclatureGroupSerializer
-from files.serializers import PlaylistSerializer
-from users.serializers import UserSerializer
 
 logger = setup_logger('orders', 'backend/logs/orders.log')
 
@@ -16,26 +13,24 @@ logger = setup_logger('orders', 'backend/logs/orders.log')
 class AdOrderSerializer(serializers.ModelSerializer):
     """Сериализация рекламных заказов."""
 
-    owner = serializers.SerializerMethodField()
     group = serializers.SlugRelatedField(
         slug_field='id',
         queryset=NomenclatureGroup.objects.all(),
         write_only=True
     )
-    playlist = PlaylistSerializer()
 
     class Meta:
         fields = (
             'id',
-            'group',
-            'owner',
             'name',
             'description',
+            'owner',
+            'group',
+            'file',
+            'slides',
             'broadcast_interval',
             'broadcast_type',
             'parameters',
-            'file',
-            'slides',
             'created'
         )
         read_only_fields = (
@@ -44,12 +39,6 @@ class AdOrderSerializer(serializers.ModelSerializer):
             'created'
         )
         model = AdOrder
-
-    def get_owner(self, obj):
-        return f'{obj.owner.last_name} {obj.owner.first_name}'
-
-    def get_group_info(self, obj):
-        return {'id': obj.group.id, 'name': obj.group.name}
 
     def validate_broadcast_type(self, data):
         """Валидация типа вещания."""
@@ -171,24 +160,82 @@ class AdOrderSerializer(serializers.ModelSerializer):
             logger.exception(f'Возникла ошибка: {e}')
             raise serializers.ValidationError(e)
 
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = (
+            f'{value.owner.last_name} {value.owner.first_name}'
+        )
+        representation['group'] = {
+            'id': value.group.id,
+            'name': value.group.name
+        }
+        # в базе по местному, но на странице по UTC почему-то
+        representation['broadcast_interval'] = {
+            'from': (value.broadcast_interval.lower + td(hours=7)).strftime(
+                '%Y-%m-%d %H:%M:%S'),
+            'to': (value.broadcast_interval.upper + td(hours=7)).strftime(
+                '%Y-%m-%d %H:%M:%S')
+        }
+        representation['file'] = {'id': value.file.id, 'name': value.file.name}
+        representation['slides'] = [
+            {str(slide.id): slide.name} for slide in value.slides.all()
+        ] if value.slides.exists() else None
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return representation
 
-class BgOrderSerializer(serializers.ModelSerializer):
-    """Сериализация фоновых заказов."""
 
-    owner = serializers.SerializerMethodField()
-    group = NomenclatureGroupSerializer()
-    playlist = PlaylistSerializer()
+class AdOrderListSerializer(serializers.ModelSerializer):
+    """Сериализация списка рекламных заказов."""
 
     class Meta:
         fields = (
             'id',
-            'client',
-            'owner',
+            'name',
+            'group',
+            'file',
+            'slides',
+            'broadcast_interval'
+        )
+        read_only_fields = fields
+        model = AdOrder
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['group'] = {
+            'id': value.group.id,
+            'name': value.group.name
+        }
+        representation['broadcast_interval'] = {
+            'from': value.broadcast_interval.lower.strftime('%Y-%m-%d'),
+            'to': value.broadcast_interval.upper.strftime('%Y-%m-%d')
+        }
+        representation['file'] = {'id': value.file.id, 'name': value.file.name}
+        return representation
+
+
+class BgOrderSerializer(serializers.ModelSerializer):
+    """Сериализация фоновых заказов."""
+
+    client = serializers.SlugRelatedField(
+        slug_field='id',
+        queryset=Nomenclature.objects.all(),
+        write_only=True
+    )
+    playlist = serializers.SlugRelatedField(
+        slug_field='id',
+        queryset=Playlist.objects.all(),
+        write_only=True
+    )
+
+    class Meta:
+        fields = (
+            'id',
             'name',
             'description',
-            'broadcast_interval',
+            'owner',
+            'client',
             'playlist',
-            'slides',
+            'broadcast_interval',
             'created'
         )
         read_only_fields = (
@@ -198,5 +245,56 @@ class BgOrderSerializer(serializers.ModelSerializer):
         )
         model = BgOrder
 
-    def get_owner(self, obj):
-        return f'{obj.owner.last_name} {obj.owner.first_name}'
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = {
+            'full_name': f'{value.owner.last_name} {value.owner.first_name}'
+        }
+        representation['client'] = {
+            'id': value.client.id,
+            'name': value.client.name
+        }
+        # в базе по местному, но на странице по UTC почему-то
+        representation['broadcast_interval'] = {
+            'from': (value.broadcast_interval.lower + td(hours=7)).strftime(
+                '%Y-%m-%d %H:%M:%S'),
+            'to': (value.broadcast_interval.upper + td(hours=7)).strftime(
+                '%Y-%m-%d %H:%M:%S')
+        }
+        representation['playlist'] = {
+            'id': value.playlist.id,
+            'name': value.playlist.name
+        }
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return representation
+
+
+class BgOrderListSerializer(serializers.ModelSerializer):
+    """Сериализация списка фоновых заказов."""
+
+    class Meta:
+        fields = (
+            'id',
+            'name',
+            'client',
+            'playlist',
+            'broadcast_interval'
+        )
+        read_only_fields = fields
+        model = BgOrder
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['client'] = {
+            'id': value.client.id,
+            'name': value.client.name
+        }
+        representation['broadcast_interval'] = {
+            'from': value.broadcast_interval.lower.strftime('%Y-%m-%d'),
+            'to': value.broadcast_interval.upper.strftime('%Y-%m-%d')
+        }
+        representation['playlist'] = {
+            'id': value.playlist.id,
+            'name': value.playlist.name
+        }
+        return representation

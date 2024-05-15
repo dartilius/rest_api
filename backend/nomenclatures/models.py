@@ -142,7 +142,8 @@ class NomenclatureGroup(models.Model):
     )
     name = models.CharField(
         max_length=255,
-        verbose_name="Название"
+        verbose_name="Название",
+        unique=True
     )
     description = models.TextField(
         blank=True,

@@ -6,7 +6,7 @@ from users.models import User
 from files.models import Playlist, File
 
 ORDER_TYPES = {
-    0: 'Реклама',
+    # 0: 'Реклама',
     1: 'Фоновая музыка',
     2: 'Фоновые видео',
     3: 'Фоновые картинки',
@@ -58,7 +58,6 @@ class BaseOrder(models.Model):
 class AdOrder(BaseOrder):
     """Рекламный заказ."""
 
-    @staticmethod
     def default_parameters():
         return {
             "event": "play if click button",
@@ -84,7 +83,8 @@ class AdOrder(BaseOrder):
     slides = models.ManyToManyField(
         File,
         verbose_name="Слайды",
-        related_name="ad_slide"
+        related_name="ad_slide",
+        blank=True
     )
     broadcast_type = models.PositiveSmallIntegerField(
         choices=BROADCAST_TYPES,
@@ -114,6 +114,11 @@ class BgOrder(BaseOrder):
         Playlist,
         verbose_name='Плейлист',
         on_delete=models.CASCADE
+    )
+    order_type = models.IntegerField(
+        choices=ORDER_TYPES,
+        default=1,
+        verbose_name='Тип фона'
     )
 
     class Meta:

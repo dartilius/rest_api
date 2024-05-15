@@ -223,11 +223,11 @@ class NomenclatureGroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = (
-            'clients',
-            'clients_info',
-            'owner',
             'name',
             'description',
+            'owner',
+            'clients',
+            'clients_info',
             'created'
         )
         read_only_fields = (

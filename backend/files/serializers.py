@@ -1,12 +1,11 @@
 from rest_framework import serializers
-from datetime import timedelta as td
 
 from files.models import File, Playlist, PlaylistFiles, Tag
 from users.serializers import UserSerializer
 
 
 class TagSerializer(serializers.ModelSerializer):
-    """Сериализация тематик файлов."""
+    """Сериализация тегов файлов."""
 
     class Meta:
         fields = (
