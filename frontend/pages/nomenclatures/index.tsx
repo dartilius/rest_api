@@ -5,10 +5,10 @@ import Custom500 from '../500';
 import { Input, Pagination, Select } from 'antd/lib';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { NomenclatureListResponseInterface } from '@/shared/interface/nomenclature.interface';
 import { AuthService } from '@/services/auth/auth.service';
 import Link from 'next/link';
 import { timezonesArray } from '@/shared/type/timezone';
+import {NomenclatureListResponseInterface} from "@/shared/interface/Nomenclature.interface";
 
 const { Search } = Input;
 const { Option } = Select;

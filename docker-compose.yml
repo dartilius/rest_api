@@ -64,6 +64,3 @@ services:
     restart: always
     depends_on:
       - backend
-    # command: cp -r /app/. /frontend_static/
-    # volumes:
-    #   - static:/frontend_static

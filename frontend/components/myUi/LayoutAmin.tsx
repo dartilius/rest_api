@@ -1,6 +1,6 @@
-import LoginPage from "@/pages/auth";
 import { Layout, Menu } from "antd/lib";
 import { useRouter } from "next/router";
+import LoginPage from "@/pages/login";
 
 const { Header, Content, Footer } = Layout;
 

@@ -1,11 +1,11 @@
 import Custom500 from "@/pages/500";
-import { NomenclatureInterface } from "@/shared/interface/nomenclature.interface";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import styles from './Nomenclature.module.scss'
 import { useState } from "react";
 import { Button, Form, Input, Select } from "antd/lib";
 import { timezonesArray } from "@/shared/type/timezone";
+import {NomenclatureInterface} from "@/shared/interface/Nomenclature.interface";
 
 const { TextArea } = Input;
 const { Option } = Select;
