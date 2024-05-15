@@ -45,12 +45,20 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         nomenclatures = serializer.save(owner=self.request.user)
-        for nomenclature in nomenclatures:
+        if isinstance(nomenclatures, list):
+            for nomenclature in nomenclatures:
+                group = NomenclatureGroup.objects.create(
+                    owner=self.request.user,
+                    name=nomenclature.name,
+                )
+                group.clients.add(nomenclature)
+                group.save()
+        else:
             group = NomenclatureGroup.objects.create(
                 owner=self.request.user,
-                name=nomenclature.name,
+                name=nomenclatures.name,
             )
-            group.clients.add(nomenclature)
+            group.clients.add(nomenclatures)
             group.save()
 
     def perform_update(self, serializer):
