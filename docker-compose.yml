@@ -4,17 +4,53 @@ volumes:
   pg_data:
   static:
   media:
+  s3:
 
 services:
   db:
     image: postgres:16.2
+    container_name: db
+    env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
 
   backend:
     build: ./backend/
+    container_name: backend
+    env_file: .env
     volumes:
       - static:/backend_static
-      - media:/var/www/rmc_rest_api/media/
+    links:
+      - files:files
     depends_on:
       - db
+      - files
+
+  frontend:
+    env_file: .env
+    container_name: frontend
+    build: ./frontend/
+    command: cp -r /app/build/. /frontend_static/
+    volumes:
+      - static:/frontend_static
+
+  gateway:
+    build: ./nginx/
+    container_name: gateway
+    volumes:
+      - static:/staticfiles/
+      - media:/var/www/rmc_rest_api/media/
+      - s3:/data/staticfiles
+    ports:
+      - 80:80
+
+  files:
+    image: minio/minio
+    container_name: files
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    env_file: .env
+    volumes:
+      - s3:/data

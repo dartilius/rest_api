@@ -15,8 +15,7 @@ from nomenclatures.serializers import (
 from nomenclatures.models import (
     Nomenclature,
     HardWareInfo,
-    NomenclatureGroup,
-    Settings
+    NomenclatureGroup
 )
 from users.models import User
 from users.permissions import AuthAndOnlySuperUserDelete
