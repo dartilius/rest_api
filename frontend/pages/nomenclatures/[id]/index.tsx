@@ -58,13 +58,6 @@ export default function Nomenclature({ data, error }: InferGetServerSidePropsTyp
     if (error) return <Custom500 />;
     if (!data) return <div>Нет данных</div>;
 
-    console.log(data);
-
-    console.log(data.settings.fri.default_volume);
-    
-    
-
-
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
     
