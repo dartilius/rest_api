@@ -19,3 +19,4 @@ class UserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id',)
         model = User
+        ref_name = 'UserCustom'

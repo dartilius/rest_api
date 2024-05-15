@@ -1,4 +1,4 @@
-from django.contrib.postgres.fields import DateTimeRangeField
+from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
 from django.db import models
 
 from nomenclatures.models import NomenclatureGroup
@@ -60,7 +60,7 @@ class Order(models.Model):
         default=0,
         verbose_name='Тип вещания'
     )
-    parameters = models.JSONField(
+    parameters = HStoreField(
         default={
             "event": "play if click button",
             "active_ad": "close",
