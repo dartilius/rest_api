@@ -26,16 +26,10 @@ services:
       - db
       - files
 
-  frontend:
-    env_file: .env
-    container_name: frontend
-    build: ./frontend/
-    command: cp -r /app/build/. /frontend_static/
-    volumes:
-      - static:/frontend_static
-
   gateway:
-    build: ./nginx/
+    build:
+      context: ./nginx/
+      dockerfile: Dockerfile
     container_name: gateway
     volumes:
       - static:/staticfiles/
@@ -43,6 +37,7 @@ services:
       - s3:/data/staticfiles
     ports:
       - 80:80
+
 
   files:
     image: minio/minio
@@ -54,3 +49,21 @@ services:
     env_file: .env
     volumes:
       - s3:/data
+
+  frontend:
+    env_file: .env
+    environment:
+      - NEXT_PUBLIC_API_URL=${APP_SERVER_URL}
+    container_name: frontend
+    image: frontend
+    build:
+      context: ./frontend
+      dockerfile: frontend.dockerfile
+    ports:
+      - 3000:3000
+    restart: always
+    depends_on:
+      - backend
+    # command: cp -r /app/. /frontend_static/
+    # volumes:
+    #   - static:/frontend_static

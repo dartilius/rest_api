@@ -7,7 +7,7 @@ import { parseCookies } from 'nookies'
 export const AuthService = {
     async login(username: string, password: string): Promise<AxiosResponse<ITokens>> {
         const response = await axios.post<ITokens>(
-            `http://192.168.0.180:8000/auth/jwt/create`,
+            `${API_URL}/auth/jwt/create`,
             {
                 username,
                 password
