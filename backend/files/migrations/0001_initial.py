@@ -80,4 +80,35 @@ class Migration(migrations.Migration):
             name='files',
             field=models.ManyToManyField(related_name='playlist_files', through='files.PlaylistFiles', to='files.file', verbose_name='Файлы'),
         ),
+        migrations.CreateModel(
+            name='File',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, verbose_name='Уникальный идентификатор')),
+                ('source', models.FileField(blank=True, null=True, upload_to='files/source/', verbose_name='Файл')),
+                ('name', models.CharField(max_length=255, verbose_name='Наименование')),
+                ('md5hash', models.CharField(editable=False, max_length=32, verbose_name='MD5')),
+                ('sha256hash', models.CharField(editable=False, max_length=256, verbose_name='SHA256')),
+                ('hash', models.CharField(max_length=288, verbose_name=django.db.models.functions.text.Concat(models.CharField(editable=False, max_length=32, verbose_name='MD5'), models.CharField(editable=False, max_length=256, verbose_name='SHA256')))),
+                ('length', models.TimeField(editable=False, verbose_name='Продолжительность')),
+                ('size', models.IntegerField(editable=False, verbose_name='Размер')),
+                ('file_type', models.PositiveSmallIntegerField(choices=[(0, 'Реклама'), (1, 'Музыка'), (2, 'Кртинка фон'), (3, 'Видео фон'), (4, 'Бегущая строка')], verbose_name='Тип')),
+                ('created', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
+                ('owner', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='files', to=settings.AUTH_USER_MODEL, verbose_name='Кто загрузил')),
+                ('theme', models.ManyToManyField(related_name='files', to='files.theme', verbose_name='Тематика')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='PlaylistFiles',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('file', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='file', to='files.file', verbose_name='Файл')),
+                ('images', models.ManyToManyField(related_name='slides', to='files.file', verbose_name='Слайды')),
+                ('playlist', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='playlist', to='files.playlist', verbose_name='Плейлист')),
+            ],
+        ),
+        migrations.AddField(
+            model_name='playlist',
+            name='files',
+            field=models.ManyToManyField(related_name='playlist_files', through='files.PlaylistFiles', to='files.file', verbose_name='Файлы'),
+        ),
     ]

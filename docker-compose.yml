@@ -4,17 +4,66 @@ volumes:
   pg_data:
   static:
   media:
+  s3:
 
 services:
   db:
     image: postgres:16.2
+    container_name: db
+    env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
 
   backend:
     build: ./backend/
+    container_name: backend
+    env_file: .env
     volumes:
       - static:/backend_static
-      - media:/var/www/rmc_rest_api/media/
+    links:
+      - files:files
     depends_on:
       - db
+      - files
+
+  gateway:
+    build:
+      context: ./nginx/
+      dockerfile: Dockerfile
+    container_name: gateway
+    volumes:
+      - static:/staticfiles/
+      - media:/var/www/rmc_rest_api/media/
+      - s3:/data/staticfiles
+    ports:
+      - 80:80
+
+
+  files:
+    image: minio/minio
+    container_name: files
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    env_file: .env
+    volumes:
+      - s3:/data
+
+  frontend:
+    env_file: .env
+    environment:
+      - NEXT_PUBLIC_API_URL=${APP_SERVER_URL}
+    container_name: frontend
+    image: frontend
+    build:
+      context: ./frontend
+      dockerfile: frontend.dockerfile
+    ports:
+      - 3000:3000
+    restart: always
+    depends_on:
+      - backend
+    # command: cp -r /app/. /frontend_static/
+    # volumes:
+    #   - static:/frontend_static
