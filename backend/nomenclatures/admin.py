@@ -2,9 +2,8 @@ from django.contrib import admin
 
 from nomenclatures.models import (
     Nomenclature,
-    Settings,
-    HardWareInfo,
     NomenclatureGroup,
+    NomenclatureAvailability,
     StatusHistory
 )
 
@@ -30,26 +29,17 @@ class NomenclatureAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return Nomenclature.objects.all().select_related(
-            'owner'
-        ).prefetch_related('settings')
+        return Nomenclature.objects.all().select_related('owner')
 
 
-@admin.register(Settings)
-class SettingsAdmin(admin.ModelAdmin):
-    """Настройки."""
+@admin.register(NomenclatureAvailability)
+class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
+    """Доступность."""
 
-    list_display = ('days', )
-
-
-@admin.register(HardWareInfo)
-class HardWareInfoAdmin(admin.ModelAdmin):
-    """Информация о железе разбы."""
-
-    list_display = ('city', 'model', 'internet_service_provider')
+    list_display = ('client', 'last_answer_date', 'status')
 
     def get_queryset(self, request):
-        return HardWareInfo.objects.all()
+        return NomenclatureAvailability.objects.all().select_related('client')
 
 
 @admin.register(NomenclatureGroup)
