@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { AuthService } from '@/services/auth/auth.service';
 import Link from 'next/link';
 import { timezonesArray } from '@/shared/type/timezone';
-import {NomenclatureListResponseInterface} from "@/shared/interface/Nomenclature.interface";
+import { NomenclatureListResponseInterface } from "@/shared/interface/Nomenclature.interface";
 
 const { Search } = Input;
 const { Option } = Select;
@@ -16,200 +16,121 @@ const { Option } = Select;
 interface INomenclaturesProps {
     data: NomenclatureListResponseInterface | null
     error?: string
-    searchValue: string
-    status: string
-    version: string
-    timezone: string
 }
 
-type Status = 0 | 1 | 2;
-
-// 10 25 50 100
-
-export const getServerSideProps: (context: any) => Promise<{ redirect: { permanent: boolean; destination: string } } | {
-    props: { data: any }
-} | { props: { data: null; error: any } }> = async (context) => {
-
-    const { query } = context;
-    const limit = parseInt(query.limit as string) || 10;
-    const page = parseInt(query.page as string) || 1;
-    const search = query.name ? `&name=${encodeURIComponent(query.name as string)}` : '';
-    const status = query.status ? `&status=${encodeURIComponent(query.status as string)}` : '';
-    const version = query.version ? `&version=${encodeURIComponent(query.version as string)}` : '';
-    const timezone = query.timezone ? `&timezone=${encodeURIComponent(query.timezone as string)}` : '';
-    const isAuth = await AuthService.isAuthenticated(context.req);
-
-    if (!isAuth) {
-        return {
-            redirect: {
-                destination: '/login',
-                permanent: false,
-            },
-        };
-    }
-
-    try {
-        const res = await fetch(`${API_URL}/api/nomenclatures/?limit=${limit}&page=${page}${search}${status}${version}${timezone}`);
-        if (!res.ok) {
-            throw new Error('Failed to fetch data');
-        }
-        const data = await res.json();
-        return {
-            props:{
-                data: data
-            }
-        }
-    } catch (error: Error | any) {
-        console.log('Failed to fetch:', error)
-        return {
-            props: {
-                data: null,
-                error: error.message
-            }
-        }
-    }
-}
-
-export default function Nomenclatures({data, error}: INomenclaturesProps) {
-    
-    const router = useRouter()
-    const [limit, setLimit] = useState(router.query.limit || 10)
-    const [page, setPage] = useState(router.query.page || 1)
-
+export default function Nomenclatures({ data, error }: INomenclaturesProps) {
+    const router = useRouter();
+    const [limit, setLimit] = useState(10); // Установка limit по умолчанию в 10
+    const [page, setPage] = useState(1); // Установка page по умолчанию в 1
     const [searchValue, setSearchValue] = useState('');
-    const [status, setStatus] = useState('');
     const [version, setVersion] = useState('');
     const [timezone, setTimezone] = useState('');
-
-    // useEffect(() => {
-    //     if (router.isReady) {
-    //         setLimit(parseInt(router.query.limit as string) || 10);
-    //         setPage(parseInt(router.query.page as string) || 1);
-    //         setStatus('null');
-    //         setSearchValue('');
-    //     }
-    // }, [router.isReady, router.query.limit, router.query.page, router.query.status, router.query.name]);    
+    // const [limit, setLimit] = useState(parseInt(router.query.limit as string) || 10);
+    // const [page, setPage] = useState(parseInt(router.query.page as string) || 1);
+    // const [searchValue, setSearchValue] = useState(decodeURIComponent(router.query.name as string) || '');
+    // const [version, setVersion] = useState(router.query.version as string || '');
+    // const [timezone, setTimezone] = useState(router.query.timezone as string || '');
+    // const [status, setStatus] = useState(router.query.status as string || '');
 
     useEffect(() => {
-        const initialPath = router.asPath; // Сохраняем начальный путь при монтировании компонента
-    
-        // Функция для проверки обновления страницы
-        const checkPageReload = () => {
-            if (window.location.pathname !== initialPath) {
-                router.replace(
-                    {
-                        pathname: router.pathname,
-                        query: {}, // Очищаем параметры запроса
-                    },
-                    undefined,
-                    { shallow: true }
-                );
-            }
+        const handleRouteChange = () => {
+            setPage(parseInt(router.query.page as string) || 1);
+            setLimit(parseInt(router.query.limit as string) || 10);
+            setSearchValue(decodeURIComponent(router.query.name as string || ''));
+            setVersion(router.query.version as string || '');
+            setTimezone(router.query.timezone as string || '');
         };
-    
-        // Проверяем обновление страницы при каждом изменении маршрута
-        const handleRouteChange = (url: string) => {
-            if (url !== initialPath) {
-                checkPageReload();
-            }
-        };
-    
-        // Проверяем обновление страницы после монтирования компонента
-        checkPageReload();
-    
-        // Добавляем слушателя для проверки обновления страницы при каждом изменении маршрута
+
         router.events.on('routeChangeComplete', handleRouteChange);
-    
-        // Очищаем слушателя при размонтировании компонента
         return () => {
             router.events.off('routeChangeComplete', handleRouteChange);
         };
-    }, [router]);
-    
+    }, [router.events, router.query]);
+
+    console.log(data);
     
 
     if (error || !data) {
-        console.log(data);
         return <Custom500 />
     }
 
-    console.log(data);
-
-    const handleSearchChange = (value: string) => {
-        setSearchValue(value);
-    };
-    const handleStatusEnter = (value: string) => {
-        setStatus(value);
-    };
-    
-    const handleSearchEnter = () => {
-        const trimmedValue = searchValue.trim();
-        if (trimmedValue !== '') {
-            router.push(`/nomenclatures?limit=${limit}&page=${page}&name=${encodeURIComponent(trimmedValue)}`);
-        } else {
-            router.push(`/nomenclatures?limit=${limit}&page=${page}`);
+    const updateFilters = (filters: { [key: string]: string }, searchValueToUpdate?: string) => {
+        if (!searchValueToUpdate) {
+            return
         }
-    };
-
-    const handleStatusChange = (status: string) => {
-        const newStatus = status
-        setStatus(newStatus);
-        router.push(`/nomenclatures?limit=${limit}&page=${page}&status=${newStatus}&name=${encodeURIComponent(searchValue.trim())}`);
-    };
-
-    const handleVersionChange = (version: string) => {
-        const newVersion = version
-        setVersion(newVersion);
-        router.push(`/nomenclatures?limit=${limit}&page=${page}&version=${newVersion}&name=${encodeURIComponent(searchValue.trim())}`);
-    }
-
-    const handleVersionEnter = (version: string) => {
-        setVersion(version)
-    }
-
-    const handleTimeZoneChange = (value: string) => {
-        const newTimeZone = value
-        setTimezone(newTimeZone)
-        router.push(`/nomenclatures?limit=${limit}&page=${page}&version=${version}&name=${encodeURIComponent(searchValue.trim())}&timezone=${newTimeZone}`);
-    }
+        setSearchValue(searchValueToUpdate); // Обновляем searchValue перед установкой новых фильтров
+        const newQuery: any = {
+            limit,
+            page,
+            name__icontains: encodeURIComponent(searchValueToUpdate.trim()), // Используем переданное значение searchValueToUpdate
+            version__icontains: encodeURIComponent(version),
+            timezone__iexact: encodeURIComponent(timezone),
+            // status: encodeURIComponent(status)
+        };
     
+        Object.keys(filters).forEach(key => {
+            if (newQuery.hasOwnProperty(key)) {
+                newQuery[key] = encodeURIComponent(filters[key]);
+            }
+        });
+    
+        const queryString = Object.entries(newQuery)
+            .filter(([_, value]) => value)
+            .map(([key, value]) => `${key}=${value}`)
+            .join('&');
+    
+        router.push(`/nomenclatures?${queryString}`);
+    };
+    
+    const handleSearchEnter = (value: string) => {
+        setSearchValue(value); // Обновляем searchValue
+        updateFilters({ name__icontains: value }); // Передаем новое значение searchValue для обновления фильтров
+    };
+    
+    const handleVersionChange = (value: string) => {
+        setVersion(value); // Обновляем version
+        updateFilters({ version__icontains: value }); // Передаем новое значение version для обновления фильтров
+    };
+
+    const handleTimeZoneChange = (newTimeZone: string) => {
+        setTimezone(newTimeZone);
+        updateFilters({ timezone__iexact: newTimeZone }, newTimeZone);
+    };
+    // const handleStatusChange = (newStatus: string) => {
+    //     updateFilters({ status: newStatus });
+    // };
+
+    const handlePageChange = (newPage: number, pageSize?: number) => {
+        updateFilters({ page: newPage.toString(), limit: pageSize?.toString() || limit.toString() });
+    };
 
     const logOut = () => {
         AuthService.logout();
-        router.push('/auth');
-    }
-    
-    const handlePageChange = (page: number, pageSize?: number) => {
-        const limit = pageSize || 10;
-        router.push(`/nomenclatures?limit=${limit}&page=${page}`);
+        router.push('/login');
     };
 
     return (
         <div>        
             <div className={styles.cont}>
-                <div className={styles.filter}>
-                    {/* name */}
+            <div className={styles.filter}>
                     <Search
                         placeholder="Поиск по наименованию"
-                        allowClear
-                        onSearch={handleSearchEnter}
-                        onChange={e => handleSearchChange(e.target.value)}
+                        onSearch={value => handleSearchEnter(value)} // Передаем значение в handleSearchEnter
+                        onChange={e => setSearchValue(e.target.value)} // Устанавливаем значение searchValue
                         value={searchValue}
                         style={{ width: '100%' }}
                     />
-                    {/* version */}
                     <Search
                         placeholder="Поиск по версиям"
-                        allowClear
-                        onSearch={handleVersionEnter}
-                        onChange={e => handleVersionChange(e.target.value)}
+                        onSearch={value => handleVersionChange(value)} // Передаем значение в handleVersionChange
+                        onChange={e => setVersion(e.target.value)} // Устанавливаем значение version
                         value={version}
                         style={{ width: '100%' }}
                     />
-                    {/* status */}
-                    <Select
+
+                    {/* <Select
                         placeholder='Выберите статус'
-                        onSelect={handleStatusEnter}
+                        onSelect={handleStatusChange}
                         onChange={e => handleStatusChange(e)}
                         options={[
                             { value: 'null', label: 'Все' },
@@ -218,14 +139,20 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
                             { value: '2', label: 'недоступно больше часа' },
                         ]}
                         style={{ width: '100%' }}
-                    />
-                    {/* timezone */}
-                    <Select placeholder='timezone' onChange={handleTimeZoneChange} style={{ width: '100%' }}>
-                        {/* Отображение временных зон в компоненте Select */}
-                        {timezonesArray.map(timezone => (
-                            <Option key={timezone.value} value={timezone.value}>{timezone.label}</Option>
+                    /> */}
+                    <Select
+                        placeholder='Выберите часовой пояс'
+                        value={timezone}
+                        onChange={(e) => handleTimeZoneChange(e)}
+                        style={{ width: '100%' }}
+                    >
+                        {timezonesArray.map(tz => (
+                            <Option key={tz.value} value={tz.value}>{tz.label}</Option>
                         ))}
                     </Select>
+                    <Button onClick={logOut} style={{ width: '100%' }}>
+                        Выйти
+                    </Button>
                     <Button><Link href={`/nomenclatures/create`} rel="noopener noreferrer" target="_blank">Создать</Link></Button>
                 </div>
                 <div className={styles['menu-table']}>
@@ -256,7 +183,7 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
                             style={{ display: 'flex', justifyContent: 'center' }}
                         />
                     </div>
-                <button onClick={logOut}>Выход</button>
+                {/* <button onClick={logOut}>Выход</button> */}
                 </div>
                 
             
@@ -264,3 +191,18 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
             </div>
     );
 }
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+    const { query } = context;
+    
+    const apiUrl = `${API_URL}/api/nomenclatures/?${new URLSearchParams(query as any).toString()}`;
+    console.log(apiUrl);
+    
+    try {
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+        return { props: { data } };
+    } catch (error) {
+        return { props: { error: 'Failed to fetch data' } };
+    }
+};
