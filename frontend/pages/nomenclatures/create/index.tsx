@@ -2,8 +2,8 @@ import { Button, Form, Input, Select } from 'antd/lib'
 import styles from './NomenclatureCreate.module.scss'
 import { timezonesArray } from '@/shared/type/timezone'
 import { useEffect, useState } from 'react';
-import { NomenclatureCreateInterface } from '@/shared/interface/nomenclature.interface';
 import Cookies from 'js-cookie'
+import { NomenclatureCreateInterface } from '@/shared/interface/Nomenclature.interface';
 
 const { Option } = Select;
 
