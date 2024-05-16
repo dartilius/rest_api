@@ -1,4 +1,3 @@
-import LoginPage from "@/pages/login";
 import { Layout, Menu } from "antd/lib";
 import { useRouter } from "next/router";
 import LoginPage from "@/pages/login";

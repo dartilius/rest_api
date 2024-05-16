@@ -26,6 +26,50 @@ type Status = 0 | 1 | 2;
 
 // 10 25 50 100
 
+export const getServerSideProps: (context: any) => Promise<{ redirect: { permanent: boolean; destination: string } } | {
+    props: { data: any }
+} | { props: { data: null; error: any } }> = async (context) => {
+
+    const { query } = context;
+    const limit = parseInt(query.limit as string) || 10;
+    const page = parseInt(query.page as string) || 1;
+    const search = query.name ? `&name=${encodeURIComponent(query.name as string)}` : '';
+    const status = query.status ? `&status=${encodeURIComponent(query.status as string)}` : '';
+    const version = query.version ? `&version=${encodeURIComponent(query.version as string)}` : '';
+    const timezone = query.timezone ? `&timezone=${encodeURIComponent(query.timezone as string)}` : '';
+    const isAuth = await AuthService.isAuthenticated(context.req);
+
+    if (!isAuth) {
+        return {
+            redirect: {
+                destination: '/login',
+                permanent: false,
+            },
+        };
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/api/nomenclatures/?limit=${limit}&page=${page}${search}${status}${version}${timezone}`);
+        if (!res.ok) {
+            throw new Error('Failed to fetch data');
+        }
+        const data = await res.json();
+        return {
+            props:{
+                data: data
+            }
+        }
+    } catch (error: Error | any) {
+        console.log('Failed to fetch:', error)
+        return {
+            props: {
+                data: null,
+                error: error.message
+            }
+        }
+    }
+}
+
 export default function Nomenclatures({data, error}: INomenclaturesProps) {
     
     const router = useRouter()
@@ -85,6 +129,7 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
     
 
     if (error || !data) {
+        console.log(data);
         return <Custom500 />
     }
 
@@ -218,46 +263,4 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
             </div>
             </div>
     );
-}
-
-export const getServerSideProps: GetServerSideProps = async (context) => {
-
-    const { query } = context;
-    const limit = parseInt(query.limit as string) || 10;
-    const page = parseInt(query.page as string) || 1;
-    const search = query.name ? `&name=${encodeURIComponent(query.name as string)}` : '';
-    const status = query.status ? `&status=${encodeURIComponent(query.status as string)}` : '';
-    const version = query.version ? `&version=${encodeURIComponent(query.version as string)}` : '';
-    const timezone = query.timezone ? `&timezone=${encodeURIComponent(query.timezone as string)}` : '';
-    const isAuth = await AuthService.isAuthenticated(context.req);
-
-    if (!isAuth) {
-        return {
-            redirect: {
-                destination: '/login',
-                permanent: false,
-            },
-        };
-    }
-
-    try {
-        const res = await fetch(`${API_URL}/api/nomenclatures/?limit=${limit}&page=${page}${search}${status}${version}${timezone}`);
-        if (!res.ok) {
-            throw new Error('Failed to fetch data');
-        }
-        const data = await res.json();
-        return {
-            props:{
-                data: data
-            }
-        }
-    } catch (error: Error | any) {
-        console.log('Failed to fetch:', error)
-        return {
-            props: {
-                data: null,
-                error: error.message
-            }
-        }
-    }
 }
