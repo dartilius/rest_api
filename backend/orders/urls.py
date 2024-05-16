@@ -1,14 +1,19 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
-from orders.views import OrderViewSet
+from orders.views import AdOrderViewSet, BgOrderViewSet
 
 router = SimpleRouter()
 
 router.register(
-    'orders',
-    OrderViewSet,
-    basename='orders'
+    'adorders',
+    AdOrderViewSet,
+    basename='adorders'
+)
+router.register(
+    'bgorders',
+    BgOrderViewSet,
+    basename='bgorders'
 )
 
 urlpatterns = [

@@ -1,107 +1,63 @@
 from uuid import uuid4
 
+from django.contrib.postgres.validators import KeysValidator
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import HStoreField
 
 from users.models import User
 
-TIMEZONES = [
-    ("Etc/GMT+11", "UTC-11"),
-    ("Etc/GMT+10", "UTC-10"),
-    ("Etc/GMT+9", "UTC-9"),
-    ("Etc/GMT+8", "UTC-8"),
-    ("Etc/GMT+7", "UTC-7"),
-    ("Etc/GMT+6", "UTC-6"),
-    ("Etc/GMT+5", "UTC-5"),
-    ("Etc/GMT+4", "UTC-4"),
-    ("Etc/GMT+3", "UTC-3"),
-    ("Etc/GMT+2", "UTC-2"),
-    ("Etc/GMT+1", "UTC-1"),
-    ("Etc/GMT+0", "UTC"),
-    ("Etc/GMT-1", "UTC+1"),
-    ("Etc/GMT-2", "UTC+2"),
-    ("Etc/GMT-3", "UTC+3"),
-    ("Etc/GMT-4", "UTC+4"),
-    ("Etc/GMT-5", "UTC+5"),
-    ("Etc/GMT-6", "UTC+6"),
-    ("Etc/GMT-7", "UTC+7"),
-    ("Etc/GMT-8", "UTC+8"),
-    ("Etc/GMT-9", "UTC+9"),
-    ("Etc/GMT-10", "UTC+10"),
-    ("Etc/GMT-11", "UTC+11"),
-    ("Etc/GMT-12", "UTC+12")
-]
+TIMEZONES = {
+    "Etc/GMT+11": "UTC -11",
+    "Etc/GMT+10": "UTC -10",
+    "Etc/GMT+9": "UTC -9",
+    "Etc/GMT+8": "UTC -8",
+    "Etc/GMT+7": "UTC -7",
+    "Etc/GMT+6": "UTC -6",
+    "Etc/GMT+5": "UTC -5",
+    "Etc/GMT+4": "UTC -4",
+    "Etc/GMT+3": "UTC -3",
+    "Etc/GMT+2": "UTC -2",
+    "Etc/GMT+1": "UTC -1",
+    "Etc/GMT+0": "UTC",
+    "Etc/GMT-1": "UTC +1",
+    "Etc/GMT-2": "UTC +2",
+    "Etc/GMT-3": "UTC +3",
+    "Etc/GMT-4": "UTC +4",
+    "Etc/GMT-5": "UTC +5",
+    "Etc/GMT-6": "UTC +6",
+    "Etc/GMT-7": "UTC +7",
+    "Etc/GMT-8": "UTC +8",
+    "Etc/GMT-9": "UTC +9",
+    "Etc/GMT-10": "UTC +10",
+    "Etc/GMT-11": "UTC +11",
+    "Etc/GMT-12": "UTC +12"
+}
 
-DAYS = [
-    (1, "Понедельник"),
-    (2, "Вторник"),
-    (3, "Среда"),
-    (4, "Четверг"),
-    (5, "Пятница"),
-    (6, "Суббота"),
-    (7, "Воскресенье")
-]
+DAYS = {
+    1: "Понедельник",
+    2: "Вторник",
+    3: "Среда",
+    4: "Четверг",
+    5: "Пятница",
+    6: "Суббота",
+    7: "Воскресенье"
+}
 
-STATUSES = [
-    (0, "Online"),
-    (1, "Offline 5+ minutes"),
-    (2, "Offline 1+ hour")
-]
-
-
-class Settings(models.Model):
-    """Настройки микрокомпьютера."""
-
-    days = ArrayField(
-        models.PositiveSmallIntegerField(
-            # choices=DAYS
-        ),
-        verbose_name="Дни недели",
-        size=7
-    )
-    start_time = models.TimeField(
-        verbose_name="Время начала работы"
-    )
-    end_time = models.TimeField(
-        verbose_name="Время оончания работы"
-    )
-    """
-        Методика хранения массива дней мне кажется неоптимальной,
-        возможны баги, к примеру будут указаны не все дни недели,
-        что поведет за собой отключение вещания в не указанные дни.
-        Хранить режим работы лучше в range field и использовать
-        целочисленный интервал с максимальным значением 86399 и
-        минимальным значением 0 (00:00:00 - 23:59:59)
-        
-        Для исключения бага можно вынести дефолтный режим работы
-        и громкость в модель номенклатуры, а настройки считать 
-        приоритетнее дефолтных настроек, в таком случае эта модель
-        будет использоваться для нестандартных случаев.
-    """
-    volumes = models.JSONField(
-        verbose_name="Настройки громкости"
-    )
-    default_volume = ArrayField(
-        models.PositiveSmallIntegerField(
-            validators=[
-                MaxValueValidator(100)
-            ]
-        ),
-        size=4,
-        verbose_name="Громкость по умолчанию"
-    )
-
-    class Meta:
-        verbose_name = 'Настройка номенклатуры'
-        verbose_name_plural = 'Настройки номенклатуры'
-
-    def __str__(self):
-        return f"{self.days}"
+STATUSES = {
+    0: "Online",
+    1: "Offline 5+ minutes",
+    2: "Offline 1+ hour"
+}
 
 
 class Nomenclature(models.Model):
     """Рабочая станция."""
+
+    keys_validator = KeysValidator(
+        keys=("mon", "tue", "wed", "thu", "fri", "sat", "sun"),
+        strict=True
+    )
 
     id = models.UUIDField(
         default=uuid4,
@@ -150,61 +106,23 @@ class Nomenclature(models.Model):
         auto_now_add=True,
         verbose_name="Дата создания"
     )
-    settings = models.ManyToManyField(
-        Settings,
-        related_name="nomenclature_settings",
+    settings = HStoreField(
         verbose_name="Настройки вещания",
-        blank=True
+        validators=(keys_validator,)
+    )
+    hw_info = HStoreField(
+        verbose_name='Информация о железе',
+        blank=True,
+        null=True
     )
 
     class Meta:
         db_table = 'nomenclature'
-        verbose_name = 'Номенклатура'
+        verbose_name = 'Номенклатуру'
         verbose_name_plural = 'Номенклатуры'
 
     def __str__(self):
         return self.name
-
-
-class HardWareInfo(models.Model):
-    """Информация о железе."""
-
-    client = models.OneToOneField(
-        Nomenclature,
-        primary_key=True,
-        related_name="nomenclature_hwinfo",
-        verbose_name="Номенклатура",
-        on_delete=models.CASCADE
-    )
-    city = models.CharField(
-        max_length=255,
-        verbose_name="Город"
-    )
-    model = models.CharField(
-        max_length=255,
-        verbose_name="Модель"
-    )
-    internet_service_provider = models.CharField(
-        max_length=255,
-        verbose_name="Интернет провайдер"
-    )
-    external_ip = models.GenericIPAddressField(
-        verbose_name="IP адресс"
-    )
-    network_config = models.JSONField(
-        verbose_name="Настройки сети"
-    )
-    audio_device = models.JSONField(
-        verbose_name="Звуковые карты"
-    )
-
-    class Meta:
-        db_table = 'hwinfo'
-        verbose_name = 'Информация о железе'
-        verbose_name_plural = 'Информация о железе'
-
-    def __str__(self):
-        return self.client.name
 
 
 class NomenclatureGroup(models.Model):
@@ -224,9 +142,12 @@ class NomenclatureGroup(models.Model):
     )
     name = models.CharField(
         max_length=255,
-        verbose_name="Название"
+        verbose_name="Название",
+        unique=True
     )
     description = models.TextField(
+        blank=True,
+        null=True,
         verbose_name="Описание"
     )
     created = models.DateTimeField(
@@ -236,11 +157,37 @@ class NomenclatureGroup(models.Model):
 
     class Meta:
         db_table = 'group'
-        verbose_name = 'Группа'
+        verbose_name = 'Группу'
         verbose_name_plural = 'Группы'
 
     def __str__(self):
         return self.name
+
+
+class NomenclatureAvailability(models.Model):
+    last_answer_date = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Время последнего ответа',
+    )
+    client = models.OneToOneField(
+        Nomenclature,
+        verbose_name='Рабочая станция',
+        related_name='availability',
+        on_delete=models.CASCADE
+    )
+    status = models.PositiveSmallIntegerField(
+        choices=STATUSES,
+        verbose_name="Статус",
+        default=2
+    )
+
+    class Meta:
+        db_table = 'availability'
+        verbose_name = 'Время последнего ответа'
+        verbose_name_plural = 'Время последнего ответа'
+
+    def __str__(self):
+        return f'{self.last_answer_date}'
 
 
 class StatusHistory(models.Model):
@@ -249,6 +196,7 @@ class StatusHistory(models.Model):
     client = models.ForeignKey(
         Nomenclature,
         verbose_name="Рабочая станция",
+        related_name='history',
         on_delete=models.CASCADE
     )
     change_time = models.DateTimeField(
@@ -262,7 +210,7 @@ class StatusHistory(models.Model):
 
     class Meta:
         db_table = 'status_history'
-        verbose_name = 'История доступности'
+        verbose_name = 'Историю доступности'
         verbose_name_plural = 'История доступности'
 
     def __str__(self):
