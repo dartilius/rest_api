@@ -1,11 +1,11 @@
 import Custom500 from "@/pages/500";
-import { NomenclatureInterface } from "@/shared/interface/nomenclature.interface";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import styles from './Nomenclature.module.scss'
 import { useState } from "react";
 import { Button, Form, Input, Select } from "antd/lib";
 import { timezonesArray } from "@/shared/type/timezone";
+import {NomenclatureInterface} from "@/shared/interface/Nomenclature.interface";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -57,13 +57,6 @@ export default function Nomenclature({ data, error }: InferGetServerSidePropsTyp
 
     if (error) return <Custom500 />;
     if (!data) return <div>Нет данных</div>;
-
-    console.log(data);
-
-    console.log(data.settings.fri.default_volume);
-    
-    
-
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;

@@ -46,6 +46,14 @@
     flex-direction: row;
 }
 
+.filter {
+    width: 360px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 .menu-table {
     display: table;
     border-collapse: collapse;

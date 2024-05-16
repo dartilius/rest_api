@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta as td
 import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,12 +18,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'corsheaders',
     'django_filters',
     'rest_framework',
     'debug_toolbar',
     'drf_yasg',
     'djoser',
-    'minio_storage',
+    # 'minio_storage',
     'phonenumber_field',
     'docs',
     'files',
@@ -36,9 +38,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -109,7 +111,7 @@ PASSWORD_HASHERS = [
 
 LANGUAGE_CODE = 'ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Krasnoyarsk'
 
 USE_I18N = True
 
@@ -135,12 +137,6 @@ MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
 # MINIO_STORAGE_STATIC_BUCKET_NAME = 'staticfiles'
 # MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
 
-CORS_ALLOW_ALL_ORIGINS = True
-
-CORS_ALLOWED_ORIGINS = [
-    'files:9000',
-]
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -150,7 +146,9 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-   'AUTH_HEADER_TYPES': ('access_token',),
+    'ACCESS_TOKEN_LIFETIME': td(days=30),
+    'REFRESH_TOKEN_LIFETIME': td(days=60),
+    'AUTH_HEADER_TYPES': ('access_token',),
 }
 
 
