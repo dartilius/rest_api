@@ -2,7 +2,7 @@ import { API_URL } from '@/config/api.config';
 import { GetServerSideProps } from 'next';
 import styles from './Nomenclatures.module.scss';
 import Custom500 from '../500';
-import { Input, Pagination, Select } from 'antd/lib';
+import { Button, Input, Pagination, Select } from 'antd/lib';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { AuthService } from '@/services/auth/auth.service';
@@ -141,8 +141,8 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
 
     return (
         <div>        
-            <div className={styles['cont']}>
-                <div style={{width: '360px', padding: '16px'}}>
+            <div className={styles.cont}>
+                <div className={styles.filter}>
                     {/* name */}
                     <Search
                         placeholder="Поиск по наименованию"
@@ -181,6 +181,7 @@ export default function Nomenclatures({data, error}: INomenclaturesProps) {
                             <Option key={timezone.value} value={timezone.value}>{timezone.label}</Option>
                         ))}
                     </Select>
+                    <Button><Link href={`/nomenclatures/create`} rel="noopener noreferrer" target="_blank">Создать</Link></Button>
                 </div>
                 <div className={styles['menu-table']}>
                     <div className={styles['menu-table_row']}>
@@ -233,12 +234,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     if (!isAuth) {
         return {
             redirect: {
-                destination: '/auth',
+                destination: '/login',
                 permanent: false,
             },
         };
     }
-
 
     try {
         const res = await fetch(`${API_URL}/api/nomenclatures/?limit=${limit}&page=${page}${search}${status}${version}${timezone}`);

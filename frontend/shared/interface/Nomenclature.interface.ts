@@ -7,6 +7,13 @@ export type NomenclatureListInterface = {
     version: string
 }
 
+export interface NomenclatureCreateInterface {
+    name: string
+    timezone: string
+    description: string
+    settings: SettingsInterface
+}
+
 export type NomenclatureListResponseInterface = {
     count: number
     next: string
@@ -18,7 +25,7 @@ export type RequestNomenclatureFilterStatus = {
     status: number
 }
 
-export interface SettingsInterface {
+interface SettingsInterface {
     fri: {
         default_volume: [number, number, number, number]
         worktime: [string, string]
