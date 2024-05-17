@@ -15,7 +15,7 @@ from users.permissions import AuthAndOnlySuperUserDelete
 class TagViewSet(viewsets.ModelViewSet):
     """Работа с темами файлов."""
 
-    queryset = Tag.objects.all()
+    queryset = Tag.objects.all().order_by('id')
     serializer_class = TagSerializer
 
 
@@ -24,7 +24,7 @@ class FileViewSet(viewsets.ModelViewSet):
 
     queryset = File.objects.all().select_related(
         'owner'
-    ).prefetch_related('tag')
+    ).prefetch_related('tags').order_by('-created')
     serializer_class = FileSerializer
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
@@ -51,7 +51,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
     serializer_class = PlaylistSerializer
     queryset = Playlist.objects.all().select_related(
         'owner'
-    ).prefetch_related('files')
+    ).prefetch_related('files').order_by('-created')
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

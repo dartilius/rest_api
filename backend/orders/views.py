@@ -20,7 +20,9 @@ from users.permissions import AuthAndOnlySuperUserDelete
 class AdOrderViewSet(viewsets.ModelViewSet):
     """Работа с заказами."""
 
-    queryset = AdOrder.objects.all().select_related('owner', 'group', 'file')
+    queryset = AdOrder.objects.all().select_related(
+        'owner', 'group', 'file'
+    ).order_by('-created')
     filter_backends = (DjangoFilterBackend,)
     filterset_class = AdOrderFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
@@ -66,21 +68,18 @@ class BgOrderViewSet(viewsets.ModelViewSet):
     """Работа с заказами."""
 
     queryset = BgOrder.objects.all().select_related(
-        'owner',
-        'client',
-        'playlist'
-    )
+        'owner', 'client', 'playlist'
+    ).order_by('-created')
     filter_backends = (DjangoFilterBackend,)
     filterset_class = BgOrderFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
         order = serializer.save(owner=self.request.user)
-        client = order.client.all()
         Task.objects.create(
             owner=self.request.user,
-            client=client,
-            type=Type.objects.get(order_type=serializer.data['order_type']),
+            client=order.client,
+            type=Type.objects.get(order_type=order.order_type),
             parameters={
                 'playlist': Playlist.objects.filter(
                     serializer.data['playlist']

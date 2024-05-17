@@ -24,7 +24,7 @@ class FileAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return File.objects.all().select_related(
             'owner'
-        ).prefetch_related('tag')
+        ).prefetch_related('tags')
 
     def save_model(self, request, obj, form, change):
         obj.owner = obj.owner or request.user

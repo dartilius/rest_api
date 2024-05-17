@@ -33,7 +33,7 @@ class Tag(models.Model):
         return self.name
 
     class Meta:
-        db_table = 'Tag'
+        db_table = 'tag'
         verbose_name = 'Тэг'
         verbose_name_plural = 'Тэг'
 
@@ -94,7 +94,7 @@ class File(models.Model):
     )
     tags = models.ManyToManyField(
         Tag,
-        related_name='tags',
+        related_name='files',
         verbose_name='Тэги'
     )
     created = models.DateTimeField(

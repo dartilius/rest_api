@@ -20,7 +20,7 @@ class FileSerializer(serializers.ModelSerializer):
     """Сериализация файлов."""
 
     tags = serializers.SlugRelatedField(
-        slug_field='id',
+        slug_field='slug',
         many=True,
         queryset=Tag.objects.all(),
         write_only=True
@@ -113,6 +113,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             'id',
+            'owner',
             'created'
         )
         model = Playlist
@@ -138,10 +139,7 @@ class PlaylistListSerializer(serializers.ModelSerializer):
             'name',
             'created'
         )
-        read_only_fields = (
-            'id',
-            'created'
-        )
+        read_only_fields = fields
         model = Playlist
 
     def to_representation(self, value):

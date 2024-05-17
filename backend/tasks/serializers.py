@@ -3,13 +3,13 @@ from rest_framework import serializers
 from tasks.models import Task
 
 from nomenclatures.serializers import NomenclatureSerializer
-from users.serializers import UserSerializer
+from users.serializers import CustomUserSerializer
 
 
 class TaskSerializer(serializers.ModelSerializer):
     """Сериализация репликаций."""
 
-    owner = UserSerializer(read_only=True)
+    owner = CustomUserSerializer(read_only=True)
     client = NomenclatureSerializer()
 
     class Meta:
