@@ -4,15 +4,15 @@ from django.contrib.postgres.fields import HStoreField
 from django.db import models
 from nomenclatures.models import Nomenclature
 from orders.models import ORDER_TYPES
-from users.models import User
+from users.models import CustomUser
 
-STATUSES = [
-    (0, 'Ожидает обработки'),
-    (1, 'В обработке'),
-    (2, 'Выполнена'),
-    (3, 'Отменена'),
-    (4, 'Ошибка')
-]
+STATUSES = {
+    0: 'Ожидает обработки',
+    1: 'В обработке',
+    2: 'Выполнена',
+    3: 'Отменена',
+    4: 'Ошибка'
+}
 
 
 class Type(models.Model):
@@ -20,13 +20,13 @@ class Type(models.Model):
 
     name = models.CharField(
         max_length=255,
-        verbose_name='Наименование'
+        verbose_name='Наименование',
+        unique=True
     )
     order_type = models.CharField(
         choices=ORDER_TYPES,
         blank=True,
         null=True,
-        unique=True,
         verbose_name='Тип заказа'
     )
 
@@ -47,7 +47,7 @@ class Task(models.Model):
         verbose_name='Целевая рабочая станция'
     )
     owner = models.ForeignKey(
-        User,
+        CustomUser,
         related_name='tasks',
         verbose_name='Кто создал',
         on_delete=models.SET_NULL,

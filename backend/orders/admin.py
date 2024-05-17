@@ -25,7 +25,7 @@ class AdOrderAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return AdOrder.objects.all().select_related('owner')
+        return AdOrder.objects.all().select_related('owner', 'group', 'file')
 
 
 @admin.register(BgOrder)
@@ -49,4 +49,8 @@ class BgOrderAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return BgOrder.objects.all().select_related('owner')
+        return BgOrder.objects.all().select_related(
+            'owner',
+            'client',
+            'playlist'
+        )

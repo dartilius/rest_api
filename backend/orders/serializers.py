@@ -165,10 +165,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
         representation['owner'] = (
             f'{value.owner.last_name} {value.owner.first_name}'
         )
-        representation['group'] = {
-            'id': value.group.id,
-            'name': value.group.name
-        }
+        representation['group'] = {'id': value.group.id, 'name': value.group.name}
         # в базе по местному, но на странице по UTC почему-то
         representation['broadcast_interval'] = {
             'from': (value.broadcast_interval.lower + td(hours=7)).strftime(
@@ -178,7 +175,10 @@ class AdOrderSerializer(serializers.ModelSerializer):
         }
         representation['file'] = {'id': value.file.id, 'name': value.file.name}
         representation['slides'] = [
-            {str(slide.id): slide.name} for slide in value.slides.all()
+            {
+                'id': slide.id,
+                'name': slide.name
+            } for slide in value.slides.all()
         ] if value.slides.exists() else None
         representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation

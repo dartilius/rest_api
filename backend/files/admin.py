@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from files.models import File, Playlist, Tag, PlaylistFiles
+from files.models import File, Playlist, Tag
 
 
 @admin.register(File)
@@ -51,16 +51,6 @@ class PlaylistAdmin(admin.ModelAdmin):
         return Playlist.objects.all().select_related(
             'owner'
         ).prefetch_related('files')
-
-
-@admin.register(PlaylistFiles)
-class PlaylistFilesAdmin(admin.ModelAdmin):
-    """Номенклатуры группы."""
-
-    def get_queryset(self, request):
-        return PlaylistFiles.objects.all().select_related(
-            'playlist', 'file'
-        ).prefetch_related('images')
 
 
 @admin.register(Tag)

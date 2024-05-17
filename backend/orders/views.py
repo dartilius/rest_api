@@ -1,9 +1,8 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
-from files.models import PlaylistFiles
+from files.models import File, Playlist
 from orders.filters import AdOrderFilter, BgOrderFilter
 from orders.serializers import (
     AdOrderSerializer,
@@ -21,8 +20,7 @@ from users.permissions import AuthAndOnlySuperUserDelete
 class AdOrderViewSet(viewsets.ModelViewSet):
     """Работа с заказами."""
 
-    queryset = AdOrder.objects.all().select_related('owner', 'group')
-    pagination_class = LimitOffsetPagination
+    queryset = AdOrder.objects.all().select_related('owner', 'group', 'file')
     filter_backends = (DjangoFilterBackend,)
     filterset_class = AdOrderFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
@@ -42,8 +40,8 @@ class AdOrderViewSet(viewsets.ModelViewSet):
                     'broadcast_type': serializer.data[
                         'adorder__broadcast_type'
                     ],
-                    'files': PlaylistFiles.objects.filter(
-                        serializer.data['playlist']
+                    'files': File.objects.filter(
+                        serializer.data['file']
                     )
                 }
             ) for client in clients
@@ -67,8 +65,11 @@ class AdOrderViewSet(viewsets.ModelViewSet):
 class BgOrderViewSet(viewsets.ModelViewSet):
     """Работа с заказами."""
 
-    queryset = BgOrder.objects.all().select_related('owner', 'client')
-    pagination_class = LimitOffsetPagination
+    queryset = BgOrder.objects.all().select_related(
+        'owner',
+        'client',
+        'playlist'
+    )
     filter_backends = (DjangoFilterBackend,)
     filterset_class = BgOrderFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
@@ -81,7 +82,7 @@ class BgOrderViewSet(viewsets.ModelViewSet):
             client=client,
             type=Type.objects.get(order_type=serializer.data['order_type']),
             parameters={
-                'files': PlaylistFiles.objects.filter(
+                'playlist': Playlist.objects.filter(
                     serializer.data['playlist']
                 )
             }
