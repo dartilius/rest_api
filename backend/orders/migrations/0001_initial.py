@@ -12,7 +12,6 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('files', '0001_initial'),
         ('nomenclatures', '0001_initial'),
     ]
 
