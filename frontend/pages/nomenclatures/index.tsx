@@ -1,3 +1,4 @@
+"use server"
 import { API_URL } from '@/config/api.config';
 import { GetServerSideProps } from 'next';
 import styles from './Nomenclatures.module.scss';
@@ -48,7 +49,7 @@ export default function Nomenclatures({ data, error }: INomenclaturesProps) {
     }, [router.events, router.query]);
 
     console.log(data);
-    
+
 
     if (error || !data) {
         return <Custom500 />
@@ -192,14 +193,14 @@ export default function Nomenclatures({ data, error }: INomenclaturesProps) {
     );
 }
 
-export const getServerSideProps: GetServerSideProps = async (context) => {
+export const getServerSideProps = async (context: any) => {
     const { query } = context;
-    
+
     const apiUrl = `${API_URL}/api/nomenclatures/?${new URLSearchParams(query as any).toString()}`;
     console.log(apiUrl);
-    
+
     try {
-        const res = await fetch(apiUrl);
+        const res = fetch(apiUrl);
         const data = await res.json();
         return { props: { data } };
     } catch (error) {
