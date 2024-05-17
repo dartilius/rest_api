@@ -1,5 +1,3 @@
-import { API_URL } from '@/config/api.config';
-import { GetServerSideProps } from 'next';
 import styles from './Nomenclatures.module.scss';
 import Custom500 from '../500';
 import { Button, Input, Pagination, Select } from 'antd/lib';
@@ -9,6 +7,8 @@ import { AuthService } from '@/services/auth/auth.service';
 import Link from 'next/link';
 import { timezonesArray } from '@/shared/type/timezone';
 import { NomenclatureListResponseInterface } from "@/shared/interface/Nomenclature.interface";
+import { NomenclaturesService } from '@/services/nomenclatures/nomenclatures.service';
+import Error from 'next/error';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -18,20 +18,38 @@ interface INomenclaturesProps {
     error?: string
 }
 
-export default function Nomenclatures({ data, error }: INomenclaturesProps) {
+export default function Nomenclatures() {
     const router = useRouter();
     const [limit, setLimit] = useState(10); // Установка limit по умолчанию в 10
     const [page, setPage] = useState(1); // Установка page по умолчанию в 1
     const [searchValue, setSearchValue] = useState('');
     const [version, setVersion] = useState('');
     const [timezone, setTimezone] = useState('');
-    // const [limit, setLimit] = useState(parseInt(router.query.limit as string) || 10);
-    // const [page, setPage] = useState(parseInt(router.query.page as string) || 1);
-    // const [searchValue, setSearchValue] = useState(decodeURIComponent(router.query.name as string) || '');
-    // const [version, setVersion] = useState(router.query.version as string || '');
-    // const [timezone, setTimezone] = useState(router.query.timezone as string || '');
-    // const [status, setStatus] = useState(router.query.status as string || '');
+    const [nomenclatures, setNomenclatures] = useState<NomenclatureListResponseInterface>();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
+    useEffect(() => {
+        const fetchNomenclatures = async () => {
+            try {
+                const data: NomenclatureListResponseInterface = await NomenclaturesService.get();
+                setNomenclatures(data);  // Предполагается, что data является массивом номенклатур
+            } catch (err) {
+                if (err instanceof Error) {
+                    setError('какая-то ошибка');
+                } else {
+                    setError('Неизвестная ошибка');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchNomenclatures();
+    }, []);
+
+    
+    
     useEffect(() => {
         const handleRouteChange = () => {
             setPage(parseInt(router.query.page as string) || 1);
@@ -45,14 +63,10 @@ export default function Nomenclatures({ data, error }: INomenclaturesProps) {
         return () => {
             router.events.off('routeChangeComplete', handleRouteChange);
         };
-    }, [router.events, router.query]);
+    }, [router.events, router.query]);    
 
-    console.log(data);
-    
-
-    if (error || !data) {
-        return <Custom500 />
-    }
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error}</div>;
 
     const updateFilters = (filters: { [key: string]: string }, searchValueToUpdate?: string) => {
         if (!searchValueToUpdate) {
@@ -162,7 +176,7 @@ export default function Nomenclatures({ data, error }: INomenclaturesProps) {
                         <div className={styles['menu-table_item']}>Последнее время ответа</div>
                         <div className={styles['menu-table_item']}>Версия</div>
                     </div>
-                    {data.results.map(el => (
+                    {nomenclatures?.results.map(el => (
                         <div className={styles['menu-table_row']} key={el.id}>
                             <div className={styles['menu-table_item']}><Link href={`/nomenclatures/${el.id}`} rel="noopener noreferrer" target="_blank">{el.name}</Link></div> 
                             <div className={styles['menu-table_item']}>{el.timezone}</div>
@@ -171,11 +185,11 @@ export default function Nomenclatures({ data, error }: INomenclaturesProps) {
                         </div>
                     ))}
                     <div style={{ display: 'flex', flexDirection: 'row', gap: '24px', alignItems: 'center', justifyContent: 'center', marginTop: '48px' }}>
-                        Общее кол-во: {data.count}
+                        Общее кол-во: {nomenclatures?.count}
                         <Pagination
                             current={parseInt(router.query.page as string) || 1}
                             pageSize={parseInt(router.query.limit as string) || 10}
-                            total={data.count}
+                            total={nomenclatures?.count}
                             onChange={handlePageChange}
                             showSizeChanger
                             onShowSizeChange={handlePageChange}
@@ -190,19 +204,4 @@ export default function Nomenclatures({ data, error }: INomenclaturesProps) {
             </div>
             </div>
     );
-}
-
-export const getServerSideProps: GetServerSideProps = async (context) => {
-    const { query } = context;
-    
-    const apiUrl = `${API_URL}/api/nomenclatures/?${new URLSearchParams(query as any).toString()}`;
-    console.log(apiUrl);
-    
-    try {
-        const res = await fetch(apiUrl);
-        const data = await res.json();
-        return { props: { data } };
-    } catch (error) {
-        return { props: { error: 'Failed to fetch data' } };
-    }
 };

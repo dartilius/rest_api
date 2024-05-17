@@ -2,7 +2,6 @@ import { API_URL } from "@/config/api.config"
 import { ITokens } from "@/shared/interface/user.interface"
 import axios, { AxiosResponse } from "axios"
 import { removeTokensStorage, saveTokensStorage } from "./auth.helper"
-import { parseCookies } from 'nookies'
 
 export const AuthService = {
     async login(username: string, password: string): Promise<AxiosResponse<ITokens>> {
