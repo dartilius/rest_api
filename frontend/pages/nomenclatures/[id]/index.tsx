@@ -6,6 +6,8 @@ import { useState } from "react";
 import { Button, Form, Input, Select } from "antd/lib";
 import { timezonesArray } from "@/shared/type/timezone";
 import {NomenclatureInterface} from "@/shared/interface/Nomenclature.interface";
+import { NomenclaturesService } from "@/services/nomenclatures/nomenclatures.service";
+import Cookies from 'js-cookie'
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -86,6 +88,16 @@ export default function Nomenclature({ data, error }: InferGetServerSidePropsTyp
         }));
     };
 
+    const getToken = () => {
+        return Cookies.get('accessToken');
+    }
+
+    const handleDelete = async () => {
+        const token = getToken()
+        NomenclaturesService.delete(token, id)
+        window.close()
+    }
+
     const handleSubmit = async () => {
         const updatedData: any = {
             name: formData.name,
@@ -116,6 +128,7 @@ export default function Nomenclature({ data, error }: InferGetServerSidePropsTyp
     
     return (
         <>
+            <Button onClick={() => handleDelete()}>Удалить</Button>
             <div className={styles.mainContainer}>
                 <div className={styles.container}>
                     <div><strong>id: </strong>{data.id}</div>
