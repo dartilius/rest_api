@@ -34,17 +34,12 @@ class AdOrderViewSet(viewsets.ModelViewSet):
             Task(
                 owner=self.request.user,
                 client=client,
-                type=0,
+                type=4,
                 parameters={
-                    'parameters': serializer.data[
-                        'adorder__parameters'
-                    ],
-                    'broadcast_type': serializer.data[
-                        'adorder__broadcast_type'
-                    ],
-                    'files': File.objects.filter(
-                        serializer.data['file']
-                    )
+                    'parameters': order.parameters,
+                    'broadcast_type': order.broadcast_type,
+                    'file': order.file,
+                    'slides': order.slides
                 }
             ) for client in clients
         )
@@ -76,16 +71,14 @@ class BgOrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         order = serializer.save(owner=self.request.user)
-        Task.objects.create(
+        # parameters = Playlist.objects.filter(serializer.data['playlist'])
+        task = Task.objects.create(
             owner=self.request.user,
             client=order.client,
-            type=Type.objects.get(order_type=order.order_type),
-            parameters={
-                'playlist': Playlist.objects.filter(
-                    serializer.data['playlist']
-                )
-            }
+            type=order.order_type,
+            parameters={'playlist': order.playlist.name}
         )
+        task.save()
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

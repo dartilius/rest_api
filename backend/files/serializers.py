@@ -55,8 +55,8 @@ class FileSerializer(serializers.ModelSerializer):
         )
         representation['hash'] = {
             'md5': value.md5hash,
-            'sha256': value.sha256,
-            'concat_hash': f'{value.md5hash}{value.sha256}'
+            'sha256': value.sha256hash,
+            'concat_hash': f'{value.md5hash}{value.sha256hash}'
         }
         representation['tags'] = [
             tag.name for tag in value.tags.all()

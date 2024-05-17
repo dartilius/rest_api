@@ -6,11 +6,10 @@ from users.models import CustomUser
 from files.models import Playlist, File
 
 ORDER_TYPES = {
-    # 0: 'Реклама',
-    1: 'Фоновая музыка',
-    2: 'Фоновые видео',
-    3: 'Фоновые картинки',
-    4: 'Бегущая строка'
+    0: 'Фоновая музыка',
+    1: 'Фоновые видео',
+    2: 'Фоновые картинки',
+    3: 'Бегущая строка'
 }
 
 BROADCAST_TYPES = {
@@ -71,20 +70,20 @@ class AdOrder(BaseOrder):
 
     group = models.ForeignKey(
         NomenclatureGroup,
-        related_name='order_group',
+        related_name='ad_orders',
         verbose_name='Группа номенклатур',
         on_delete=models.CASCADE
     )
     file = models.ForeignKey(
         File,
         verbose_name='Файл',
-        related_name="order_file",
+        related_name='ad_orders',
         on_delete=models.CASCADE
     )
     slides = models.ManyToManyField(
         File,
         verbose_name='Слайды',
-        related_name='order_slides',
+        related_name='slides_orders',
         blank=True
     )
     broadcast_type = models.PositiveSmallIntegerField(
@@ -108,19 +107,18 @@ class BgOrder(BaseOrder):
 
     client = models.ForeignKey(
         Nomenclature,
-        related_name='order_client',
+        related_name='bg_orders',
         verbose_name='Номенклатура',
         on_delete=models.CASCADE
     )
     playlist = models.ForeignKey(
         Playlist,
-        related_name='order_playlist',
+        related_name='bg_orders',
         verbose_name='Плейлист',
         on_delete=models.CASCADE
     )
     order_type = models.IntegerField(
         choices=ORDER_TYPES,
-        default=1,
         verbose_name='Тип фона'
     )
 
