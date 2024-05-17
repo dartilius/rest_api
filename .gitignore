@@ -164,7 +164,7 @@ cython_debug/
 
 downloaded_files/
 
-*migrations/*
+*migrations/
 
 # хуйня от вскода и некста
 .next
