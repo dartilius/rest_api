@@ -4,6 +4,7 @@ import { timezonesArray } from '@/shared/type/timezone'
 import { useEffect, useState } from 'react';
 import Cookies from 'js-cookie'
 import {NomenclatureCreateInterface} from "@/shared/interface/Nomenclature.interface";
+import { NomenclaturesService } from '@/services/nomenclatures/nomenclatures.service';
 
 const { Option } = Select;
 
@@ -90,27 +91,25 @@ export default function Create({data}: NomenclatureCreateProps) {
             timezone: formData.timezone,
             settings: formData.settings
         };
+
+        const token = getToken()
     
         // Проверяем, изменилась ли временная зона и добавляем ее в updatedData, если да
         if (formData.timezone !== data?.timezone) {
             updatedData.timezone = formData.timezone;
         }
-    
-        const response = await fetch(`http://192.168.0.180:8000/api/nomenclatures/`, {
-            method: 'Post',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `access_token ${getToken()}` // Invoke getToken to get the token
-            },
-            body: JSON.stringify(updatedData)
-        });
 
+        NomenclaturesService.create(updatedData, token)
     
-        if (response.ok) {
-            setEditMode(false);
-        } else {
-            console.error('Ошибка при сохранении');
-        }
+        // const response = await fetch(`http://192.168.0.180:8000/api/nomenclatures/`, {
+        //     method: 'Post',
+        //     headers: {
+        //         'Content-Type': 'application/json',
+        //         'Authorization': `access_token ${getToken()}` // Invoke getToken to get the token
+        //     },
+        //     body: JSON.stringify(updatedData)
+        // });
+
     };
 
   return (
