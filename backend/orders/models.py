@@ -2,7 +2,7 @@ from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
 from django.db import models
 
 from nomenclatures.models import NomenclatureGroup, Nomenclature
-from users.models import User
+from users.models import CustomUser
 from files.models import Playlist, File
 
 ORDER_TYPES = {
@@ -28,7 +28,7 @@ class BaseOrder(models.Model):
     """Заказ."""
 
     owner = models.ForeignKey(
-        User,
+        CustomUser,
         verbose_name='Создатель',
         on_delete=models.SET_NULL,
         null=True,
@@ -71,19 +71,20 @@ class AdOrder(BaseOrder):
 
     group = models.ForeignKey(
         NomenclatureGroup,
+        related_name='order_group',
         verbose_name='Группа номенклатур',
         on_delete=models.CASCADE
     )
     file = models.ForeignKey(
         File,
         verbose_name='Файл',
-        related_name="ad_file",
+        related_name="order_file",
         on_delete=models.CASCADE
     )
     slides = models.ManyToManyField(
         File,
-        verbose_name="Слайды",
-        related_name="ad_slide",
+        verbose_name='Слайды',
+        related_name='order_slides',
         blank=True
     )
     broadcast_type = models.PositiveSmallIntegerField(
@@ -97,9 +98,9 @@ class AdOrder(BaseOrder):
     )
 
     class Meta:
-        db_table = "ad_order"
-        verbose_name = "Рекламный заказ"
-        verbose_name_plural = "Реклама"
+        db_table = 'ad_order'
+        verbose_name = 'Рекламный заказ'
+        verbose_name_plural = 'Реклама'
 
 
 class BgOrder(BaseOrder):
@@ -107,11 +108,13 @@ class BgOrder(BaseOrder):
 
     client = models.ForeignKey(
         Nomenclature,
+        related_name='order_client',
         verbose_name='Номенклатура',
         on_delete=models.CASCADE
     )
     playlist = models.ForeignKey(
         Playlist,
+        related_name='order_playlist',
         verbose_name='Плейлист',
         on_delete=models.CASCADE
     )
@@ -122,6 +125,6 @@ class BgOrder(BaseOrder):
     )
 
     class Meta:
-        db_table = "bg_order"
-        verbose_name = "Фоновый заказ"
-        verbose_name_plural = "Фон"
+        db_table = 'bg_order'
+        verbose_name = 'Фоновый заказ'
+        verbose_name_plural = 'Фон'

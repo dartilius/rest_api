@@ -1,15 +1,26 @@
 from rest_framework import viewsets
-from rest_framework.pagination import LimitOffsetPagination
 
-from users.models import User
+from users.models import CustomUser
 from users.permissions import IsSuperUserOrAuthReadOnly
-from users.serializers import UserSerializer
+from users.serializers import CustomUserSerializer, CustomUserListSerializer
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class CustomUserViewSet(viewsets.ModelViewSet):
     """Работа с пользователями."""
 
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    pagination_class = LimitOffsetPagination
+    queryset = CustomUser.objects.all().order_by('id')
+    serializer_class = CustomUserSerializer
     # permission_classes = [IsSuperUserOrAuthReadOnly, ]
+
+    def get_serializer(self, *args, **kwargs):
+        if self.action == 'list':
+            serializer = CustomUserListSerializer
+        else:
+            serializer = CustomUserSerializer
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return serializer(*args, **kwargs)

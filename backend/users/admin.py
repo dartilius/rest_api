@@ -1,10 +1,10 @@
 from django.contrib import admin
 
-from users.models import User
+from users.models import CustomUser
 
 
-@admin.register(User)
-class UserAdmin(admin.ModelAdmin):
+@admin.register(CustomUser)
+class CustomUserAdmin(admin.ModelAdmin):
     """Пользователь."""
 
     @admin.display(description='ФИО')
@@ -32,4 +32,4 @@ class UserAdmin(admin.ModelAdmin):
     )
 
     # def get_queryset(self, request):
-    #     return User.objects.all().select_related('')
+    #     return CustomUser.objects.all().select_related('')

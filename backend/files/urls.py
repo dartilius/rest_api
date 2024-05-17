@@ -4,7 +4,6 @@ from rest_framework.routers import SimpleRouter
 from files.views import (
     FileViewSet,
     PlaylistViewSet,
-    PlaylistFilesViewSet,
     TagViewSet
 )
 
@@ -19,11 +18,6 @@ router.register(
     'playlists',
     PlaylistViewSet,
     basename='playlists'
-)
-router.register(
-    r'playlists/(?P<playlist_id>[^/.]+)/files',
-    PlaylistFilesViewSet,
-    basename='playlist_files'
 )
 router.register(
     'files/tag',

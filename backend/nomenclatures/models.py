@@ -5,49 +5,49 @@ from django.core.validators import MaxValueValidator
 from django.db import models
 from django.contrib.postgres.fields import HStoreField
 
-from users.models import User
+from users.models import CustomUser
 
 TIMEZONES = {
-    "Etc/GMT+11": "UTC -11",
-    "Etc/GMT+10": "UTC -10",
-    "Etc/GMT+9": "UTC -9",
-    "Etc/GMT+8": "UTC -8",
-    "Etc/GMT+7": "UTC -7",
-    "Etc/GMT+6": "UTC -6",
-    "Etc/GMT+5": "UTC -5",
-    "Etc/GMT+4": "UTC -4",
-    "Etc/GMT+3": "UTC -3",
-    "Etc/GMT+2": "UTC -2",
-    "Etc/GMT+1": "UTC -1",
-    "Etc/GMT+0": "UTC",
-    "Etc/GMT-1": "UTC +1",
-    "Etc/GMT-2": "UTC +2",
-    "Etc/GMT-3": "UTC +3",
-    "Etc/GMT-4": "UTC +4",
-    "Etc/GMT-5": "UTC +5",
-    "Etc/GMT-6": "UTC +6",
-    "Etc/GMT-7": "UTC +7",
-    "Etc/GMT-8": "UTC +8",
-    "Etc/GMT-9": "UTC +9",
-    "Etc/GMT-10": "UTC +10",
-    "Etc/GMT-11": "UTC +11",
-    "Etc/GMT-12": "UTC +12"
+    'Etc/GMT+11': 'UTC -11',
+    'Etc/GMT+10': 'UTC -10',
+    'Etc/GMT+9': 'UTC -9',
+    'Etc/GMT+8': 'UTC -8',
+    'Etc/GMT+7': 'UTC -7',
+    'Etc/GMT+6': 'UTC -6',
+    'Etc/GMT+5': 'UTC -5',
+    'Etc/GMT+4': 'UTC -4',
+    'Etc/GMT+3': 'UTC -3',
+    'Etc/GMT+2': 'UTC -2',
+    'Etc/GMT+1': 'UTC -1',
+    'Etc/GMT+0': 'UTC',
+    'Etc/GMT-1': 'UTC +1',
+    'Etc/GMT-2': 'UTC +2',
+    'Etc/GMT-3': 'UTC +3',
+    'Etc/GMT-4': 'UTC +4',
+    'Etc/GMT-5': 'UTC +5',
+    'Etc/GMT-6': 'UTC +6',
+    'Etc/GMT-7': 'UTC +7',
+    'Etc/GMT-8': 'UTC +8',
+    'Etc/GMT-9': 'UTC +9',
+    'Etc/GMT-10': 'UTC +10',
+    'Etc/GMT-11': 'UTC +11',
+    'Etc/GMT-12': 'UTC +12'
 }
 
 DAYS = {
-    1: "Понедельник",
-    2: "Вторник",
-    3: "Среда",
-    4: "Четверг",
-    5: "Пятница",
-    6: "Суббота",
-    7: "Воскресенье"
+    1: 'Понедельник',
+    2: 'Вторник',
+    3: 'Среда',
+    4: 'Четверг',
+    5: 'Пятница',
+    6: 'Суббота',
+    7: 'Воскресенье'
 }
 
 STATUSES = {
-    0: "Online",
-    1: "Offline 5+ minutes",
-    2: "Offline 1+ hour"
+    0: 'Online',
+    1: 'Offline 5+ minutes',
+    2: 'Offline 1+ hour'
 }
 
 
@@ -55,7 +55,7 @@ class Nomenclature(models.Model):
     """Рабочая станция."""
 
     keys_validator = KeysValidator(
-        keys=("mon", "tue", "wed", "thu", "fri", "sat", "sun"),
+        keys=('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'),
         strict=True
     )
 
@@ -64,50 +64,51 @@ class Nomenclature(models.Model):
         primary_key=True,
         unique=True,
         editable=False,
-        verbose_name="Уникальный идентификатор"
+        verbose_name='Уникальный идентификатор'
     )
     owner = models.ForeignKey(
-        User,
-        related_name="nomenclature",
-        verbose_name="Создатель",
+        CustomUser,
+        related_name='nomenclatures',
+        verbose_name='Создатель',
         on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
     name = models.CharField(
         max_length=255,
-        verbose_name="Наименование"
+        verbose_name='Наименование',
+        unique=True
     )
     timezone = models.CharField(
         choices=TIMEZONES,
         max_length=31,
-        verbose_name="Часовой пояс",
-        default="Etc/GMT-7"
+        verbose_name='Часовой пояс',
+        default='Etc/GMT-7'
     )
     is_active = models.BooleanField(
-        verbose_name="Актуальность номенклтауры",
+        verbose_name='Актуальность номенклтауры',
         default=True
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
-        verbose_name="Статус",
+        verbose_name='Статус',
         default=2
     )
     version = models.CharField(
         max_length=127,
-        verbose_name="Версия ПО"
+        verbose_name='Версия ПО'
     )
     description = models.TextField(
         blank=True,
         null=True,
-        verbose_name="Описание"
+        verbose_name='Описание'
     )
     created = models.DateTimeField(
         auto_now_add=True,
-        verbose_name="Дата создания"
+        verbose_name='Дата создания'
     )
     settings = HStoreField(
-        verbose_name="Настройки вещания",
+        verbose_name='Настройки вещания',
         validators=(keys_validator,)
     )
     hw_info = HStoreField(
@@ -130,28 +131,29 @@ class NomenclatureGroup(models.Model):
 
     clients = models.ManyToManyField(
         Nomenclature,
-        verbose_name="Рабочие станции",
-        related_name="nomenclature_group"
+        verbose_name='Рабочие станции',
+        related_name='group_clients'
     )
     owner = models.ForeignKey(
-        User,
-        verbose_name="Создатель",
+        CustomUser,
+        related_name='nomenclature_groups',
+        verbose_name='Создатель',
         on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
     name = models.CharField(
         max_length=255,
-        verbose_name="Название",
+        verbose_name='Название',
         unique=True
     )
     description = models.TextField(
         blank=True,
         null=True,
-        verbose_name="Описание"
+        verbose_name='Описание'
     )
     created = models.DateTimeField(
-        verbose_name="Дата создания",
+        verbose_name='Дата создания',
         auto_now_add=True
     )
 
@@ -177,7 +179,7 @@ class NomenclatureAvailability(models.Model):
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
-        verbose_name="Статус",
+        verbose_name='Статус',
         default=2
     )
 
@@ -195,17 +197,17 @@ class StatusHistory(models.Model):
 
     client = models.ForeignKey(
         Nomenclature,
-        verbose_name="Рабочая станция",
+        verbose_name='Рабочая станция',
         related_name='history',
         on_delete=models.CASCADE
     )
     change_time = models.DateTimeField(
-        verbose_name="Время изменения статуса",
+        verbose_name='Время изменения статуса',
         auto_now_add=True
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
-        verbose_name="Статус"
+        verbose_name='Статус'
     )
 
     class Meta:
@@ -215,7 +217,7 @@ class StatusHistory(models.Model):
 
     def __str__(self):
         return (
-            f"{self.change_time.strftime('%Y-%m-%d %H:%M:%S')}: " 
-            f"статус {self.client.name} "
-            f"изменился на {STATUSES[self.status][1]}"
+            f'{self.change_time.strftime("%Y-%m-%d %H:%M:%S")}: ' 
+            f'статус {self.client.name} '
+            f'изменился на {STATUSES[self.status][1]}'
         )

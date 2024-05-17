@@ -1,4 +1,5 @@
 import hashlib
+import subprocess
 
 
 class GetFileInfo:
@@ -22,8 +23,30 @@ class GetFileInfo:
 
     @staticmethod
     def get_length(file_path):
-        pass
+        command = [
+            'ffprobe',
+            '-v',
+            'error',
+            '-show_entries',
+            'format=duration',
+            '-of',
+            'default=noprint_wrappers=1:nokey=1',
+            f'{file_path}'
+        ]
+        file_length = subprocess.run(command)
+
+        return file_length
 
     @staticmethod
     def get_file_size(file_path):
-        pass
+        command = [
+            'ls',
+            '-l',
+            f'{file_path}',
+            '|',
+            'awk',
+            '"{print $5}"'
+        ]
+        file_size = subprocess.run(command)
+
+        return file_size

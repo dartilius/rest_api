@@ -4,7 +4,7 @@ from django.db import models
 from django.db.models.functions import Concat
 
 from files.file_info import GetFileInfo
-from users.models import User
+from users.models import CustomUser
 
 TYPES = {
     0: 'Реклама',
@@ -21,14 +21,19 @@ class Tag(models.Model):
     name = models.CharField(
         max_length=255,
         unique=True,
-        verbose_name='Наименование'
+        verbose_name='Название'
     )
-    # сбда просится slug
+    slug = models.SlugField(
+        unique=True,
+        verbose_name='Слаг',
+        max_length=200,
+    )
 
     def __str__(self):
         return self.name
 
     class Meta:
+        db_table = 'Tag'
         verbose_name = 'Тэг'
         verbose_name_plural = 'Тэг'
 
@@ -42,13 +47,21 @@ class File(models.Model):
         editable=False,
         verbose_name='Уникальный идентификатор'
     )
-    source = models.FileField(
-        verbose_name='Файл',
-        upload_to='files/source/'
-    )
     name = models.CharField(
         max_length=255,
         verbose_name='Наименование'
+    )
+    owner = models.ForeignKey(
+        CustomUser,
+        related_name='files',
+        blank=True,
+        null=True,
+        verbose_name='Кто загрузил',
+        on_delete=models.SET_NULL
+    )
+    source = models.FileField(
+        verbose_name='Файл',
+        upload_to='downloaded_files/source/'
     )
     md5hash = models.CharField(
         max_length=32,
@@ -75,22 +88,14 @@ class File(models.Model):
         default=0,
         verbose_name='Размер'
     )
-    owner = models.ForeignKey(
-        User,
-        related_name='files',
-        blank=True,
-        null=True,
-        verbose_name='Кто загрузил',
-        on_delete=models.SET_NULL
-    )
     file_type = models.PositiveSmallIntegerField(
         choices=TYPES,
         verbose_name='Тип'
     )
-    tag = models.ManyToManyField(
+    tags = models.ManyToManyField(
         Tag,
-        related_name='files',
-        verbose_name='Тэг'
+        related_name='tags',
+        verbose_name='Тэги'
     )
     created = models.DateTimeField(
         auto_now_add=True,
@@ -98,6 +103,7 @@ class File(models.Model):
     )
 
     class Meta:
+        db_table = 'file'
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
 
@@ -133,7 +139,7 @@ class Playlist(models.Model):
         verbose_name='Описание'
     )
     owner = models.ForeignKey(
-        User,
+        CustomUser,
         related_name='playlists',
         verbose_name='Создатель',
         on_delete=models.SET_NULL,
@@ -142,8 +148,7 @@ class Playlist(models.Model):
     )
     files = models.ManyToManyField(
         File,
-        through='PlaylistFiles',
-        related_name='playlist_files',
+        related_name='files',
         verbose_name='Файлы'
     )
     created = models.DateTimeField(
@@ -152,37 +157,9 @@ class Playlist(models.Model):
     )
 
     class Meta:
+        db_table = 'playlist'
         verbose_name = 'Плейлист'
         verbose_name_plural = 'Плейлисты'
 
     def __str__(self):
         return self.name
-
-
-class PlaylistFiles(models.Model):
-    """Файл плейлиста."""
-
-    playlist = models.ForeignKey(
-        Playlist,
-        related_name='playlist',
-        verbose_name='Плейлист',
-        on_delete=models.CASCADE
-    )
-    file = models.ForeignKey(
-        File,
-        related_name='file',
-        verbose_name='Файл',
-        on_delete=models.CASCADE
-    )
-    images = models.ManyToManyField(
-        File,
-        related_name='slides',
-        verbose_name='Слайд'
-    )
-
-    class Meta:
-        verbose_name = 'Файл плейлиста'
-        verbose_name_plural = 'Файлы плейлиста'
-
-    def __str__(self):
-        return f'{self.file.name} - {self.playlist.name}'
