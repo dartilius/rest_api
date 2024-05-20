@@ -57,8 +57,10 @@ services:
     build:
       context: ./frontend
       dockerfile: frontend.dockerfile
+    command: cp -r /app/build/. /frontend_static/
     ports:
       - 3000:3000
-    restart: always
     depends_on:
       - backend
+    volumes:
+      - static:/frontend_static
