@@ -24,6 +24,14 @@ export interface NomenclatureInterface {
     status: string
     timezone: string
     version: string
+    owner: string
+}
+
+export interface NomenclatureCreateInterface {
+    name: string
+    timezone: string
+    description: string
+    settings: SettingsInterface
 }
 
 interface SettingsInterface {
