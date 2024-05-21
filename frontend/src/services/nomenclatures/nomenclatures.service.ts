@@ -1,15 +1,34 @@
 import { API_URL } from "@/config/api.config";
 import { NomenclatureListResponseInterface } from "@/shared/interface/nomenclature.interface";
 
+interface Pagination {
+    page?: number
+    limit?: number
+    search?: string
+}
+
 export const NomenclaturesService = {
 
-    async getAll(): Promise<NomenclatureListResponseInterface>{
-        const response = await fetch(`${API_URL}/api/nomenclatures/`, {
+    async getAll({page, limit, search}: Pagination = {}): Promise<NomenclatureListResponseInterface> {
+        // Строим URL, учитывая, что `page` может быть undefined.
+        let url = `${API_URL}/api/nomenclatures/`;
+        if (page !== undefined) {
+            url += `?page=${page}`;
+        }
+        if (limit !== undefined) {
+            url += `&limit=${limit}`;
+        }
+        if (search !== undefined) {
+            url += `&name__icontains=${search}`;
+        }
+
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
             }
         });
+
         if (response.ok) {
             return response.json();
         } else {
