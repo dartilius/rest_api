@@ -1,7 +1,12 @@
+import os
+import tempfile
 from uuid import uuid4
 
-from django.db import models
+from django.core.files.base import ContentFile
+from django.db import models, IntegrityError
 from django.db.models.functions import Concat
+
+from rest_framework.serializers import ValidationError
 
 from files.file_info import GetFileInfo
 from users.models import CustomUser
@@ -49,7 +54,8 @@ class File(models.Model):
     )
     name = models.CharField(
         max_length=255,
-        verbose_name='Наименование'
+        verbose_name='Наименование',
+        unique=True
     )
     owner = models.ForeignKey(
         CustomUser,
@@ -77,6 +83,7 @@ class File(models.Model):
         Concat(md5hash, sha256hash),
         editable=False,
         max_length=288,
+        unique=True
     )
     length = models.TimeField(
         editable=False,
@@ -110,20 +117,26 @@ class File(models.Model):
     def __str__(self):
         return self.name
 
-    @classmethod
-    def create(cls, **kwargs):
-        FILEINFO = GetFileInfo()
-        custom_criteria = {
-            'md5hash':    FILEINFO.get_md5(kwargs['source']),
-            'sha256hash': FILEINFO.get_sha256(kwargs['source']),
-            'length':     FILEINFO.get_length(kwargs['source']),
-            'size':       FILEINFO.get_file_size(kwargs['source'])
-        }
-        obj = cls.objects.create(
-            defaults=kwargs,
-            **custom_criteria
-        )
-        return obj
+    def save(self, *args, **kwargs):
+        if not self.md5hash or not self.sha256hash or self.size == 0 or self.length == '00:00:00':
+            file_info = GetFileInfo()
+
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                for chunk in self.source.chunks():
+                    temp_file.write(chunk)
+                temp_file_path = temp_file.name
+
+            with open(temp_file_path, 'rb') as temp_file:
+                self.md5hash = file_info.get_md5(temp_file)
+                self.sha256hash = file_info.get_sha256(temp_file)
+                self.hash = self.md5hash + self.sha256hash
+
+            self.length = file_info.get_length(ContentFile(open(temp_file_path, 'rb').read()))
+            self.size = file_info.get_file_size(ContentFile(open(temp_file_path, 'rb').read()))
+
+            os.remove(temp_file_path)
+
+        super().save(*args, **kwargs)
 
 
 class Playlist(models.Model):
@@ -131,7 +144,8 @@ class Playlist(models.Model):
 
     name = models.CharField(
         max_length=255,
-        verbose_name='Название'
+        verbose_name='Название',
+        unique=True
     )
     description = models.TextField(
         blank=True,

@@ -2,6 +2,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
+from files.file_info import GetFileInfo
 from files.filters import FileFilter, PlaylistFilter
 from files.serializers import (
     PlaylistSerializer,
@@ -44,9 +45,6 @@ class FileViewSet(viewsets.ModelViewSet):
                 kwargs['many'] = True
 
         return serializer(*args, **kwargs)
-
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
 
 
 class PlaylistViewSet(viewsets.ModelViewSet):

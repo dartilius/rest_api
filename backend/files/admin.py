@@ -7,12 +7,24 @@ from files.models import File, Playlist, Tag
 class FileAdmin(admin.ModelAdmin):
     """Файл."""
 
+    @admin.display(description='Продолжительность')
+    def full_length(self, obj):
+        return obj.length.strftime('%H:%M:%S')
+
+    @admin.display(description='Размер')
+    def formatted_size(self, obj):
+        if obj.size // 1024 >= 1:
+            formatted_tail = obj.size % 1048576 // 1000
+            return f'{obj.size // 1048576}.{formatted_tail}Mb'
+        else:
+            return f'{obj.size // 1024}Kb'
+
     list_display = (
         'id',
         'name',
         'owner',
-        'length',
-        'size',
+        'full_length',
+        'formatted_size',
         'created'
     )
     search_fields = (

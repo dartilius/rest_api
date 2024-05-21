@@ -71,7 +71,6 @@ class BgOrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         order = serializer.save(owner=self.request.user)
-        # parameters = Playlist.objects.filter(serializer.data['playlist'])
         task = Task.objects.create(
             owner=self.request.user,
             client=order.client,
