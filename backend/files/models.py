@@ -2,6 +2,7 @@ from uuid import uuid4
 
 from django.db import models
 from django.db.models.functions import Concat
+from django_minio_backend import MinioBackend
 
 from files.file_info import GetFileInfo
 from users.models import User
@@ -44,7 +45,8 @@ class File(models.Model):
     )
     source = models.FileField(
         verbose_name='Файл',
-        upload_to='files/source/'
+        upload_to='files/source/',
+        storage=MinioBackend(bucket_name='local-media')
     )
     name = models.CharField(
         max_length=255,
