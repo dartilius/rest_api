@@ -20,8 +20,6 @@ services:
     env_file: .env
     ports:
       - 8000:8000
-    volumes:
-      - static:/backend_static
     depends_on:
       - db
       - files
