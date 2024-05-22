@@ -4,11 +4,11 @@ import axios, { AxiosResponse } from "axios"
 import { removeTokensStorage, saveTokensStorage } from "./auth.helper";
 
 export const AuthService = {
-    async login(username: string, password: string): Promise<AxiosResponse<ITokens>> {
+    async login(email: string, password: string): Promise<AxiosResponse<ITokens>> {
         const response = await axios.post<ITokens>(
             `${API_URL}/auth/jwt/create`,
             {
-                username,
+                email,
                 password
             },
             {
