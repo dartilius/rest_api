@@ -1,7 +1,6 @@
 .container {
     display: flex;
     height: 100vh;
-    font-family: 'Inter medium';
     &_left {
         width: 50%;
         height: auto;
@@ -79,8 +78,10 @@
             &_button {
                 width: 280px;
                 height: 40px;
-                border-radius: 5px;
-                background: rgb(0, 122, 211);
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
                 &_text {
                     color: rgb(255, 255, 255);
                     font-size: 18px;

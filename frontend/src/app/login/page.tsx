@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import styles from './Login.module.scss'
 import { AuthService } from '@/services/auth/auth.service';
 import { useRouter } from 'next/navigation';
+import { Button } from 'antd/lib';
 
 export default function LoginPage() {
     const [email, setEmail] = useState<string>('');
@@ -35,15 +36,15 @@ export default function LoginPage() {
                     <h1 className={styles.container_right_login_title}>Вход</h1>
                     <div className={styles.container_right_login_email}>
                         <p className={styles.container_right_login_email_label}>Email</p>
-                        <input className={styles.container_right_login_email_input} value={email} onChange={(e) => setEmail(e.target.value)} />
+                        <input className={styles.container_right_login_email_input} type='email' value={email} onChange={(e) => setEmail(e.target.value)} required/>
                     </div>
                     <div className={styles.container_right_login_password}>
                         <p className={styles.container_right_login_password_label}>Пароль</p>
                         <input className={styles.container_right_login_password_input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                     </div>
-                    <button type="submit" className={styles.container_right_login_button}>
+                    <Button type='primary' htmlType="submit" className={styles.container_right_login_button}>
                         <p className={styles.container_right_login_button_text}>Войти</p>
-                    </button>
+                    </Button>
                     {error && <p>{error}</p>}
                 </form>
             </div>
