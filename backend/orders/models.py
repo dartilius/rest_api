@@ -12,6 +12,14 @@ ORDER_TYPES = {
     3: 'Бегущая строка'
 }
 
+STATUSES = {
+    0: 'Ожидает эфира',
+    1: 'В эфире',
+    2: 'Завершён',
+    3: 'Отменён',
+    4: 'Ошибка'
+}
+
 BROADCAST_TYPES = {
     0: 'По времени работы точки',
     1: 'Начало работы + смещение по времени',
@@ -44,6 +52,11 @@ class BaseOrder(models.Model):
     )
     broadcast_interval = DateTimeRangeField(
         verbose_name='Интервал работы заказа'
+    )
+    status = models.CharField(
+        choices=STATUSES,
+        verbose_name='Статус',
+        default=0
     )
     created = models.DateTimeField(
         verbose_name='Дата создания',

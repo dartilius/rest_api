@@ -59,7 +59,6 @@ class FileSerializer(serializers.ModelSerializer):
             'sha256': value.sha256hash,
             'concat_hash': f'{value.md5hash}{value.sha256hash}'
         }
-        representation['size_test'] = value.source.size
         representation['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None

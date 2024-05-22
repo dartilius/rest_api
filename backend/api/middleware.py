@@ -16,15 +16,7 @@ class IntegrityMiddleware:
             attribute_name = err_text[
                              err_text.index('Key')+5:err_text.index(')=(')
                              ]
-            match model_name:
-                case 'file': model_name = 'Файл'
-                case 'playlist': model_name = 'Плейлист'
-
-            match attribute_name:
-                case 'name': attribute_name = 'именем'
-                case 'hash': attribute_name = 'хэшем'
 
             return JsonResponse({
-                'IntegrityError': f'{model_name} с таким '
-                                  f'{attribute_name} уже существует'
+                'IntegrityError': (model_name, attribute_name)
             })

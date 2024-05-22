@@ -17,6 +17,9 @@ ROLES = {
 class CustomUser(AbstractUser):
     """Пользователи."""
 
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
     username_validator = UnicodeUsernameValidator(
         message='Такой юзернейм уже занят либо введены запрещённые символы.'
                 'Разрешены только буквы, цифры и @/./+/-/_ символы.'
