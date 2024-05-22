@@ -2,7 +2,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
-from files.file_info import GetFileInfo
 from files.filters import FileFilter, PlaylistFilter
 from files.serializers import (
     PlaylistSerializer,
@@ -27,9 +26,9 @@ class FileViewSet(viewsets.ModelViewSet):
 
     queryset = File.objects.all().select_related(
         'owner'
-    ).prefetch_related('tags').order_by('-created')
+    ).prefetch_related('tags')
     serializer_class = FileSerializer
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = [DjangoFilterBackend]
     filterset_class = FileFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
@@ -46,14 +45,17 @@ class FileViewSet(viewsets.ModelViewSet):
 
         return serializer(*args, **kwargs)
 
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
 
 class PlaylistViewSet(viewsets.ModelViewSet):
     """Работа с плейлистами."""
 
     queryset = Playlist.objects.all().select_related(
         'owner'
-    ).prefetch_related('files').order_by('-created')
-    filter_backends = (DjangoFilterBackend,)
+    ).prefetch_related('files')
+    filter_backends = [DjangoFilterBackend]
     filterset_class = PlaylistFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 

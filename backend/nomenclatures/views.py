@@ -26,8 +26,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     queryset = Nomenclature.objects.filter(
         is_active=True
-    ).select_related('owner', 'availability').order_by('-created')
-    filter_backends = (DjangoFilterBackend,)
+    ).select_related('owner', 'availability')
+    filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
@@ -89,7 +89,7 @@ class NomenclatureGroupViewSet(viewsets.ModelViewSet):
 
     queryset = NomenclatureGroup.objects.all().prefetch_related(
         'clients',
-    ).select_related('owner').order_by('-created')
+    ).select_related('owner')
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

@@ -3,7 +3,7 @@ import tempfile
 from uuid import uuid4
 
 from django.core.files.base import ContentFile
-from django.db import models, IntegrityError
+from django.db import models
 from django.db.models.functions import Concat
 
 from rest_framework.serializers import ValidationError
@@ -39,6 +39,7 @@ class Tag(models.Model):
 
     class Meta:
         db_table = 'tag'
+        ordering = ('name',)
         verbose_name = 'Тэг'
         verbose_name_plural = 'Тэг'
 
@@ -111,6 +112,7 @@ class File(models.Model):
 
     class Meta:
         db_table = 'file'
+        ordering = ('-created',)
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
 
@@ -118,7 +120,12 @@ class File(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        if not self.md5hash or not self.sha256hash or self.size == 0 or self.length == '00:00:00':
+        if (
+            not self.md5hash or
+            not self.sha256hash or
+            self.size == 0 or
+            self.length == '00:00:00'
+        ):
             file_info = GetFileInfo()
 
             with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -131,8 +138,12 @@ class File(models.Model):
                 self.sha256hash = file_info.get_sha256(temp_file)
                 self.hash = self.md5hash + self.sha256hash
 
-            self.length = file_info.get_length(ContentFile(open(temp_file_path, 'rb').read()))
-            self.size = file_info.get_file_size(ContentFile(open(temp_file_path, 'rb').read()))
+            self.length = file_info.get_length(
+                ContentFile(open(temp_file_path, 'rb').read())
+            )
+            self.size = file_info.get_file_size(
+                ContentFile(open(temp_file_path, 'rb').read())
+            )
 
             os.remove(temp_file_path)
 
@@ -172,6 +183,7 @@ class Playlist(models.Model):
 
     class Meta:
         db_table = 'playlist'
+        ordering = ('-created',)
         verbose_name = 'Плейлист'
         verbose_name_plural = 'Плейлисты'
 

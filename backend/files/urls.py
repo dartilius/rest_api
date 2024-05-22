@@ -20,9 +20,9 @@ router.register(
     basename='playlists'
 )
 router.register(
-    'files/tag',
+    'tags',
     TagViewSet,
-    basename='files_tag'
+    basename='tags'
 )
 
 urlpatterns = [

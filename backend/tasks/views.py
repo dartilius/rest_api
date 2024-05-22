@@ -11,10 +11,8 @@ from users.permissions import AuthAndOnlySuperUserDelete
 class TaskViewSet(viewsets.ModelViewSet):
     """Работа с репликациями."""
 
-    queryset = Task.objects.all().select_related(
-        'owner', 'client'
-    ).order_by('-created')
-    filter_backends = (DjangoFilterBackend,)
+    queryset = Task.objects.all().select_related('owner', 'client')
+    filter_backends = [DjangoFilterBackend]
     filterset_class = TaskFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 

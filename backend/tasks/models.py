@@ -23,7 +23,8 @@ TASK_TYPES = {
     5: 'REBOOT',
     6: 'UPDATE',
     7: 'CUSTOM',
-    8: 'PLACEHOLDER'
+    8: 'SET_PARAMETERS',
+    9: 'PLACEHOLDER'
 }
 
 
@@ -39,6 +40,7 @@ class Type(models.Model):
         choices=ORDER_TYPES,
         blank=True,
         null=True,
+        unique=True,
         verbose_name='Тип заказа'
     )
 
@@ -94,6 +96,7 @@ class Task(models.Model):
 
     class Meta:
         db_table = 'task'
+        ordering = ('-created',)
         verbose_name = 'Репликация'
         verbose_name_plural = 'Репликации'
 

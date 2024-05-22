@@ -34,13 +34,6 @@ BROADCAST_TYPES = {
 class BaseOrder(models.Model):
     """Заказ."""
 
-    owner = models.ForeignKey(
-        CustomUser,
-        verbose_name='Создатель',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
     name = models.CharField(
         max_length=255,
         verbose_name='Название'
@@ -81,6 +74,14 @@ class AdOrder(BaseOrder):
             "timedelta": "01:30:00"
         }
 
+    owner = models.ForeignKey(
+        CustomUser,
+        verbose_name='Создатель',
+        related_name='ad_orders',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
     group = models.ForeignKey(
         NomenclatureGroup,
         related_name='ad_orders',
@@ -111,6 +112,7 @@ class AdOrder(BaseOrder):
 
     class Meta:
         db_table = 'ad_order'
+        ordering = ('-created',)
         verbose_name = 'Рекламный заказ'
         verbose_name_plural = 'Реклама'
 
@@ -118,6 +120,14 @@ class AdOrder(BaseOrder):
 class BgOrder(BaseOrder):
     """Фоновый заказ."""
 
+    owner = models.ForeignKey(
+        CustomUser,
+        verbose_name='Создатель',
+        related_name='bg_orders',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
     client = models.ForeignKey(
         Nomenclature,
         related_name='bg_orders',
@@ -137,5 +147,6 @@ class BgOrder(BaseOrder):
 
     class Meta:
         db_table = 'bg_order'
+        ordering = ('-created',)
         verbose_name = 'Фоновый заказ'
         verbose_name_plural = 'Фон'
