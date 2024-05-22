@@ -2,9 +2,9 @@
 import { Button, Form, Input, Select } from 'antd/lib'
 import styles from './NomenclatureCreate.module.scss'
 import { useEffect, useState } from 'react';
-import { NomenclatureCreateInterface } from '@/shared/interface/nomenclature.interface';
 import Cookies from 'js-cookie';
 import { timezonesArray } from '@/shared/types/timezone';
+import {NomenclatureCreateInterface} from "@/shared/interface/nomenclature.interface";
 
 const { Option } = Select;
 
@@ -12,7 +12,7 @@ interface NomenclatureCreateProps {
     data: NomenclatureCreateInterface
 }
 
-export default function Create({data}: NomenclatureCreateProps) {
+export function Create({data}: NomenclatureCreateProps) {
 
     const [formData, setFormData] = useState<any | null>(data);
     const [editMode, setEditMode] = useState<boolean>(false);
