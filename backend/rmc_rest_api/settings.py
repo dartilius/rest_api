@@ -119,18 +119,14 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'collected_static'
-MEDIA_URL = '/media/'
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+CORS_ALLOW_ALL_ORIGINS = True
 
-
-MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
-MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
-MINIO_SECRET_KEY = os.getenv('MINIO_STORAGE_SECRET_KEY')
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+MINIO_ACCESS_KEY = os.getenv("MINIO_STORAGE_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_STORAGE_SECRET_KEY")
 MINIO_USE_HTTPS = False
-MINIO_PUBLIC_BUCKETS = [
+MINIO_PRIVATE_BUCKETS = [
     'local-media',
     'local-static'
 ]

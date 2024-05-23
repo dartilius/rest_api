@@ -48,6 +48,11 @@ class File(models.Model):
         editable=False,
         verbose_name='Уникальный идентификатор'
     )
+    source = models.FileField(
+        verbose_name='Файл',
+        upload_to='files/source/',
+        storage=MinioBackend(bucket_name='local-media')
+    )
     name = models.CharField(
         max_length=255,
         verbose_name='Наименование',
