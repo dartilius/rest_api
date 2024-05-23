@@ -25,4 +25,4 @@ class TaskAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return Task.objects.all().select_related('owner')
+        return Task.objects.all().select_related('owner', 'client')

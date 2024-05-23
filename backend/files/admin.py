@@ -1,18 +1,30 @@
 from django.contrib import admin
 
-from files.models import File, Playlist, Tag, PlaylistFiles
+from files.models import File, Playlist, Tag
 
 
 @admin.register(File)
 class FileAdmin(admin.ModelAdmin):
     """Файл."""
 
+    @admin.display(description='Продолжительность')
+    def full_length(self, obj):
+        return obj.length.strftime('%H:%M:%S')
+
+    @admin.display(description='Размер')
+    def formatted_size(self, obj):
+        if obj.size // 1024 >= 1:
+            formatted_tail = obj.size % 1048576 // 1000
+            return f'{obj.size // 1048576}.{formatted_tail}Mb'
+        else:
+            return f'{obj.size // 1024}Kb'
+
     list_display = (
         'id',
         'name',
         'owner',
-        'length',
-        'size',
+        'full_length',
+        'formatted_size',
         'created'
     )
     search_fields = (
@@ -24,7 +36,7 @@ class FileAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return File.objects.all().select_related(
             'owner'
-        ).prefetch_related('tag')
+        ).prefetch_related('tags')
 
     def save_model(self, request, obj, form, change):
         obj.owner = obj.owner or request.user
@@ -51,16 +63,6 @@ class PlaylistAdmin(admin.ModelAdmin):
         return Playlist.objects.all().select_related(
             'owner'
         ).prefetch_related('files')
-
-
-@admin.register(PlaylistFiles)
-class PlaylistFilesAdmin(admin.ModelAdmin):
-    """Номенклатуры группы."""
-
-    def get_queryset(self, request):
-        return PlaylistFiles.objects.all().select_related(
-            'playlist', 'file'
-        ).prefetch_related('images')
 
 
 @admin.register(Tag)
