@@ -1,23 +1,24 @@
-from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
+from files.filters import FileFilter, PlaylistFilter
 from files.serializers import (
     PlaylistSerializer,
-    PlaylistFilesSerializer,
-    FileSerializer, TagSerializer
+    PlaylistListSerializer,
+    FileSerializer,
+    FileListSerializer,
+    TagSerializer
 )
-from files.models import File, Playlist, PlaylistFiles, Tag
+from files.models import Playlist, File, Tag
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
 class TagViewSet(viewsets.ModelViewSet):
     """Работа с темами файлов."""
 
-    queryset = Tag.objects.all()
+    queryset = Tag.objects.all().order_by('id')
     serializer_class = TagSerializer
-    pagination_class = LimitOffsetPagination
 
 
 class FileViewSet(viewsets.ModelViewSet):
@@ -25,37 +26,51 @@ class FileViewSet(viewsets.ModelViewSet):
 
     queryset = File.objects.all().select_related(
         'owner'
-    ).prefetch_related('theme')
+    ).prefetch_related('tags')
     serializer_class = FileSerializer
-    pagination_class = LimitOffsetPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = FileFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
+    def get_serializer(self, *args, **kwargs):
+        if self.action == 'list':
+            serializer = FileListSerializer
+        else:
+            serializer = FileSerializer
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return serializer(*args, **kwargs)
+
     def perform_create(self, serializer):
-        file = serializer.save(owner=self.request.user)
-        playlist = Playlist.objects.create(
-            owner=self.request.user,
-            name=file.name,
-            description=file.name
-        )
-        playlist_files = PlaylistFiles.objects.create(
-            playlist=playlist,
-            file=file
-        )
+        serializer.save(owner=self.request.user)
 
 
 class PlaylistViewSet(viewsets.ModelViewSet):
     """Работа с плейлистами."""
 
-    serializer_class = PlaylistSerializer
     queryset = Playlist.objects.all().select_related(
-        'owner', 'settings'
+        'owner'
     ).prefetch_related('files')
-    pagination_class = LimitOffsetPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = PlaylistFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
+    def get_serializer(self, *args, **kwargs):
+        if self.action == 'list':
+            serializer = PlaylistListSerializer
+        else:
+            serializer = PlaylistSerializer
+        if 'data' in kwargs:
+            data = kwargs['data']
 
-class PlaylistFilesViewSet(viewsets.ModelViewSet):
-    """Работа с файлами плейлиста."""
+            if isinstance(data, list):
+                kwargs['many'] = True
 
-    serializer_class = PlaylistFilesSerializer
-    queryset = PlaylistFiles.objects.filter()
+        return serializer(*args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)

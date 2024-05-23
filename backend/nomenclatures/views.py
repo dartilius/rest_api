@@ -9,14 +9,15 @@ from rest_framework.status import HTTP_200_OK
 from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
+    NomenclatureListSerializer,
     NomenclatureGroupSerializer,
-    NomenclatureListSerializer, StatusHistorySerializer
+    NomenclatureGroupListSerializer,
+    StatusHistorySerializer
 )
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureGroup
 )
-from users.models import User
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
@@ -25,8 +26,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     queryset = Nomenclature.objects.filter(
         is_active=True
-    ).select_related('owner', 'availability').order_by('name')
-    filter_backends = (DjangoFilterBackend,)
+    ).select_related('owner', 'availability')
+    filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
@@ -86,10 +87,22 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 class NomenclatureGroupViewSet(viewsets.ModelViewSet):
     """Работа с группами номенклатур."""
 
-    serializer_class = NomenclatureGroupSerializer
     queryset = NomenclatureGroup.objects.all().prefetch_related(
         'clients',
-    ).select_related('owner').order_by('name')
+    ).select_related('owner')
+
+    def get_serializer(self, *args, **kwargs):
+        if self.action == 'list':
+            serializer = NomenclatureGroupListSerializer
+        else:
+            serializer = NomenclatureGroupSerializer
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
