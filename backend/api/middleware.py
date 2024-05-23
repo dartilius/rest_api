@@ -1,5 +1,5 @@
 from django.db.utils import IntegrityError
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse, HttpResponse
 
 
 class IntegrityMiddleware:
@@ -16,7 +16,18 @@ class IntegrityMiddleware:
             attribute_name = err_text[
                              err_text.index('Key')+5:err_text.index(')=(')
                              ]
-
-            return JsonResponse({
-                'IntegrityError': (model_name, attribute_name)
-            })
+            response_content = (
+                f"""
+                    <html>
+                    <head><title>Integrity Error</title></head>
+                    <body>
+                        <h1>Integrity Error</h1>
+                        <p>Model: {model_name}</p>
+                        <p>Attribute: {attribute_name}</p>
+                        <button onclick="history.back()">Go Back</button>
+                    </body>
+                    </html>
+                """)
+            return HttpResponse(
+                response_content, content_type="text/html", status=400
+            )

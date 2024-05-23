@@ -18,19 +18,13 @@ class CustomUser(AbstractUser):
     """Пользователи."""
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ['username']
 
     username_validator = UnicodeUsernameValidator(
         message='Такой юзернейм уже занят либо введены запрещённые символы.'
                 'Разрешены только буквы, цифры и @/./+/-/_ символы.'
     )
 
-    username = models.CharField(
-        max_length=150,
-        unique=True,
-        validators=[username_validator],
-        verbose_name='Логин',
-    )
     last_name = models.CharField(
         max_length=150,
         verbose_name='Фамилия',

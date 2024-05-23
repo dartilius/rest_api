@@ -1,12 +1,7 @@
-import os
-import tempfile
 from uuid import uuid4
 
-from django.core.files.base import ContentFile
 from django.db import models
-from django.db.models.functions import Concat
-
-from rest_framework.serializers import ValidationError
+from django_minio_backend import MinioBackend
 
 from files.file_info import GetFileInfo
 from users.models import CustomUser
@@ -68,7 +63,8 @@ class File(models.Model):
     )
     source = models.FileField(
         verbose_name='Файл',
-        upload_to='downloaded_files/source/'
+        upload_to='downloaded_files/source/',
+        storage=MinioBackend(bucket_name='local-media')
     )
     md5hash = models.CharField(
         max_length=32,
@@ -81,7 +77,6 @@ class File(models.Model):
         verbose_name='SHA256'
     )
     hash = models.CharField(
-        Concat(md5hash, sha256hash),
         editable=False,
         max_length=288,
         unique=True
@@ -120,33 +115,12 @@ class File(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        if (
-            not self.md5hash or
-            not self.sha256hash or
-            self.size == 0 or
-            self.length == '00:00:00'
-        ):
-            file_info = GetFileInfo()
-
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                for chunk in self.source.chunks():
-                    temp_file.write(chunk)
-                temp_file_path = temp_file.name
-
-            with open(temp_file_path, 'rb') as temp_file:
-                self.md5hash = file_info.get_md5(temp_file)
-                self.sha256hash = file_info.get_sha256(temp_file)
-                self.hash = self.md5hash + self.sha256hash
-
-            self.length = file_info.get_length(
-                ContentFile(open(temp_file_path, 'rb').read())
-            )
-            self.size = file_info.get_file_size(
-                ContentFile(open(temp_file_path, 'rb').read())
-            )
-
-            os.remove(temp_file_path)
-
+        file = self.source.file
+        self.md5hash = GetFileInfo.get_md5(file)
+        self.sha256hash = GetFileInfo.get_sha256(file)
+        self.hash = f'{self.md5hash}{self.sha256hash}'
+        self.length = GetFileInfo.get_length(file)
+        self.size = GetFileInfo.get_file_size(file)
         super().save(*args, **kwargs)
 
 
