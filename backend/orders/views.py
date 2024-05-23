@@ -2,7 +2,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
-from files.models import File, Playlist
 from orders.filters import AdOrderFilter, BgOrderFilter
 from orders.serializers import (
     AdOrderSerializer,
@@ -21,7 +20,7 @@ class AdOrderViewSet(viewsets.ModelViewSet):
     """Работа с заказами."""
 
     queryset = AdOrder.objects.all().select_related('owner', 'group', 'file')
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
@@ -32,17 +31,13 @@ class AdOrderViewSet(viewsets.ModelViewSet):
             Task(
                 owner=self.request.user,
                 client=client,
-                type=0,
+                type=4,
                 parameters={
-                    'parameters': serializer.data[
-                        'adorder__parameters'
-                    ],
-                    'broadcast_type': serializer.data[
-                        'adorder__broadcast_type'
-                    ],
-                    'files': File.objects.filter(
-                        serializer.data['file']
-                    )
+                    'order_parameters': order.parameters,
+                    'broadcast_type': order.broadcast_type,
+                    'broadcast_interval': order.broadcast_interval,
+                    'file': order.file,
+                    'slides': order.slides
                 }
             ) for client in clients
         )
@@ -66,27 +61,25 @@ class BgOrderViewSet(viewsets.ModelViewSet):
     """Работа с заказами."""
 
     queryset = BgOrder.objects.all().select_related(
-        'owner',
-        'client',
-        'playlist'
+        'owner', 'client', 'playlist'
     )
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
         order = serializer.save(owner=self.request.user)
-        client = order.client.all()
-        Task.objects.create(
+        task = Task.objects.create(
             owner=self.request.user,
-            client=client,
-            type=Type.objects.get(order_type=serializer.data['order_type']),
+            client=order.client,
+            type=order.order_type,
             parameters={
-                'playlist': Playlist.objects.filter(
-                    serializer.data['playlist']
-                )
+                'type': order.order_type,
+                'playlist': order.playlist.name,
+                'broadcast_interval': order.broadcast_interval
             }
         )
+        task.save()
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

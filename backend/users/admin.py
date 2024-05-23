@@ -33,3 +33,8 @@ class CustomUserAdmin(admin.ModelAdmin):
 
     # def get_queryset(self, request):
     #     return CustomUser.objects.all().select_related('')
+
+
+# @admin.register()
+# class JWTAdmin(admin.ModelAdmin):
+#     list_display = '__all__'

@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from django.db import models
-from django.db.models.functions import Concat
+from django_minio_backend import MinioBackend
 
 from files.file_info import GetFileInfo
 from users.models import CustomUser
@@ -33,7 +33,8 @@ class Tag(models.Model):
         return self.name
 
     class Meta:
-        db_table = 'Tag'
+        db_table = 'tag'
+        ordering = ('name',)
         verbose_name = 'Тэг'
         verbose_name_plural = 'Тэг'
 
@@ -49,7 +50,8 @@ class File(models.Model):
     )
     name = models.CharField(
         max_length=255,
-        verbose_name='Наименование'
+        verbose_name='Наименование',
+        unique=True
     )
     owner = models.ForeignKey(
         CustomUser,
@@ -61,7 +63,8 @@ class File(models.Model):
     )
     source = models.FileField(
         verbose_name='Файл',
-        upload_to='downloaded_files/source/'
+        upload_to='downloaded_files/source/',
+        storage=MinioBackend(bucket_name='local-media')
     )
     md5hash = models.CharField(
         max_length=32,
@@ -74,9 +77,9 @@ class File(models.Model):
         verbose_name='SHA256'
     )
     hash = models.CharField(
-        Concat(md5hash, sha256hash),
         editable=False,
         max_length=288,
+        unique=True
     )
     length = models.TimeField(
         editable=False,
@@ -94,7 +97,7 @@ class File(models.Model):
     )
     tags = models.ManyToManyField(
         Tag,
-        related_name='tags',
+        related_name='files',
         verbose_name='Тэги'
     )
     created = models.DateTimeField(
@@ -104,26 +107,21 @@ class File(models.Model):
 
     class Meta:
         db_table = 'file'
+        ordering = ('-created',)
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
 
     def __str__(self):
         return self.name
 
-    @classmethod
-    def create(cls, **kwargs):
-        FILEINFO = GetFileInfo()
-        custom_criteria = {
-            'md5hash':    FILEINFO.get_md5(kwargs['source']),
-            'sha256hash': FILEINFO.get_sha256(kwargs['source']),
-            'length':     FILEINFO.get_length(kwargs['source']),
-            'size':       FILEINFO.get_file_size(kwargs['source'])
-        }
-        obj = cls.objects.create(
-            defaults=kwargs,
-            **custom_criteria
-        )
-        return obj
+    def save(self, *args, **kwargs):
+        file = self.source.file
+        self.md5hash = GetFileInfo.get_md5(file)
+        self.sha256hash = GetFileInfo.get_sha256(file)
+        self.hash = f'{self.md5hash}{self.sha256hash}'
+        self.length = GetFileInfo.get_length(file)
+        self.size = GetFileInfo.get_file_size(file)
+        super().save(*args, **kwargs)
 
 
 class Playlist(models.Model):
@@ -131,7 +129,8 @@ class Playlist(models.Model):
 
     name = models.CharField(
         max_length=255,
-        verbose_name='Название'
+        verbose_name='Название',
+        unique=True
     )
     description = models.TextField(
         blank=True,
@@ -158,6 +157,7 @@ class Playlist(models.Model):
 
     class Meta:
         db_table = 'playlist'
+        ordering = ('-created',)
         verbose_name = 'Плейлист'
         verbose_name_plural = 'Плейлисты'
 

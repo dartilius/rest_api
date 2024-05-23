@@ -50,7 +50,5 @@ class BgOrderAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return BgOrder.objects.all().select_related(
-            'owner',
-            'client',
-            'playlist'
+            'owner', 'client', 'playlist'
         )

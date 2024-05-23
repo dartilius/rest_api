@@ -119,6 +119,7 @@ class Nomenclature(models.Model):
 
     class Meta:
         db_table = 'nomenclature'
+        ordering = ('-created',)
         verbose_name = 'Номенклатуру'
         verbose_name_plural = 'Номенклатуры'
 
@@ -132,7 +133,7 @@ class NomenclatureGroup(models.Model):
     clients = models.ManyToManyField(
         Nomenclature,
         verbose_name='Рабочие станции',
-        related_name='group_clients'
+        related_name='nomenclature_groups'
     )
     owner = models.ForeignKey(
         CustomUser,
@@ -159,6 +160,7 @@ class NomenclatureGroup(models.Model):
 
     class Meta:
         db_table = 'group'
+        ordering = ('-created',)
         verbose_name = 'Группу'
         verbose_name_plural = 'Группы'
 
@@ -185,6 +187,7 @@ class NomenclatureAvailability(models.Model):
 
     class Meta:
         db_table = 'availability'
+        ordering = ('-last_answer_date',)
         verbose_name = 'Время последнего ответа'
         verbose_name_plural = 'Время последнего ответа'
 
@@ -212,6 +215,7 @@ class StatusHistory(models.Model):
 
     class Meta:
         db_table = 'status_history'
+        ordering = ('-change_time',)
         verbose_name = 'Историю доступности'
         verbose_name_plural = 'История доступности'
 

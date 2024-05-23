@@ -31,6 +31,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
             'broadcast_interval',
             'broadcast_type',
             'parameters',
+            'status',
             'created'
         )
         read_only_fields = (
@@ -194,6 +195,7 @@ class AdOrderListSerializer(serializers.ModelSerializer):
             'group',
             'file',
             'slides',
+            'status',
             'broadcast_interval'
         )
         read_only_fields = fields
@@ -234,8 +236,10 @@ class BgOrderSerializer(serializers.ModelSerializer):
             'description',
             'owner',
             'client',
+            'order_type',
             'playlist',
             'broadcast_interval',
+            'status',
             'created'
         )
         read_only_fields = (
@@ -278,6 +282,7 @@ class BgOrderListSerializer(serializers.ModelSerializer):
             'name',
             'client',
             'playlist',
+            'status',
             'broadcast_interval'
         )
         read_only_fields = fields

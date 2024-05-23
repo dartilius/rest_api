@@ -14,6 +14,19 @@ STATUSES = {
     4: 'Ошибка'
 }
 
+TASK_TYPES = {
+    0: 'BGMUSIC',
+    1: 'BGVIDEO',
+    2: 'BGIMAGE',
+    3: 'TICKER',
+    4: 'AD',
+    5: 'REBOOT',
+    6: 'UPDATE',
+    7: 'CUSTOM',
+    8: 'SET_PARAMETERS',
+    9: 'PLACEHOLDER'
+}
+
 
 class Type(models.Model):
     """Тип репликации."""
@@ -27,8 +40,11 @@ class Type(models.Model):
         choices=ORDER_TYPES,
         blank=True,
         null=True,
+        unique=True,
         verbose_name='Тип заказа'
     )
+
+    """Оно нам реально нужно?"""
 
 
 class Task(models.Model):
@@ -59,12 +75,10 @@ class Task(models.Model):
         null=True,
         verbose_name='Параметры'
     )
-    type = models.ForeignKey(
-        Type,
-        default=0,
-        related_name='tasks',
-        verbose_name='Тип',
-        on_delete=models.CASCADE
+    type = models.CharField(
+        choices=TASK_TYPES,
+        default=8,
+        verbose_name='Тип'
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
@@ -82,6 +96,7 @@ class Task(models.Model):
 
     class Meta:
         db_table = 'task'
+        ordering = ('-created',)
         verbose_name = 'Репликация'
         verbose_name_plural = 'Репликации'
 
