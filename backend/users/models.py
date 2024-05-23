@@ -18,6 +18,8 @@ class User(AbstractUser):
     """Пользователи."""
 
     username_validator = UnicodeUsernameValidator
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
 
     username = models.CharField(
         max_length=150,
