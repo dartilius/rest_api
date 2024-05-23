@@ -12,7 +12,7 @@ from nomenclatures.models import (
     TIMEZONES, StatusHistory
 )
 
-logger = setup_logger('nomenclatures', 'backend/logs/nomenclatures.log')
+logger = setup_logger('nomenclatures', 'logs/nomenclatures.log')
 
 
 class NomenclatureSerializer(serializers.ModelSerializer):

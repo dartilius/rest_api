@@ -7,7 +7,7 @@ from files.models import Playlist
 from nomenclatures.models import NomenclatureGroup, Nomenclature
 from orders.models import AdOrder, BgOrder, BROADCAST_TYPES
 
-logger = setup_logger('orders', 'backend/logs/orders.log')
+logger = setup_logger('orders', 'logs/orders.log')
 
 
 class AdOrderSerializer(serializers.ModelSerializer):
