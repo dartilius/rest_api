@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 from django.db import models
-from django.db.models.functions import Concat
 from django_minio_backend import MinioBackend
 
 from files.file_info import GetFileInfo
