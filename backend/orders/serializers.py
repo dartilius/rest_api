@@ -1,13 +1,9 @@
 from rest_framework import serializers
 from datetime import time, timedelta as td
 
-from api.logger import setup_logger
-
 from files.models import Playlist
 from nomenclatures.models import NomenclatureGroup, Nomenclature
 from orders.models import AdOrder, BgOrder, BROADCAST_TYPES
-
-logger = setup_logger('orders', 'backend/logs/orders.log')
 
 
 class AdOrderSerializer(serializers.ModelSerializer):
@@ -58,7 +54,6 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 start = time(start)
                 end = time(end)
             except Exception as e:
-                logger.exception(f'Возникла ошибка: {e}')
                 raise serializers.ValidationError(e)
             if not time(0, 0, 0) <= start < end <= time(23, 59, 59):
                 raise serializers.ValidationError(
@@ -83,7 +78,6 @@ class AdOrderSerializer(serializers.ModelSerializer):
             try:
                 timedelta = time(timedelta)
             except Exception as e:
-                logger.exception(f'Возникла ошибка: {e}')
                 raise serializers.ValidationError(e)
             if not time(0, 0, 0) <= timedelta:
                 raise serializers.ValidationError(
@@ -158,7 +152,6 @@ class AdOrderSerializer(serializers.ModelSerializer):
                     __validate_trigger(event_val, ad_action)
 
         except Exception as e:
-            logger.exception(f'Возникла ошибка: {e}')
             raise serializers.ValidationError(e)
 
     def to_representation(self, value):

@@ -17,14 +17,17 @@ ROLES = {
 class CustomUser(AbstractUser):
     """Пользователи."""
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
-
     username_validator = UnicodeUsernameValidator(
-        message='Такой юзернейм уже занят либо введены запрещённые символы.'
+        message='Такая почта уже занята, либо введены запрещённые символы.'
                 'Разрешены только буквы, цифры и @/./+/-/_ символы.'
     )
 
+    username = models.EmailField(
+        max_length=255,
+        unique=True,
+        validators=[username_validator],
+        verbose_name='Электронная почта',
+    )
     last_name = models.CharField(
         max_length=150,
         verbose_name='Фамилия',
@@ -45,11 +48,6 @@ class CustomUser(AbstractUser):
         verbose_name='Роль',
         null=True,
         blank=True
-    )
-    email = models.EmailField(
-        max_length=255,
-        unique=True,
-        verbose_name='Электронная почта'
     )
     phone_number = PhoneNumberField(
         unique=True,

@@ -4,15 +4,11 @@ import json
 from datetime import time
 from rest_framework import serializers
 
-from api.logger import setup_logger
-
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureGroup,
     TIMEZONES, StatusHistory
 )
-
-logger = setup_logger('nomenclatures', 'backend/logs/nomenclatures.log')
 
 
 class NomenclatureSerializer(serializers.ModelSerializer):
@@ -56,12 +52,14 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             try:
                 start = time(*args[0])
                 end = time(*args[1])
+            except TypeError:
+                raise serializers.ValidationError('Время должно быть в формате ((с..,), (по..,))')
             except Exception as e:
-                logger.exception(f'Возникла ошибка: {e}')
                 raise serializers.ValidationError(e)
             if not time(0, 0, 0) <= start < end <= time(23, 59, 59):
                 raise serializers.ValidationError(
-                    'Неправильно задан интервал времени'
+                    'Время начала не может быть больше времени окончания '
+                    'и должно быть в промежутке 00:00:00 - 23:59:59'
                 )
 
         def __validate_volume(volume: tuple) -> None:
@@ -86,31 +84,31 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     'worktime': ast.literal_eval(j['worktime']),
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
-                for key in req_keys:
-                    if key not in j:
+            except KeyError as k:
+                raise serializers.ValidationError(f'{k} не передан')
+            for key in req_keys:
+                if not isinstance(req_keys[key], tuple):
+                    raise serializers.ValidationError(
+                        'Не правильный формат данных'
+                    )
+            __validate_time(*req_keys['worktime'])
+            __validate_volume(req_keys['default_volume'])
+            """
+            ЭТО ДЕРЬМО НАДО ПОФИКСИТЬ
+            try:
+                sorted_times = sorted(day['custom_volume'])
+                for i in sorted_times:
+                    if i[1][0] < i[0][1]:
                         raise serializers.ValidationError(
-                            f'{key} не передан'
+                            'Обнаружено пересечение в часах '
+                            'пользовательских настроек громкости'
                         )
-                    if not isinstance(req_keys[key], tuple):
-                        raise serializers.ValidationError(
-                            'Не правильный формат данных'
-                        )
-                __validate_time(*req_keys['worktime'])
-                __validate_volume(req_keys['default_volume'])
-                if 'custom_volume' in day:
-                    sorted_times = sorted(day['custom_volume'].keys())
-                    for i in sorted_times:
-                        if i[1][0] < i[0][1]:
-                            raise serializers.ValidationError(
-                                'Обнаружено пересечение в часах '
-                                'пользовательских настроек громкости'
-                            )
-                    for k, v in day['custom_volume']:
-                        __validate_time(*ast.literal_eval(k))
-                        __validate_volume(ast.literal_eval(v))
-            except Exception as e:
-                logger.exception(f'Возникла ошибка: {e}')
-                raise serializers.ValidationError(e)
+                for k, v in day['custom_volume']:
+                    __validate_time(*ast.literal_eval(k))
+                    __validate_volume(ast.literal_eval(v))
+            except KeyError:
+                print('huuuuuuuuuuuuuy')
+            """
         return value
 
     def validate_hw_info(self, value):
@@ -144,7 +142,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             try:
                 representation['settings'][day] = {
                     'worktime': (start, end),
-                    'custom_volume': ast.literal_eval(j['custom_volume']),
+                    'custom_volume': [(
+                        f'{time(*ast.literal_eval(k)[0])} - '
+                        f'{time(*ast.literal_eval(k)[1])}',
+                        ast.literal_eval(v)
+                    ) for k, v in j['custom_volume'].items()],
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
             except KeyError:
