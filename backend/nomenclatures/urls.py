@@ -3,8 +3,6 @@ from rest_framework.routers import SimpleRouter
 
 from nomenclatures.views import (
     NomenclatureViewSet,
-    HardWareInfoViewSet,
-    SettingsViewSet,
     NomenclatureGroupViewSet
 )
 
@@ -14,16 +12,6 @@ router.register(
     'nomenclatures',
     NomenclatureViewSet,
     basename='nomenclatures'
-)
-router.register(
-    r'nomenclatures/(?P<nomenclature_id>[^/.]+)/hw_info',
-    HardWareInfoViewSet,
-    basename='hw_info'
-)
-router.register(
-    r'nomenclatures/(?P<nomenclature_id>[^/.]+)/settings',
-    SettingsViewSet,
-    basename='settings'
 )
 router.register(
     'groups',
