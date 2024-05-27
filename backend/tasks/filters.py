@@ -6,7 +6,7 @@ from tasks.models import Task
 
 
 class TaskFilter(FilterSet):
-    """Фильтрация номенклатур."""
+    """Фильтрация репликаций."""
 
     owner = CharFilter(method='filter_by_owner_name')
     id = CharFilter(field_name='id', lookup_expr='exact')

@@ -6,7 +6,7 @@ from orders.models import AdOrder, BgOrder
 
 
 class AdOrderFilter(FilterSet):
-    """Фильтрация номенклатур."""
+    """Фильтрация рекламных заказов."""
 
     owner = CharFilter(method='filter_by_owner_name')
     name = CharFilter(field_name='name', lookup_expr='icontains')
@@ -39,7 +39,7 @@ class AdOrderFilter(FilterSet):
 
 
 class BgOrderFilter(FilterSet):
-    """Фильтрация номенклатур."""
+    """Фильтрация фоновых заказов."""
 
     owner = CharFilter(method='filter_by_owner_name')
     name = CharFilter(field_name='name', lookup_expr='icontains')

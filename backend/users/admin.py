@@ -19,7 +19,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         'id',
         'full_name',
         'role',
-        'username',
+        'email',
         'phone_number',
         'is_active',
         'created',
