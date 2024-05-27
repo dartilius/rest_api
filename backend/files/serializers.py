@@ -1,12 +1,12 @@
+from django.db import IntegrityError
 from rest_framework import serializers
-from datetime import timedelta as td
 
-from files.models import File, Playlist, PlaylistFiles, Tag
-from users.serializers import UserSerializer
+from files.models import File, Playlist, Tag
+from users.serializers import CustomUserSerializer
 
 
 class TagSerializer(serializers.ModelSerializer):
-    """Сериализация тематик файлов."""
+    """Сериализация тегов файлов."""
 
     class Meta:
         fields = (
@@ -20,29 +20,28 @@ class TagSerializer(serializers.ModelSerializer):
 class FileSerializer(serializers.ModelSerializer):
     """Сериализация файлов."""
 
-    owner = UserSerializer(read_only=True)
-    tag = TagSerializer(many=True, required=False)
+    tags = serializers.SlugRelatedField(
+        slug_field='slug',
+        many=True,
+        queryset=Tag.objects.all(),
+        write_only=True
+    )
 
     class Meta:
         fields = (
             'id',
             'owner',
             'name',
-            'source',
-            'md5hash',
-            'sha256hash',
             'hash',
             'length',
             'size',
             'file_type',
-            'tag',
+            'tags',
             'created'
         )
         read_only_fields = (
             'id',
             'owner',
-            'md5hash',
-            'sha256hash',
             'hash',
             'length',
             'size',
@@ -50,40 +49,105 @@ class FileSerializer(serializers.ModelSerializer):
         )
         model = File
 
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = (
+            f'{value.owner.last_name} {value.owner.first_name}'
+        )
+        representation['hash'] = {
+            'md5': value.md5hash,
+            'sha256': value.sha256hash,
+            'concat_hash': value.hash
+        }
+        representation['tags'] = [
+            tag.name for tag in value.tags.all()
+        ] if value.tags.exists() else None
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return representation
 
-class PlaylistSerializer(serializers.ModelSerializer):
-    """Сериализация плейлистов."""
 
-    files = FileSerializer(many=True)
+class FileListSerializer(serializers.ModelSerializer):
+    """Сериализация файлов."""
 
     class Meta:
         fields = (
             'id',
             'name',
-            'files',
+            'length',
+            'size',
+            'file_type',
+            'created'
+        )
+        read_only_fields = fields
+        model = File
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = (
+            f'{value.owner.last_name} {value.owner.first_name}'
+        )
+        representation['tags'] = [
+            tag.name for tag in value.tags.all()
+        ] if value.tags.exists() else None
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return representation
+
+
+class PlaylistSerializer(serializers.ModelSerializer):
+    """Сериализация плейлистов."""
+
+    files = serializers.SlugRelatedField(
+        slug_field='id',
+        queryset=File.objects.all(),
+        write_only=True,
+        many=True
+    )
+
+    class Meta:
+        fields = (
+            'id',
+            'name',
             'description',
+            'owner',
+            'files',
             'created'
         )
         read_only_fields = (
             'id',
+            'owner',
             'created'
         )
         model = Playlist
 
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = (
+            f'{value.owner.last_name} {value.owner.first_name}'
+        )
+        representation['files'] = [
+            {'id': file.id, 'name': file.name} for file in value.files.all()
+        ]
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return representation
 
-class PlaylistFilesSerializer(serializers.ModelSerializer):
-    """Сериализация связи плейлист - файл."""
 
-    file = FileSerializer(many=True)
-    playlist = PlaylistSerializer(required=True)
-    # images = PlaylistFilesImagesField()
+class PlaylistListSerializer(serializers.ModelSerializer):
+    """Сериализация плейлистов."""
 
     class Meta:
-        model = PlaylistFiles
         fields = (
             'id',
-            'file',
-            'playlist',
-            'images'
+            'name',
+            'created'
         )
+        read_only_fields = fields
+        model = Playlist
 
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = (
+            f'{value.owner.last_name} {value.owner.first_name}'
+        )
+        representation['files_count'] = len(value.files.all())
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return representation

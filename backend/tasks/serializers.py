@@ -1,16 +1,17 @@
 from rest_framework import serializers
 
+from nomenclatures.models import Nomenclature
 from tasks.models import Task
-
-from nomenclatures.serializers import NomenclatureSerializer
-from users.serializers import UserSerializer
 
 
 class TaskSerializer(serializers.ModelSerializer):
     """Сериализация репликаций."""
 
-    owner = UserSerializer(read_only=True)
-    client = NomenclatureSerializer()
+    client = serializers.SlugRelatedField(
+        slug_field='id',
+        queryset=Nomenclature.objects.all(),
+        write_only=True
+    )
 
     class Meta:
         fields = (
@@ -26,10 +27,50 @@ class TaskSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'id',
             'owner',
-            'client',  # ???
+            'created',
+            'updated'
+        )
+        model = Task
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = {
+            'full_name': f'{value.owner.last_name} {value.owner.first_name}'
+        }
+        representation['client'] = {
+            'id': value.client.id,
+            'name': value.client.name
+        }
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        representation['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
+        return representation
+
+
+class TaskListSerializer(serializers.ModelSerializer):
+    """Сериализация репликаций."""
+
+    class Meta:
+        fields = (
+            'id',
+            'owner',
+            'client',
+            'type',
             'created',
             'updated',
             'status'
         )
+        read_only_fields = fields
         model = Task
 
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = {
+            'full_name': f'{value.owner.last_name} {value.owner.first_name}'
+        }
+        representation['client'] = {
+            'id': value.client.id,
+            'name': value.client.name
+        }
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        representation['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
+        return representation

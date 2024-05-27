@@ -34,7 +34,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-# хуйня от вскода и некста
-.next
-.vscode
-/node_modules
