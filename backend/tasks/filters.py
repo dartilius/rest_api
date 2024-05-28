@@ -1,6 +1,5 @@
 from django.db.models import Q
-from django_filters import CharFilter, DateFromToRangeFilter
-from django_filters.rest_framework import FilterSet
+from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
 from tasks.models import Task
 

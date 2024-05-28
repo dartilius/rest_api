@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     'orders',
     'ch_statistic',
     'tasks',
-    'users.apps.CustomUsersConfig',
+    'users',
 ]
 
 MIDDLEWARE = [

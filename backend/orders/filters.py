@@ -1,6 +1,5 @@
 from django.db.models import Q
-from django_filters import CharFilter
-from django_filters.rest_framework import FilterSet
+from django_filters import CharFilter, FilterSet
 
 from orders.models import AdOrder, BgOrder
 

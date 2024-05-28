@@ -75,21 +75,16 @@ class FileListSerializer(serializers.ModelSerializer):
             'name',
             'length',
             'size',
-            'file_type',
-            'created'
+            'file_type'
         )
         read_only_fields = fields
         model = File
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['owner'] = (
-            f'{value.owner.last_name} {value.owner.first_name}'
-        )
         representation['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 

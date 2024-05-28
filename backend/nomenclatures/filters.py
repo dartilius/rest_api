@@ -1,5 +1,4 @@
-from django_filters import AllValuesMultipleFilter
-from django_filters.rest_framework import FilterSet, CharFilter
+from django_filters import AllValuesMultipleFilter, CharFilter, FilterSet
 
 from nomenclatures.models import Nomenclature
 
@@ -10,13 +9,12 @@ class NomenclatureFilter(FilterSet):
     versions = AllValuesMultipleFilter(field_name='version')
     status = CharFilter(method='get_status')
     name = CharFilter(field_name='name', lookup_expr='icontains')
-    version = CharFilter(field_name='version', lookup_expr='icontains')
     id = CharFilter(field_name='id', lookup_expr='iexact')
     timezone = CharFilter(field_name='timezone', lookup_expr='iexact')
 
     class Meta:
         model = Nomenclature
-        fields = ('name', 'version', 'id', 'timezone', 'versions', 'status')
+        fields = ('name', 'id', 'timezone', 'versions', 'status')
 
     def get_status(self, queryset, name, value):
         """Фильтрация по статусам."""
