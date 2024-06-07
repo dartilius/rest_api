@@ -44,7 +44,7 @@ class GetFileInfo:
         os.remove(temp_file_path)
         if result.returncode == 0:
             duration_seconds = float(result.stdout.decode().strip())
-            duration = timedelta(seconds=duration_seconds)
+            duration = timedelta(seconds=round(duration_seconds))
             return str(duration)
         return '00:00:00'
 

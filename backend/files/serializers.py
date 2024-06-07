@@ -1,8 +1,35 @@
-from django.db import IntegrityError
+import base64
+
+from django.core.files.base import ContentFile
 from rest_framework import serializers
 
 from files.models import File, Playlist, Tag
-from users.serializers import CustomUserSerializer
+
+
+class Base64FileField(serializers.FileField):
+    """
+    Декодирование файлов из base64 в нормальный вид.
+
+    Первая часть приходящей информации разбивается на имя файла
+    и его расширение для корректного сохранения в minio,
+    остальная часть декодируется в сам файл.
+    """
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith('data:'):
+            try:
+                file_info, base64_str = data.split(';base64,')
+                name = file_info.split('/')[0]
+                extension = file_info.split('/')[-1]
+                decoded_file = base64.b64decode(base64_str)
+                complete_file_name = f"{name[4:]}.{extension}"
+                data = ContentFile(decoded_file, name=complete_file_name)
+            except (IndexError, TypeError, ValueError):
+                self.fail('invalid_file')
+        else:
+            self.fail('invalid_file')
+
+        return super().to_internal_value(data)
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -21,11 +48,12 @@ class FileSerializer(serializers.ModelSerializer):
     """Сериализация файлов."""
 
     tags = serializers.SlugRelatedField(
-        slug_field='slug',
+        slug_field='name',
         many=True,
         queryset=Tag.objects.all(),
         write_only=True
     )
+    source = Base64FileField()
 
     class Meta:
         fields = (
@@ -37,6 +65,7 @@ class FileSerializer(serializers.ModelSerializer):
             'size',
             'file_type',
             'tags',
+            'source',
             'created'
         )
         read_only_fields = (

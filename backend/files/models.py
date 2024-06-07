@@ -23,11 +23,6 @@ class Tag(models.Model):
         unique=True,
         verbose_name='Название'
     )
-    slug = models.SlugField(
-        unique=True,
-        verbose_name='Слаг',
-        max_length=200,
-    )
 
     def __str__(self):
         return self.name
