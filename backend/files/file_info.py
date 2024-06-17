@@ -42,11 +42,12 @@ class GetFileInfo:
         ]
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.remove(temp_file_path)
-        if result.returncode == 0:
+        try:
             duration_seconds = float(result.stdout.decode().strip())
             duration = timedelta(seconds=round(duration_seconds))
             return str(duration)
-        return '00:00:00'
+        except ValueError:
+            return None
 
     @staticmethod
     def get_file_size(file):

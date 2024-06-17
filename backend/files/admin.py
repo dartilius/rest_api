@@ -9,7 +9,10 @@ class FileAdmin(admin.ModelAdmin):
 
     @admin.display(description='Продолжительность')
     def full_length(self, obj):
-        return obj.length.strftime('%H:%M:%S')
+        try:
+            return obj.length.strftime('%H:%M:%S')
+        except AttributeError:
+            return obj.length
 
     @admin.display(description='Размер')
     def formatted_size(self, obj):

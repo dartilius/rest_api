@@ -78,8 +78,9 @@ class File(models.Model):
     )
     length = models.TimeField(
         editable=False,
-        default='00:00:00',
-        verbose_name='Продолжительность'
+        verbose_name='Продолжительность',
+        blank=True,
+        null=True
     )
     size = models.IntegerField(
         editable=False,
@@ -111,6 +112,7 @@ class File(models.Model):
 
     def save(self, *args, **kwargs):
         file = self.source.file
+        self.name = file.name
         self.md5hash = GetFileInfo.get_md5(file)
         self.sha256hash = GetFileInfo.get_sha256(file)
         self.hash = f'{self.md5hash}{self.sha256hash}'

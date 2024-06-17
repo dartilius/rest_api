@@ -19,10 +19,9 @@ class Base64FileField(serializers.FileField):
         if isinstance(data, str) and data.startswith('data:'):
             try:
                 file_info, base64_str = data.split(';base64,')
-                name = file_info.split('/')[0]
-                extension = file_info.split('/')[-1]
+                name, extension = file_info[5:].split('.')
                 decoded_file = base64.b64decode(base64_str)
-                complete_file_name = f"{name[4:]}.{extension}"
+                complete_file_name = f"{name}.{extension}"
                 data = ContentFile(decoded_file, name=complete_file_name)
             except (IndexError, TypeError, ValueError):
                 self.fail('invalid_file')
@@ -53,33 +52,27 @@ class FileSerializer(serializers.ModelSerializer):
         queryset=Tag.objects.all(),
         write_only=True
     )
-    source = Base64FileField()
+    source = Base64FileField(write_only=True)
 
     class Meta:
         fields = (
             'id',
-            'owner',
-            'name',
-            'hash',
             'length',
             'size',
             'file_type',
-            'tags',
             'source',
-            'created'
+            'tags'
         )
         read_only_fields = (
             'id',
-            'owner',
-            'hash',
             'length',
-            'size',
-            'created'
+            'size'
         )
         model = File
 
     def to_representation(self, value):
         representation = super().to_representation(value)
+        representation['name'] = value.name
         representation['owner'] = (
             f'{value.owner.last_name} {value.owner.first_name}'
         )
