@@ -5,7 +5,7 @@ from tasks.models import Task
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    """Сериализация репликаций."""
+    """Сериализация одной репликации."""
 
     client = serializers.SlugRelatedField(
         slug_field='id',
@@ -47,7 +47,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
 
 class TaskListSerializer(serializers.ModelSerializer):
-    """Сериализация репликаций."""
+    """Сериализация списка репликаций."""
 
     class Meta:
         fields = (

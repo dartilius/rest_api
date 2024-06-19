@@ -5,7 +5,16 @@ from tasks.models import Task
 
 
 class TaskFilter(FilterSet):
-    """Фильтрация репликаций."""
+    """Фильтрация репликаций.
+
+    Выполняется по полям:
+        owner   - специальный метод
+        id      - точное совпадение
+        type    - точное совпадение
+        status  - точное совпадение
+        client  - точное совпадение
+        created - попадание в заданный промежуток времени
+    """
 
     owner = CharFilter(method='filter_by_owner_name')
     id = CharFilter(field_name='id', lookup_expr='exact')
@@ -23,6 +32,14 @@ class TaskFilter(FilterSet):
         fields = ('id', 'owner', 'client', 'type', 'status', 'created')
 
     def filter_by_owner_name(self, queryset, name, value):
+        """
+        Специальный метод для фильтрации по имени и фамилии создателя.
+
+        Поддерживает поиск по фамилии и имени, указанным
+        вместе в любом порядке либо отдельно по фамилии или имени.
+        При не совпадении или указании более двух аргументов
+        ничего не возвращает.
+        """
         if len(value.split()) == 2:
             first_name, last_name = value.split()
             return queryset.filter(

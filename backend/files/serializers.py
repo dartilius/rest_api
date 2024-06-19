@@ -7,28 +7,36 @@ from files.models import File, Playlist, Tag
 
 
 class Base64FileField(serializers.FileField):
-    """
-    Декодирование файлов из base64 в нормальный вид.
+    """Кастомное поле для получения и декодирования base64 строки в файл."""
 
-    Первая часть приходящей информации разбивается на имя файла
-    и его расширение для корректного сохранения в minio,
-    остальная часть декодируется в сам файл.
-    """
+    empty_values = ([], {}, (), '', None)
+
+    default_error_messages = {
+        'invalid_file': 'Файл невозможно декодировать, либо он повреждён.',
+        'invalid_format':
+            'Не правильный формат. '
+            'Файл должен быть закодирован в base64 строку.',
+        'no_name': 'Имя файла невозможно извлечь из отправленных данных.',
+        'empty': 'Отправленный файл пуст.',
+    }
 
     def to_internal_value(self, data):
-        if isinstance(data, str) and data.startswith('data:'):
+        if isinstance(data, str):
             try:
                 file_info, base64_str = data.split(';base64,')
                 name, extension = file_info[5:].split('.')
+                if name in self.empty_values:
+                    self.fail('no_name')
+                if base64_str in self.empty_values:
+                    self.fail('empty')
                 decoded_file = base64.b64decode(base64_str)
-                complete_file_name = f"{name}.{extension}"
+                complete_file_name = f'{name}.{extension}'
                 data = ContentFile(decoded_file, name=complete_file_name)
             except (IndexError, TypeError, ValueError):
                 self.fail('invalid_file')
+            return super().to_internal_value(data)
         else:
-            self.fail('invalid_file')
-
-        return super().to_internal_value(data)
+            self.fail('invalid_format')
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -44,7 +52,7 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class FileSerializer(serializers.ModelSerializer):
-    """Сериализация файлов."""
+    """Сериализация одного файла."""
 
     tags = serializers.SlugRelatedField(
         slug_field='name',
@@ -89,7 +97,7 @@ class FileSerializer(serializers.ModelSerializer):
 
 
 class FileListSerializer(serializers.ModelSerializer):
-    """Сериализация файлов."""
+    """Сериализация списка файлов."""
 
     class Meta:
         fields = (
@@ -111,7 +119,7 @@ class FileListSerializer(serializers.ModelSerializer):
 
 
 class PlaylistSerializer(serializers.ModelSerializer):
-    """Сериализация плейлистов."""
+    """Сериализация одного плейлиста."""
 
     files = serializers.SlugRelatedField(
         slug_field='id',
@@ -149,7 +157,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
 
 class PlaylistListSerializer(serializers.ModelSerializer):
-    """Сериализация плейлистов."""
+    """Сериализация списка плейлистов."""
 
     class Meta:
         fields = (

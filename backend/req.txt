@@ -41,7 +41,6 @@ idna==3.6
 inflection==0.5.1
 isort==5.13.2
 kombu==5.3.7
-librabbitmq==2.0.0
 lz4==4.3.3
 mccabe==0.7.0
 minio==7.2.5
@@ -53,7 +52,6 @@ phonenumberslite==8.13.33
 prompt-toolkit==3.0.43
 psycopg==3.1.18
 psycopg-binary==3.1.18
-psycopg2==2.9.9
 pycodestyle==2.11.1
 pycparser==2.22
 pycryptodome==3.20.0

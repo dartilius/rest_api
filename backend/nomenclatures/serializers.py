@@ -43,8 +43,64 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         model = Nomenclature
 
     def validate_settings(self, value):
-        """Валидация настроек."""
-        def __validate_time(*args) -> None:
+        """
+        Валидация настроек.
+
+        Проверяется наличие обязательных ключей worktime и default_volume,
+        корректность значений этих ключей и опциональных значений custom_volume
+
+        Для пользовательских настроек громкости валидация выглядит сложно,
+        поэтому поясню:
+
+        Допустим, что на вход мы получили такие пользовательские настроки:
+        ...
+        "custom_volume\": {\"((14,),(16,))\": \"(77, 77, 77, 77)\",
+                        \"((13,),(15,))\": \"(11, 11, 11, 11)\"}}"
+        ...
+
+        1. При наличии данных настроек мы сначала проверяем их корректность
+
+            if 'custom_volume' in j:
+                for k, v in j['custom_volume'].items():
+                    _validate_time(*ast.literal_eval(k))
+                    _validate_volume(ast.literal_eval(v))
+
+        2. Далее сравниваем заданные периоды времени на пересечение, для этого
+            сначала сортируем периоды
+
+            sorted_times = sorted((j['custom_volume']))
+
+            в нашем примере получится:
+            sorted_times = ['((13,),(15,))', '((14,),(16,))']
+
+        3. Теперь нужно сравнить конец предшествующего периода
+            с началом следующего, здесь:
+
+                for curr, next_ in zip(sorted_times, sorted_times[1:]):
+                    curr = ast.literal_eval(curr)[1][0]
+                    next_ = ast.literal_eval(next_)[0][0]
+
+                curr - конец предыдущего периода
+                next_ - начало следующего периода
+
+                в нашем примере
+                ast.literal_eval(curr) = ((13,), (15,))
+
+                чтобы извлечь конец периода мы обращаемся ко вложенному кортежу
+                ast.literal_eval(curr)[1][0] = 15
+
+        4. Если конец предыдущего периода меньше начала следующего периода,
+            значит есть пересечение, вызываем исключение
+
+                if curr > next_:
+                    raise serializers.ValidationError(
+                        'Обнаружено пересечение в часах '
+                        'пользовательских настроек громкости'
+                    )
+
+        """
+        def _validate_time(*args) -> None:
+            """Валидация промежутков времени."""
             if len(args) != 2:
                 raise serializers.ValidationError(
                     'Аргумент времени должен содержать ровно два значения'
@@ -54,15 +110,26 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 end = time(*args[1])
             except TypeError:
                 raise serializers.ValidationError('Время должно быть в формате ((с..,), (по..,))')
-            except Exception as e:
-                raise serializers.ValidationError(e)
+            except ValueError as e:
+                # Это всё нужно для перевода стандартной ошибки time
+                time_val = str()
+                e_list = str(e).split()
+                match e_list[0]:
+                    case 'second': time_val = 'секунд'
+                    case 'minute': time_val = 'минут'
+                    case 'hour': time_val = 'часов'
+                raise serializers.ValidationError(
+                    f'Количество {time_val} должно быть '
+                    f'в пределах {e_list[-1]}'
+                )
             if not time(0, 0, 0) <= start < end <= time(23, 59, 59):
                 raise serializers.ValidationError(
                     'Время начала не может быть больше времени окончания '
                     'и должно быть в промежутке 00:00:00 - 23:59:59'
                 )
 
-        def __validate_volume(volume: tuple) -> None:
+        def _validate_volume(volume: tuple) -> None:
+            """Валидация натроек громкости."""
             length = 4
             if not all(isinstance(vol, int) for vol in volume):
                 raise serializers.ValidationError(
@@ -72,7 +139,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     'Громкость может быть только от 0 до 100'
                 )
-            if len(volume) != 4:
+            if len(volume) != length:
                 raise serializers.ValidationError(
                     f'Значений громкости должно быть ровно {length}'
                 )
@@ -91,28 +158,23 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         'Не правильный формат данных'
                     )
-            __validate_time(*req_keys['worktime'])
-            __validate_volume(req_keys['default_volume'])
-            """
-            ЭТО ДЕРЬМО НАДО ПОФИКСИТЬ
-            try:
-                sorted_times = sorted(day['custom_volume'])
-                for i in sorted_times:
-                    if i[1][0] < i[0][1]:
+            _validate_time(*req_keys['worktime'])
+            _validate_volume(req_keys['default_volume'])
+            if 'custom_volume' in j:
+                for k, v in j['custom_volume'].items():
+                    _validate_time(*ast.literal_eval(k))
+                    _validate_volume(ast.literal_eval(v))
+                sorted_times = sorted((j['custom_volume']))
+                for curr, next_ in zip(sorted_times, sorted_times[1:]):
+                    curr = ast.literal_eval(curr)[1][0]
+                    next_ = ast.literal_eval(next_)[0][0]
+                    if curr > next_:
                         raise serializers.ValidationError(
                             'Обнаружено пересечение в часах '
                             'пользовательских настроек громкости'
                         )
-                for k, v in day['custom_volume']:
-                    __validate_time(*ast.literal_eval(k))
-                    __validate_volume(ast.literal_eval(v))
-            except KeyError:
-                print('huuuuuuuuuuuuuy')
-            """
-        return value
 
-    def validate_hw_info(self, value):
-        """Валидирование информации о железе."""
+        return value
 
     def get_status(self, obj):
         try:
@@ -159,7 +221,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
-    """Сериализация всех номенклатур."""
+    """Сериализация списка номенклатур."""
 
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
