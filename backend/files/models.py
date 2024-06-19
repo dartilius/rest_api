@@ -23,11 +23,6 @@ class Tag(models.Model):
         unique=True,
         verbose_name='Название'
     )
-    slug = models.SlugField(
-        unique=True,
-        verbose_name='Слаг',
-        max_length=200,
-    )
 
     def __str__(self):
         return self.name
@@ -47,11 +42,6 @@ class File(models.Model):
         default=uuid4,
         editable=False,
         verbose_name='Уникальный идентификатор'
-    )
-    source = models.FileField(
-        verbose_name='Файл',
-        upload_to='files/source/',
-        storage=MinioBackend(bucket_name='local-media')
     )
     name = models.CharField(
         max_length=255,
@@ -88,8 +78,9 @@ class File(models.Model):
     )
     length = models.TimeField(
         editable=False,
-        default='00:00:00',
-        verbose_name='Продолжительность'
+        verbose_name='Продолжительность',
+        blank=True,
+        null=True
     )
     size = models.IntegerField(
         editable=False,
@@ -120,7 +111,15 @@ class File(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
+        """
+        Сборка информации о файле при его прогрузке на сервер.
+
+        Имя берётся непосредственно с файла.
+        Хэш суммы, размер и продолжительность вычисляются в отдельной функции.
+        Суммированный хэш получается сложением md5 и sha256 хешей.
+        """
         file = self.source.file
+        self.name = file.name
         self.md5hash = GetFileInfo.get_md5(file)
         self.sha256hash = GetFileInfo.get_sha256(file)
         self.hash = f'{self.md5hash}{self.sha256hash}'

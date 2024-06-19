@@ -65,12 +65,20 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         nomenclature = serializer.instance
         new_name = serializer.validated_data['name']
-        group = NomenclatureGroup.objects.exclude(
-            ~Q(clients=nomenclature.id)
-        ).first()
-        group.name = new_name
-        group.save()
+        if new_name != nomenclature.name:
+            group = NomenclatureGroup.objects.exclude(
+                ~Q(clients=nomenclature.id)
+            ).first()
+            group.name = new_name
+            group.save()
         serializer.save()
+
+    def perform_destroy(self, instance):
+        group = NomenclatureGroup.objects.exclude(
+            ~Q(clients=instance.id)
+        ).first()
+        group.delete()
+        instance.delete()
 
     @action(
         detail=True,
