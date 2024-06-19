@@ -159,7 +159,7 @@ class NomenclatureGroup(models.Model):
     )
 
     class Meta:
-        db_table = 'group'
+        db_table = 'nomenclature_group'
         ordering = ('-created',)
         verbose_name = 'Группу'
         verbose_name_plural = 'Группы'

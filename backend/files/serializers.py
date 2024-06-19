@@ -1,8 +1,42 @@
-from django.db import IntegrityError
+import base64
+
+from django.core.files.base import ContentFile
 from rest_framework import serializers
 
 from files.models import File, Playlist, Tag
-from users.serializers import CustomUserSerializer
+
+
+class Base64FileField(serializers.FileField):
+    """Кастомное поле для получения и декодирования base64 строки в файл."""
+
+    empty_values = ([], {}, (), '', None)
+
+    default_error_messages = {
+        'invalid_file': 'Файл невозможно декодировать, либо он повреждён.',
+        'invalid_format':
+            'Не правильный формат. '
+            'Файл должен быть закодирован в base64 строку.',
+        'no_name': 'Имя файла невозможно извлечь из отправленных данных.',
+        'empty': 'Отправленный файл пуст.',
+    }
+
+    def to_internal_value(self, data):
+        if isinstance(data, str):
+            try:
+                file_info, base64_str = data.split(';base64,')
+                name, extension = file_info[5:].split('.')
+                if name in self.empty_values:
+                    self.fail('no_name')
+                if base64_str in self.empty_values:
+                    self.fail('empty')
+                decoded_file = base64.b64decode(base64_str)
+                complete_file_name = f'{name}.{extension}'
+                data = ContentFile(decoded_file, name=complete_file_name)
+            except (IndexError, TypeError, ValueError):
+                self.fail('invalid_file')
+            return super().to_internal_value(data)
+        else:
+            self.fail('invalid_format')
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -18,39 +52,35 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class FileSerializer(serializers.ModelSerializer):
-    """Сериализация файлов."""
+    """Сериализация одного файла."""
 
     tags = serializers.SlugRelatedField(
-        slug_field='slug',
+        slug_field='name',
         many=True,
         queryset=Tag.objects.all(),
         write_only=True
     )
+    source = Base64FileField(write_only=True)
 
     class Meta:
         fields = (
             'id',
-            'owner',
-            'name',
-            'hash',
             'length',
             'size',
             'file_type',
-            'tags',
-            'created'
+            'source',
+            'tags'
         )
         read_only_fields = (
             'id',
-            'owner',
-            'hash',
             'length',
-            'size',
-            'created'
+            'size'
         )
         model = File
 
     def to_representation(self, value):
         representation = super().to_representation(value)
+        representation['name'] = value.name
         representation['owner'] = (
             f'{value.owner.last_name} {value.owner.first_name}'
         )
@@ -67,7 +97,7 @@ class FileSerializer(serializers.ModelSerializer):
 
 
 class FileListSerializer(serializers.ModelSerializer):
-    """Сериализация файлов."""
+    """Сериализация списка файлов."""
 
     class Meta:
         fields = (
@@ -75,26 +105,21 @@ class FileListSerializer(serializers.ModelSerializer):
             'name',
             'length',
             'size',
-            'file_type',
-            'created'
+            'file_type'
         )
         read_only_fields = fields
         model = File
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['owner'] = (
-            f'{value.owner.last_name} {value.owner.first_name}'
-        )
         representation['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
 class PlaylistSerializer(serializers.ModelSerializer):
-    """Сериализация плейлистов."""
+    """Сериализация одного плейлиста."""
 
     files = serializers.SlugRelatedField(
         slug_field='id',
@@ -132,7 +157,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
 
 class PlaylistListSerializer(serializers.ModelSerializer):
-    """Сериализация плейлистов."""
+    """Сериализация списка плейлистов."""
 
     class Meta:
         fields = (
