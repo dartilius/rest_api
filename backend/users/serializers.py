@@ -4,7 +4,7 @@ from users.models import CustomUser
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    """Сериализация пользователей."""
+    """Сериализация одного пользователя."""
 
     class Meta:
         fields = (
@@ -35,7 +35,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 
 class CustomUserListSerializer(serializers.ModelSerializer):
-    """Сериализация пользователей."""
+    """Сериализация списка пользователей."""
 
     class Meta:
         fields = (

@@ -106,10 +106,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = "users.CustomUser"
+AUTH_USER_MODEL = 'users.CustomUser'
 
 PASSWORD_HASHERS = [
-    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
 ]
 
 LANGUAGE_CODE = 'ru'
@@ -121,12 +121,13 @@ USE_I18N = True
 USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 CORS_ALLOW_ALL_ORIGINS = True
 
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
-MINIO_ACCESS_KEY = os.getenv("MINIO_STORAGE_ACCESS_KEY")
-MINIO_SECRET_KEY = os.getenv("MINIO_STORAGE_SECRET_KEY")
-MINIO_USE_HTTPS = False
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
+MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
+MINIO_SECRET_KEY = os.getenv('MINIO_STORAGE_SECRET_KEY')
+MINIO_USE_HTTPS = os.getenv('MINIO_HTTPS', False)
 MINIO_PRIVATE_BUCKETS = [
     'local-media',
     'local-static'
@@ -159,9 +160,9 @@ def show_toolbar(request):
 
 
 DEBUG_TOOLBAR_CONFIG = {
-    "SHOW_TOOLBAR_CALLBACK": show_toolbar,
+    'SHOW_TOOLBAR_CALLBACK': show_toolbar,
 }
 
 if DEBUG:
     import mimetypes
-    mimetypes.add_type("application/javascript", ".js", True)
+    mimetypes.add_type('application/javascript', '.js', True)
