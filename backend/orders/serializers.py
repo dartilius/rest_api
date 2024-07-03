@@ -1,9 +1,71 @@
-from rest_framework import serializers
+import json
 from datetime import time, timedelta as td
+from rest_framework import serializers
 
 from files.models import Playlist
 from nomenclatures.models import NomenclatureGroup, Nomenclature
 from orders.models import AdOrder, BgOrder, BROADCAST_TYPES
+
+
+class DateTimeTZRangeField(serializers.DictField):
+    """
+    Поле для обработки интервалов вещания.
+
+    Сделано на основе:
+    https://github.com/Hipo/drf-extra-fields/
+    """
+
+    from psycopg.types.range import TimestamptzRange
+
+    child_class = serializers.DateTimeField
+    range_type = TimestamptzRange
+
+    default_error_messages = dict(serializers.DictField.default_error_messages)
+    default_error_messages.update({
+        'too_much_content': 'Недопустимо наличие лишних ключей: {extra}.',
+        'bound_ordering': 'Начало интервала не может быть позже окончания.',
+        'no_bound': 'Не указана дата {bound} вещания.'
+    })
+
+    def __init__(self, **kwargs):
+        self.child_attrs = kwargs.pop('child_attrs', {})
+        self.child = self.child_class(**self.child_attrs)
+        super().__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        data = json.loads(data)
+
+        extra_content = list(set(data) - {'lower', 'upper', 'bounds', 'empty'})
+        if extra_content:
+            self.fail(
+                'too_much_content', extra=', '.join(map(str, extra_content))
+            )
+
+        validated_dict = {}
+        for key in ('lower', 'upper'):
+            if key not in data:
+                bound = 'начала' if key == 'lower' else 'окончания'
+                self.fail('no_bound', bound=bound)
+            validated_dict[key] = self.child.run_validation(data[key])
+
+        lower, upper = validated_dict.get('lower'), validated_dict.get('upper')
+        if lower > upper:
+            self.fail('bound_ordering')
+
+        for key in ('bounds', 'empty'):
+            if key in data:
+                validated_dict[key] = data[key]
+
+        return self.range_type(**validated_dict)
+
+    def to_representation(self, value):
+        # временный фикс отображения времени для UTC+7
+        lower = (value.lower + td(hours=7)).strftime('%Y-%m-%d %H:%M:%S')
+        upper = (value.upper + td(hours=7)).strftime('%Y-%m-%d %H:%M:%S')
+        return {
+            'since': self.child.to_representation(lower),
+            'until': self.child.to_representation(upper)
+        }
 
 
 class AdOrderSerializer(serializers.ModelSerializer):
@@ -14,6 +76,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
         queryset=NomenclatureGroup.objects.all(),
         write_only=True
     )
+    broadcast_interval = DateTimeTZRangeField()
 
     class Meta:
         fields = (
@@ -213,13 +276,6 @@ class AdOrderSerializer(serializers.ModelSerializer):
         )
         representation['group'] = {'id': value.group.id,
                                    'name': value.group.name}
-        # в базе по местному, но на странице по UTC почему-то
-        representation['broadcast_interval'] = {
-            'from': (value.broadcast_interval.lower + td(hours=7)).strftime(
-                '%Y-%m-%d %H:%M:%S'),
-            'to': (value.broadcast_interval.upper + td(hours=7)).strftime(
-                '%Y-%m-%d %H:%M:%S')
-        }
         representation['file'] = {'id': value.file.id, 'name': value.file.name}
         representation['slides'] = [
             {
@@ -227,12 +283,17 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 'name': slide.name
             } for slide in value.slides.all()
         ] if value.slides.exists() else None
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        # временный фикс отображения времени для UTC+7
+        representation['created'] = (
+                value.created + td(hours=7)
+        ).strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
 class AdOrderListSerializer(serializers.ModelSerializer):
     """Сериализация списка рекламных заказов."""
+
+    broadcast_interval = DateTimeTZRangeField()
 
     class Meta:
         fields = (
@@ -253,10 +314,6 @@ class AdOrderListSerializer(serializers.ModelSerializer):
             'id': value.group.id,
             'name': value.group.name
         }
-        representation['broadcast_interval'] = {
-            'from': value.broadcast_interval.lower.strftime('%Y-%m-%d'),
-            'to': value.broadcast_interval.upper.strftime('%Y-%m-%d')
-        }
         representation['file'] = {'id': value.file.id, 'name': value.file.name}
         return representation
 
@@ -274,6 +331,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
         queryset=Playlist.objects.all(),
         write_only=True
     )
+    broadcast_interval = DateTimeTZRangeField()
 
     class Meta:
         fields = (
@@ -304,23 +362,21 @@ class BgOrderSerializer(serializers.ModelSerializer):
             'id': value.client.id,
             'name': value.client.name
         }
-        # в базе по местному, но на странице по UTC почему-то
-        representation['broadcast_interval'] = {
-            'from': (value.broadcast_interval.lower + td(hours=7)).strftime(
-                '%Y-%m-%d %H:%M:%S'),
-            'to': (value.broadcast_interval.upper + td(hours=7)).strftime(
-                '%Y-%m-%d %H:%M:%S')
-        }
         representation['playlist'] = {
             'id': value.playlist.id,
             'name': value.playlist.name
         }
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        # временный фикс отображения времени для UTC+7
+        representation['created'] = (
+                value.created + td(hours=7)
+        ).strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
 class BgOrderListSerializer(serializers.ModelSerializer):
     """Сериализация списка фоновых заказов."""
+
+    broadcast_interval = DateTimeTZRangeField()
 
     class Meta:
         fields = (
@@ -339,10 +395,6 @@ class BgOrderListSerializer(serializers.ModelSerializer):
         representation['client'] = {
             'id': value.client.id,
             'name': value.client.name
-        }
-        representation['broadcast_interval'] = {
-            'from': value.broadcast_interval.lower.strftime('%Y-%m-%d'),
-            'to': value.broadcast_interval.upper.strftime('%Y-%m-%d')
         }
         representation['playlist'] = {
             'id': value.playlist.id,

@@ -64,12 +64,14 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         nomenclature = serializer.instance
-        new_name = serializer.validated_data['name']
-        if new_name != nomenclature.name:
+        if (
+            'name' in serializer.validated_data and
+            serializer.validated_data['name'] != nomenclature.name
+        ):
             group = NomenclatureGroup.objects.exclude(
                 ~Q(clients=nomenclature.id)
             ).first()
-            group.name = new_name
+            group.name = serializer.validated_data['name']
             group.save()
         serializer.save()
 

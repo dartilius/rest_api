@@ -5,7 +5,7 @@ WORKDIR /app
 COPY req.txt .
 
 RUN pip install -r req.txt --no-cache-dir \
-    apt-get update && apt-get install ffmpeg -y
+    && apt-get update && apt-get install ffmpeg -y
 
 COPY . .
 
