@@ -1,7 +1,7 @@
 import ast
 import json
 
-from datetime import time
+from datetime import time, timedelta as td
 from rest_framework import serializers
 
 from nomenclatures.models import (
@@ -49,55 +49,49 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         Проверяется наличие обязательных ключей worktime и default_volume,
         корректность значений этих ключей и опциональных значений custom_volume
 
-        Для пользовательских настроек громкости валидация выглядит сложно,
-        поэтому поясню:
-
-        Допустим, что на вход мы получили такие пользовательские настроки:
+        Пояснение к валидации пользовательских настроек громкости.
+        ----------------------------------------------------------
+        Пример пользовательских настроек:
         ...
-        "custom_volume\": {\"((14,),(16,))\": \"(77, 77, 77, 77)\",
+        \"custom_volume\": {\"((14,),(16,))\": \"(77, 77, 77, 77)\",
                         \"((13,),(15,))\": \"(11, 11, 11, 11)\"}}"
         ...
+        Разберём код по шагам:
 
-        1. При наличии данных настроек мы сначала проверяем их корректность
-
-            if 'custom_volume' in j:
+        1.  if 'custom_volume' in j:
                 for k, v in j['custom_volume'].items():
                     _validate_time(*ast.literal_eval(k))
                     _validate_volume(ast.literal_eval(v))
 
-        2. Далее сравниваем заданные периоды времени на пересечение, для этого
-            сначала сортируем периоды
+        2.      sorted_times = sorted((j['custom_volume']))
 
-            sorted_times = sorted((j['custom_volume']))
-
-            в нашем примере получится:
-            sorted_times = ['((13,),(15,))', '((14,),(16,))']
-
-        3. Теперь нужно сравнить конец предшествующего периода
-            с началом следующего, здесь:
-
-                for curr, next_ in zip(sorted_times, sorted_times[1:]):
+        3.      for curr, next_ in zip(sorted_times, sorted_times[1:]):
                     curr = ast.literal_eval(curr)[1][0]
                     next_ = ast.literal_eval(next_)[0][0]
 
-                curr - конец предыдущего периода
-                next_ - начало следующего периода
+        4.          if curr > next_:
+                        raise serializers.ValidationError(
+                            'Обнаружено пересечение в часах '
+                            'пользовательских настроек громкости'
+                        )
 
-                в нашем примере
-                ast.literal_eval(curr) = ((13,), (15,))
+        1.  Сперва проверяем корректность настроек
+        2.  Далее сравниваем заданные периоды времени на пересечение, для этого
+            сначала сортируем периоды. В нашем примере получится:
 
-                чтобы извлечь конец периода мы обращаемся ко вложенному кортежу
-                ast.literal_eval(curr)[1][0] = 15
+            sorted_times = ['((13,),(15,))', '((14,),(16,))']
 
-        4. Если конец предыдущего периода меньше начала следующего периода,
+        3.  Теперь нужно сравнить конец предшествующего периода
+            с началом следующего. Чтобы извлечь только конец периода,
+            мы обращаемся ко вложенному кортежу:
+
+            ast.literal_eval(curr)[1][0] = 15
+
+        4.  Если конец предыдущего периода меньше начала следующего периода,
             значит есть пересечение, вызываем исключение
 
-                if curr > next_:
-                    raise serializers.ValidationError(
-                        'Обнаружено пересечение в часах '
-                        'пользовательских настроек громкости'
-                    )
-
+        Узнать больше про zip можно в официальной документации
+        https://docs.python.org/3/library/functions.html#zip
         """
         def _validate_time(*args) -> None:
             """Валидация промежутков времени."""
@@ -109,7 +103,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 start = time(*args[0])
                 end = time(*args[1])
             except TypeError:
-                raise serializers.ValidationError('Время должно быть в формате ((с..,), (по..,))')
+                raise serializers.ValidationError(
+                    'Время должно быть в формате ((с..,), (по..,))'
+                )
             except ValueError as e:
                 # Это всё нужно для перевода стандартной ошибки time
                 time_val = str()
@@ -216,7 +212,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     'worktime': (start, end),
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = (
+                value.created + td(hours=7)
+        ).strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 

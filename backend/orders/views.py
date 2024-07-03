@@ -11,7 +11,7 @@ from orders.serializers import (
 )
 
 from orders.models import AdOrder, BgOrder
-from tasks.models import Task, Type
+from tasks.models import Task
 
 from users.permissions import AuthAndOnlySuperUserDelete
 
