@@ -1,5 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from files.filters import FileFilter, PlaylistFilter
@@ -30,6 +31,7 @@ class FileViewSet(viewsets.ModelViewSet):
     serializer_class = FileSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = FileFilter
+    parser_classes = [JSONParser]
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def get_serializer(self, *args, **kwargs):

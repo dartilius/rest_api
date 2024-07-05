@@ -1,17 +1,25 @@
-from django_filters import CharFilter
-from django_filters.rest_framework import FilterSet
+from django_filters import AllValuesMultipleFilter, CharFilter, FilterSet
 
 from files.models import File, Playlist
 
 
 class FileFilter(FilterSet):
-    """Фильтрация номенклатур."""
+    """
+    Фильтрация файлов.
+
+    Выполняется по полям:
+        hash        - точное совпадение
+        name        - частичное совпадение
+        id          - точное совпадение
+        file_type   - точное совпадение
+        tags        - точное совпадение из множества вариантов
+    """
 
     hash = CharFilter(field_name='hash', lookup_expr='iexact', label='Хэш')
-    name = CharFilter(field_name='name', lookup_expr='icontains')
+    name = CharFilter(field_name='name')
     id = CharFilter(field_name='id', lookup_expr='exact')
     file_type = CharFilter(field_name='file_type', lookup_expr='exact')
-    tags = CharFilter(field_name='tags', lookup_expr='iexact')
+    tags = AllValuesMultipleFilter(field_name='tags')
 
     class Meta:
         model = File
@@ -19,13 +27,17 @@ class FileFilter(FilterSet):
 
 
 class PlaylistFilter(FilterSet):
-    """Фильтрация номенклатур."""
+    """
+    Фильтрация плейлистов.
+
+    Выполняется по полям:
+        id      - точное совпадение
+        name    - частичное совпадение
+    """
 
     id = CharFilter(field_name='id', lookup_expr='exact')
-    name = CharFilter(field_name='name', lookup_expr='iexact')
+    name = CharFilter(field_name='name')
 
     class Meta:
         model = Playlist
         fields = ('id', 'name')
-
-
