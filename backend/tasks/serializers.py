@@ -1,11 +1,12 @@
 from rest_framework import serializers
+from datetime import timedelta as td
 
 from nomenclatures.models import Nomenclature
 from tasks.models import Task
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    """Сериализация репликаций."""
+    """Сериализация одной репликации."""
 
     client = serializers.SlugRelatedField(
         slug_field='id',
@@ -41,13 +42,17 @@ class TaskSerializer(serializers.ModelSerializer):
             'id': value.client.id,
             'name': value.client.name
         }
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        representation['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = (
+                value.created + td(hours=7)
+        ).strftime('%Y-%m-%d %H:%M:%S')
+        representation['updated'] = (
+                value.updated + td(hours=7)
+        ).strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
 class TaskListSerializer(serializers.ModelSerializer):
-    """Сериализация репликаций."""
+    """Сериализация списка репликаций."""
 
     class Meta:
         fields = (
@@ -71,6 +76,10 @@ class TaskListSerializer(serializers.ModelSerializer):
             'id': value.client.id,
             'name': value.client.name
         }
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        representation['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = (
+                value.created + td(hours=7)
+        ).strftime('%Y-%m-%d %H:%M:%S')
+        representation['updated'] = (
+                value.updated + td(hours=7)
+        ).strftime('%Y-%m-%d %H:%M:%S')
         return representation

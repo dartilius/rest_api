@@ -63,17 +63,6 @@ class BaseOrder(models.Model):
 class AdOrder(BaseOrder):
     """Рекламный заказ."""
 
-    def default_parameters():
-        return {
-            "event": "play if click button",
-            "active_ad": "close",
-            "times_in_hour": 4,
-            "weight": 50,
-            "daily_start_time": "09:00:00",
-            "daily_end_time": "21:00:00",
-            "timedelta": "01:30:00"
-        }
-
     owner = models.ForeignKey(
         CustomUser,
         verbose_name='Создатель',
@@ -106,7 +95,7 @@ class AdOrder(BaseOrder):
         verbose_name='Тип вещания'
     )
     parameters = HStoreField(
-        default=default_parameters,
+        default=dict,
         verbose_name='Параметры заказа'
     )
 

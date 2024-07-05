@@ -1,12 +1,20 @@
 from django.db.models import Q
-from django_filters import CharFilter
-from django_filters.rest_framework import FilterSet
+from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
 from orders.models import AdOrder, BgOrder
 
 
 class AdOrderFilter(FilterSet):
-    """Фильтрация номенклатур."""
+    """Фильтрация рекламных заказов.
+
+    Выполняется по полям:
+        owner    - специальный метод
+        name     - частичное совпадение
+        brc_type - точное совпадение
+        id       - точное совпадение
+        group    - частичное совпадение
+        created  - попадание в заданный промежуток времени
+    """
 
     owner = CharFilter(method='filter_by_owner_name')
     name = CharFilter(field_name='name', lookup_expr='icontains')
@@ -17,12 +25,21 @@ class AdOrderFilter(FilterSet):
         lookup_expr='icontains',
         label='Целевая группа Целевая рабочих станций'
     )
+    created = DateFromToRangeFilter(field_name='created')
 
     class Meta:
         model = AdOrder
-        fields = ('name', 'brc_type', 'id', 'group', 'owner')
+        fields = ('name', 'brc_type', 'id', 'group', 'owner', 'created')
 
     def filter_by_owner_name(self, queryset, name, value):
+        """
+        Специальный метод для фильтрации по имени и фамилии создателя.
+
+        Поддерживает поиск по фамилии и имени, указанным
+        вместе в любом порядке либо отдельно по фамилии или имени.
+        При не совпадении или указании более двух аргументов
+        возвращает список всех пользователей.
+        """
         if len(value.split()) == 2:
             first_name, last_name = value.split()
             return queryset.filter(
@@ -39,7 +56,16 @@ class AdOrderFilter(FilterSet):
 
 
 class BgOrderFilter(FilterSet):
-    """Фильтрация номенклатур."""
+    """Фильтрация фоновых заказов.
+
+    Выполняется по полям:
+        owner      - специальный метод
+        name       - частичное совпадение
+        id         - точное совпадение
+        client     - частичное совпадение
+        order_type - точное совпадение
+        created    - попадание в заданный промежуток времени
+    """
 
     owner = CharFilter(method='filter_by_owner_name')
     name = CharFilter(field_name='name', lookup_expr='icontains')
@@ -50,12 +76,21 @@ class BgOrderFilter(FilterSet):
         label='Целевая рабочая станция'
     )
     order_type = CharFilter(field_name='order_type', lookup_expr='exact')
+    created = DateFromToRangeFilter(field_name='created')
 
     class Meta:
         model = BgOrder
-        fields = ('name', 'id', 'client', 'order_type', 'owner')
+        fields = ('name', 'id', 'client', 'order_type', 'owner', 'created')
 
     def filter_by_owner_name(self, queryset, name, value):
+        """
+        Специальный метод для фильтрации по имени и фамилии создателя.
+
+        Поддерживает поиск по фамилии и имени, указанным
+        вместе в любом порядке либо отдельно по фамилии или имени.
+        При не совпадении или указании более двух аргументов
+        ничего не возвращает.
+        """
         if len(value.split()) == 2:
             first_name, last_name = value.split()
             return queryset.filter(
