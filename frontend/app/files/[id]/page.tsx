@@ -23,7 +23,7 @@ export default function ReadFile() {
   const router = useParams();
   const id = router?.id;
 
-  const fetchFileInfo = async (fileId: string) => {
+const fetchFileInfo = async (fileId: string | string[]) => {
     try {
       const info = await getFileInfo(fileId);
 
