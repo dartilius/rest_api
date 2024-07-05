@@ -1,13 +1,13 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
-from users.views import UserViewSet
+from users.views import CustomUserViewSet
 
 router = SimpleRouter()
 
 router.register(
     'users',
-    UserViewSet,
+    CustomUserViewSet,
     basename='users'
 )
 

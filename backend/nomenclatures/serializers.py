@@ -12,13 +12,12 @@ from nomenclatures.models import (
     TIMEZONES, StatusHistory
 )
 
-logger = setup_logger('nomenclatures', 'backend/logs/nomenclatures.log')
+logger = setup_logger('nomenclatures', 'logs/nomenclatures.log')
 
 
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
-    owner = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
 
@@ -117,13 +116,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     def validate_hw_info(self, value):
         """Валидирование информации о железе."""
 
-    def get_owner(self, obj):
-        return f'{obj.owner.last_name} {obj.owner.first_name}'
-
     def get_status(self, obj):
         try:
             return obj.availability.status
-        except Exception:
+        except AttributeError:
             return None
 
     def get_last_answer(self, obj):
@@ -131,11 +127,14 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             return obj.availability.last_answer_date.strftime(
                 '%Y-%m-%d %H:%M:%S'
             )
-        except Exception:
+        except AttributeError:
             return 'Не выходила в сеть'
 
     def to_representation(self, value):
         representation = super().to_representation(value)
+        representation['owner'] = (
+            f'{value.owner.last_name} {value.owner.first_name}'
+        )
         representation['timezone'] = TIMEZONES[value.timezone]
         for day, setting in representation['settings'].items():
             j = json.loads(setting)
@@ -153,6 +152,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     'worktime': (start, end),
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
@@ -203,39 +203,55 @@ class NomenclatureGroupSerializer(serializers.ModelSerializer):
         queryset=Nomenclature.objects.all(),
         write_only=True
     )
-    owner = serializers.SerializerMethodField()
-    clients_info = serializers.SerializerMethodField()
-
-    def get_owner(self, obj):
-        return f'{obj.owner.last_name} {obj.owner.first_name}'
-
-    def get_clients_info(self, obj):
-        return [
-            {
-                'id': client.id, 'name': client.name
-            } for client in obj.clients.all()
-        ]
-
-    def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
 
     class Meta:
         fields = (
+            'id',
             'name',
             'description',
             'owner',
             'clients',
-            'clients_info',
             'created'
         )
         read_only_fields = (
+            'id',
             'owner',
             'created',
-            'clients_info'
         )
         model = NomenclatureGroup
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['owner'] = (
+            f'{value.owner.last_name} {value.owner.first_name}'
+        )
+        representation['clients'] = [
+            {
+                'id': client.id,
+                'name':  client.name
+            } for client in value.clients.all()
+        ]
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return representation
+
+
+class NomenclatureGroupListSerializer(serializers.ModelSerializer):
+    """Сериализация групп номенклатуры."""
+
+    class Meta:
+        fields = (
+            'id',
+            'name',
+            'created'
+        )
+        read_only_fields = fields
+        model = NomenclatureGroup
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation['clients_count'] = len(value.clients.all())
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return representation
 
 
 class StatusHistorySerializer(serializers.ModelSerializer):

@@ -7,31 +7,31 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 # from nomenclatures.models import Nomenclature
 
-ROLES = [
-    ('admin', 'Сотрудник ТО'),
-    ('manager', 'Менеджер'),
-    ('superuser', 'Суперпользователь')
-]
+ROLES = {
+    'admin': 'Сотрудник ТО',
+    'manager': 'Менеджер',
+    'superuser': 'Суперпользователь'
+}
 
 
-class User(AbstractUser):
+class CustomUser(AbstractUser):
     """Пользователи."""
 
-    username_validator = UnicodeUsernameValidator
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
 
-    username = models.CharField(
-        max_length=150,
-        unique=True,
-        validators=[username_validator],
-        verbose_name='Логин'
+    username_validator = UnicodeUsernameValidator(
+        message='Такой юзернейм уже занят либо введены запрещённые символы.'
+                'Разрешены только буквы, цифры и @/./+/-/_ символы.'
     )
+
     last_name = models.CharField(
         max_length=150,
-        verbose_name='Фамилия'
+        verbose_name='Фамилия',
     )
     first_name = models.CharField(
         max_length=150,
-        verbose_name='Имя'
+        verbose_name='Имя',
     )
     middle_name = models.CharField(
         max_length=150,
@@ -75,7 +75,8 @@ class User(AbstractUser):
         return self.role == 'admin'
 
     class Meta:
-        db_table = 'user'
+        db_table = 'custom_user'
+        ordering = ('-created',)
         verbose_name = 'Пользователя'
         verbose_name_plural = 'Пользователи'
 
