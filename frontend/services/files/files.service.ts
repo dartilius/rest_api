@@ -68,6 +68,8 @@ export const FilesService = {
       const data: FilesListResponseDTO = await response.json();
 
       return filesListResponseTransformer(data);
+    } else if (response.status === 500) {
+      throw new Error("ошибка сервера");
     } else {
       throw new Error("Не удалось получить список файлов");
     }

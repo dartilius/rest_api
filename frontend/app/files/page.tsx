@@ -1,5 +1,4 @@
 "use client";
-import { Spinner } from "@nextui-org/spinner";
 import { useEffect, useState } from "react";
 import {
   Button,
@@ -14,23 +13,25 @@ import {
 import Link from "next/link";
 
 import Search from "../../components/Search";
-
-import FileType from "./components/FileType";
-import Tags from "./components/Tags";
-import SelectLimit from "./components/SelectLimit";
-
 import { FilesListResponse } from "../../types/interface/files.interface";
 import { FilesService } from "../../services/files/files.service";
 import { checkSize } from "../../types/types/checkSize";
 import { convertType } from "../../types/types/fileTypes";
+
+import SelectLimit from "./components/SelectLimit";
+import Tags from "./components/Tags";
+import FileType from "./components/FileType";
+
+import Loader from "@/components/ui/Loader";
+import { toastError } from "@/utils/toast-error";
 export default function Files() {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [limit, setLimit] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
   const [data, setData] = useState<FilesListResponse | undefined>(undefined);
   const [error, setError] = useState<string>("");
   const [search, setSearch] = useState<string>("");
   const [type, setType] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
   const [inputValue, setInputValue] = useState<string>("");
   const pages = Math.ceil((data?.count || 0) / limit);
 
@@ -44,7 +45,6 @@ export default function Files() {
     name: string,
     type: string,
   ) => {
-    setIsLoading(true);
     try {
       const res = await FilesService.getAll({
         page,
@@ -54,12 +54,21 @@ export default function Files() {
       });
 
       setData(res);
-      setError("");
     } catch (error: any) {
-      setError("Failed to fetch data");
+      setError(error);
+      toastError(error);
     }
-    setIsLoading(false);
   };
+
+  console.log(error);
+
+  useEffect(() => {
+    if (!data) {
+      setLoading(true);
+    } else {
+      setLoading(false);
+    }
+  }, [data]);
 
   const handleSearchChange = (event: { target: { value: string } }) => {
     setInputValue(event.target.value);
@@ -78,8 +87,8 @@ export default function Files() {
     console.log("newLimit:", newLimit);
   };
 
-  if (isLoading) {
-    return <Spinner label="Загрузка..." />;
+  if (!data) {
+    return <Loader loading={loading} />;
   }
 
   return (
@@ -138,31 +147,20 @@ export default function Files() {
               Тэги
             </TableColumn>
           </TableHeader>
-          <TableBody
-            isLoading={isLoading}
-            loadingContent={<Spinner label="Загрузка..." />}
-          >
-            {data?.results?.length ? (
-              data.results.map((item) => (
-                <TableRow key={item.id} className="text-center">
-                  <TableCell>
-                    <Link href={`/files/${item.id}`} target="_blank">
-                      {item.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{item.length}</TableCell>
-                  <TableCell>{checkSize(item.size)}</TableCell>
-                  <TableCell>{convertType(item.fileType)}</TableCell>
-                  <TableCell>{item.tags?.join(", ")}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell className="text-center" colSpan={5}>
-                  No data available
+          <TableBody>
+            {data.results.map((item) => (
+              <TableRow key={item.id} className="text-center">
+                <TableCell>
+                  <Link href={`/files/${item.id}`} target="_blank">
+                    {item.name}
+                  </Link>
                 </TableCell>
+                <TableCell>{item.length}</TableCell>
+                <TableCell>{checkSize(item.size)}</TableCell>
+                <TableCell>{convertType(item.fileType)}</TableCell>
+                <TableCell>{item.tags?.join(", ")}</TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>
