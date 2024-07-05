@@ -57,7 +57,7 @@ services:
     build:
       context: ./frontend
       dockerfile: frontend.dockerfile
-    command: cp -r /app/build/. /frontend_static/
+    command: cp -r .next/static /frontend_static
     ports:
       - 3000:3000
     depends_on:
