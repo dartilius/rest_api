@@ -7,7 +7,7 @@ from files.models import Playlist
 from nomenclatures.models import NomenclatureGroup, Nomenclature
 from orders.models import AdOrder, BgOrder, BROADCAST_TYPES
 
-logger = setup_logger('orders', 'backend/logs/orders.log')
+logger = setup_logger('orders', 'logs/orders.log')
 
 
 class AdOrderSerializer(serializers.ModelSerializer):
@@ -31,6 +31,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
             'broadcast_interval',
             'broadcast_type',
             'parameters',
+            'status',
             'created'
         )
         read_only_fields = (
@@ -165,10 +166,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
         representation['owner'] = (
             f'{value.owner.last_name} {value.owner.first_name}'
         )
-        representation['group'] = {
-            'id': value.group.id,
-            'name': value.group.name
-        }
+        representation['group'] = {'id': value.group.id, 'name': value.group.name}
         # в базе по местному, но на странице по UTC почему-то
         representation['broadcast_interval'] = {
             'from': (value.broadcast_interval.lower + td(hours=7)).strftime(
@@ -178,7 +176,10 @@ class AdOrderSerializer(serializers.ModelSerializer):
         }
         representation['file'] = {'id': value.file.id, 'name': value.file.name}
         representation['slides'] = [
-            {str(slide.id): slide.name} for slide in value.slides.all()
+            {
+                'id': slide.id,
+                'name': slide.name
+            } for slide in value.slides.all()
         ] if value.slides.exists() else None
         representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
@@ -194,6 +195,7 @@ class AdOrderListSerializer(serializers.ModelSerializer):
             'group',
             'file',
             'slides',
+            'status',
             'broadcast_interval'
         )
         read_only_fields = fields
@@ -234,8 +236,10 @@ class BgOrderSerializer(serializers.ModelSerializer):
             'description',
             'owner',
             'client',
+            'order_type',
             'playlist',
             'broadcast_interval',
+            'status',
             'created'
         )
         read_only_fields = (
@@ -278,6 +282,7 @@ class BgOrderListSerializer(serializers.ModelSerializer):
             'name',
             'client',
             'playlist',
+            'status',
             'broadcast_interval'
         )
         read_only_fields = fields
