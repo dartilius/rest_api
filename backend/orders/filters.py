@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
-from orders.models import AdOrder, BgOrder
+from .models import AdOrder, BgOrder
 
 
 class AdOrderFilter(FilterSet):
