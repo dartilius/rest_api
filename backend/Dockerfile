@@ -29,6 +29,10 @@ RUN rm -rf /root/.cache/pip
 COPY . .
 
 RUN useradd uid0001
+
+RUN touch ./logs/celery.log && \
+    chown -R uid0001:uid0001 ./logs
+
 USER uid0001
 
-ENTRYPOINT [ "./entrypoint.sh" ]
+ENTRYPOINT [ "/app/entrypoint.sh", "b" ]
