@@ -205,11 +205,6 @@
 //           </Button>
 //         </div>
 //       </form>
-//       {/* <CustomModal
-//         content={responseContent}
-//         isOpen={modalIsOpen}
-//         onRequestClose={closeModal}
-//       /> */}
 //       {error && <p style={{ color: "red" }}>{error}</p>}
 //     </div>
 //   );

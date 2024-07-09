@@ -16,7 +16,8 @@ export const UsersService = {
 
     if (response.ok) {
       const data: UsersListResponseDTO = await response.json();
-        console.log(data);
+
+      console.log(data);
 
       return userResponseTransformer(data);
     } else {

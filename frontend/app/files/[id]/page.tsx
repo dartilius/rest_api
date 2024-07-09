@@ -23,7 +23,7 @@ export default function ReadFile() {
   const router = useParams();
   const id = router?.id;
 
-const fetchFileInfo = async (fileId: string | string[]) => {
+  const fetchFileInfo = async (fileId: string | string[]) => {
     try {
       const info = await getFileInfo(fileId);
 
@@ -32,7 +32,7 @@ const fetchFileInfo = async (fileId: string | string[]) => {
       } else {
         console.error("No data found for ID:", fileId);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching file info:", error);
       toastError(error);
     }

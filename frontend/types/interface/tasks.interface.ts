@@ -35,16 +35,16 @@ export type Task = {
 type ClientTaskDTO = {
   id: string;
   name: string;
-}
+};
 
 type ClientTask = {
   id: string;
   name: string;
-}
+};
 
 type OwnerTaskDTO = {
-    full_name: string;
-}
+  full_name: string;
+};
 type OwnerTask = {
-    fullName: string;
-}
+  fullName: string;
+};
