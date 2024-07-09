@@ -17,16 +17,33 @@ export interface NomenclatureListInterface {
 export interface NomenclatureInterface {
   created: string;
   description: string;
-  hw_info: string;
-  id: string | string[] | undefined;
+  hw_info: string | null;
+  id: string;
   last_answer: string;
   name: string;
   settings: SettingsInterface;
-  status: string;
+  status: number;
   timezone: string;
   version: string;
   owner: string;
 }
+
+export interface SettingsInterface {
+  fri?: DaySettings;
+  mon?: DaySettings;
+  sat?: DaySettings;
+  sun?: DaySettings;
+  thu?: DaySettings;
+  tue?: DaySettings;
+  wed?: DaySettings;
+  [key: string]: DaySettings | undefined;
+}
+
+export interface DaySettings {
+  worktime: [string, string];
+  default_volume: [number, number, number, number];
+}
+
 
 export interface NomenclatureCreateInterface {
   name: string;
@@ -35,15 +52,7 @@ export interface NomenclatureCreateInterface {
   settings: SettingsInterface;
 }
 
-export type Day = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
-export type DaySettings = string;
-
-export interface SettingsInterface {
-  worktime?: string;
-  default_volumes?: string;
-  [key: string]: DaySettings | undefined;
-}
 
 // interface SettingsInterface {
 //     fri: {

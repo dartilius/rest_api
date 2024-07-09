@@ -1,13 +1,15 @@
 import { API_URL } from "../../config/api.config";
 import { NomenclatureListResponseInterface } from "../../types/interface/nomenclature.interface";
+import { getTokenStorage } from "../auth/auth.helper";
 
 interface Pagination {
   page?: number;
   limit?: number;
   search?: string;
   id?: string;
-  version?: string;
+  versions?: string;
   status?: string;
+  timezone?: string;
 }
 
 export const NomenclaturesService = {
@@ -16,30 +18,38 @@ export const NomenclaturesService = {
     limit,
     search,
     id,
-    version,
+    versions,
     status,
+    timezone,
   }: Pagination = {}): Promise<NomenclatureListResponseInterface> {
     // Строим URL, учитывая, что `page` может быть undefined.
     let url = `${API_URL}/api/nomenclatures/`;
 
+    const params = new URLSearchParams();
+
     if (page !== undefined) {
-      url += `?page=${page}`;
+      params.append("page", page.toString());
     }
     if (limit !== undefined) {
-      url += `&limit=${limit}`;
+      params.append("limit", limit.toString());
     }
     if (search !== undefined) {
-      url += `&name=${search}`;
+      params.append("name", search);
     }
     if (id !== undefined) {
-      url += `&id=${id}`;
+      params.append("id", id.toString());
     }
-    if (version !== undefined) {
-      url += `&version=${version}`;
+    if (versions !== undefined) {
+      params.append("versions", versions.toString());
     }
     if (status !== undefined) {
-      url += `&version=${status}`;
+      params.append("status", status.toString());
     }
+    if (timezone !== undefined) {
+      params.append("timezone", timezone.toString());
+    }
+
+    url += `?${params.toString()}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -56,8 +66,6 @@ export const NomenclaturesService = {
   },
 
   async getById(id: string | string[]) {
-    console.log(id);
-
     const response = await fetch(`${API_URL}/api/nomenclatures/${id}`, {
       method: "GET",
       headers: {
@@ -72,12 +80,14 @@ export const NomenclaturesService = {
     }
   },
 
-  async create(updatedData: any, token: string | undefined) {
+  async create(updatedData: any) {
+    const token = getTokenStorage();
+
     const response = await fetch(`${API_URL}/api/nomenclatures/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `access_token ${token}`,
       },
       body: JSON.stringify(updatedData),
     });
@@ -89,12 +99,14 @@ export const NomenclaturesService = {
     }
   },
 
-  async delete(token: string | undefined, id: string | string[] | undefined) {
+  async delete(id: string | string[] | undefined) {
+    const token = getTokenStorage();
+
     const response = await fetch(`${API_URL}/api/nomenclatures/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `access_token ${token}`,
       },
     });
 
@@ -102,6 +114,25 @@ export const NomenclaturesService = {
       return response;
     } else {
       throw new Error("Не удалось удалить номенклатуру");
+    }
+  },
+
+  async editById(
+    id: string,
+    data: { name: string; description: string; timezone: string },
+  ) {
+    const token = getTokenStorage();
+    const response = await fetch(`${API_URL}/api/nomenclatures/${id}/`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `access_token ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Не удалось отредактировать номенклатуру`);
     }
   },
 };
