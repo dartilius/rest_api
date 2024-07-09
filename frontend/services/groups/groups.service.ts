@@ -16,7 +16,6 @@ export const GroupsService = {
 
     console.log(page, limit);
 
-
     if (page !== undefined) {
       url += `?page=${page}`;
     }

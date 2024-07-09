@@ -28,7 +28,6 @@ export default function Files() {
   const [limit, setLimit] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
   const [data, setData] = useState<FilesListResponse | undefined>(undefined);
-  const [error, setError] = useState<string>("");
   const [search, setSearch] = useState<string>("");
   const [type, setType] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -55,12 +54,9 @@ export default function Files() {
 
       setData(res);
     } catch (error: any) {
-      setError(error);
       toastError(error);
     }
   };
-
-  console.log(error);
 
   useEffect(() => {
     if (!data) {

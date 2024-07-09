@@ -16,38 +16,38 @@ export type AdOrderResponseDTO = {
   id: number;
   name: string;
   status: number;
-  slides: []
+  slides: [];
   broadcast_interval: {
     since: string;
     until: string;
-  }
+  };
   file: {
     id: string;
     name: string;
-  }
+  };
   group: {
     id: number;
     name: string;
-  }
+  };
 };
 
 export type AdOrderResponse = {
   id: number;
   name: string;
   status: number;
-  slides: []
+  slides: [];
   broadcastInterval: {
     since: string;
     until: string;
-  }
+  };
   file: {
     id: string;
     name: string;
-  }
+  };
   group: {
     id: number;
     name: string;
-  }
+  };
 };
 
 export type BgOrdersListResponseDTO = {

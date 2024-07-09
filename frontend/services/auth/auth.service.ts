@@ -1,9 +1,9 @@
 import axios, { AxiosResponse } from "axios";
 
-import { removeTokensStorage, saveTokensStorage } from "./auth.helper";
-
 import { ITokens } from "../../types/interface/user.interface";
 import { API_URL } from "../../config/api.config";
+
+import { removeTokensStorage, saveTokensStorage } from "./auth.helper";
 
 export const AuthService = {
   async login(

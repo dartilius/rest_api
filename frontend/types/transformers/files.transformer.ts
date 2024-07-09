@@ -81,7 +81,6 @@ export const readFileResponseTransformer = (
   };
 };
 
-
 export const fileUpdateRequestTransformer = (
   request: UpdateFileRequest,
 ): UpdateFileRequestDTO => {
@@ -89,4 +88,4 @@ export const fileUpdateRequestTransformer = (
     file_type: request.fileType,
     tags: request.tags,
   };
-}
+};

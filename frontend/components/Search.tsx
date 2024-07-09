@@ -11,7 +11,8 @@ type SearchProps = {
 };
 
 const Search = (props: SearchProps) => {
-  const { searchValue, onSearchChange, onSearchSubmit, label, placeholder } = props;
+  const { searchValue, onSearchChange, onSearchSubmit, label, placeholder } =
+    props;
   const handleKeyDown = (event: { key: string }) => {
     if (event.key === "Enter") {
       onSearchSubmit();

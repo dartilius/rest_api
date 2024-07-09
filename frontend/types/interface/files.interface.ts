@@ -85,7 +85,7 @@ export type ReadFileResponseDTO = {
     md5: string;
     sha256: string;
     concat_hash: string;
-  }
+  };
 };
 
 export type ReadFileResponse = {
@@ -99,15 +99,15 @@ export type ReadFileResponse = {
     md5: string;
     sha256: string;
     concatHash: string;
-  }
+  };
 };
 
 export type UpdateFileRequest = {
   fileType: string;
   tags: string[];
-}
+};
 
 export type UpdateFileRequestDTO = {
   file_type: string;
   tags: string[];
-}
+};
