@@ -1,6 +1,6 @@
 from django_filters import AllValuesMultipleFilter, CharFilter, FilterSet
 
-from .models import File, Playlist
+from files.models import File, Playlist
 
 
 class FileFilter(FilterSet):
@@ -19,7 +19,7 @@ class FileFilter(FilterSet):
     name = CharFilter(field_name='name', lookup_expr='icontains')
     id = CharFilter(field_name='id', lookup_expr='exact')
     file_type = CharFilter(field_name='file_type', lookup_expr='exact')
-    tags = AllValuesMultipleFilter(field_name='tags')
+    tags = AllValuesMultipleFilter(field_name='tags__name')
 
     class Meta:
         model = File

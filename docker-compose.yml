@@ -14,28 +14,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-#    restart: unless-stopped
     volumes:
+      - ./scripts/db:/docker-entrypoint-initdb.d
       - pg_data:/var/lib/postgresql/data
 
   files:
     image: minio/minio
     container_name: files
     env_file: .env
-    expose:
-      - 9000
-      - 9001
-    ports:
-      - 9000:9000
-      - 9001:9001
     command: server /data --console-address ":9001"
     volumes:
       - s3:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
 
   backend:
     build: ./backend
     container_name: backend
     env_file: .env
+    healthcheck:
+      test: curl --fail http://192.168.0.180:8000/redoc || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - 8000:8000
     depends_on:
@@ -47,21 +49,20 @@ services:
   frontend:
     env_file: .env
     environment:
-      - NEXT_PUBLIC_API_URL=${APP_SERVER_URL}
+      - NEXT_PUBLIC_API_URL=${ALLOWED_HOSTS}
     container_name: frontend
     build: ./frontend
     ports:
       - 3000:3000
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - static:/frontend_static
 
   gateway:
     build: ./nginx
     container_name: gateway
-#    restart: always
     env_file: .env
     volumes:
       - static:/staticfiles
@@ -69,7 +70,7 @@ services:
       - 80:80
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
       frontend:
         condition: service_started
 
@@ -82,24 +83,24 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
-#    restart: always
     ports:
       - 5672:5672
       - 15672:15672
 
   celery:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: ./celeryDockerfile
     container_name: celery
     env_file: .env
     healthcheck:
-      test: celery -b ${CELERY_BROKER} status || exit 1
+      test: celery -b amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbit status || exit 1
       interval: 5s
       timeout: 10s
-      retries: 10
-    entrypoint: [ "/app/entrypoint.sh", "c" ]
+      retries: 3
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
       rabbit:
         condition: service_healthy
 
@@ -107,14 +108,14 @@ services:
     image: mher/flower
     container_name: dashboard
     env_file: .env
+    command: celery flower
     volumes:
       - celery:/app
-    command: celery flower -A backend.rmc_rest_api
     ports:
       - 5555:5555
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
       rabbit:
         condition: service_healthy
       celery:

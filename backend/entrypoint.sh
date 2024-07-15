@@ -2,16 +2,31 @@
 
 set -e
 
-case "$1" in
+while getopts ':abc' option; do
+  case $option in
+    a)
+      if [ "${LOGNAME:-$USER}" = "uid0001" ] ; then
+        echo "rerunning $0 as user root"
+        sleep 1
+        exec su - root -c "/app/entrypoint.sh $@"
+      fi
+      echo "hello I am $LOGNAME"
 
-  "b")
-    gunicorn --bind 0:8000 --workers 8 rmc_rest_api.wsgi
-    ;;
+      python manage.py collectstatic --no-input
+      python manage.py makemigrations
+      python manage.py migrate
+      gunicorn --bind 0:8000 --workers 8 rmc_rest_api.wsgi
+      ;;
 
-  "c")
-    celery worker --logfile=logs/celery.log -l INFO
-    ;;
+    b)
+      gunicorn --bind 0:8000 --workers 8 rmc_rest_api.wsgi
+      ;;
 
-esac
+    ?)
+      echo invalid args "$OPTARG"
+      ;;
+
+  esac
+done
 
 exec "$@"
