@@ -28,7 +28,6 @@ RUN rm -rf /root/.cache/pip
 COPY . .
 
 RUN useradd uid0001
-
 USER uid0001
 
-ENTRYPOINT [ "/app/entrypoint.sh", "-b" ]
+CMD ["gunicorn", "--bind", "0:8000", "--workers", "4", "rmc_rest_api.wsgi"]

@@ -1,32 +1,42 @@
-#!/bin/bash
+#!/bin/sh
+# источник https://gist.github.com/VKen/4a86bda8f65d76d8106f68587cd64327
 
-set -e
+# завершить выполнение при возникновении ошибок или
+# при прохождении не инициализированных переменных в коде
+set -eu
 
-while getopts ':abc' option; do
-  case $option in
-    a)
-      if [ "${LOGNAME:-$USER}" = "uid0001" ] ; then
-        echo "rerunning $0 as user root"
-        sleep 1
-        exec su - root -c "/app/entrypoint.sh $@"
-      fi
-      echo "hello I am $LOGNAME"
+# функция завершения работы
+teardown()
+{
+    echo " Signal caught..."
+    echo "Stopping celery multi gracefully..."
 
-      python manage.py collectstatic --no-input
-      python manage.py makemigrations
-      python manage.py migrate
-      gunicorn --bind 0:8000 --workers 8 rmc_rest_api.wsgi
-      ;;
+    # остановить воркеров при помощи `celery multi`
+    # должны быть использованы такие же аргументы как в `celery multi start`
+    celery multi stop 3 --pidfile=./celery-%n.pid --logfile=/app/logs/celery-%n%I.log
 
-    b)
-      gunicorn --bind 0:8000 --workers 8 rmc_rest_api.wsgi
-      ;;
+    echo "Stopped celery multi..."
+    echo "Stopping last waited process"
+    kill -s TERM "$child" 2> /dev/null
+    echo "Stopped last waited process. Exiting..."
+    exit 1
+}
 
-    ?)
-      echo invalid args "$OPTARG"
-      ;;
+# запуск 3 воркеров с помощью `celery multi`
+# с определённым логфайлом для использования `tail -f`
+celery multi start 3 -l INFO \
+    --pidfile=/app/logs/celery-%n.pid \
+    --logfile=/app/logs/celery-%n%I.log
 
-  esac
-done
+# ловим сигналы (докер посылает `SIGTERM` для завершения)
+trap teardown INT TERM
 
-exec "$@"
+# отражаем логи в консоль докера
+tail -f /app/logs/celery*.log &
+
+# записываем ИД процесса `tail` для функции завершения
+child=$!
+
+# ждём `tail -f` бесконечно и ловим сигналы извне,
+# включая сигнал завершения от докера, в `ловушку`
+wait "$child"
