@@ -119,7 +119,7 @@ class File(models.Model):
         Суммированный хэш получается сложением md5 и sha256 хешей.
         """
         file = self.source.file
-        self.name = file.name
+        self.name = file.name.split('/')[-1]
         self.md5hash = GetFileInfo.get_md5(file)
         self.sha256hash = GetFileInfo.get_sha256(file)
         self.hash = f'{self.md5hash}{self.sha256hash}'

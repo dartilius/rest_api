@@ -169,6 +169,7 @@ class NomenclatureGroup(models.Model):
 
 
 class NomenclatureAvailability(models.Model):
+    """Текущая доступность."""
     last_answer_date = models.DateTimeField(
         auto_now=True,
         verbose_name='Время последнего ответа',
