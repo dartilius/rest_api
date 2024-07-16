@@ -19,7 +19,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.postgres',
     'corsheaders',
-    'django_celery_results',
     'django_minio_backend',
     'django_filters',
     'rest_framework',

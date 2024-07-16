@@ -8,7 +8,7 @@ set -eu
 # функция завершения работы
 teardown()
 {
-    echo " Signal caught..."
+    echo "Signal caught..."
     echo "Stopping celery multi gracefully..."
 
     # остановить воркеров при помощи `celery multi`
