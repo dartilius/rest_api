@@ -1,0 +1,28 @@
+.container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 24px;
+    width: 100%;
+    justify-content: space-evenly;
+
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        min-width: 320px;
+        height: auto;
+        gap: 8px;
+    }
+
+}
+
+@media screen and (max-width: 1200px) and (max-width: 600px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: auto;
+        height: auto;
+    }
+}
