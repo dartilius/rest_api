@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // output: 'export',
-  trailingSlash: true,
-  // typescript: {
-  //   ignoreBuildErrors: true,
-  // },
+  // trailingSlash: true,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   output: "standalone",
   redirects() {
     return [
