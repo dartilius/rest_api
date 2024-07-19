@@ -1,6 +1,9 @@
-import { getTokenStorage } from "../auth/auth.helper";
+import axios from "axios";
 
-import { NomenclatureListResponseInterface } from "@/src/types/interface/nomenclature.interface";
+import {
+  NomenclatureListInterface,
+  NomenclatureListResponseInterface,
+} from "@/src/types/interface/nomenclature.interface";
 import { API_URL } from "@/src/config/api.config";
 
 interface Pagination {
@@ -13,127 +16,50 @@ interface Pagination {
   timezone?: string;
 }
 
-export const NomenclaturesService = {
-  async getAll({
-    page,
-    limit,
-    search,
-    id,
-    versions,
-    status,
-    timezone,
-  }: Pagination = {}): Promise<NomenclatureListResponseInterface> {
-    // Строим URL, учитывая, что `page` может быть undefined.
-    let url = `${API_URL}/api/nomenclatures/`;
+export interface ITodo {
+  id: number;
+  title: string;
+  completed: boolean;
+  userId: number;
+}
 
+class NomenclaturesService {
+  private URL = `${API_URL}/nomenclatures`;
+
+  getAll(props: Pagination = {}) {
     const params = new URLSearchParams();
 
-    if (page !== undefined) {
-      params.append("page", page.toString());
+    if (props.page !== undefined) {
+      params.append("page", props.page.toString());
     }
-    if (limit !== undefined) {
-      params.append("limit", limit.toString());
+    if (props.limit !== undefined) {
+      params.append("limit", props.limit.toString());
     }
-    if (search !== undefined) {
-      params.append("name", search);
+    if (props.search !== undefined) {
+      params.append("search", props.search);
     }
-    if (id !== undefined) {
-      params.append("id", id.toString());
+    if (props.id !== undefined) {
+      params.append("id", props.id);
     }
-    if (versions !== undefined) {
-      params.append("versions", versions.toString());
+    if (props.versions !== undefined) {
+      params.append("versions", props.versions);
     }
-    if (status !== undefined) {
-      params.append("status", status.toString());
+    if (props.status !== undefined) {
+      params.append("status", props.status);
     }
-    if (timezone !== undefined) {
-      params.append("timezone", timezone.toString());
+    if (props.timezone !== undefined) {
+      params.append("timezone", props.timezone);
     }
 
-    url += `?${params.toString()}`;
+    const queryString = params.toString();
+    const urlWithParams = `${this.URL}?${queryString}`;
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    return axios.get<NomenclatureListResponseInterface>(urlWithParams);
+  }
 
-    if (response.ok) {
-      return response.json();
-    } else {
-      throw new Error(`Не удалось получить список номенклатур`);
-    }
-  },
+  getById(id: string) {
+    return axios.get<NomenclatureListInterface>(`${this.URL}/${id}`);
+  }
+}
 
-  async getById(id: string | string[]) {
-    const response = await fetch(`${API_URL}/api/nomenclatures/${id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (response.ok) {
-      return response.json();
-    } else {
-      throw new Error("Не удалось получить номенклатуру");
-    }
-  },
-
-  async create(updatedData: any) {
-    const token = getTokenStorage();
-
-    const response = await fetch(`${API_URL}/api/nomenclatures/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `access_token ${token}`,
-      },
-      body: JSON.stringify(updatedData),
-    });
-
-    if (response.status === 201 || response.status === 200) {
-      return response;
-    } else {
-      throw new Error("Не удалось создать номенклатуру");
-    }
-  },
-
-  async delete(id: string | string[] | undefined) {
-    const token = getTokenStorage();
-
-    const response = await fetch(`${API_URL}/api/nomenclatures/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `access_token ${token}`,
-      },
-    });
-
-    if (response.status === 204 || response.status === 200) {
-      return response;
-    } else {
-      throw new Error("Не удалось удалить номенклатуру");
-    }
-  },
-
-  async editById(
-    id: string,
-    data: { name: string; description: string; timezone: string },
-  ) {
-    const token = getTokenStorage();
-    const response = await fetch(`${API_URL}/api/nomenclatures/${id}/`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `access_token ${token}`,
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Не удалось отредактировать номенклатуру`);
-    }
-  },
-};
+export default new NomenclaturesService();
