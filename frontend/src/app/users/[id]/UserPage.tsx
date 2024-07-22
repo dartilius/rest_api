@@ -1,6 +1,12 @@
 "use client";
 
-import { Card, CardBody, CardFooter, CardHeader, Divider } from "@nextui-org/react";
+import {
+  Card,
+  CardBody,
+  CardFooter,
+  CardHeader,
+  Divider,
+} from "@nextui-org/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -19,6 +25,7 @@ export default function UserClientPage(props: Props) {
 
   const [data, setData] = useState<UserInfo | undefined>(initialData);
 
+  //TODO: Переписать на useQuery, как в номенклатурах
   useEffect(() => {
     if (!initialData) {
       const fetchUser = async (id: string) => {
@@ -41,6 +48,7 @@ export default function UserClientPage(props: Props) {
     return <Loader />;
   }
 
+  //TODO: Разбить на отдельные компоненты, чтобы не городить вот это вот всё
   return (
     <div>
       <Card className="w-auto">

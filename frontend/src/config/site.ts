@@ -1,5 +1,5 @@
 export type SiteConfig = typeof siteConfig;
-
+//ссылки на разделы в navBar'е
 export const siteConfig = {
   navItems: [
     {
@@ -35,6 +35,7 @@ export const siteConfig = {
       href: "/statistic",
     },
   ],
+  //TODO: добавить остальные разделы, чтобы переделать потом под мобилку.
   navMenuItems: [
     {
       label: "Войти",

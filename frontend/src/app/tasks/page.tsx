@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   Chip,
-  Spinner,
   Table,
   TableBody,
   TableCell,
@@ -24,6 +23,7 @@ export default function Tasks() {
   const [limit, setLimit] = useState<number>(10);
   const pages = Math.ceil((data?.count || 0) / limit);
 
+  //TODO: Переписать на useQuery, как в номенклатурах
   const fetchTasks = async (page: number, limit: number) => {
     try {
       const response = await TasksService.getAll({ page, limit });
@@ -41,7 +41,7 @@ export default function Tasks() {
   }, [page, limit]);
 
   if (!data) {
-    return <Loader />
+    return <Loader />;
   }
 
   return (

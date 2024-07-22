@@ -1,3 +1,5 @@
+//TODO: Переписать на классы
+
 import { getTokenStorage } from "../auth/auth.helper";
 
 import {

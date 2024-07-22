@@ -1,3 +1,5 @@
+//TODO: Переписать на классы
+
 import { API_URL } from "@/src/config/api.config";
 import {
   UserInfo,

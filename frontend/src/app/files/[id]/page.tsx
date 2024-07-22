@@ -16,13 +16,14 @@ import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { checkSize } from "@/src/types/types/checkSize";
 import { convertType } from "@/src/types/types/fileTypes";
-import { FilesService } from "@/src/services/files";
+import { FilesService } from "@/src/services/files/files.service";
 
 export default function ReadFile() {
   const [data, setData] = useState<ReadFileResponse | undefined>(undefined);
   const router = useParams();
   const id = router?.id;
 
+  //TODO: Переписать на useQuery, как в номенклатурах
   const fetchFileInfo = async (fileId: string | string[]) => {
     try {
       const info = await getFileInfo(fileId);
@@ -50,6 +51,7 @@ export default function ReadFile() {
     return <Loader />;
   }
 
+  //TODO: Разбить на отдельные компоненты, чтобы не городить вот это вот всё
   return (
     <div>
       <Card className="w-auto">

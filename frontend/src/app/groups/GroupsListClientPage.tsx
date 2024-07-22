@@ -32,6 +32,7 @@ export default function GroupsListClientPage({ data: initialData }: Props) {
   const [limit, setLimit] = useState<number>(10);
   const pages = Math.ceil((data?.count || 0) / limit);
 
+  //TODO: Переписать на useQuery, как в номенклатурах
   useEffect(() => {
     if (initialData) {
       const fetchData = async () => {

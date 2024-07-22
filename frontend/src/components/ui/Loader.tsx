@@ -9,7 +9,7 @@ const Loader = (props: Props) => {
 
   return loading ? (
     <div className="flex justify-center">
-      <Spinner aria-label="Spinner example" />
+      <Spinner />
     </div>
   ) : (
     <></>

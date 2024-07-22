@@ -1,11 +1,11 @@
 export interface NomenclatureListResponseInterface {
-  results: NomenclatureListInterface[];
+  results: NomenclatureInterface[];
   next: string;
   previous: string;
   count: number;
 }
 
-export interface NomenclatureListInterface {
+export interface NomenclatureInterface {
   id: string;
   name: string;
   timezone: string;
