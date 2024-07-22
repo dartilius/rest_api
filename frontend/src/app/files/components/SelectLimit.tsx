@@ -3,7 +3,7 @@
 import { Select, SelectItem } from "@nextui-org/select";
 import React from "react";
 
-import { limitPages } from "../../../types/types/limitPages";
+import { limitPages } from "@/src/types/types/limitPages";
 
 type SelectLimitProps = {
   label: string;

@@ -14,11 +14,11 @@ import { Chip, Select, SelectItem } from "@nextui-org/react";
 import Link from "next/link";
 
 import { AdOrdersListResponse } from "@/src/types/interface/orders.interface";
-import { AdOrdersService } from "@/src/services/ad-orders/AdOrders.service";
 import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { limitPages } from "@/src/types/types/limitPages";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
+import { AdOrdersService } from "@/src/services/orders/Orders.service";
 
 export default function AdOrders() {
   const [data, setData] = useState<AdOrdersListResponse | undefined>(undefined);
@@ -26,6 +26,7 @@ export default function AdOrders() {
   const [limit, setLimit] = useState<number>(10);
   const pages = Math.ceil((data?.count || 0) / limit);
 
+  //TODO: Переписать на useQuery, как в номенклатурах
   const fetchAdOrders = async (page: number, limit: number) => {
     try {
       const res = await AdOrdersService.getAll({ page, limit });

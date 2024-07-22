@@ -1,3 +1,5 @@
+//TODO: Переписать на классы
+
 import axios, { AxiosResponse } from "axios";
 
 import { removeTokensStorage, saveTokensStorage } from "./auth.helper";

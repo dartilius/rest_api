@@ -9,14 +9,12 @@ import {
   TableHeader,
   TableRow,
 } from "@nextui-org/table";
-import { Pagination } from "@nextui-org/pagination";
 import Link from "next/link";
-import { Chip, Select, SelectItem, Spinner } from "@nextui-org/react";
+import { Chip, Spinner } from "@nextui-org/react";
 
 import { PlaylistsListResponse } from "@/src/types/interface/playlists.interface";
 import { PlaylistsService } from "@/src/services/playlists/playlists.service";
 import { toastError } from "@/src/utils/toast-error";
-import { limitPages } from "@/src/types/types/limitPages";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 
 export default function Playlists() {
@@ -27,6 +25,7 @@ export default function Playlists() {
   const [limit, setLimit] = useState<number>(10);
   const pages = Math.ceil((data?.count || 0) / limit);
 
+  //TODO: Переписать на useQuery, как в номенклатурах
   const fetchPlaylists = async () => {
     try {
       const res = await PlaylistsService.getAll();

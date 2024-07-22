@@ -45,6 +45,7 @@ export default function FilesListClientPage({ data: initialData }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const pages = Math.ceil((data?.count || 0) / limit);
 
+  //TODO: Переписать на useQuery, как в номенклатурах
   useEffect(() => {
     if (initialData) {
       const fetchData = async () => {

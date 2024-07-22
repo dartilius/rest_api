@@ -2,7 +2,7 @@
 import React from "react";
 import { Select, SelectItem } from "@nextui-org/react";
 
-import { fileTypes } from "@/types/types/fileTypes";
+import { fileTypes } from "@/src/types/types/fileTypes";
 
 type FileType = {
   setFileType: any;

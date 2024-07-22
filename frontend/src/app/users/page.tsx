@@ -34,6 +34,7 @@ export default function UsersList() {
   const [endDate, setEndDate] = useState<string>("");
   const pages = Math.ceil((data?.count || 0) / limit);
 
+  //TODO: Переписать на useQuery, как в номенклатурах
   const fetchUsers = async (
     page: number,
     limit: number,
