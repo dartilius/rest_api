@@ -1,8 +1,11 @@
 import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
 
 export async function generateMetadata() {
+  const page = 1;
+  const limit = 10;
+
   try {
-    const response = await nomenclaturesService.getAll();
+    const response = await nomenclaturesService.getAll({ page, limit });
 
     if (response) {
       return {
