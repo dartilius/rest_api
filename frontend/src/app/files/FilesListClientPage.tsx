@@ -18,7 +18,6 @@ import Search from "../../components/Search";
 
 import styles from "./FilesListClientPage.module.scss";
 
-import { FilesService } from "@/src/services/files/files.service";
 import { TagsService } from "@/src/services/tags/tags.service";
 import { toastError } from "@/src/utils/toast-error";
 import { FilesListResponse } from "@/src/types/interface/files.interface";
@@ -27,6 +26,7 @@ import { convertType, fileTypes } from "@/src/types/types/fileTypes";
 import { limitPages } from "@/src/types/types/limitPages";
 import { checkSize } from "@/src/types/types/checkSize";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
+import filesService from "@/src/services/files/files.service";
 
 type Props = {
   data: FilesListResponse;
@@ -50,18 +50,11 @@ export default function FilesListClientPage({ data: initialData }: Props) {
     if (initialData) {
       const fetchData = async () => {
         try {
-          const responseData = await FilesService.getAll({
-            page,
-            limit,
-            name: search,
-            file_type: type,
-            tags,
-            hash,
-          });
+          const responseData = await filesService.getAll()
           const responseTags = await TagsService.gatAll();
 
           setTagsList(responseTags.results.map((tag) => tag.name));
-          setData(responseData);
+          setData(responseData.data);
         } catch (error) {
           toastError(error);
         }
