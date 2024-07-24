@@ -88,7 +88,7 @@ export default function NomenclatureDetails(props: Props) {
       await nomenclaturesService.deleteById(data.id);
       setTimeout(() => {
         window.close()
-      }, 1500)
+      }, 2000)
       toastSuccess("Номенклатура успешно удалена");
     } catch (err) {
       toastError(err);
