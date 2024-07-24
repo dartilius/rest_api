@@ -1,30 +1,37 @@
-"use client";
+import { Metadata } from "next";
 
-import { useParams } from "next/navigation";
+import ListPage from "./ListPage";
 
-import { useNomenclaturesDetails } from "../../hooks/nomenclatures/useNomenclaturesDetails";
+import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
 
-import NomenclatureDetails from "./NomenclatureDetails";
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  const { id } = params;
 
-import Loader from "@/src/components/ui/Loader";
-import { toastError } from "@/src/utils/toast-error";
+  try {
+    const response = await nomenclaturesService.getById(id);
 
-export default function NomenclaturePage() {
-  const router = useParams();
-  const id = router.id;
-  const { isLoading, error, isError, isSuccess } = useNomenclaturesDetails(id);
-
-  if (isLoading) {
-    return <Loader loading={!isSuccess} />;
+    if (response) {
+      return {
+        title: `${response.data.name}`,
+        description: `Просмотр номенклатуры ${response.data.id}`,
+      };
+    }
+  } catch (error) {
+    console.error("Failed to fetch metadata:", error);
   }
 
-  if (isError) {
-    return <>{toastError(error?.message)}</>;
-  }
+  return {
+    title: "Ошибка получения номенклатуры",
+    description: "От сервера не было ответа. Повторите попытку позже.",
+  };
+}
 
-  if (isSuccess) {
-    return <NomenclatureDetails />;
-  }
+export default async function Page({ params }: { params: { id: string } }) {
+  const idS = params.id.toString();
 
-  return <></>;
+  return <ListPage id={idS} />;
 }

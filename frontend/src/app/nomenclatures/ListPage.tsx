@@ -1,20 +1,17 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-
 import NomenclaturesList from "./NomenclaturesListClientPage";
 
-import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
 import Loader from "@/src/components/ui/Loader";
 import { toastError } from "@/src/utils/toast-error";
+import useNomenclaturesQuery from "@/src/hooks/nomenclatures/useNomenclaturesQuery";
 
 export default function ListPage() {
-  const page: number = 1
-  const limit: number = 10
-  const { data, isLoading, error, isError, isSuccess } = useQuery({
-    queryKey: ["nomenclaturesList"],
-    queryFn: () => nomenclaturesService.getAll({page, limit}),
-    select: ({ data }) => data,
+  const page = 1;
+  const limit = 10;
+  const { isLoading, error, isError, isSuccess } = useNomenclaturesQuery({
+    page,
+    limit,
   });
 
   if (isLoading) {
@@ -22,7 +19,7 @@ export default function ListPage() {
   }
 
   if (isError) {
-    return <>{toastError(error.message)}</>;
+    return <>{toastError(error?.message)}</>;
   }
 
   if (isSuccess) {
