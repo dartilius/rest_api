@@ -13,6 +13,7 @@ import {
 } from "@nextui-org/react";
 
 import { AuthService } from "@/src/services/auth/auth.service";
+import { toastError } from "@/src/utils/toast-error";
 
 export default function LoginPage() {
   const [email, setEmail] = useState<string>("");
@@ -31,7 +32,7 @@ export default function LoginPage() {
         throw new Error("Не удалось выполнить вход");
       }
     } catch (error: Error | any) {
-      setError(error.response?.data?.message || "Ошибка при входе");
+      toastError(`${error.response.status} ${error.response.statusText}`);
     }
   };
 

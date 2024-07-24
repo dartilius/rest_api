@@ -5,7 +5,7 @@ import axios, { AxiosResponse } from "axios";
 import { removeTokensStorage, saveTokensStorage } from "./auth.helper";
 
 import { ITokens } from "@/src/types/interface/user.interface";
-import { API_URL } from "@/src/config/api.config";
+import { AUTH_URL } from "@/src/config/api.config";
 
 export const AuthService = {
   async login(
@@ -13,7 +13,7 @@ export const AuthService = {
     password: string,
   ): Promise<AxiosResponse<ITokens>> {
     const response = await axios.post<ITokens>(
-      `${API_URL}/auth/jwt/create`,
+      `${AUTH_URL}/jwt/create`,
       {
         email,
         password,
