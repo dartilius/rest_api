@@ -1,16 +1,16 @@
 import FilesListClientPage from "./FilesListClientPage";
 
-import { FilesService } from "@/src/services/files";
+import filesService from "@/src/services/files/files.service";
 import { FilesListResponse } from "@/src/types/interface/files.interface";
 
 export async function generateMetadata() {
   try {
-    const response = await FilesService.getAll();
+    const response = await filesService.getAll();
 
     if (response) {
       return {
-        title: `Файлы ${response.count} штук(-и)`,
-        description: `Просмотр списка файлов ${response.count} штук(-и)`,
+        title: `Файлы ${response.data.count} штук(-и)`,
+        description: `Просмотр списка файлов ${response.data.count} штук(-и)`,
       };
     }
   } catch (error) {
@@ -24,7 +24,7 @@ export async function generateMetadata() {
 }
 
 export default async function ListPage() {
-  const data: FilesListResponse = await FilesService.getAll();
+  const data = await filesService.getAll();
 
-  return <FilesListClientPage data={data} />;
+  return <FilesListClientPage data={data.data} />;
 }
