@@ -9,7 +9,7 @@ import { tagsListResponseTransformer } from "@/src/types/transformers/tags.trasf
 
 export const TagsService = {
   async gatAll(): Promise<TagsListResponse> {
-    const response = await fetch(`${API_URL}/api/tags/`, {
+    const response = await fetch(`${API_URL}/tags/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
