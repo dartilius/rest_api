@@ -1,7 +1,6 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   Card,
   CardBody,
@@ -11,44 +10,24 @@ import {
   Image,
 } from "@nextui-org/react";
 
-import { ReadFileResponse } from "@/src/types/interface/files.interface";
 import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { checkSize } from "@/src/types/types/checkSize";
 import { convertType } from "@/src/types/types/fileTypes";
-import { FilesService } from "@/src/services/files/files.service";
+import useFileQuery from "@/src/hooks/files/useFileQuery";
 
 export default function ReadFile() {
-  const [data, setData] = useState<ReadFileResponse | undefined>(undefined);
   const router = useParams();
   const id = router?.id;
+  const { data, error, isError, isLoading, isSuccess } = useFileQuery(
+    id.toString(),
+  );
 
-  //TODO: Переписать на useQuery, как в номенклатурах
-  const fetchFileInfo = async (fileId: string | string[]) => {
-    try {
-      const info = await getFileInfo(fileId);
-
-      if (info) {
-        setData(info);
-      } else {
-        console.error("No data found for ID:", fileId);
-      }
-    } catch (error: any) {
-      console.error("Error fetching file info:", error);
-      toastError(error);
-    }
-  };
-
-  useEffect(() => {
-    if (id) {
-      fetchFileInfo(id);
-    } else {
-      console.error("ID is undefined");
-    }
-  }, [id]);
-
-  if (!data) {
-    return <Loader />;
+  if (isLoading) {
+    return <Loader loading={!isSuccess} />;
+  }
+  if (isError) {
+    return <>{toastError(error?.message)}</>;
   }
 
   //TODO: Разбить на отдельные компоненты, чтобы не городить вот это вот всё
@@ -117,15 +96,4 @@ export default function ReadFile() {
       </Card>
     </div>
   );
-}
-
-async function getFileInfo(id: string | string[]) {
-  try {
-    const res = await FilesService.getById(id);
-
-    return res;
-  } catch (error) {
-    console.error("Error fetching file info:", error);
-    throw error;
-  }
 }
