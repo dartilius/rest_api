@@ -32,10 +32,10 @@ class OrdersService {
   private URL: string = `${API_URL}`;
 
   advertising() {
-    const advertisingUrl = this.URL + "/bgorders/";
+    const advertisingUrl = this.URL + "/adorders/";
 
     return {
-      gatAll(props: BgOrdersQueryParams) {
+      gatAll(props: AdOrdersQueryParams) {
         const params = new URLSearchParams();
 
         if (props.page !== undefined) {
@@ -57,7 +57,7 @@ class OrdersService {
     const backgroundUrl = this.URL + "/bgorders/";
 
     return {
-      gatAll(props: AdOrdersQueryParams) {
+      gatAll(props: BgOrdersQueryParams) {
         const params = new URLSearchParams();
 
         if (props.page !== undefined) {
