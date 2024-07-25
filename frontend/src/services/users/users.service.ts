@@ -22,7 +22,7 @@ type Params = {
 export const UsersService = {
   async getAll(params: Params): Promise<UsersListResponse> {
     const { page, limit, created_after, created_before, name } = params;
-    let url = `${API_URL}/api/users/`;
+    let url = `${API_URL}/users/`;
 
     if (page !== undefined) {
       url += `?page=${page}`;
@@ -56,7 +56,7 @@ export const UsersService = {
   },
 
   async getById(id: string): Promise<UserInfo> {
-    const response = await fetch(`${API_URL}/api/users/${id}`, {
+    const response = await fetch(`${API_URL}/users/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

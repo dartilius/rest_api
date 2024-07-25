@@ -15,7 +15,7 @@ interface Pagination {
 export const TasksService = {
   async getAll(props: Pagination): Promise<TaskListResponse> {
     const { page, limit } = props;
-    let url = `${API_URL}/api/tasks/`;
+    let url = `${API_URL}/tasks/`;
 
     if (page !== undefined) {
       url += `?page=${page}`;

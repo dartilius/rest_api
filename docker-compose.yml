@@ -1,9 +1,8 @@
-version: '3.8'
-
 volumes:
+  rabbitdata:
   pg_data:
   static:
-  media:
+  celery:
   s3:
 
 services:
@@ -11,57 +10,117 @@ services:
     image: postgres:16.2
     container_name: db
     env_file: .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
+      - ./scripts/db:/docker-entrypoint-initdb.d
       - pg_data:/var/lib/postgresql/data
-
-  backend:
-    build: ./backend/
-    container_name: backend
-    env_file: .env
-    ports:
-      - 8000:8000
-    depends_on:
-      - db
-      - files
-
-  gateway:
-    build:
-      context: ./nginx/
-      dockerfile: Dockerfile
-    container_name: gateway
-    volumes:
-      - static:/staticfiles/
-    ports:
-      - 80:80
-    depends_on:
-      - backend
-      - frontend
 
   files:
     image: minio/minio
     container_name: files
-    expose:
-      - 9000
-      - 9001
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    command: server /data --console-address ":9001"
     env_file: .env
+    command: server /data --console-address ":9001"
     volumes:
       - s3:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
+
+  backend:
+    build: ./backend
+    container_name: backend
+    env_file: .env
+    healthcheck:
+      test: curl --fail ${BACKEND_HC} || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 8000:8000
+    depends_on:
+      files:
+        condition: service_started
+      db:
+        condition: service_healthy
 
   frontend:
     env_file: .env
-    environment:
-      - NEXT_PUBLIC_API_URL=${APP_SERVER_URL}
+#    environment:
+#      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     container_name: frontend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     ports:
       - 3000:3000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     volumes:
       - static:/frontend_static
+
+  gateway:
+    build: ./nginx
+    container_name: gateway
+    env_file: .env
+    volumes:
+      - static:/staticfiles
+    ports:
+      - 80:80
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
+  rabbit:
+    image: rabbitmq:3.13-management
+    container_name: rabbit
+    hostname: rabbit
+    env_file: .env
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    volumes:
+      - rabbitdata:/var/lib/rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: ./celeryDockerfile
+    container_name: celery
+    env_file: .env
+    healthcheck:
+      test: celery -b ${CELERY_BROKER} inspect ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      backend:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+
+  dashboard:
+    image: mher/flower
+    container_name: dashboard
+    env_file: .env
+    command: celery flower
+    volumes:
+      - celery:/app
+    ports:
+      - 5555:5555
+    depends_on:
+      backend:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+      celery:
+        condition: service_healthy

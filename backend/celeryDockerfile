@@ -7,9 +7,7 @@ ENV PYTHONUNBUFFERED 1
 
 RUN python -m pip install --upgrade pip
 
-COPY req.txt .
-
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r req.txt
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels celery==5.4.0
 
 # --------------------------------------------------------------------- #
 
@@ -17,17 +15,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt update && apt install -y curl mediainfo
-
 COPY --from=builder /app/wheels /wheels
-COPY --from=builder /app/req.txt .
 
 RUN pip install --no-cache /wheels/*
 RUN rm -rf /root/.cache/pip
 
 COPY . .
 
-RUN useradd uid0001
-USER uid0001
-
-CMD ["gunicorn", "--bind", "0:8000", "--workers", "4", "rmc_rest_api.wsgi"]
+ENTRYPOINT [ "/app/entrypoint.sh" ]
