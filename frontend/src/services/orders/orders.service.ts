@@ -37,7 +37,7 @@ interface AdOrdersQueryParams {
 export const AdOrdersService = {
   async getAll(params: AdOrdersQueryParams): Promise<AdOrdersListResponse> {
     const { page, limit, group, brc_type, owner, created, id, name } = params;
-    let url = `${API_URL}/api/adorders/`;
+    let url = `${API_URL}/adorders/`;
 
     if (page !== undefined) {
       url += `?page=${page}`;
@@ -66,7 +66,7 @@ export const BgOrdersService = {
   async getAll(params: BgOrdersQueryParams): Promise<BgOrdersListResponse> {
     const { page, limit, client, created, id, name, order_type, owner } =
       params;
-    let url = `${API_URL}/api/bgorders/`;
+    let url = `${API_URL}/bgorders/`;
 
     if (page !== undefined) {
       url += `?page=${page}`;

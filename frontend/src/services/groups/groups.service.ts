@@ -14,7 +14,7 @@ interface Pagination {
 
 export const GroupsService = {
   async getAll({ page, limit }: Pagination = {}): Promise<GroupsListResponse> {
-    let url = `${API_URL}/api/groups/`;
+    let url = `${API_URL}/groups/`;
 
     if (page !== undefined) {
       url += `?page=${page}`;

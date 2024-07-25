@@ -9,7 +9,7 @@ import { playlistTransformer } from "@/src/types/transformers/playlists.transfor
 
 export const PlaylistsService = {
   async getAll(): Promise<PlaylistsListResponse> {
-    const response = await fetch(`${API_URL}/api/playlists/`, {
+    const response = await fetch(`${API_URL}/playlists/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

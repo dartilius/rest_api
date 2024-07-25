@@ -49,8 +49,8 @@ services:
 
   frontend:
     env_file: .env
-    environment:
-      - NEXT_PUBLIC_API_URL=${ALLOWED_HOSTS}
+#    environment:
+#      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     container_name: frontend
     build: ./frontend
     ports:
@@ -98,10 +98,10 @@ services:
     container_name: celery
     env_file: .env
     healthcheck:
-      test: celery -b ${CELERY_BROKER} status || exit 1
+      test: celery -b ${CELERY_BROKER} inspect ping || exit 1
       interval: 5s
-      timeout: 10s
-      retries: 3
+      timeout: 5s
+      retries: 10
     depends_on:
       backend:
         condition: service_healthy
