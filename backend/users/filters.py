@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
-from users.models import CustomUser
+from .models import CustomUser
 
 
 class CustomUserFilter(FilterSet):
