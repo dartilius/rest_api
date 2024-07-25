@@ -1,7 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+# from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from files.filters import FileFilter, PlaylistFilter
 from files.serializers import (
@@ -12,7 +12,7 @@ from files.serializers import (
     TagSerializer
 )
 from files.models import Playlist, File, Tag
-from users.permissions import AuthAndOnlySuperUserDelete
+# from users.permissions import AuthAndOnlySuperUserDelete
 
 
 class TagViewSet(viewsets.ModelViewSet):
@@ -27,7 +27,7 @@ class FileViewSet(viewsets.ModelViewSet):
 
     queryset = File.objects.all().select_related(
         'owner'
-    ).prefetch_related('tags')
+    )
     serializer_class = FileSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = FileFilter
