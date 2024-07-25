@@ -2,17 +2,22 @@ export const dynamic = 'force-dynamic';
 
 import GroupsListClientPage from "./GroupsListClientPage";
 
-import { GroupsService } from "@/src/services/groups/groups.service";
-import { GroupsListResponse } from "@/src/types/interface/groups.interface";
+import groupsService from "@/src/services/groups/groups.service";
 
 export async function generateMetadata() {
+  const page = 1;
+  const limit = 10;
+
   try {
-    const response = await GroupsService.getAll();
+    const response = await groupsService.getAll({
+      page,
+      limit,
+    });
 
     if (response) {
       return {
-        title: `Группы ${response.count} штук(-и)`,
-        description: `Просмотр списка групп ${response.count} штук(-и)`,
+        title: `Группы ${response.data.count} штук(-и)`,
+        description: `Просмотр списка групп ${response.data.count} штук(-и)`,
       };
     }
   } catch (error) {
@@ -26,7 +31,12 @@ export async function generateMetadata() {
 }
 
 export default async function ListPage() {
-  const data: GroupsListResponse = await GroupsService.getAll();
+  const page = 1;
+  const limit = 10;
+  const data = await groupsService.getAll({
+    page,
+    limit,
+  });
 
-  return <GroupsListClientPage data={data} />;
+  return <GroupsListClientPage data={data.data} />;
 }
