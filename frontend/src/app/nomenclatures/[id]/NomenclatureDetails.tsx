@@ -18,6 +18,7 @@ import { useState } from "react";
 
 import TranscriptData from "./components/TranscriptData";
 import EditingModal from "./components/EditingModal";
+import DeletingModal from "./components/DeletingModal";
 
 import {
   DaySettings,
@@ -46,7 +47,8 @@ const dayNames: Record<string, string> = {
 export default function NomenclatureDetails(props: Props) {
   const { data } = props;
 
-  const [open, setOpen] = useState<boolean>(false);
+  const [openEditingModal, setOpenEditingModal] = useState<boolean>(false);
+  const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
 
   if (!data) {
     return <Loader />;
@@ -79,20 +81,11 @@ export default function NomenclatureDetails(props: Props) {
     );
   };
 
-  const handleClose = () => {
-    setOpen(false);
+  const handleCloseEditingModal = () => {
+    setOpenEditingModal(false);
   };
-
-  const deleteNomenclature = async () => {
-    try {
-      await nomenclaturesService.deleteById(data.id);
-      setTimeout(() => {
-        window.close()
-      }, 2000)
-      toastSuccess("Номенклатура успешно удалена");
-    } catch (err) {
-      toastError(err);
-    }
+  const handleCloseDeletingModal = () => {
+    setOpenDeletingModal(false);
   };
 
   return (
@@ -127,21 +120,31 @@ export default function NomenclatureDetails(props: Props) {
             <Button
               color="primary"
               style={{ width: "100%" }}
-              onClick={() => setOpen(true)}
+              onClick={() => setOpenEditingModal(true)}
             >
               Редактировать
             </Button>
             <Button
               color="danger"
               style={{ width: "100%" }}
-              onClick={() => deleteNomenclature()}
+              onClick={() => setOpenDeletingModal(true)}
             >
               Удалить
             </Button>
           </div>
         </CardFooter>
       </Card>
-      <EditingModal close={handleClose} data={data} id={data.id} open={open} />
+      <EditingModal
+        close={handleCloseEditingModal}
+        data={data}
+        id={data.id}
+        open={openEditingModal}
+      />
+      <DeletingModal
+        close={handleCloseDeletingModal}
+        id={data.id}
+        open={openDeletingModal}
+      />
     </div>
   );
 }
