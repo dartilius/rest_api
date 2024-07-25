@@ -1,16 +1,10 @@
-//TODO: Переписать на классы
+import axios from "axios";
 
 import { API_URL } from "@/src/config/api.config";
 import {
   AdOrdersListResponse,
-  AdOrdersListResponseDTO,
   BgOrdersListResponse,
-  BgOrdersListResponseDTO,
 } from "@/src/types/interface/orders.interface";
-import {
-  AdOrderResponseTransformer,
-  BgOrderResponseTransformer,
-} from "@/src/types/transformers/orders.transformer";
 
 interface BgOrdersQueryParams {
   name?: string;
@@ -34,59 +28,52 @@ interface AdOrdersQueryParams {
   limit: number;
 }
 
-export const AdOrdersService = {
-  async getAll(params: AdOrdersQueryParams): Promise<AdOrdersListResponse> {
-    const { page, limit, group, brc_type, owner, created, id, name } = params;
-    let url = `${API_URL}/api/adorders/`;
+class OrdersService {
+  private URL: string = `${API_URL}`;
 
-    if (page !== undefined) {
-      url += `?page=${page}`;
-    }
-    if (limit !== undefined) {
-      url += `&limit=${limit}`;
-    }
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
+  advertising() {
+    const advertisingUrl = this.URL + "/bgorders/";
+
+    return {
+      gatAll(props: BgOrdersQueryParams) {
+        const params = new URLSearchParams();
+
+        if (props.page !== undefined) {
+          params.append("page", props.page.toString());
+        }
+        if (props.limit !== undefined) {
+          params.append("limit", props.limit.toString());
+        }
+
+        const queryString = params.toString();
+        const urlWithParams = `${advertisingUrl}?${queryString}`;
+
+        return axios.get<AdOrdersListResponse>(urlWithParams);
       },
-    });
+    };
+  }
 
-    if (response.ok) {
-      const data: AdOrdersListResponseDTO = await response.json();
+  background() {
+    const backgroundUrl = this.URL + "/bgorders/";
 
-      return AdOrderResponseTransformer(data);
-    } else {
-      throw new Error("Не удалось получить список заявок");
-    }
-  },
-};
+    return {
+      gatAll(props: AdOrdersQueryParams) {
+        const params = new URLSearchParams();
 
-export const BgOrdersService = {
-  async getAll(params: BgOrdersQueryParams): Promise<BgOrdersListResponse> {
-    const { page, limit, client, created, id, name, order_type, owner } =
-      params;
-    let url = `${API_URL}/api/bgorders/`;
+        if (props.page !== undefined) {
+          params.append("page", props.page.toString());
+        }
+        if (props.limit !== undefined) {
+          params.append("limit", props.limit.toString());
+        }
 
-    if (page !== undefined) {
-      url += `?page=${page}`;
-    }
-    if (limit !== undefined) {
-      url += `&limit=${limit}`;
-    }
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
+        const queryString = params.toString();
+        const urlWithParams = `${backgroundUrl}?${queryString}`;
+
+        return axios.get<BgOrdersListResponse>(urlWithParams);
       },
-    });
+    };
+  }
+}
 
-    if (response.ok) {
-      const data: BgOrdersListResponseDTO = await response.json();
-
-      return BgOrderResponseTransformer(data);
-    } else {
-      throw new Error("Не удалось получить список заявок");
-    }
-  },
-};
+export default new OrdersService();

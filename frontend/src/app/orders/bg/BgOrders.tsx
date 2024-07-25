@@ -18,7 +18,7 @@ import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { limitPages } from "@/src/types/types/limitPages";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
-import { BgOrdersService } from "@/src/services/orders/Orders.service";
+import ordersService from "@/src/services/orders/orders.service";
 
 export default function BgOrders() {
   const [data, setData] = useState<BgOrdersListResponse | undefined>(undefined);
@@ -29,10 +29,10 @@ export default function BgOrders() {
   //TODO: Переписать на useQuery, как в номенклатурах
   const fetchAdOrders = async (page: number, limit: number) => {
     try {
-      const res = await BgOrdersService.getAll({ page, limit });
+      const res = await ordersService.background().gatAll({ page, limit });
 
       if (res) {
-        setData(res);
+        setData(res.data);
       }
     } catch (error) {
       toastError(error);
