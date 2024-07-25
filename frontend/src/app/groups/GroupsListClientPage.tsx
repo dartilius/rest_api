@@ -3,9 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   Chip,
-  Pagination,
-  Select,
-  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -15,11 +12,10 @@ import {
 } from "@nextui-org/react";
 import Link from "next/link";
 
-import { GroupsService } from "@/src/services/groups/groups.service";
+import groupsService from "@/src/services/groups/groups.service";
 import { toastError } from "@/src/utils/toast-error";
 import { GroupsListResponse } from "@/src/types/interface/groups.interface";
 import Loader from "@/src/components/ui/Loader";
-import { limitPages } from "@/src/types/types/limitPages";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 
 type Props = {
@@ -34,15 +30,15 @@ export default function GroupsListClientPage({ data: initialData }: Props) {
 
   //TODO: Переписать на useQuery, как в номенклатурах
   useEffect(() => {
-    if (initialData) {
+    if (!initialData) {
       const fetchData = async () => {
         try {
-          const response = await GroupsService.getAll({
+          const response = await groupsService.getAll({
             page,
             limit,
           });
 
-          setData(response);
+          setData(response.data);
         } catch (error) {
           toastError(error);
         }
