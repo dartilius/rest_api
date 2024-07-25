@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import GroupsListClientPage from "./GroupsListClientPage";
 
 import { GroupsService } from "@/src/services/groups/groups.service";

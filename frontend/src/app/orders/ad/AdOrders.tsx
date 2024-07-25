@@ -18,7 +18,7 @@ import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { limitPages } from "@/src/types/types/limitPages";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
-import { AdOrdersService } from "@/src/services/orders/Orders.service";
+import { AdOrdersService } from "@/src/services/orders/orders.service";
 
 export default function AdOrders() {
   const [data, setData] = useState<AdOrdersListResponse | undefined>(undefined);

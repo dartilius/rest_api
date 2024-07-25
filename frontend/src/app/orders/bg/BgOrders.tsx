@@ -18,7 +18,7 @@ import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { limitPages } from "@/src/types/types/limitPages";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
-import { BgOrdersService } from "@/src/services/orders/Orders.service";
+import { BgOrdersService } from "@/src/services/orders/orders.service";
 
 export default function BgOrders() {
   const [data, setData] = useState<BgOrdersListResponse | undefined>(undefined);
