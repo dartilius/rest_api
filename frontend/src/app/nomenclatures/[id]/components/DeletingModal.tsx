@@ -1,7 +1,15 @@
+import {
+  Button,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@nextui-org/react";
+
 import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
 import { toastError } from "@/src/utils/toast-error";
 import { toastSuccess } from "@/src/utils/toast-success";
-import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@nextui-org/react";
 
 type Props = {
   id: string;

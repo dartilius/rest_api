@@ -1,41 +1,31 @@
-//TODO: Переписать на классы
+import axios from "axios";
 
 import { API_URL } from "@/src/config/api.config";
-import {
-  GroupsListResponse,
-  GroupsListResponseDTO,
-} from "@/src/types/interface/groups.interface";
-import { groupsListResponseTransformer } from "@/src/types/transformers/groups.transformers";
+import { GroupsListResponse } from "@/src/types/interface/groups.interface";
 
 interface Pagination {
   page?: number;
   limit?: number;
 }
 
-export const GroupsService = {
-  async getAll({ page, limit }: Pagination = {}): Promise<GroupsListResponse> {
-    let url = `${API_URL}/groups/`;
+class GroupsService {
+  private URL = `${API_URL}/groups`;
 
-    if (page !== undefined) {
-      url += `?page=${page}`;
+  getAll(props: Pagination = {}) {
+    const params = new URLSearchParams();
+
+    if (props.page !== undefined) {
+      params.append("page", props.page.toString());
     }
-    if (limit !== undefined) {
-      url += `&limit=${limit}`;
+    if (props.limit !== undefined) {
+      params.append("limit", props.limit.toString());
     }
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const queryString = params.toString();
+    const urlWithParams = `${this.URL}?${queryString}`;
 
-    if (response.ok) {
-      const data: GroupsListResponseDTO = await response.json();
+    return axios.get<GroupsListResponse>(urlWithParams);
+  }
+}
 
-      return groupsListResponseTransformer(data);
-    } else {
-      throw new Error("Не удалось получить список групп");
-    }
-  },
-};
+export default new GroupsService();

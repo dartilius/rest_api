@@ -18,7 +18,7 @@ import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { limitPages } from "@/src/types/types/limitPages";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
-import { AdOrdersService } from "@/src/services/orders/orders.service";
+import ordersService from "@/src/services/orders/orders.service";
 
 export default function AdOrders() {
   const [data, setData] = useState<AdOrdersListResponse | undefined>(undefined);
@@ -29,10 +29,10 @@ export default function AdOrders() {
   //TODO: Переписать на useQuery, как в номенклатурах
   const fetchAdOrders = async (page: number, limit: number) => {
     try {
-      const res = await AdOrdersService.getAll({ page, limit });
+      const res = await ordersService.advertising().gatAll({ page, limit });
 
       if (res) {
-        setData(res);
+        setData(res.data);
       }
     } catch (error) {
       toastError(error);
