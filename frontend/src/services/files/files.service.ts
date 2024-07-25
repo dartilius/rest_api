@@ -1,24 +1,12 @@
 //TODO: Переписать на классы
 
-import { getTokenStorage } from "../auth/auth.helper";
+import axios from "axios";
 
 import {
-  FilesCreateResponse,
   FilesListResponse,
-  FilesListResponseDTO,
   ReadFileResponse,
-  ReadFileResponseDTO,
-  TagsCreateRequest,
-  TagsCreateResponse,
-  UpdateFileRequest,
 } from "@/src/types/interface/files.interface";
 import { API_URL } from "@/src/config/api.config";
-import {
-  filesCreateResponseTransformer,
-  filesListResponseTransformer,
-  readFileResponseTransformer,
-} from "@/src/types/transformers/files.transformer";
-import axios from "axios";
 
 interface Pagination {
   page?: number;
@@ -32,12 +20,36 @@ interface Pagination {
 class FilesService {
   private URL = `${API_URL}/files/`;
 
-  getAll() {
-    return axios.get<FilesListResponse>(this.URL);
+  getAll(props: Pagination) {
+    const params = new URLSearchParams();
+
+    if (props.page !== undefined) {
+      params.append("page", props.page.toString());
+    }
+    if (props.limit !== undefined) {
+      params.append("limit", props.limit.toString());
+    }
+    if (props.name !== undefined) {
+      params.append("name", props.name);
+    }
+    if (props.file_type !== undefined) {
+      params.append("file_type", props.file_type);
+    }
+    if (props.tags !== undefined) {
+      params.append("tags", props.tags.toString());
+    }
+    if (props.hash !== undefined) {
+      params.append("hash", props.hash);
+    }
+
+    const queryString = params.toString();
+    const urlWithParams = `${this.URL}?${queryString}`;
+
+    return axios.get<FilesListResponse>(urlWithParams);
   }
 
   getById(id: string) {
-    return axios.get<ReadFileResponse>(`${this.URL}/${id}`);
+    return axios.get<ReadFileResponse>(`${this.URL}${id}`);
   }
 }
 

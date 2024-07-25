@@ -1,11 +1,13 @@
 import FilesListClientPage from "./FilesListClientPage";
 
 import filesService from "@/src/services/files/files.service";
-import { FilesListResponse } from "@/src/types/interface/files.interface";
 
 export async function generateMetadata() {
+  const page = 1;
+  const limit = 10;
+
   try {
-    const response = await filesService.getAll();
+    const response = await filesService.getAll({ page, limit });
 
     if (response) {
       return {
@@ -24,7 +26,5 @@ export async function generateMetadata() {
 }
 
 export default async function ListPage() {
-  const data = await filesService.getAll();
-
-  return <FilesListClientPage data={data.data} />;
+  return <FilesListClientPage />;
 }
