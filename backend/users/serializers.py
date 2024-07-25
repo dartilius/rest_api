@@ -23,12 +23,12 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         representation = super().to_representation(value)
         representation['full_name'] = {
-            'Фамилия': value.last_name,
-            'Имя': value.first_name,
-            'Отчество': value.middle_name
+            'last_name': value.last_name,
+            'first_name': value.first_name,
+            'middle_name': value.middle_name
         } if value.middle_name is not None else {
-            'Фамилия': value.last_name,
-            'Имя': value.first_name,
+            'last_name': value.last_name,
+            'first_name': value.first_name,
         }
         representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
@@ -40,12 +40,10 @@ class CustomUserListSerializer(serializers.ModelSerializer):
     class Meta:
         fields = (
             'id',
+            'role',
             'created'
         )
-        read_only_fields = (
-            'id',
-            'created'
-        )
+        read_only_fields = fields
         model = CustomUser
 
     def to_representation(self, value):

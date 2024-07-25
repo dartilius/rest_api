@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
-from tasks.models import Task
+from .models import Task
 
 
 class TaskFilter(FilterSet):
