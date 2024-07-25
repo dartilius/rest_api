@@ -129,30 +129,6 @@ export default function FilesListClientPage() {
                 Создать
               </Link>
             </Button>
-
-            {/*
-
-        <Select
-          defaultSelectedKeys={[zone]}
-          label="Временная зона"
-          placeholder="Выберите зону"
-          value={zone} // Ensure default value is a string
-          onChange={(e) => setZone(e.target.value)}
-        >
-          {timezonesArray.map((option) => (
-            <SelectItem key={option.value} value={option.label}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </Select>
-
-        <Search
-          label="Версия"
-          placeholder="Введите версию"
-          searchValue={version}
-          onSearchChange={handleVersionChange}
-          onSearchSubmit={handleVersionSubmit}
-        /> */}
           </div>
 
           <div style={{ width: 900 }}>
