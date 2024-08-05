@@ -18,7 +18,7 @@ import { useState } from "react";
 
 import TranscriptData from "./components/TranscriptData";
 import EditingModal from "./components/EditingModal";
-import DeletingModal from "./components/DeletingModal";
+import DeletingModal from "../../../components/ui/DeletingModal";
 
 import {
   DaySettings,
@@ -28,6 +28,7 @@ import Loader from "@/src/components/ui/Loader";
 import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
 import { toastSuccess } from "@/src/utils/toast-success";
 import { toastError } from "@/src/utils/toast-error";
+import { useParams } from "next/navigation";
 
 type Props = {
   id: string | undefined;
@@ -46,6 +47,8 @@ const dayNames: Record<string, string> = {
 
 export default function NomenclatureDetails(props: Props) {
   const { data } = props;
+  const router = useParams();
+  const id = router?.id.toString();
 
   const [openEditingModal, setOpenEditingModal] = useState<boolean>(false);
   const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
@@ -86,6 +89,18 @@ export default function NomenclatureDetails(props: Props) {
   };
   const handleCloseDeletingModal = () => {
     setOpenDeletingModal(false);
+  };
+
+  const deleteNomenclature = async () => {
+    try {
+      await nomenclaturesService.deleteById(id);
+      setTimeout(() => {
+        window.close();
+      }, 2000);
+      toastSuccess("Номенклатура успешно удалена");
+    } catch (err) {
+      toastError(err);
+    }
   };
 
   return (
@@ -142,7 +157,7 @@ export default function NomenclatureDetails(props: Props) {
       />
       <DeletingModal
         close={handleCloseDeletingModal}
-        id={data.id}
+        deleteProp={deleteNomenclature}
         open={openDeletingModal}
       />
     </div>
