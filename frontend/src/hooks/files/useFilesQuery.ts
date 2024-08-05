@@ -16,15 +16,7 @@ const useFilesQuery = (props: Props) => {
   const { page, limit, search, status, versions, timezone } = props;
 
   const { data, isLoading, error, isError, isSuccess } = useQuery({
-    queryKey: [
-      "nomenclaturesList",
-      page,
-      limit,
-      search,
-      status,
-      versions,
-      timezone,
-    ],
+    queryKey: ["filesList", page, limit, search, status, versions, timezone],
     queryFn: () =>
       filesService.getAll({
         page,
