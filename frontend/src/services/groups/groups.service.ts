@@ -1,11 +1,12 @@
 import axios from "axios";
 
+import { getTokenStorage } from "../auth/auth.helper";
+
 import { API_URL } from "@/src/config/api.config";
 import {
   GroupDetailsResponse,
   GroupsListResponse,
 } from "@/src/types/interface/groups.interface";
-import { getTokenStorage } from "../auth/auth.helper";
 
 interface Pagination {
   page?: number;
