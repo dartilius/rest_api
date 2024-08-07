@@ -23,8 +23,12 @@ const DeletingModal = (props: Props) => {
           <ModalHeader>Удалить?</ModalHeader>
           <ModalBody>Реально удалить?</ModalBody>
           <ModalFooter>
-            <Button onClick={deleteProp}>Да</Button>
-            <Button onClick={() => close()}>Нет</Button>
+            <Button color="danger" onClick={deleteProp}>
+              Да
+            </Button>
+            <Button color="primary" onClick={() => close()}>
+              Нет
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

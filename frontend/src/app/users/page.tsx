@@ -23,6 +23,7 @@ import "dayjs/locale/ru";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import Search from "@/src/components/Search";
 import usersService from "@/src/services/users/users.service";
+import { useDebounce } from "@/src/hooks/useDebounce";
 
 const { RangePicker } = DatePicker;
 
@@ -36,6 +37,8 @@ export default function UsersList() {
   const [endDate, setEndDate] = useState<string>("");
   const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
   const pages = Math.ceil((data?.count || 0) / limit);
+
+  const debouncedName = useDebounce(name, 500);
 
   //TODO: Переписать на useQuery, как в номенклатурах
   const fetchUsers = async (
@@ -51,7 +54,7 @@ export default function UsersList() {
         limit,
         created_after: startDate,
         created_before: endDate,
-        name,
+        name: debouncedName,
       });
 
       if (response) {
