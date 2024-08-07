@@ -50,11 +50,19 @@ class UsersService {
   }
 
   deleteById(id: string) {
-    return axios.delete(`${this.URL}/${id}`);
+    return axios.delete(`${this.URL}/${id}`, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
   }
 
-  updateById() {
-    return;
+  updateById(id: string, data: any) {
+    return axios.patch(`${this.URL}/${id}/`, data, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
   }
 }
 

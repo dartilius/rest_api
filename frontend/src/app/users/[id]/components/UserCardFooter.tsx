@@ -44,6 +44,10 @@ const UserCardFooter = (props: Props) => {
     setOpenDeletingModal(false);
   };
 
+  const handleCloseEditingModal = () => {
+    setOpenEditingModal(false);
+  };
+
   if (isDeleteError) {
     return <>{toastError(deleteError?.message)}</>;
   }
@@ -57,7 +61,7 @@ const UserCardFooter = (props: Props) => {
         width: "100%",
       }}
     >
-      <Button color="secondary">Редактировать</Button>
+      <Button color="secondary" onClick={() => setOpenEditingModal(true)}>Редактировать</Button>
       <Button color="danger" onClick={() => setOpenDeletingModal(true)}>
         Удалить
       </Button>
@@ -67,7 +71,10 @@ const UserCardFooter = (props: Props) => {
         open={openDeletingModal}
       />
       <EditingUserModal
+        close={handleCloseEditingModal}
         emailOld={email}
+        id={id}
+        open={openEditingModal}
         phoneNumberOld={phoneNumber}
         roleOld={role}
       />

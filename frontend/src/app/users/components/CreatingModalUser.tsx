@@ -13,29 +13,13 @@ import {
 import usersService from "@/src/services/users/users.service";
 import { toastError } from "@/src/utils/toast-error";
 import { toastSuccess } from "@/src/utils/toast-success";
+import { userRoleChoices } from "@/src/types/types/userRoleChoices";
 
 type Props = {
   open: boolean;
   close: () => void;
 };
 
-const choices = [
-  {
-    id: 1,
-    value: "admin",
-    display_name: "Сотрудник ТО",
-  },
-  {
-    id: 2,
-    value: "manager",
-    display_name: "Менеджер",
-  },
-  {
-    id: 3,
-    value: "superuser",
-    display_name: "Суперпользователь",
-  },
-];
 
 const CreatingModalUser = (props: Props) => {
   const { open, close } = props;
@@ -94,7 +78,7 @@ const CreatingModalUser = (props: Props) => {
                 onChange={changePhoneNumber}
               />
               <Select label="Роль">
-                {choices.map((choice) => (
+                {userRoleChoices.map((choice) => (
                   <SelectItem
                     key={choice.id}
                     value={choice.value}
