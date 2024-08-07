@@ -1,27 +1,75 @@
-//TODO: Переписать на классы
+import axios from "axios";
+
+import { getTokenStorage } from "../auth/auth.helper";
 
 import { API_URL } from "@/src/config/api.config";
 import {
-  PlaylistsListResponse,
-  PlaylistsListResponseDTO,
+  IPlaylist,
+  IPlaylistsList,
 } from "@/src/types/interface/playlists.interface";
-import { playlistTransformer } from "@/src/types/transformers/playlists.transformer";
 
-export const PlaylistsService = {
-  async getAll(): Promise<PlaylistsListResponse> {
-    const response = await fetch(`${API_URL}/playlists/`, {
-      method: "GET",
+type Params = {
+  page?: number;
+  limit?: number;
+};
+
+class PlaylistsService {
+  private URL = `${API_URL}/playlists/`;
+  private token = getTokenStorage();
+  getAll(props: Params) {
+
+    const { page, limit } = props;
+
+    const params = new URLSearchParams();
+
+    if (page !== undefined) {
+      params.append("page", page.toString());
+    }
+    if (limit !== undefined) {
+      params.append("limit", limit.toString());
+    }
+
+    const queryString = params.toString();
+    const urlWithParams = `${this.URL}?${queryString}`;
+
+    return axios.get<IPlaylistsList>(`${urlWithParams}`);
+  }
+
+  getById(id: string) {
+    return axios.get<IPlaylist>(`${this.URL}${id}/`);
+  }
+
+  deleteById(id: string) {
+    return axios.delete(`${this.URL}${id}/`, {
       headers: {
-        "Content-Type": "application/json",
+        Authorization: `access_token ${this.token}`,
       },
     });
+  }
 
-    if (response.ok) {
-      const data: PlaylistsListResponseDTO = await response.json();
+  patchById(id: string, data: any) {
+    return axios.patch(`${this.URL}${id}/`, data, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
+  }
 
-      return playlistTransformer(data);
-    } else {
-      throw new Error("Не удалось получить список плейлистов");
-    }
-  },
-};
+  updateById(id: string, data: any) {
+    return axios.put(`${this.URL}${id}/`, data, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
+  }
+
+  create(data: any) {
+    return axios.post(`${this.URL}`, data, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
+  }
+}
+
+export default new PlaylistsService();
