@@ -30,6 +30,15 @@ class UsersService {
     if (limit !== undefined) {
       params.append("limit", limit.toString());
     }
+    if (name !== undefined) {
+      params.append("name", name);
+    }
+    if (created_after !== undefined) {
+      params.append("created_after", created_after);
+    }
+    if (created_before !== undefined) {
+      params.append("created_before", created_before);
+    }
 
     const queryString = params.toString();
     const urlWithParams = `${this.URL}?${queryString}`;
