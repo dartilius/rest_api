@@ -27,7 +27,7 @@ RUN rm -rf /root/.cache/pip
 
 COPY . .
 
-RUN useradd uid0001
-USER uid0001
+# RUN useradd uid0001
+# USER uid0001
 
 CMD ["gunicorn", "--bind", "0:8000", "--workers", "4", "rmc_rest_api.wsgi"]
