@@ -93,32 +93,17 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         Узнать больше про zip можно в официальной документации
         https://docs.python.org/3/library/functions.html#zip
         """
-        def _validate_time(*args) -> None:
+
+        def _validate_time(interval: str) -> None:
             """Валидация промежутков времени."""
-            if len(args) != 2:
+            split_interval = interval.split('-')
+            if len(split_interval) != 2:
                 raise serializers.ValidationError(
-                    'Аргумент времени должен содержать ровно два значения'
+                    'Интервал времени должен содержать ровно два значения!'
                 )
-            try:
-                start = time(*args[0])
-                end = time(*args[1])
-            except TypeError:
-                raise serializers.ValidationError(
-                    'Время должно быть в формате ((с..,), (по..,))'
-                )
-            except ValueError as e:
-                # Это всё нужно для перевода стандартной ошибки time
-                time_val = str()
-                e_list = str(e).split()
-                match e_list[0]:
-                    case 'second': time_val = 'секунд'
-                    case 'minute': time_val = 'минут'
-                    case 'hour': time_val = 'часов'
-                raise serializers.ValidationError(
-                    f'Количество {time_val} должно быть '
-                    f'в пределах {e_list[-1]}'
-                )
-            if not time(0, 0, 0) <= start < end <= time(23, 59, 59):
+            start = list(map(int, split_interval[0].split(':')))
+            end = list(map(int, split_interval[1].split(':')))
+            if not time(0, 0, 0) <= time(*start) < time(*end) <= time(23, 59, 59):
                 raise serializers.ValidationError(
                     'Время начала не может быть больше времени окончания '
                     'и должно быть в промежутке 00:00:00 - 23:59:59'
@@ -144,17 +129,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             j = json.loads(value[day])
             try:
                 req_keys = {
-                    'worktime': ast.literal_eval(j['worktime']),
+                    'worktime': j['worktime'],
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
             except KeyError as k:
                 raise serializers.ValidationError(f'{k} не передан')
-            for key in req_keys:
-                if not isinstance(req_keys[key], tuple):
-                    raise serializers.ValidationError(
-                        'Не правильный формат данных'
-                    )
-            _validate_time(*req_keys['worktime'])
+            _validate_time(req_keys['worktime'])
             _validate_volume(req_keys['default_volume'])
             if 'custom_volume' in j:
                 for k, v in j['custom_volume'].items():
@@ -169,7 +149,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                             'Обнаружено пересечение в часах '
                             'пользовательских настроек громкости'
                         )
-
         return value
 
     def get_status(self, obj):
@@ -194,9 +173,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         representation['timezone'] = TIMEZONES[value.timezone]
         for day, setting in representation['settings'].items():
             j = json.loads(setting)
-            to_literal = ast.literal_eval(j['worktime'])
-            start = time(*to_literal[0]).strftime('%H:%M:%S')
-            end = time(*to_literal[1]).strftime('%H:%M:%S')
+            split_interval = j['worktime'].split('-')
+            start = split_interval[0]
+            end = split_interval[1]
             try:
                 representation['settings'][day] = {
                     'worktime': (start, end),

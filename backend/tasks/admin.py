@@ -7,19 +7,22 @@ from tasks.models import Task
 class TaskAdmin(admin.ModelAdmin):
     """Репликация."""
 
+    @admin.display(description='Тип')
+    def type(self, obj):
+        return obj.__str__
+
     list_display = (
         'id',
         'client',
         'owner',
         'type',
-        'parameters',
         'created',
         'updated',
         'status'
     )
     search_fields = (
         'id',
-        'client',
+        'client__name',
         'type',
         'status'
     )
