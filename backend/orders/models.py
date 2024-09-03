@@ -46,7 +46,7 @@ class BaseOrder(models.Model):
     broadcast_interval = DateTimeRangeField(
         verbose_name='Интервал работы заказа'
     )
-    status = models.CharField(
+    status = models.PositiveSmallIntegerField(
         choices=STATUSES,
         verbose_name='Статус',
         default=0
@@ -129,7 +129,7 @@ class BgOrder(BaseOrder):
         verbose_name='Плейлист',
         on_delete=models.CASCADE
     )
-    order_type = models.IntegerField(
+    order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
         verbose_name='Тип фона'
     )
