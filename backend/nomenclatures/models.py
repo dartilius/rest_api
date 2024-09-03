@@ -89,11 +89,6 @@ class Nomenclature(models.Model):
         verbose_name='Актуальность номенклтауры',
         default=True
     )
-    status = models.PositiveSmallIntegerField(
-        choices=STATUSES,
-        verbose_name='Статус',
-        default=2
-    )
     version = models.CharField(
         max_length=127,
         verbose_name='Версия ПО'
