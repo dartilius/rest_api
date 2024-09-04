@@ -78,3 +78,7 @@ zstandard==0.22.0
 gunicorn==22.0.0
 django-cors-headers==4.3.1
 django-minio-backend==3.6.0
+amqp==5.2.0
+billiard==4.2.0
+kombu==5.4.0
+vine==5.1.0
