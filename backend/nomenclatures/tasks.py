@@ -2,8 +2,9 @@ from datetime import datetime, timedelta
 
 from rmc_rest_api.celery import app
 from .models import NomenclatureAvailability, StatusHistory
+from celery import shared_task
 
-@app.task
+@shared_task
 def update_nomenclature_status():
     """
     Обновление статусов доступности номенклатур
@@ -48,3 +49,4 @@ def update_nomenclature_status():
                     status=0,
                     client=status.client
                 )
+    return 0
