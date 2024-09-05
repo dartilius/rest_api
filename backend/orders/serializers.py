@@ -1,5 +1,5 @@
 import json
-from datetime import time, timedelta as td
+from datetime import time, timedelta as td, datetime as dt
 from rest_framework import serializers
 
 from files.models import Playlist
@@ -23,7 +23,8 @@ class DateTimeTZRangeField(serializers.DictField):
     default_error_messages = dict(serializers.DictField.default_error_messages)
     default_error_messages.update({
         'too_much_content': 'Недопустимо наличие лишних ключей: {extra}.',
-        'bound_ordering': 'Начало интервала не может быть позже окончания.',
+        'bound_ordering': 'Конец вещания не может быть раньше начала или '
+                          'текущего момента.',
         'no_bound': 'Не указана дата {bound} вещания.'
     })
 
@@ -49,7 +50,7 @@ class DateTimeTZRangeField(serializers.DictField):
             validated_dict[key] = self.child.run_validation(data[key])
 
         lower, upper = validated_dict.get('lower'), validated_dict.get('upper')
-        if lower > upper:
+        if lower > upper or upper.timestamp() < dt.now().timestamp():
             self.fail('bound_ordering')
 
         for key in ('bounds', 'empty'):
