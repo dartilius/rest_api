@@ -1,7 +1,7 @@
 import ast
 import json
 
-from datetime import time, timedelta as td
+from datetime import time
 from rest_framework import serializers
 
 from nomenclatures.models import (
@@ -191,9 +191,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     'worktime': (start, end),
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
-        representation['created'] = (
-                value.created + td(hours=7)
-        ).strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
@@ -312,4 +310,3 @@ class StatusHistorySerializer(serializers.ModelSerializer):
             '%Y-%m-%d %H:%M:%S'
         )
         return representation
-

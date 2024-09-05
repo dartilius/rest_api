@@ -1,5 +1,5 @@
 import json
-from datetime import time, timedelta as td, datetime as dt
+from datetime import time, datetime as dt, timezone as tz
 from rest_framework import serializers
 
 from files.models import Playlist
@@ -50,7 +50,7 @@ class DateTimeTZRangeField(serializers.DictField):
             validated_dict[key] = self.child.run_validation(data[key])
 
         lower, upper = validated_dict.get('lower'), validated_dict.get('upper')
-        if lower > upper or upper.timestamp() < dt.now().timestamp():
+        if lower > upper or upper < dt.now(tz.utc):
             self.fail('bound_ordering')
 
         for key in ('bounds', 'empty'):
@@ -60,9 +60,8 @@ class DateTimeTZRangeField(serializers.DictField):
         return self.range_type(**validated_dict)
 
     def to_representation(self, value):
-        # временный фикс отображения времени по UTC+7
-        lower = (value.lower + td(hours=7)).strftime('%Y-%m-%d %H:%M:%S')
-        upper = (value.upper + td(hours=7)).strftime('%Y-%m-%d %H:%M:%S')
+        lower = value.lower.strftime('%Y-%m-%d %H:%M:%S')
+        upper = value.upper.strftime('%Y-%m-%d %H:%M:%S')
         return {
             'since': self.child.to_representation(lower),
             'until': self.child.to_representation(upper)
@@ -282,10 +281,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
             {'id': slide.id,
              'name': slide.name} for slide in value.slides.all()
         ] if value.slides.exists() else None
-        # временный фикс отображения времени по UTC+7
-        representation['created'] = (
-                value.created + td(hours=7)
-        ).strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
@@ -313,6 +309,10 @@ class AdOrderListSerializer(serializers.ModelSerializer):
             'id': value.group.id,
             'name': value.group.name
         }
+        representation['slides'] = [
+            {'id': slide.id,
+             'name': slide.name} for slide in value.slides.all()
+        ] if value.slides.exists() else None
         representation['file'] = {'id': value.file.id, 'name': value.file.name}
         return representation
 
@@ -365,10 +365,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
             'id': value.playlist.id,
             'name': value.playlist.name
         }
-        # временный фикс отображения времени по UTC+7
-        representation['created'] = (
-                value.created + td(hours=7)
-        ).strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
