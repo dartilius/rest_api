@@ -98,7 +98,8 @@ services:
     container_name: celery
     env_file: .env
     healthcheck:
-      test: celery -b ${CELERY_BROKER} inspect ping || exit 1
+#      test: celery inspect ping || exit 1
+      test: celery -b ${CELERY_BROKER} status || exit 1
       interval: 5s
       timeout: 5s
       retries: 10

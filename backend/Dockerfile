@@ -20,7 +20,6 @@ WORKDIR /app
 RUN apt update && apt install -y curl mediainfo
 
 COPY --from=builder /app/wheels /wheels
-COPY --from=builder /app/req.txt .
 
 RUN pip install --no-cache /wheels/*
 RUN rm -rf /root/.cache/pip
