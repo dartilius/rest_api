@@ -25,11 +25,16 @@
  - RABBITMQ_USER
  - RABBITMQ_PASS
 3. docker compose up --build
-4. docker exec backend sh -c "python manage.py migrate"
-5. docker exec backend sh -c "python manage.py collectstatic --no-input"
-6. docker exec backend sh -c "python manage.py createsuperuser"
-7. войдите в Minio по адресу http://localhost:9001
-8. во вкладке Access Keys создайте новый ключ доступа и внесите данные в .env
-9. перезапустите кластер
+4. docker exec backend sh -c "python manage.py makemigrations"
+5. docker exec backend sh -c "python manage.py migrate"
+5.1 если ругается на этапе Applying admin.0001.initial...
+    то нужно отдельно выполнить 
+    docker exec backend sh -c "python manage.py makemigrations users"
+    а затем снова провести миграции
+6. docker exec backend sh -c "python manage.py collectstatic --no-input"
+7. docker exec backend sh -c "python manage.py createsuperuser"
+8. войдите в Minio по адресу http://localhost:9001
+9. во вкладке Access Keys создайте новый ключ доступа и внесите данные в .env
+10. перезапустите кластер
 
 ```
