@@ -100,9 +100,7 @@ class FileSerializer(serializers.ModelSerializer):
         representation['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
-        representation['created'] = (
-                value.created + td(hours=7)
-        ).strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
@@ -162,9 +160,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
         representation['files'] = [
             {'id': file.id, 'name': file.name} for file in value.files.all()
         ]
-        representation['created'] = (
-                value.created + td(hours=7)
-        ).strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 
@@ -186,7 +182,5 @@ class PlaylistListSerializer(serializers.ModelSerializer):
             f'{value.owner.last_name} {value.owner.first_name}'
         )
         representation['files_count'] = len(value.files.all())
-        representation['created'] = (
-                value.created + td(hours=7)
-        ).strftime('%Y-%m-%d %H:%M:%S')
+        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
