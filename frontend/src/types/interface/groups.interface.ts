@@ -25,3 +25,17 @@ export type GroupsList = {
   created: string;
   clientsCount: number;
 };
+
+export interface GroupDetailsResponse {
+  id: number;
+  name: string;
+  description: string;
+  owner: string;
+  created: string;
+  clients: GroupClients[];
+}
+
+export interface GroupClients {
+  id: string;
+  name: string;
+}

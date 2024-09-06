@@ -31,12 +31,5 @@ export async function generateMetadata() {
 }
 
 export default async function ListPage() {
-  const page = 1;
-  const limit = 10;
-  const data = await groupsService.getAll({
-    page,
-    limit,
-  });
-
-  return <GroupsListClientPage data={data.data} />;
+  return <GroupsListClientPage />;
 }

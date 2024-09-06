@@ -20,7 +20,6 @@ import { toastError } from "@/src/utils/toast-error";
 import useNomenclaturesQuery from "@/src/hooks/nomenclatures/useNomenclaturesQuery";
 import Search from "@/src/components/Search";
 import { convertStatus } from "@/src/types/types/checkStatus";
-import { limitPages } from "@/src/types/types/limitPages";
 import { timezonesArray } from "@/src/types/types/timezone";
 import { useDebounce } from "@/src/hooks/useDebounce";
 

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import filesService from "@/src/services/files/files.service";
+import usersService from "@/src/services/users/users.service";
 
 type Props = {
   page: number;
@@ -12,13 +12,13 @@ type Props = {
   timezone?: string;
 };
 
-const useFilesQuery = (props: Props) => {
-  const { page, limit, search, status, versions, timezone } = props;
+const useUsersQuery = (props: Props) => {
+  const { page, limit } = props;
 
   const { data, isLoading, error, isError, isSuccess } = useQuery({
-    queryKey: ["filesList", page, limit, search, status, versions, timezone],
+    queryKey: ["usersList", page, limit],
     queryFn: () =>
-      filesService.getAll({
+      usersService.getAll({
         page,
         limit,
       }),
@@ -28,4 +28,4 @@ const useFilesQuery = (props: Props) => {
   return { data, isLoading, error, isError, isSuccess };
 };
 
-export default useFilesQuery;
+export default useUsersQuery;
