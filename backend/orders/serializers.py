@@ -1,5 +1,5 @@
 import json
-from datetime import time, datetime as dt, timezone as tz
+from datetime import time, datetime as dt
 from rest_framework import serializers
 
 from files.models import Playlist
@@ -50,7 +50,7 @@ class DateTimeTZRangeField(serializers.DictField):
             validated_dict[key] = self.child.run_validation(data[key])
 
         lower, upper = validated_dict.get('lower'), validated_dict.get('upper')
-        if lower > upper or upper < dt.now(tz.utc):
+        if lower > upper or upper < dt.now():
             self.fail('bound_ordering')
 
         for key in ('bounds', 'empty'):
