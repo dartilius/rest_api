@@ -4,6 +4,7 @@ asgiref==3.8.1
 async-timeout==4.0.3
 attrs==23.2.0
 certifi==2024.2.2
+celery==5.4.0
 cffi==1.16.0
 channels==4.1.0
 channels-redis==4.2.0
@@ -77,3 +78,8 @@ zstandard==0.22.0
 gunicorn==22.0.0
 django-cors-headers==4.3.1
 django-minio-backend==3.6.0
+amqp==5.2.0
+billiard==4.2.0
+kombu==5.4.0
+vine==5.1.0
+celery_singleton==0.3.1

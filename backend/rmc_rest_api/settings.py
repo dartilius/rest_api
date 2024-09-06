@@ -145,8 +145,9 @@ STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER', 'amqp://')
-CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND', 'db+sqlite:///celery.sqlite3')
+# CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND', 'db+sqlite:///celery.sqlite3')
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_SINGLETON_BACKEND_URL = 'redis://redis:6379'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
