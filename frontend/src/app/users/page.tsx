@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  Button,
   Table,
   TableBody,
   TableCell,
@@ -14,25 +15,30 @@ import { DatePicker } from "antd";
 import dayjs from "dayjs";
 
 import styles from "./UsersList.module.scss";
+import CreatingModalUser from "./components/CreatingModalUser";
 
-import { UsersListResponse } from "@/src/types/interface/user.interface";
-import { UsersService } from "@/src/services/users/users.service";
 import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import "dayjs/locale/ru";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import Search from "@/src/components/Search";
+import usersService from "@/src/services/users/users.service";
+import { useDebounce } from "@/src/hooks/useDebounce";
+
 const { RangePicker } = DatePicker;
 
 dayjs.locale("ru");
 export default function UsersList() {
-  const [data, setData] = useState<UsersListResponse | undefined>(undefined);
+  const [data, setData] = useState<any | undefined>(undefined);
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
   const [startDate, setStartDate] = useState<string>("");
   const [name, setName] = useState<string | undefined>(undefined);
   const [endDate, setEndDate] = useState<string>("");
+  const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
   const pages = Math.ceil((data?.count || 0) / limit);
+
+  const debouncedName = useDebounce(name, 500);
 
   //TODO: Переписать на useQuery, как в номенклатурах
   const fetchUsers = async (
@@ -43,16 +49,16 @@ export default function UsersList() {
     name: string | undefined,
   ) => {
     try {
-      const response = await UsersService.getAll({
+      const response = await usersService.getAll({
         page,
         limit,
         created_after: startDate,
         created_before: endDate,
-        name,
+        name: debouncedName,
       });
 
       if (response) {
-        setData(response);
+        setData(response.data);
       }
     } catch (error) {
       toastError(error);
@@ -92,6 +98,10 @@ export default function UsersList() {
     }
   };
 
+  const handleCloseCreatingModal = () => {
+    setOpenCreatingModal(false);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.sidebar}>
@@ -104,6 +114,7 @@ export default function UsersList() {
           onSearchSubmit={handleSearchSubmit}
         />
         <RangePicker onChange={handleDateChange} />
+        <Button onClick={() => setOpenCreatingModal(true)}>Создать</Button>
       </div>
       <div style={{ maxWidth: 960, width: 480 }}>
         <Table
@@ -126,7 +137,7 @@ export default function UsersList() {
             <TableColumn>role</TableColumn>
           </TableHeader>
           <TableBody>
-            {data.results.map((user) => (
+            {data.results.map((user: any) => (
               <TableRow key={user.id}>
                 <TableCell>
                   <Link href={`/users/${user.id}`} target="_blank">
@@ -149,6 +160,10 @@ export default function UsersList() {
           </TableBody>
         </Table>
       </div>
+      <CreatingModalUser
+        close={handleCloseCreatingModal}
+        open={openCreatingModal}
+      />
     </div>
   );
 }

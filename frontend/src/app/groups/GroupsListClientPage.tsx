@@ -1,90 +1,90 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  Chip,
   Table,
   TableBody,
   TableCell,
   TableColumn,
   TableHeader,
   TableRow,
-} from "@nextui-org/react";
+} from "@nextui-org/table";
 import Link from "next/link";
+import { Button, Chip } from "@nextui-org/react";
 
-import groupsService from "@/src/services/groups/groups.service";
-import { toastError } from "@/src/utils/toast-error";
-import { GroupsListResponse } from "@/src/types/interface/groups.interface";
+import useGroupsQuery from "@/src/hooks/groups/useGroupsQuery";
 import Loader from "@/src/components/ui/Loader";
+import { toastError } from "@/src/utils/toast-error";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
+import CreatingModal from "./components/CreatingModal";
 
-type Props = {
-  data: GroupsListResponse;
-};
-
-export default function GroupsListClientPage({ data: initialData }: Props) {
-  const [data, setData] = useState<GroupsListResponse | undefined>(undefined);
+export default function GroupsListClientPage() {
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
+  const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
+
+  const { data, error, isError, isLoading, isSuccess } = useGroupsQuery({
+    page,
+    limit,
+  });
+
   const pages = Math.ceil((data?.count || 0) / limit);
 
-  //TODO: Переписать на useQuery, как в номенклатурах
-  useEffect(() => {
-    if (!initialData) {
-      const fetchData = async () => {
-        try {
-          const response = await groupsService.getAll({
-            page,
-            limit,
-          });
-
-          setData(response.data);
-        } catch (error) {
-          toastError(error);
-        }
-      };
-
-      fetchData();
-    }
-  }, [initialData, page, limit]);
-
-  if (!data) {
-    return <Loader />;
+  if (isLoading) {
+    return <Loader loading={!isSuccess} />;
   }
 
+  if (isError) {
+    return <>{toastError(error?.message)}</>;
+  }
+
+  const handleCloseCreatingModal = () => {
+    setOpenCreatingModal(false);
+  };
+
   return (
-    <div style={{ maxWidth: 900, width: "auto" }}>
-      <Table
-        isHeaderSticky
-        bottomContent={
-          <PaginationComponent
-            limit={limit}
-            page={page}
-            total={pages}
-            onLimitChange={setLimit}
-            onPageChange={setPage}
-          />
-        }
-      >
-        <TableHeader>
-          <TableColumn>название</TableColumn>
-          <TableColumn>создан</TableColumn>
-          <TableColumn>количество клиентов</TableColumn>
-        </TableHeader>
-        <TableBody>
-          {data.results.map((group) => (
-            <TableRow key={group.id}>
-              <TableCell>
-                <Link href={`/groups/${group.id}`}>
-                  <Chip color="default">{group.name}</Chip>
-                </Link>
-              </TableCell>
-              <TableCell>{group.created}</TableCell>
-              <TableCell>{group.clientsCount}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      <div style={{ maxWidth: "auto" }}>
+        <Button onClick={() => setOpenCreatingModal(true)}>Создать</Button>
+        {data && (
+          <Table
+            isHeaderSticky
+            bottomContent={
+              <PaginationComponent
+                limit={limit}
+                page={page}
+                total={pages}
+                onLimitChange={setLimit}
+                onPageChange={setPage}
+              />
+            }
+            style={{ maxWidth: "940px" }}
+          >
+            <TableHeader>
+              <TableColumn>Название</TableColumn>
+              <TableColumn>количество клиентов</TableColumn>
+              <TableColumn>Создана</TableColumn>
+            </TableHeader>
+            <TableBody>
+              {data?.results.map((group) => (
+                <TableRow key={group.id}>
+                  <TableCell>
+                    <Chip variant="bordered">
+                      <Link href={`/groups/${group.id}`}>{group.name}</Link>
+                    </Chip>
+                  </TableCell>
+                  <TableCell>{group.clientsCount}</TableCell>
+                  <TableCell>{group.created}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+      <CreatingModal
+        close={handleCloseCreatingModal}
+        open={openCreatingModal}
+      />
+    </>
   );
 }

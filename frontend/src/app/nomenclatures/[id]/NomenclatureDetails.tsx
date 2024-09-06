@@ -14,20 +14,22 @@ import {
   TableHeader,
   TableRow,
 } from "@nextui-org/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import DeletingModal from "../../../components/ui/DeletingModal";
 
 import TranscriptData from "./components/TranscriptData";
 import EditingModal from "./components/EditingModal";
-import DeletingModal from "./components/DeletingModal";
 
 import {
   DaySettings,
   NomenclatureInterface,
 } from "@/src/types/interface/nomenclature.interface";
 import Loader from "@/src/components/ui/Loader";
-import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
 import { toastSuccess } from "@/src/utils/toast-success";
 import { toastError } from "@/src/utils/toast-error";
+import { useDeleteNomenclatureQuery } from "@/src/hooks/nomenclatures/useNomenclatureQuery";
+import useIdFromParams from "@/src/hooks/useIdFromParams";
 
 type Props = {
   id: string | undefined;
@@ -46,9 +48,33 @@ const dayNames: Record<string, string> = {
 
 export default function NomenclatureDetails(props: Props) {
   const { data } = props;
+  const id = useIdFromParams();
 
   const [openEditingModal, setOpenEditingModal] = useState<boolean>(false);
   const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
+  const {
+    mutateAsync: deleteNomenclature,
+    isSuccess: isDeleteSuccess,
+    error: deleteError,
+    isError: isDeleteError,
+  } = useDeleteNomenclatureQuery();
+
+  useEffect(() => {
+    if (isDeleteSuccess) {
+      toastSuccess("Номенклатура успешно удалена");
+      setTimeout(() => {
+        window.location.replace("/nomenclatures");
+      }, 2500);
+    }
+  }, [isDeleteSuccess]);
+
+  const handleDeleteNomenclature = () => {
+    deleteNomenclature(id);
+  };
+
+  if (isDeleteError) {
+    return <>{toastError(deleteError?.message)}</>;
+  }
 
   if (!data) {
     return <Loader />;
@@ -142,7 +168,7 @@ export default function NomenclatureDetails(props: Props) {
       />
       <DeletingModal
         close={handleCloseDeletingModal}
-        id={data.id}
+        deleteProp={handleDeleteNomenclature}
         open={openDeletingModal}
       />
     </div>

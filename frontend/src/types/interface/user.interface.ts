@@ -1,3 +1,39 @@
+export interface IUsersCreate {
+  role: string
+  email: string
+  phone_number: string
+}
+
+export interface IUsersList {
+  count: number
+  next: string
+  previous: string
+  results: IUsersListResults[]
+}
+
+interface IUsersListResults {
+  id: number
+  role: string
+  created: string
+  full_name: string
+}
+
+export interface IUsersRead {
+  id: number
+  role: string
+  email: string
+  phone_number: string
+  created: string
+  full_name: IUserFullName
+}
+
+interface IUserFullName {
+  first_name: string
+  middle_name: string
+  last_name: string
+}
+
+
 export interface ITokens {
   access: string;
   refresh: string;
