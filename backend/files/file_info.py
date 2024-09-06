@@ -2,7 +2,7 @@ import hashlib
 import os
 import subprocess
 import tempfile
-from datetime import timedelta
+from datetime import timedelta as td
 
 
 class GetFileInfo:
@@ -57,18 +57,14 @@ class GetFileInfo:
                 temp_file.write(chunk)
             temp_file_path = temp_file.name
 
-        command = [
-            'ffprobe',
-            '-v', 'error',
-            '-show_entries', 'format=duration',
-            '-of', 'default=noprint_wrappers=1:nokey=1',
-            temp_file_path
-        ]
+        command = ['mediainfo',
+                   '--Inform=General;%Duration%',
+                   temp_file_path]
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.remove(temp_file_path)
         try:
-            duration_seconds = float(result.stdout.decode().strip())
-            duration = timedelta(seconds=round(duration_seconds))
+            microseconds = int(result.stdout.decode().strip())
+            duration = td(seconds=round(microseconds/1000))
             return str(duration)
         except ValueError:
             return None

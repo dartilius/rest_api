@@ -1,53 +1,79 @@
 // pages/login.tsx
-'use client'
-import React, { useState } from 'react';
-import styles from './Login.module.scss'
-import { AuthService } from '@/services/auth/auth.service';
-import { useRouter } from 'next/navigation';
-import { Button } from 'antd/lib';
+"use client";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardFooter,
+  CardHeader,
+  Input,
+} from "@nextui-org/react";
+
+import { AuthService } from "@/src/services/auth/auth.service";
+import { toastError } from "@/src/utils/toast-error";
 
 export default function LoginPage() {
-    const [email, setEmail] = useState<string>('');
-    const [password, setPassword] = useState<string>('');
-    const [error, setError] = useState<string>('');
-    const router = useRouter();
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const router = useRouter();
 
-    const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      const response = await AuthService.login(email, password);
 
-        try {
-            const response = await AuthService.login(email, password);
-            if (response.status === 200) {
-                router.push('/nomenclatures');
-            } else {
-                throw new Error('Не удалось выполнить вход');
-            }
-        } catch (error: Error | any) {
-            setError(error.response?.data?.message || 'Ошибка при входе');
-        }
-    };
+      if (response.status === 200) {
+        router.push("/nomenclatures");
+      } else {
+        throw new Error("Не удалось выполнить вход");
+      }
+    } catch (error: Error | any) {
+      toastError(`${error.response.status} ${error.response.statusText}`);
+    }
+  };
 
-    return (
-        <div className={styles.container}>
-            <div className={styles.container_left}>
-            </div>
-            <div className={styles.container_right}>
-                <form onSubmit={handleLogin} className={styles.container_right_login}>
-                    <h1 className={styles.container_right_login_title}>Вход</h1>
-                    <div className={styles.container_right_login_email}>
-                        <p className={styles.container_right_login_email_label}>Email</p>
-                        <input className={styles.container_right_login_email_input} type='email' value={email} onChange={(e) => setEmail(e.target.value)} required/>
-                    </div>
-                    <div className={styles.container_right_login_password}>
-                        <p className={styles.container_right_login_password_label}>Пароль</p>
-                        <input className={styles.container_right_login_password_input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                    </div>
-                    <Button type='primary' htmlType="submit" className={styles.container_right_login_button}>
-                        <p className={styles.container_right_login_button_text}>Войти</p>
-                    </Button>
-                    {error && <p>{error}</p>}
-                </form>
-            </div>
-        </div>
-    );
+  return (
+    <div className="flex flex-col h-screen justify-center items-center">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <div style={{ textAlign: "center", width: "100%" }}>
+            <p className="text-md">Авторизация</p>
+          </div>
+        </CardHeader>
+        <CardBody className="space-y-4 gap-3">
+          <div className="space-y-2">
+            <label htmlFor="email">Email</label>
+            <Input
+              required
+              id="email"
+              placeholder="m@example.com"
+              type="email"
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="password">Пароль</label>
+            <Input
+              required
+              id="password"
+              type="password"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+        </CardBody>
+        <CardFooter className="flex flex-col space-y-2 gap-3">
+          <Button className="w-full" onClick={(e: any) => handleLogin(e)}>
+            Login
+          </Button>
+          <Link className="text-sm text-center" href="#" prefetch={false}>
+            Забыли пароль?
+          </Link>
+        </CardFooter>
+      </Card>
+    </div>
+  );
 }

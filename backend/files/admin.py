@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from files.models import File, Playlist, Tag
+from .models import File, Playlist, Tag
 
 
 @admin.register(File)
@@ -39,7 +39,7 @@ class FileAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return File.objects.all().select_related(
             'owner'
-        ).prefetch_related('tags')
+        )
 
     def save_model(self, request, obj, form, change):
         obj.owner = obj.owner or request.user

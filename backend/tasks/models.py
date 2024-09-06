@@ -3,7 +3,6 @@ from uuid import uuid4
 from django.contrib.postgres.fields import HStoreField
 from django.db import models
 from nomenclatures.models import Nomenclature
-from orders.models import ORDER_TYPES
 from users.models import CustomUser
 
 STATUSES = {
@@ -26,25 +25,6 @@ TASK_TYPES = {
     8: 'SET_PARAMETERS',
     9: 'PLACEHOLDER'
 }
-
-
-class Type(models.Model):
-    """Тип репликации."""
-
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Наименование',
-        unique=True
-    )
-    order_type = models.CharField(
-        choices=ORDER_TYPES,
-        blank=True,
-        null=True,
-        unique=True,
-        verbose_name='Тип заказа'
-    )
-
-    """Оно нам реально нужно?"""
 
 
 class Task(models.Model):
@@ -75,7 +55,7 @@ class Task(models.Model):
         null=True,
         verbose_name='Параметры'
     )
-    type = models.CharField(
+    type = models.PositiveSmallIntegerField(
         choices=TASK_TYPES,
         default=8,
         verbose_name='Тип'
@@ -101,4 +81,4 @@ class Task(models.Model):
         verbose_name_plural = 'Репликации'
 
     def __str__(self):
-        return self.type
+        return TASK_TYPES[int(self.type)]

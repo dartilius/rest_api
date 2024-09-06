@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Frontend проекта "Панель администратора RMC" <!-- omit in toc -->
 
-## Getting Started
+Проект сгенерирован с помощью [NextUI CLI](https://nextui.org/docs/guide/installation) версия NextJS 14.2.3. Так же внедряется [TanStack Query](https://tanstack.com/query/latest/docs/framework/react/overview) для более лучшего управления запросами, дополнительно сервисы переписываются с функций на классы.
 
-First, run the development server:
+- [Основные консольные команды](#основные-консольные-команды)
+- [Разворачивание проекта](#разворачивание-проекта)
+- [Принятые соглашения](#принятые-соглашения)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Основные консольные команды
+
+- `npm run dev` - стартует сервер для разработки по адресу.[`http://localhost:3000/`](http://localhost:3000/).
+- `npm run build` - собирает проект в директорию `.next/`.
+
+## Разворачивание проекта
+
+Для развертывания проекта необходимо склонировать репозиторий в локальную папку:
+
+```shell
+git clone http://webgit.krasrm.com/shaleinikove/rmc_rest_api.git
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+перейти в папку репозитория:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```shell
+cd rmc_rest_api/frontend
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+проверить версию установленной NodeJS (`node -v`), должна быть `v18.17^`, если используете nvm правильная версия должна активироваться автоматически. После этого запустить установку пакетов:
 
-## Learn More
+```shell
+npm install
+```
 
-To learn more about Next.js, take a look at the following resources:
+для запуска в режиме разработки использовать:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```shell
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Принятые соглашения
 
-## Deploy on Vercel
+- На проекте установлен `prettier` для единообразного форматирования кода. С настройками можно ознакомиться в файле `.prettierrc.json`.
+- На проекте используется конвенция написания коммитов:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+  ```
+  <тип>[(необязательный контекст)]: <описание>
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+  [необязательное тело]
+
+  [необязательная(ые) сноска(и)]
+
+  <тип>: обязательно должен быть одним из перечисленных
+        feat      ✨ Добавление нового функционала
+                     (MINOR в Cемантическом Версионировании)
+        fix       🐛 Исправление ошибок
+                     (PATCH в Cемантическом Версионировании)
+        style     💎 Правки по кодстайлу
+                     (табы, отступы, точки, запятые и т.д.)
+        refactor  📦 Правки кода без исправления ошибок или
+                     добавления новых функций
+        perf      🚀 Изменения направленные на улучшение
+                     производительности
+        wip       🐒 Работа в процессе
+                     (промежуточный коммит)
+
+  <описание>: должно формулироваться, как продолжение фразы:
+              "В случае применения этого коммита будет...",
+              начинаться с маленькой буквы, быть не длиннее 72 символов
+              и не заканчиваться точкой '.'
+
+  [необязательное тело]: должно описывать смысл изменения.
+                         Не "что было поменяно" (это видно в диффе),
+                         не где было поменяно (это тоже было в диффе),
+                         а ПОЧЕМУ.
+
+  [(необязательный контекст)]: может содержать номер тикета из задачи в 1с
+                               или быть кратким (одно, два слова)
+                               описанием доменной области, которую
+                               затрагивает коммит
+
+  ```
+
+  пример написания сообщения коммита:
+
+  ```
+  fix: убрано логирование включенное для отладки
+
+  ...
+
+  feat(12345): добавлена возможность выбора роли пользователя
+
+  ...
+
+  refactor(auth): добавлен сервис для авторизации пользователей
+  ```

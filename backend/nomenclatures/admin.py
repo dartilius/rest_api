@@ -4,13 +4,21 @@ from nomenclatures.models import (
     Nomenclature,
     NomenclatureGroup,
     NomenclatureAvailability,
-    StatusHistory
+    StatusHistory,
+    STATUSES
 )
 
 
 @admin.register(Nomenclature)
 class NomenclatureAdmin(admin.ModelAdmin):
     """Номенклатура."""
+
+    @admin.display(description='Статус')
+    def status(self, obj):
+        try:
+            return STATUSES[obj.availability.status]
+        except AttributeError:
+            return None
 
     list_display = (
         'id',

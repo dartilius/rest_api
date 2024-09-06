@@ -1,87 +1,74 @@
-import { API_URL } from "@/config/api.config";
-import { NomenclatureListResponseInterface } from "@/shared/interface/nomenclature.interface";
+import axios from "axios";
+
+import {
+  NomenclatureInterface,
+  NomenclatureListResponseInterface,
+} from "@/src/types/interface/nomenclature.interface";
+import { API_URL } from "@/src/config/api.config";
 
 interface Pagination {
-    page?: number
-    limit?: number
-    search?: string
+  page?: number;
+  limit?: number;
+  search?: string;
+  id?: string;
+  versions?: string;
+  status?: string;
+  timezone?: string;
 }
 
-export const NomenclaturesService = {
 
-    async getAll({page, limit, search}: Pagination = {}): Promise<NomenclatureListResponseInterface> {
-        // Строим URL, учитывая, что `page` может быть undefined.
-        let url = `${API_URL}/api/nomenclatures/`;
-        if (page !== undefined) {
-            url += `?page=${page}`;
-        }
-        if (limit !== undefined) {
-            url += `&limit=${limit}`;
-        }
-        if (search !== undefined) {
-            url += `&name__icontains=${search}`;
-        }
+class NomenclaturesService {
+  private URL = `${API_URL}/nomenclatures`;
 
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
+  getAll(props: Pagination) {
+    const params = new URLSearchParams();
 
-        if (response.ok) {
-            return response.json();
-        } else {
-            throw new Error('Не удалось получить номенклатуру');
-        }
-    },
-
-    async getById(id: string | string[]) {
-        console.log(id);
-        
-        const response = await fetch(`${API_URL}/api/nomenclatures/${id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        if (response.ok) {
-            return response.json();
-        } else {
-            throw new Error('Не удалось получить номенклатуру');
-        }
-    },
-
-    async create(updatedData: any, token: string | undefined) {
-        const response = await fetch(`${API_URL}/api/nomenclatures/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(updatedData)
-        });
-
-        if (response.status === 201 || response.status === 200) {
-            return response;
-        } else {
-            throw new Error('Не удалось создать номенклатуру');
-        }
-    },
-
-    async delete(token: string | undefined, id: string | string[] | undefined) {
-        const response = await fetch(`${API_URL}/api/nomenclatures/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (response.status === 204 || response.status === 200) {
-            return response;
-        } else {
-            throw new Error('Не удалось удалить номенклатуру');
-        }
+    if (props.page !== undefined) {
+      params.append("page", props.page.toString());
     }
+    if (props.limit !== undefined) {
+      params.append("limit", props.limit.toString());
+    }
+    if (props.search !== undefined) {
+      params.append("name", props.search);
+    }
+    if (props.id !== undefined) {
+      params.append("id", props.id);
+    }
+    if (props.versions !== undefined) {
+      params.append("versions", props.versions);
+    }
+    if (props.status !== undefined) {
+      params.append("status", props.status);
+    }
+    if (props.timezone !== undefined) {
+      params.append("timezone", props.timezone);
+    }
+
+    const queryString = params.toString();
+    const urlWithParams = `${this.URL}?${queryString}`;
+
+    return axios.get<NomenclatureListResponseInterface>(urlWithParams);
+  }
+
+  getById(id: string) {
+    return axios.get<NomenclatureInterface>(`${this.URL}/${id}`);
+  }
+
+  editById(
+    id: string,
+    data: { name: string; description: string; timezone: string },
+  ) {
+    return axios.patch<NomenclatureInterface>(`${this.URL}/${id}/`, {
+      name: data.name,
+      description: data.description,
+      timezone: data.timezone,
+    });
+  }
+
+  deleteById(id: string) {
+    return axios.delete(`${this.URL}/${id}`);
+  }
 }
+
+export default new NomenclaturesService();

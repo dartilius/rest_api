@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-DEBUG = True
+DEBUG = os.environ.get('DEBUG').lower() == 'true'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1, localhost').split(', ')
 
@@ -79,6 +79,10 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', 5432)
     },
+    'sqlite': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'celery.sqlite3'),
+    }
     # "clickhouse": {
     #     "ENGINE": "clickhouse_backend.backend",
     #     "NAME": "default",
@@ -118,10 +122,13 @@ TIME_ZONE = 'Asia/Krasnoyarsk'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# здесь должно быть
+# CORS_ORIGIN_WHITELIST = os.environ.get('CORS_WHITELIST').split(',')
+# а в переменной домен(ы) фронта
 CORS_ALLOW_ALL_ORIGINS = True
 
 MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
@@ -136,6 +143,10 @@ DEFAULT_FILE_STORAGE = 'django_minio_backend.models.MinioBackend'
 MINIO_MEDIA_FILES_BUCKET = 'local-media'
 STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
+
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER', 'amqp://')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND', 'db+sqlite:///celery.sqlite3')
+CELERY_TIMEZONE = TIME_ZONE
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
