@@ -7,7 +7,9 @@ ENV PYTHONUNBUFFERED 1
 
 RUN python -m pip install --upgrade pip
 
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels celery==5.4.0
+COPY celery_req.txt .
+
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r celery_req.txt
 
 # --------------------------------------------------------------------- #
 
@@ -22,4 +24,4 @@ RUN rm -rf /root/.cache/pip
 
 COPY . .
 
-ENTRYPOINT [ "/app/entrypoint.sh" ]
+ENTRYPOINT [ "/app/celery_entrypoint.sh" ]
