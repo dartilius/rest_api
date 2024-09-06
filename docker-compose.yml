@@ -91,22 +91,22 @@ services:
       - 5672:5672
       - 15672:15672
 
-  celery:
-    build:
-      context: ./backend
-      dockerfile: ./celeryDockerfile
-    container_name: celery
-    env_file: .env
-    healthcheck:
-      test: celery -b ${CELERY_BROKER} inspect ping || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    depends_on:
-      backend:
-        condition: service_healthy
-      rabbit:
-        condition: service_healthy
+#  celery:
+#    build:
+#      context: ./backend
+#      dockerfile: ./celeryDockerfile
+#    container_name: celery
+#    env_file: .env
+#    healthcheck:
+#      test: celery -b ${CELERY_BROKER} inspect ping || exit 1
+#      interval: 5s
+#      timeout: 5s
+#      retries: 10
+#    depends_on:
+#      backend:
+#        condition: service_healthy
+#      rabbit:
+#        condition: service_healthy
 
   dashboard:
     image: mher/flower
@@ -122,5 +122,8 @@ services:
         condition: service_healthy
       rabbit:
         condition: service_healthy
-      celery:
-        condition: service_healthy
+
+  redis:
+    image: redis:7.0.5-alpine
+    container_name: redis
+    hostname: redis

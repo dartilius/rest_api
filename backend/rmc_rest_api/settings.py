@@ -122,7 +122,7 @@ TIME_ZONE = 'Asia/Krasnoyarsk'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -147,6 +147,7 @@ MINIO_STATIC_FILES_BUCKET = 'local-static'
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER', 'amqp://')
 # CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND', 'db+sqlite:///celery.sqlite3')
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_SINGLETON_BACKEND_URL = 'redis://redis:6379'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

@@ -37,7 +37,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return Nomenclature.objects.all().select_related('owner', 'status')
+        return Nomenclature.objects.all().select_related('owner', 'availability')
 
 
 @admin.register(NomenclatureAvailability)
