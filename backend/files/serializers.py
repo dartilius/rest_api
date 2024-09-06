@@ -1,5 +1,6 @@
 import base64
 
+from datetime import timedelta as td
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 
@@ -7,28 +8,35 @@ from files.models import File, Playlist, Tag
 
 
 class Base64FileField(serializers.FileField):
-    """Кастомное поле для получения и декодирования base64 строки в файл."""
+    """
+    Поле для получения и декодирования base64 строки в файл.
+
+    Сделано на основе:
+    https://github.com/Hipo/drf-extra-fields/
+    """
 
     empty_values = ([], {}, (), '', None)
 
     default_error_messages = {
         'invalid_file': 'Файл невозможно декодировать, либо он повреждён.',
         'invalid_format':
-            'Не правильный формат. '
             'Файл должен быть закодирован в base64 строку.',
-        'no_name': 'Имя файла невозможно извлечь из отправленных данных.',
-        'empty': 'Отправленный файл пуст.',
+        'empty_name': 'Не указано имя либо расширение файла.',
+        'empty_contents': 'Base64 строка ничего не содержит.',
+        'empty': 'Отправлен пустой файл.'
     }
 
     def to_internal_value(self, data):
         if isinstance(data, str):
             try:
+                if data in self.empty_values:
+                    self.fail('empty')
                 file_info, base64_str = data.split(';base64,')
                 name, extension = file_info[5:].split('.')
-                if name in self.empty_values:
-                    self.fail('no_name')
+                if name in self.empty_values or extension in self.empty_values:
+                    self.fail('empty_name')
                 if base64_str in self.empty_values:
-                    self.fail('empty')
+                    self.fail('empty_contents')
                 decoded_file = base64.b64decode(base64_str)
                 complete_file_name = f'{name}.{extension}'
                 data = ContentFile(decoded_file, name=complete_file_name)

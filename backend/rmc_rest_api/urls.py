@@ -22,14 +22,14 @@ urlpatterns = [
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
     path('auth/logout/', logout, name='logout'),
-    path("__debug__/", include("debug_toolbar.urls")),
+    path('__debug__/', include('debug_toolbar.urls')),
 ]
 
 schema_view = get_schema_view(
    openapi.Info(
-       title="RMC REST API",
+       title='RMC REST API',
        default_version='v1',
-       description="Документация ололо трололо",
+       description='Документация ололо трололо',
    ),
    public=True,
    permission_classes=(permissions.AllowAny,),

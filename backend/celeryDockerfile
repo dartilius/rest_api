@@ -1,0 +1,27 @@
+FROM python:3.11-slim as builder
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+RUN python -m pip install --upgrade pip
+
+COPY celery_req.txt .
+
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r celery_req.txt
+
+# --------------------------------------------------------------------- #
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY --from=builder /app/wheels /wheels
+
+RUN pip install --no-cache /wheels/*
+RUN rm -rf /root/.cache/pip
+
+COPY . .
+
+ENTRYPOINT [ "/app/celery_entrypoint.sh" ]

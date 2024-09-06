@@ -89,11 +89,6 @@ class Nomenclature(models.Model):
         verbose_name='Актуальность номенклтауры',
         default=True
     )
-    status = models.PositiveSmallIntegerField(
-        choices=STATUSES,
-        verbose_name='Статус',
-        default=2
-    )
     version = models.CharField(
         max_length=127,
         verbose_name='Версия ПО'
@@ -169,6 +164,7 @@ class NomenclatureGroup(models.Model):
 
 
 class NomenclatureAvailability(models.Model):
+    """Текущая доступность."""
     last_answer_date = models.DateTimeField(
         auto_now=True,
         verbose_name='Время последнего ответа',

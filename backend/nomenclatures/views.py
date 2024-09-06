@@ -18,6 +18,8 @@ from nomenclatures.models import (
     Nomenclature,
     NomenclatureGroup
 )
+from tasks.models import Task
+from tasks.serializers import WorkstationSerializer
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
@@ -64,12 +66,14 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         nomenclature = serializer.instance
-        new_name = serializer.validated_data['name']
-        if new_name != nomenclature.name:
+        if (
+            'name' in serializer.validated_data and
+            serializer.validated_data['name'] != nomenclature.name
+        ):
             group = NomenclatureGroup.objects.exclude(
                 ~Q(clients=nomenclature.id)
             ).first()
-            group.name = new_name
+            group.name = serializer.validated_data['name']
             group.save()
         serializer.save()
 
@@ -90,6 +94,45 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         history = nomenclature.history.all()
         serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=['POST'],
+        url_path='pending_tasks'
+    )
+    def pending_tasks(self, request, pk):
+        nomenclature = Nomenclature.objects.get(id=pk)
+        nom_update = False
+        if 'version' in request.data:
+            nomenclature.version = request.data['version']
+            nom_update = True
+
+        if 'hw_info' in request.data:
+            nomenclature.hw_info = request.data['hw_info']
+            nom_update = True
+
+        if nom_update:
+            nomenclature.save()
+
+        if 'task_status' in request.data:
+            task_list = list()
+            for task in request.data['task_status']:
+                task_id, task_status = task.items()
+                task_instance = Task.objects.get(id=task_id)
+                task_instance.status = task_status
+                task_list.append(task_instance)
+            Task.objects.bulk_update(task_list, ['status'])
+
+        pending_tasks = Task.objects.filter(
+            client=nomenclature.id,
+            status=0
+        )
+        tasks = {'tasks': [
+            {'task_id': task.id,
+             'task_type': task.type,
+             'parameters': task.parameters}
+            for task in pending_tasks]}
+        return Response(tasks, status=HTTP_200_OK)
 
 
 class NomenclatureGroupViewSet(viewsets.ModelViewSet):

@@ -1,79 +1,60 @@
-'use client'
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Layout, Menu, theme } from 'antd/lib';
-import Link from "next/link";
-import { links } from "@/shared/types/links";
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { AuthService } from "@/services/auth/auth.service";
+import "../styles/globals.scss";
+import { Metadata, Viewport } from "next";
+import { Link } from "@nextui-org/link";
+import clsx from "clsx";
 
-const { Header, Footer, Content } = Layout;
-const inter = Inter({ subsets: ["latin"] });
+import { Providers } from "./providers";
+
+import { fontSans } from "@/src/config/fonts";
+import { Navbar } from "@/src/components/navbar";
+
+export const metadata: Metadata = {
+  icons: {
+    icon: "/favicon.ico",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "white" },
+    { media: "(prefers-color-scheme: dark)", color: "black" },
+  ],
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken();
-
-  const pathname = usePathname();
-  const router = useRouter();
-  const [selectedKey, setSelectedKey] = useState('1');
-
-  useEffect(() => {
-    const currentItem = links.find(link => link.link === pathname);
-    if (currentItem) {
-      setSelectedKey(currentItem.key);
-    }
-  }, [pathname]);
-
-  if (pathname === '/login') {
-    return <>{children}</>
-  }
-
-  const logOut = () => {
-    AuthService.logout();
-    router.push('/login');
-  }
-
-
+}) {
   return (
-    <html lang="ru">
-      <body>
-        <Layout className={inter.className} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <Header>
-            <Menu
-              theme="dark"
-              mode="horizontal"
-              selectedKeys={[selectedKey]}
-              style={{ flex: 1, minWidth: 0 }}
-            >
-              {links.map(item => (
-                <Menu.Item key={item.key}>
-                  <Link href={item.link}>{item.label}</Link>
-                </Menu.Item>
-              ))}
-              <Menu.Item onClick={logOut} key="9">
-                Выход
-              </Menu.Item>
-            </Menu>
-          </Header>
-          <Content style={{
-            background: colorBgContainer,
-            flex: 1,
-            padding: 24,
-            borderRadius: borderRadiusLG,
-          }}>
-            {children}
-          </Content>
-          <Footer style={{ textAlign: 'center' }}>
-            Ant Design ©{new Date().getFullYear()} Created by Ant UED
-          </Footer>
-        </Layout>
+    <html suppressHydrationWarning lang="en">
+      <head />
+      <body
+        className={clsx(
+          "min-h-screen bg-background font-sans antialiased",
+          fontSans.variable,
+        )}
+      >
+        <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
+          <div className="relative flex flex-col h-screen">
+            <Navbar />
+            <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
+              {children}
+            </main>
+            <footer className="w-full flex items-center justify-center py-3">
+              <Link
+                isExternal
+                className="flex items-center gap-1 text-current"
+                href="https://nextui-docs-v2.vercel.app?utm_source=next-app-template"
+                title="nextui.org homepage"
+              >
+                <span className="text-default-600">Powered by</span>
+                <p className="text-primary">NextUI</p>
+              </Link>
+            </footer>
+          </div>
+        </Providers>
+
       </body>
     </html>
   );
