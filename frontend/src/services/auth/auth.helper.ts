@@ -21,5 +21,5 @@ export const removeTokensStorage = () => {
 };
 
 export const getTokenStorage = () => {
-  return localStorage.getItem("access");
+  return Cookies.get("access");
 };
