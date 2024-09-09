@@ -74,11 +74,3 @@ class TaskListSerializer(serializers.ModelSerializer):
         representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         representation['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
         return representation
-
-
-class WorkstationSerializer(serializers.Serializer):
-    """Сериализация общения с рабочей станцией."""
-
-    version = serializers.CharField(max_length=100, required=True)
-    tasks = serializers.ListField(required=True)
-    hw_info = serializers.HStoreField(required=True)
