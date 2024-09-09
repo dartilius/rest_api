@@ -1,3 +1,4 @@
+from datetime import datetime as dt
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -16,10 +17,9 @@ from nomenclatures.serializers import (
 )
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup
+    NomenclatureGroup, NomenclatureAvailability
 )
 from tasks.models import Task
-from tasks.serializers import WorkstationSerializer
 from users.permissions import AuthAndOnlySuperUserDelete
 
 
@@ -123,6 +123,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 task_list.append(task_instance)
             Task.objects.bulk_update(task_list, ['status'])
 
+        NomenclatureAvailability.objects.update_or_create(
+            client=nomenclature,
+            defaults={'last_answer_date': dt.now()}
+        )
         pending_tasks = Task.objects.filter(
             client=nomenclature.id,
             status=0
