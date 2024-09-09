@@ -3,15 +3,15 @@
 import NomenclatureDetails from "./NomenclatureDetails";
 
 import Loader from "@/src/components/ui/Loader";
+import { useNomenclatureQuery } from "@/src/hooks/nomenclatures/useNomenclatureQuery";
 import { toastError } from "@/src/utils/toast-error";
-import useNomenclatureQuery from "@/src/hooks/nomenclatures/useNomenclatureQuery";
 
 type Props = {
-    id: string
-}
+  id: string;
+};
 
 export default function ListPage(props: Props) {
-    const { id } = props;
+  const { id } = props;
   const { data, isLoading, error, isError, isSuccess } = useNomenclatureQuery(
     id?.toString() || "",
   );

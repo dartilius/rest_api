@@ -25,3 +25,26 @@ export type PlaylistsList = {
   created: string;
   filesCount: number;
 };
+
+export interface IPlaylistsList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: IPlaylistsListResults[];
+}
+
+interface IPlaylistsListResults {
+  id: number;
+  name: string;
+  created: string;
+  files_count: number;
+}
+
+export interface IPlaylist {
+  id: number
+  name: string
+  description: string
+  owner: number
+  files: string[]
+  created: string
+}
