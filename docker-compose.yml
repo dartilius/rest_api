@@ -3,7 +3,6 @@ volumes:
   pg_data:
   static:
   celery:
-  clickhouse_users:
   clickhouse_data:
   s3:
 
@@ -11,11 +10,11 @@ services:
   clickhouse:
     image: yandex/clickhouse-server
     container_name: clickhouse
+    env_file: .env
     ports:
       - '8123:8123'
       - '8888:9000'
     volumes:
-      - clickhouse_users:/etc/clickhouse-server/
       - clickhouse_data:/var/lib/clickhouse
     ulimits:
       nofile: 262144
