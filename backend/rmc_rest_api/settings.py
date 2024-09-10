@@ -82,7 +82,7 @@ DATABASES = {
     },
     'clickhouse': {
         'ENGINE': 'clickhouse_backend.backend',
-        'NAME': os.getenv('CLICKHOUSE_NAME'),
+        'NAME': os.getenv('CLICKHOUSE_DB'),
         'HOST': os.getenv('CLICKHOUSE_HOST'),
         'USER': os.getenv('CLICKHOUSE_USER'),
         'PORT': os.getenv('CLICKHOUSE_PORT'),
