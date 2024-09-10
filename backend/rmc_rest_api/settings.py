@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'corsheaders',
     'django_minio_backend',
+    'clickhouse_backend',
     'django_filters',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -79,20 +80,17 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', 5432)
     },
-    'sqlite': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'celery.sqlite3'),
+    'clickhouse': {
+        'ENGINE': 'clickhouse_backend.backend',
+        'NAME': os.getenv('CLICKHOUSE_NAME'),
+        'HOST': os.getenv('CLICKHOUSE_HOST'),
+        'USER': os.getenv('CLICKHOUSE_USER'),
+        'PORT': os.getenv('CLICKHOUSE_PORT'),
+        'PASSWORD': os.getenv('CLICKHOUSE_PASSWORD'),
     }
-    # "clickhouse": {
-    #     "ENGINE": "clickhouse_backend.backend",
-    #     "NAME": "default",
-    #     "HOST": "localhost",
-    #     "USER": "DB_USER",
-    #     "PASSWORD": "DB_PASSWORD",
-    # }
 }
 
-# DATABASE_ROUTERS = ["dbrouters.ClickHouseRouter"]
+DATABASE_ROUTERS = ["rmc_rest_api.dbrouters.ClickHouseRouter"]
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -147,7 +145,7 @@ MINIO_STATIC_FILES_BUCKET = 'local-static'
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER', 'amqp://')
 # CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND', 'db+sqlite:///celery.sqlite3')
 CELERY_TIMEZONE = TIME_ZONE
-CELERY_SINGLETON_BACKEND_URL = 'redis://redis:6379'
+CELERY_SINGLETON_BACKEND_URL = os.environ.get('REDIS_BROKER', 'redis://redis:6379')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
