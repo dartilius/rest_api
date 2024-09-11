@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - ./scripts/db:/docker-entrypoint-initdb.d
+      - ./scripts/postgres:/docker-entrypoint-initdb.d
       - pg_data:/var/lib/postgresql/data
 
   files:

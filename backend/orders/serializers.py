@@ -379,6 +379,7 @@ class BgOrderListSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'client',
+            'order_type',
             'playlist',
             'status',
             'broadcast_interval'
