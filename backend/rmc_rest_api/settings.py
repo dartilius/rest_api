@@ -74,11 +74,11 @@ WSGI_APPLICATION = 'rmc_rest_api.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'django'),
-        'USER': os.getenv('POSTGRES_USER', 'django'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', 5432)
+        'NAME': os.getenv('POSTGRES_DB'),
+        'USER': os.getenv('POSTGRES_USER'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT')
     },
     'clickhouse': {
         'ENGINE': 'clickhouse_backend.backend',
@@ -143,7 +143,6 @@ STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER', 'amqp://')
-# CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND', 'db+sqlite:///celery.sqlite3')
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_SINGLETON_BACKEND_URL = os.environ.get('REDIS_BROKER', 'redis://redis:6379')
 
