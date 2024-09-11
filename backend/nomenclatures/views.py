@@ -1,5 +1,7 @@
 from datetime import datetime as dt
+from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -7,6 +9,9 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
+from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerStat
+from ch_statistic.serializers import AdStatSerializer, MusicStatSerializer, VideoStatSerializer, ImageStatSerializer, \
+    TickerStatSerializer
 from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
@@ -90,7 +95,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         url_path='status_history'
     )
     def get_status_history(self, request, pk):
-        nomenclature = Nomenclature.objects.get(id=pk)
+        nomenclature = get_object_or_404(Nomenclature, id=pk)
         history = nomenclature.history.all()
         serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
@@ -101,7 +106,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         url_path='pending_tasks'
     )
     def pending_tasks(self, request, pk):
-        nomenclature = Nomenclature.objects.get(id=pk)
+        """Отдача задач для клиентов и обработка присылаемых данных."""
+        nomenclature = get_object_or_404(Nomenclature, id=pk)
         nom_update = False
         if 'version' in request.data:
             nomenclature.version = request.data['version']
@@ -113,6 +119,42 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         if nom_update:
             nomenclature.save()
+
+        if 'statistic' in request.data:
+            """
+            {
+                ...
+                "statistic": {
+                    "ad": [
+                        {
+                            "value": "bla bla bla", 
+                            "played": "", 
+                            "length": "", 
+                            "ad_block": ""
+                        },
+                        ...
+                        ], 
+                    "music": [...]
+                }
+            }
+            """
+            statistics = request.data['statistic']
+            ad_stat = statistics['ad'] if 'ad' in statistics else None
+            music_stat = statistics['music'] if 'music' in statistics else None
+            video_stat = statistics['video'] if 'video' in statistics else None
+            image_stat = statistics['image'] if 'image' in statistics else None
+            ticker_stat = statistics['ticker'] if 'ticker' in statistics else None
+
+            if ad_stat:
+                pass
+            if music_stat:
+                pass
+            if video_stat:
+                pass
+            if image_stat:
+                pass
+            if ticker_stat:
+                pass
 
         if 'task_status' in request.data:
             task_list = list()
@@ -137,6 +179,96 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
              'parameters': task.parameters}
             for task in pending_tasks]}
         return Response(tasks, status=HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='ad_stat'
+    )
+    def get_ad_stat(self, request, pk):
+        """Отображение статистики рекламы конкретной номенклатуры."""
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
+        statistics = ADStat.objects.filter(client=pk)
+        serializer = AdStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='music_stat'
+    )
+    def get_music_stat(self, request, pk):
+        """Отображение статистики музыки конкретной номенклатуры."""
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
+        statistics = MusicStat.objects.filter(client=pk)
+        serializer = MusicStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='video_stat'
+    )
+    def get_video_stat(self, request, pk):
+        """Отображение статистики видео конкретной номенклатуры."""
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
+        statistics = VideoStat.objects.filter(client=pk)
+        serializer = VideoStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='image_stat'
+    )
+    def get_image_stat(self, request, pk):
+        """Отображение статистики картинок конкретной номенклатуры."""
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
+        statistics = ImageStat.objects.filter(client=pk)
+        serializer = ImageStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='ticker_stat'
+    )
+    def get_ticker_stat(self, request, pk):
+        """Отображение статистики бегущих строк конкретной номенклатуры."""
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
+        statistics = TickerStat.objects.filter(client=pk)
+        serializer = TickerStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
 
 
 class NomenclatureGroupViewSet(viewsets.ModelViewSet):

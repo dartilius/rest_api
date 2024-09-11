@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from ch_statistic.models import AD, Music, Video, Image, Ticker
+from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerStat
 
 DISPLAY_LIST = (
     'client',
@@ -20,7 +20,7 @@ FILTER_LIST = (
     'value'
 )
 
-@admin.register(AD)
+@admin.register(ADStat)
 class AdStatAdmin(admin.ModelAdmin):
     """Статистики рекламы."""
 
@@ -29,7 +29,7 @@ class AdStatAdmin(admin.ModelAdmin):
     list_filter = FILTER_LIST
 
 
-@admin.register(Music)
+@admin.register(MusicStat)
 class AdStatAdmin(admin.ModelAdmin):
     """Статистики музыки."""
 
@@ -38,7 +38,7 @@ class AdStatAdmin(admin.ModelAdmin):
     list_filter = FILTER_LIST
 
 
-@admin.register(Video)
+@admin.register(VideoStat)
 class AdStatAdmin(admin.ModelAdmin):
     """Статистики видео."""
 
@@ -47,7 +47,7 @@ class AdStatAdmin(admin.ModelAdmin):
     list_filter = FILTER_LIST
 
 
-@admin.register(Image)
+@admin.register(ImageStat)
 class AdStatAdmin(admin.ModelAdmin):
     """Статистики картинок."""
 
@@ -56,7 +56,7 @@ class AdStatAdmin(admin.ModelAdmin):
     list_filter = FILTER_LIST
 
 
-@admin.register(Ticker)
+@admin.register(TickerStat)
 class AdStatAdmin(admin.ModelAdmin):
     """Статистики бегущей строки."""
 

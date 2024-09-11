@@ -30,7 +30,7 @@ class Stat(models.ClickhouseModel):
         ordering = ('-created',)
 
 
-class AD(Stat):
+class ADStat(Stat):
     """Статистика рекламы."""
 
     ad_block = models.UInt32Field()
@@ -44,7 +44,7 @@ class AD(Stat):
         return self.value
 
 
-class Music(Stat):
+class MusicStat(Stat):
     """Статистика музыки."""
 
     class Meta:
@@ -56,7 +56,7 @@ class Music(Stat):
         return self.value
 
 
-class Image(Stat):
+class ImageStat(Stat):
     """Статистика фоновых картинок."""
 
     class Meta:
@@ -68,7 +68,7 @@ class Image(Stat):
         return self.value
 
 
-class Video(Stat):
+class VideoStat(Stat):
     """Статистика фоновых видео."""
 
     class Meta:
@@ -80,7 +80,7 @@ class Video(Stat):
         return self.value
 
 
-class Ticker(Stat):
+class TickerStat(Stat):
     """Статистика бегущей строки."""
 
     class Meta:

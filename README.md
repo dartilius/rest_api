@@ -51,8 +51,9 @@ docker compose up --build
 ```
 7. Добавляем пользователя RabbitMQ
 ```bash
-rabbitmqctl add_user <RABBITMQ_USER> <RABBITMQ_PASSWORD>
-rabbitmqctl set_permissions <RABBITMQ_USER> ".*" ".*" ".*"
+docker exec rabbit sh -c "rabbitmqctl add_user <RABBITMQ_USER> <RABBITMQ_PASSWORD>"
+docker exec rabbit sh -c "rabbitmqctl set_permissions <RABBITMQ_USER> '.*' '.*' '.*'"
+docker exec rabbit sh -c "rabbitmqctl set_user_tags uid0001 administrator"
 ```
 8. Проводим миграции, собираем статические файлы и создаем суперпользователя
 ```bash
@@ -62,3 +63,9 @@ docker exec backend sh -c "python manage.py migrate --database clickhouse"
 docker exec backend sh -c "python manage.py collectstatic --no-input"
 docker exec backend sh -c "python manage.py createsuperuser"
 ```
+
+### Цель проекта
+
+### Используемые технологии
+
+### Возможности проекта
