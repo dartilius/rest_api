@@ -10,7 +10,7 @@ from ch_statistic.models import (
 
 DISPLAY_LIST = (
     'client',
-    'value',
+    'file',
     'played',
     'created',
     'length'
@@ -18,12 +18,12 @@ DISPLAY_LIST = (
 
 SEARCH_LIST = (
     'client',
-    'value'
+    'file'
 )
 
 FILTER_LIST = (
     'client',
-    'value'
+    'file'
 )
 
 @admin.register(ADStat)

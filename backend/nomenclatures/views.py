@@ -10,8 +10,13 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
 from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerStat
-from ch_statistic.serializers import AdStatSerializer, MusicStatSerializer, VideoStatSerializer, ImageStatSerializer, \
-    TickerStatSerializer
+from ch_statistic.serializers import (
+    NomenclatureAdStatSerializer,
+    NomenclatureMusicStatSerializer,
+    NomenclatureVideoStatSerializer,
+    NomenclatureImageStatSerializer,
+    NomenclatureTickerStatSerializer
+)
 from ch_statistic.tasks import create_statistic
 from files.models import File
 from nomenclatures.filters import NomenclatureFilter
@@ -97,7 +102,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         url_path='status_history'
     )
     def get_status_history(self, request, pk):
-        nomenclature = get_object_or_404(Nomenclature, id=pk)
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
         history = nomenclature.history.all()
         serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
@@ -109,7 +120,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     )
     def pending_tasks(self, request, pk):
         """Отдача задач для клиентов и обработка присылаемых данных."""
-        nomenclature = get_object_or_404(Nomenclature, id=pk)
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
         nom_update = False
         if 'version' in request.data:
             nomenclature.version = request.data['version']
@@ -125,7 +142,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         if 'statistic' in request.data:
             statistics = request.data['statistic']
             for stat_type, stat_list in statistics.items():
-                create_statistic.delay(stat_type, nomenclature.id, stat_list)
+                create_statistic.delay(stat_type, pk, stat_list)
 
 
         if 'task_status' in request.data:
@@ -167,7 +184,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = ADStat.objects.filter(client=pk)
-        serializer = AdStatSerializer(statistics, many=True)
+        serializer = NomenclatureAdStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
     @action(
@@ -185,7 +202,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = MusicStat.objects.filter(client=pk)
-        serializer = MusicStatSerializer(statistics, many=True)
+        serializer = NomenclatureMusicStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
     @action(
@@ -203,7 +220,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = VideoStat.objects.filter(client=pk)
-        serializer = VideoStatSerializer(statistics, many=True)
+        serializer = NomenclatureVideoStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
     @action(
@@ -221,7 +238,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = ImageStat.objects.filter(client=pk)
-        serializer = ImageStatSerializer(statistics, many=True)
+        serializer = NomenclatureImageStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
     @action(
@@ -239,7 +256,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = TickerStat.objects.filter(client=pk)
-        serializer = TickerStatSerializer(statistics, many=True)
+        serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
 

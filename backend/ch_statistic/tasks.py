@@ -20,7 +20,7 @@ def create_statistic(stat_type, nomenclature_id, stat_list):
             for stat_element in stat_list:
                 stat_objects += [model(
                     client=nomenclature_id,
-                    value=stat_element['value'],
+                    file=stat_element['file'],
                     played=stat_element['played'],
                     length=stat_element['length'],
                     ad_block=stat_element['ad_block']
@@ -41,7 +41,7 @@ def create_statistic(stat_type, nomenclature_id, stat_list):
             for stat_element in stat_list:
                 stat_objects += [model(
                     client=nomenclature_id,
-                    value=stat_element['value'],
+                    file=stat_element['file'],
                     played=stat_element['played'],
                     length=stat_element['length']
                 )]
