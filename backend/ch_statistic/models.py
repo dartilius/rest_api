@@ -15,11 +15,11 @@ class Stat(models.ClickhouseModel):
     )
     value = models.StringField(
         max_length=288,
-        verbose_name='Контрольная сумма'
+        verbose_name='Идентификатор файла'
     )
     client = models.StringField(
         max_length=288,
-        verbose_name='Номенклатура'
+        verbose_name='Идентификатор номенклатуры'
     )
     length = models.UInt16Field(
         verbose_name='Хронометраж'
@@ -33,7 +33,7 @@ class Stat(models.ClickhouseModel):
 class ADStat(Stat):
     """Статистика рекламы."""
 
-    ad_block = models.UInt32Field()
+    ad_block = models.UInt32Field(verbose_name='Рекламный блок')
 
     class Meta:
         db_table = 'ad_stat'

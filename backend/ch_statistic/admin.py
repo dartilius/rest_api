@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerStat
+from ch_statistic.models import (
+    ADStat,
+    MusicStat,
+    VideoStat,
+    ImageStat,
+    TickerStat
+)
 
 DISPLAY_LIST = (
     'client',
@@ -24,9 +30,9 @@ FILTER_LIST = (
 class AdStatAdmin(admin.ModelAdmin):
     """Статистики рекламы."""
 
-    list_display = DISPLAY_LIST
-    search_fields = SEARCH_LIST
-    list_filter = FILTER_LIST
+    list_display = DISPLAY_LIST + ('ad_block',)
+    search_fields = SEARCH_LIST + ('ad_block',)
+    list_filter = FILTER_LIST + ('ad_block',)
 
 
 @admin.register(MusicStat)

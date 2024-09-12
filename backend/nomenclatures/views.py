@@ -12,6 +12,8 @@ from rest_framework.status import HTTP_200_OK
 from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerStat
 from ch_statistic.serializers import AdStatSerializer, MusicStatSerializer, VideoStatSerializer, ImageStatSerializer, \
     TickerStatSerializer
+from ch_statistic.tasks import create_statistic
+from files.models import File
 from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
@@ -121,40 +123,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             nomenclature.save()
 
         if 'statistic' in request.data:
-            """
-            {
-                ...
-                "statistic": {
-                    "ad": [
-                        {
-                            "value": "bla bla bla", 
-                            "played": "", 
-                            "length": "", 
-                            "ad_block": ""
-                        },
-                        ...
-                        ], 
-                    "music": [...]
-                }
-            }
-            """
             statistics = request.data['statistic']
-            ad_stat = statistics['ad'] if 'ad' in statistics else None
-            music_stat = statistics['music'] if 'music' in statistics else None
-            video_stat = statistics['video'] if 'video' in statistics else None
-            image_stat = statistics['image'] if 'image' in statistics else None
-            ticker_stat = statistics['ticker'] if 'ticker' in statistics else None
+            for stat_type, stat_list in statistics.items():
+                create_statistic.delay(stat_type, nomenclature.id, stat_list)
 
-            if ad_stat:
-                pass
-            if music_stat:
-                pass
-            if video_stat:
-                pass
-            if image_stat:
-                pass
-            if ticker_stat:
-                pass
 
         if 'task_status' in request.data:
             task_list = list()

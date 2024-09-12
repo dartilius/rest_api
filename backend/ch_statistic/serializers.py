@@ -1,6 +1,14 @@
+from datetime import datetime, timedelta
+
 from rest_framework import serializers
 
-from ch_statistic.models import ADStat, MusicStat, VideoStat, TickerStat, ImageStat
+from ch_statistic.models import (
+    ADStat,
+    MusicStat,
+    VideoStat,
+    TickerStat,
+    ImageStat
+)
 from files.models import File
 from nomenclatures.models import Nomenclature
 
@@ -33,7 +41,15 @@ class StatisticSerializer(serializers.Serializer):
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        nomenclature = Nomenclature.objects.filter(id=value.client)
+        file = File.objects.filter(id=value.value)
+        representation['client'] = (
+            nomenclature[0].name if nomenclature else value.client
+        )
+        representation['value'] = file[0].name if file else value.value
+        representation['created'] = value.created.strftime(
+            '%Y-%m-%d %H:%M:%S'
+        )
         representation['played'] = value.played.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
@@ -49,6 +65,14 @@ class AdStatSerializer(StatisticSerializer):
                 StatisticSerializer.Meta.
                 read_only_fields +
                 ('ad_block',)
+        )
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        td = timedelta(seconds=value.ad_block)
+        representation['ad_block'] = datetime.strftime(
+            datetime.strptime(str(td), "%H:%M:%S"),
+            "%H:%M:%S"
         )
 
 
