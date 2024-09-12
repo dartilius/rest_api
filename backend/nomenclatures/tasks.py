@@ -20,7 +20,7 @@ def update_nomenclature_status():
         current_status = status.status
         last_answer = status.last_answer_date
         if current_status == 0:
-            if now_time - last_answer > timedela(hoturs=1):
+            if now_time - last_answer > timedelta(hours=1):
                 new_status = 2
             elif now_time - last_answer > timedelta(minutes=5):
                 new_status = 1
