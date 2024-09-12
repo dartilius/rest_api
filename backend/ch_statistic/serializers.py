@@ -16,23 +16,17 @@ from nomenclatures.models import Nomenclature
 class StatisticSerializer(serializers.Serializer):
     """Базовый класс сериализации статистики."""
 
-    client = serializers.CharField()
-    value = serializers.CharField()
     played = serializers.DateTimeField()
     length = serializers.IntegerField()
     created = serializers.DateTimeField()
 
     class Meta:
         fields = (
-            'client',
-            'value',
             'played',
             'length',
             'created'
         )
         read_only_fields = (
-            'client',
-            'value',
             'played',
             'length',
             'created'
@@ -41,12 +35,6 @@ class StatisticSerializer(serializers.Serializer):
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        nomenclature = Nomenclature.objects.filter(id=value.client)
-        file = File.objects.filter(id=value.value)
-        representation['client'] = (
-            nomenclature[0].name if nomenclature else value.client
-        )
-        representation['value'] = file[0].name if file else value.value
         representation['created'] = value.created.strftime(
             '%Y-%m-%d %H:%M:%S'
         )
@@ -54,15 +42,55 @@ class StatisticSerializer(serializers.Serializer):
         return representation
 
 
-class AdStatSerializer(StatisticSerializer):
-    """Сериализация статистики рекламы."""
+class BaseNomenclatureSerializer(StatisticSerializer):
+    """Базовый класс сериализации для срезов по номенклатуре."""
+
+    file = serializers.CharField()
+
+    class Meta:
+        fields = StatisticSerializer.Meta.fields + ('file',)
+        read_only_fields = ('file',)
+        abstract=True
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        file = File.objects.filter(id=value.file)
+        representation['file'] = file[0].name if file else value.file
+        return representation
+
+
+class BaseFileSerializer(StatisticSerializer):
+    """Базовый класс сериализации для срезов по файлам."""
+
+    client = serializers.CharField()
+
+    class Meta:
+        fields = StatisticSerializer.Meta.fields + ('client',)
+        read_only_fields = ('client',)
+        abstract = True
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        nomenclature = Nomenclature.objects.filter(id=value.client)
+        representation['client'] = (
+            nomenclature[0].name if nomenclature else value.client
+        )
+        return representation
+
+
+class NomenclatureAdStatSerializer(
+    BaseNomenclatureSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики рекламы из номенклатуры."""
 
     ad_block = serializers.IntegerField()
 
     class Meta:
-        fields = StatisticSerializer.Meta.fields + ('ad_block',)
+        model = ADStat
+        fields = BaseNomenclatureSerializer.Meta.fields + ('ad_block',)
         read_only_fields = (
-                StatisticSerializer.Meta.
+                BaseNomenclatureSerializer.Meta.
                 read_only_fields +
                 ('ad_block',)
         )
@@ -74,39 +102,127 @@ class AdStatSerializer(StatisticSerializer):
             datetime.strptime(str(td), "%H:%M:%S"),
             "%H:%M:%S"
         )
+        return representation
 
 
-class MusicStatSerializer(StatisticSerializer, serializers.ModelSerializer):
-    """Сериализация статистики музыки."""
+class NomenclatureMusicStatSerializer(
+    BaseNomenclatureSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики музыки из номенклатуры."""
 
     class Meta:
         model = MusicStat
-        fields = StatisticSerializer.Meta.fields
-        read_only_fields = StatisticSerializer.Meta.read_only_fields
+        fields = BaseNomenclatureSerializer.Meta.fields
+        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields
 
 
-class VideoStatSerializer(StatisticSerializer, serializers.ModelSerializer):
-    """Сериализация статистики видео."""
+class NomenclatureVideoStatSerializer(
+    BaseNomenclatureSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики видео из номенклатуры."""
 
     class Meta:
         model = VideoStat
-        fields = StatisticSerializer.Meta.fields
-        read_only_fields = StatisticSerializer.Meta.read_only_fields
+        fields = BaseNomenclatureSerializer.Meta.fields
+        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields
 
 
-class TickerStatSerializer(StatisticSerializer, serializers.ModelSerializer):
-    """Сериализация статистики бегущих строк."""
+class NomenclatureTickerStatSerializer(
+    BaseNomenclatureSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики бегущих строк из номенклатуры."""
 
     class Meta:
         model = TickerStat
-        fields = StatisticSerializer.Meta.fields
-        read_only_fields = StatisticSerializer.Meta.read_only_fields
+        fields = BaseNomenclatureSerializer.Meta.fields
+        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields
 
 
-class ImageStatSerializer(StatisticSerializer, serializers.ModelSerializer):
-    """Сериализация статистики картинок."""
+class NomenclatureImageStatSerializer(
+    BaseNomenclatureSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики картинок из номенклатуры."""
 
     class Meta:
         model = ImageStat
-        fields = StatisticSerializer.Meta.fields
-        read_only_fields = StatisticSerializer.Meta.read_only_fields
+        fields = BaseNomenclatureSerializer.Meta.fields
+        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields
+
+
+class FileAdStatSerializer(
+    BaseFileSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики рекламы из файла."""
+
+    ad_block = serializers.IntegerField()
+
+    class Meta:
+        model = ADStat
+        fields = BaseFileSerializer.Meta.fields + ('ad_block',)
+        read_only_fields = (
+                BaseFileSerializer.Meta.
+                read_only_fields +
+                ('ad_block',)
+        )
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        td = timedelta(seconds=value.ad_block)
+        representation['ad_block'] = datetime.strftime(
+            datetime.strptime(str(td), "%H:%M:%S"),
+            "%H:%M:%S"
+        )
+        return representation
+
+
+class FileMusicStatSerializer(
+    BaseFileSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики музыки из файла."""
+
+    class Meta:
+        model = MusicStat
+        fields = BaseFileSerializer.Meta.fields
+        read_only_fields = BaseFileSerializer.Meta.read_only_fields
+
+
+class FileVideoStatSerializer(
+    BaseFileSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики видео из файла."""
+
+    class Meta:
+        model = VideoStat
+        fields = BaseFileSerializer.Meta.fields
+        read_only_fields = BaseFileSerializer.Meta.read_only_fields
+
+
+class FileTickerStatSerializer(
+    BaseFileSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики бегущих строк из файла."""
+
+    class Meta:
+        model = TickerStat
+        fields = BaseFileSerializer.Meta.fields
+        read_only_fields = BaseFileSerializer.Meta.read_only_fields
+
+
+class FileImageStatSerializer(
+    BaseFileSerializer,
+    serializers.ModelSerializer
+):
+    """Сериализация статистики картинок из файла."""
+
+    class Meta:
+        model = ImageStat
+        fields = BaseFileSerializer.Meta.fields
+        read_only_fields = BaseFileSerializer.Meta.read_only_fields

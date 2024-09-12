@@ -1,7 +1,5 @@
 from clickhouse_backend import models
 
-from nomenclatures.models import Nomenclature
-
 
 class Stat(models.ClickhouseModel):
     """Базовая статистика."""
@@ -13,7 +11,7 @@ class Stat(models.ClickhouseModel):
     played = models.DateTimeField(
         verbose_name='Когда было проиграно'
     )
-    value = models.StringField(
+    file = models.StringField(
         max_length=288,
         verbose_name='Идентификатор файла'
     )
@@ -29,6 +27,9 @@ class Stat(models.ClickhouseModel):
         abstract = True
         ordering = ('-created',)
 
+    def __str__(self):
+        return self.file
+
 
 class ADStat(Stat):
     """Статистика рекламы."""
@@ -40,9 +41,6 @@ class ADStat(Stat):
         verbose_name = 'Статистика рекламы'
         verbose_name_plural = 'Статистика рекламы'
 
-    def __str__(self):
-        return self.value
-
 
 class MusicStat(Stat):
     """Статистика музыки."""
@@ -51,9 +49,6 @@ class MusicStat(Stat):
         db_table = 'music_stat'
         verbose_name = 'Статистика музыки'
         verbose_name_plural = 'Статистика музыки'
-
-    def __str__(self):
-        return self.value
 
 
 class ImageStat(Stat):
@@ -64,9 +59,6 @@ class ImageStat(Stat):
         verbose_name = 'Статистика изображений'
         verbose_name_plural = 'Статистика изображений'
 
-    def __str__(self):
-        return self.value
-
 
 class VideoStat(Stat):
     """Статистика фоновых видео."""
@@ -76,9 +68,6 @@ class VideoStat(Stat):
         verbose_name = 'Статистика видео'
         verbose_name_plural = 'Статистика видео'
 
-    def __str__(self):
-        return self.value
-
 
 class TickerStat(Stat):
     """Статистика бегущей строки."""
@@ -87,6 +76,3 @@ class TickerStat(Stat):
         db_table = 'ticker_stat'
         verbose_name = 'Статистика бегущей строки'
         verbose_name_plural = 'Статистика бегущих строк'
-
-    def __str__(self):
-        return self.value
