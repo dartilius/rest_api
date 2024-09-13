@@ -7,11 +7,11 @@ from files.file_info import GetFileInfo
 from users.models import CustomUser
 
 TYPES = {
-    0: 'Реклама',
-    1: 'Музыка',
-    2: 'Кртинка',
-    3: 'Видео',
-    4: 'Бегущая строка'
+    0: 'ad',
+    1: 'music',
+    2: 'image',
+    3: 'video',
+    4: 'ticker'
 }
 
 
@@ -32,6 +32,10 @@ class Tag(models.Model):
         ordering = ('name',)
         verbose_name = 'Тэг'
         verbose_name_plural = 'Тэг'
+
+
+def media_path(instance, filename):
+    return f'{TYPES[instance.file_type]}/{filename}'
 
 
 class File(models.Model):
@@ -58,7 +62,7 @@ class File(models.Model):
     )
     source = models.FileField(
         verbose_name='Файл',
-        upload_to='downloaded_files/source/',
+        upload_to=media_path,
         storage=MinioBackend(bucket_name='local-media')
     )
     md5hash = models.CharField(
@@ -126,6 +130,24 @@ class File(models.Model):
         self.length = GetFileInfo.get_length(file)
         self.size = GetFileInfo.get_file_size(file)
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """При удалении файла с базы удаляем его также и в Минио."""
+        from minio import Minio
+        from django.conf import settings
+
+        minio_client = Minio(
+            settings.MINIO_ENDPOINT,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=settings.MINIO_USE_HTTPS,
+            cert_check=settings.MINIO_USE_HTTPS
+        )
+        minio_client.remove_object(
+            settings.MINIO_MEDIA_FILES_BUCKET,
+            f'{TYPES[self.file_type]}/{self.name}'
+        )
+        super().delete()
 
 
 class Playlist(models.Model):
