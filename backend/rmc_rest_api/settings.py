@@ -75,10 +75,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('POSTGRES_DB'),
+        'HOST': os.getenv('POSTGRES_HOST'),
         'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT')
+        'PORT': os.getenv('POSTGRES_PORT'),
+        'PASSWORD': os.getenv('POSTGRES_PASS')
     },
     'clickhouse': {
         'ENGINE': 'clickhouse_backend.backend',
@@ -142,9 +142,9 @@ MINIO_MEDIA_FILES_BUCKET = 'local-media'
 STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
 
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER', 'amqp://')
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER')
 CELERY_TIMEZONE = TIME_ZONE
-CELERY_SINGLETON_BACKEND_URL = os.environ.get('REDIS_BROKER', 'redis://redis:6379')
+CELERY_SINGLETON_BACKEND_URL = os.environ.get('CELERY_SINGLETON_BACKEND')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
