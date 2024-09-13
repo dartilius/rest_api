@@ -1,48 +1,34 @@
 from rest_framework import permissions
 
 
-class IsSuperUserOrAuthReadOnly(permissions.BasePermission):
-    """Читает аутентифицированный, удаляет, обновляет и удаляет SU."""
-
-    def has_permission(self, request, view):
-        return (
-            request.method in permissions.SAFE_METHODS
-            or request.user.is_authenticated
-        )
-
-    def has_object_permission(self, request, view, obj):
-        return (
-            request.user.is_authenticated and
-            request.user.is_superuser
-        )
-
-
-class AuthAndOnlySuperUserDelete(permissions.BasePermission):
+class OnlySuperUserDelete(permissions.BasePermission):
     """Удалить может только SU."""
 
+    message = 'Недостаточно прав для удаления.'
+
     def has_permission(self, request, view):
-        return (
-            request.method in permissions.SAFE_METHODS and
-            request.user.is_authenticated or
-            request.user.is_authenticated and (
-                request.user.is_manager or
-                request.user.is_superuser or
-                request.user.is_admin
-            )
-        )
+        return request.user.is_authenticated and request.user.is_superuser
+
+
+class OnlyOwnerAndSuperUserDelete(permissions.BasePermission):
+    """Удалить может только владелец или SU."""
+
+    message = 'Недостаточно прав для удаления.'
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # return (
-        #     (
-        #         request.method == 'DELETE' and
-        #         request.user.is_authenticated and
-        #         request.user.is_superuser
-        #     ) or (
-        #         request.method != 'DELETE' and
-        #         request.user.is_authenticated and
-        #         request.user.is_admin or
-        #         request.user.is_manager or
-        #         request.user.is_superuser
-        #     )
-        # )
-        return request.user.is_authenticated and request.user.is_superuser
+        return obj.owner == request.user or request.user.is_superuser
+
+
+class OnlyOwnerAndSuperUserUpdate(permissions.BasePermission):
+    """Изменить может только владелец или SU."""
+
+    message = 'Недостаточно прав для изменения.'
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        return obj.owner == request.user or request.user.is_superuser
