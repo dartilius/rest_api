@@ -40,44 +40,21 @@ export interface SettingsInterface {
 }
 
 export interface DaySettings {
-  worktime: [string, string];
-  default_volume: [number, number, number, number];
+  worktime: string;
+  default_volume: string;
 }
 
 export interface NomenclatureCreateInterface {
   name: string;
   timezone: string;
   description: string;
-  settings: SettingsInterface;
+  settings: {
+    mon: DaySettings;
+    tue: DaySettings;
+    wed: DaySettings;
+    thu: DaySettings;
+    fri: DaySettings;
+    sat: DaySettings;
+    sun: DaySettings;
+  }
 }
-
-// interface SettingsInterface {
-//     fri: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     mon: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     sat: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     sun: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     thu: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     tue: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     wed: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-// }
