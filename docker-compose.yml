@@ -3,9 +3,22 @@ volumes:
   pg_data:
   static:
   celery:
+  clickhouse_data:
   s3:
 
 services:
+  clickhouse:
+    image: yandex/clickhouse-server
+    container_name: clickhouse
+    env_file: .env
+    ports:
+      - '8123:8123'
+      - '8888:9000'
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile: 262144
+
   db:
     image: postgres:16.2
     container_name: db
@@ -46,6 +59,8 @@ services:
         condition: service_started
       db:
         condition: service_healthy
+      clickhouse:
+        condition: service_started
 
   frontend:
     env_file: .env
