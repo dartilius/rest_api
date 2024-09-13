@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@nextui-org/table";
-import { Chip, Select, SelectItem } from "@nextui-org/react";
+import {Button, Chip, Select, SelectItem} from "@nextui-org/react";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -113,6 +113,9 @@ export default function NomenclaturesList() {
               onSearchChange={handleVersionChange}
               onSearchSubmit={() => {}} // Submit обработчик теперь не нужен
             />
+            <Link href={'/nomenclatures/create'}>
+              <Button>Создать</Button>
+            </Link>
           </div>
 
           <div>

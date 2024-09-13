@@ -1,0 +1,36 @@
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 360px;
+}
+.description {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  padding: 12px;
+}
+.settings {
+  margin-bottom: 20px;
+
+  h3 {
+    margin-bottom: 10px;
+  }
+
+  .fieldsContainer {
+    display: flex;
+    justify-content: space-between; /* Распределение элементов по ширине */
+    gap: 20px; /* Отступ между полями */
+  }
+
+  .fields {
+    display: flex;
+    flex-direction: column;
+    flex: 1; /* Каждый элемент занимает одинаковую ширину */
+  }
+}
+.hint {
+  font-size: 12px;
+  color: gray;
+  margin-top: 5px;
+}

@@ -80,32 +80,32 @@ export default function NomenclatureDetails(props: Props) {
     return <Loader />;
   }
 
-  const renderSettingsTable = (
-    settings: Record<string, DaySettings | undefined>,
-  ) => {
-    const sortedSettings = Object.entries(settings)
-      .filter(([day, setting]) => setting !== undefined)
-      .sort(([dayA], [dayB]) => dayNames[dayA].localeCompare(dayNames[dayB]));
-
-    return (
-      <Table aria-label="Settings Table">
-        <TableHeader>
-          <TableColumn>День</TableColumn>
-          <TableColumn>Рабочее время</TableColumn>
-          <TableColumn>Уровень громкости</TableColumn>
-        </TableHeader>
-        <TableBody>
-          {sortedSettings.map(([day, setting]) => (
-            <TableRow key={day}>
-              <TableCell>{dayNames[day]}</TableCell>
-              <TableCell>{setting?.worktime.join(" - ")}</TableCell>
-              <TableCell>{setting?.default_volume.join(", ")}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  };
+  // const renderSettingsTable = (
+  //   settings: Record<string, DaySettings | undefined>,
+  // ) => {
+  //   const sortedSettings = Object.entries(settings)
+  //     .filter(([day, setting]) => setting !== undefined)
+  //     .sort(([dayA], [dayB]) => dayNames[dayA].localeCompare(dayNames[dayB]));
+  //
+  //   return (
+  //     <Table aria-label="Settings Table">
+  //       <TableHeader>
+  //         <TableColumn>День</TableColumn>
+  //         <TableColumn>Рабочее время</TableColumn>
+  //         <TableColumn>Уровень громкости</TableColumn>
+  //       </TableHeader>
+  //       <TableBody>
+  //         {sortedSettings.map(([day, setting]) => (
+  //           <TableRow key={day}>
+  //             <TableCell>{dayNames[day]}</TableCell>
+  //             <TableCell>{setting?.worktime.join(" - ")}</TableCell>
+  //             <TableCell>{setting?.default_volume.join(", ")}</TableCell>
+  //           </TableRow>
+  //         ))}
+  //       </TableBody>
+  //     </Table>
+  //   );
+  // };
 
   const handleCloseEditingModal = () => {
     setOpenEditingModal(false);
@@ -132,33 +132,33 @@ export default function NomenclatureDetails(props: Props) {
           <TranscriptData data={data.hw_info} label="Инфо тачки" />
         </CardBody>
         <Divider />
-        <CardFooter className="flex flex-col gap-3">
-          {renderSettingsTable(data.settings)}
-          <div
-            style={{
-              maxWidth: "8rem",
-              width: "100%",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
-            }}
-          >
-            <Button
-              color="primary"
-              style={{ width: "100%" }}
-              onClick={() => setOpenEditingModal(true)}
-            >
-              Редактировать
-            </Button>
-            <Button
-              color="danger"
-              style={{ width: "100%" }}
-              onClick={() => setOpenDeletingModal(true)}
-            >
-              Удалить
-            </Button>
-          </div>
-        </CardFooter>
+        {/*<CardFooter className="flex flex-col gap-3">*/}
+        {/*  {renderSettingsTable(data.settings)}*/}
+        {/*  <div*/}
+        {/*    style={{*/}
+        {/*      maxWidth: "8rem",*/}
+        {/*      width: "100%",*/}
+        {/*      display: "flex",*/}
+        {/*      flexDirection: "column",*/}
+        {/*      gap: "1rem",*/}
+        {/*    }}*/}
+        {/*  >*/}
+        {/*    <Button*/}
+        {/*      color="primary"*/}
+        {/*      style={{ width: "100%" }}*/}
+        {/*      onClick={() => setOpenEditingModal(true)}*/}
+        {/*    >*/}
+        {/*      Редактировать*/}
+        {/*    </Button>*/}
+        {/*    <Button*/}
+        {/*      color="danger"*/}
+        {/*      style={{ width: "100%" }}*/}
+        {/*      onClick={() => setOpenDeletingModal(true)}*/}
+        {/*    >*/}
+        {/*      Удалить*/}
+        {/*    </Button>*/}
+        {/*  </div>*/}
+        {/*</CardFooter>*/}
       </Card>
       <EditingModal
         close={handleCloseEditingModal}

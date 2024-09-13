@@ -1,23 +1,11 @@
-export type TagsListResponseDTO = {
+export interface TagResponseInterface {
+  id: number;
+  name: string;
+}
+
+export interface TagsListInterface {
   count: number;
   next: string;
   previous: string;
-  results: TagResponseDTO[];
-};
-
-export type TagsListResponse = {
-  count: number;
-  next: string;
-  previous: string;
-  results: TagResponse[];
-};
-
-export type TagResponseDTO = {
-  id: number;
-  name: string;
-};
-
-export type TagResponse = {
-  id: number;
-  name: string;
-};
+  results: TagResponseInterface[];
+}
