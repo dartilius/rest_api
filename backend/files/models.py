@@ -9,8 +9,8 @@ from users.models import CustomUser
 TYPES = {
     0: 'Реклама',
     1: 'Музыка',
-    2: 'Кртинка',
-    3: 'Видео',
+    2: 'Кртинка фон',
+    3: 'Видео фон',
     4: 'Бегущая строка'
 }
 
@@ -111,15 +111,8 @@ class File(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        """
-        Сборка информации о файле при его прогрузке на сервер.
-
-        Имя берётся непосредственно с файла.
-        Хэш суммы, размер и продолжительность вычисляются в отдельной функции.
-        Суммированный хэш получается сложением md5 и sha256 хешей.
-        """
         file = self.source.file
-        self.name = file.name.split('/')[-1]
+        self.name = file.name
         self.md5hash = GetFileInfo.get_md5(file)
         self.sha256hash = GetFileInfo.get_sha256(file)
         self.hash = f'{self.md5hash}{self.sha256hash}'

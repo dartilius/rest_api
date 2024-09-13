@@ -4,7 +4,7 @@ from datetime import timedelta as td
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 
-from files.models import File, Playlist, Tag
+from files.models import File, Playlist, Tag, TYPES
 
 
 class Base64FileField(serializers.FileField):
@@ -97,6 +97,7 @@ class FileSerializer(serializers.ModelSerializer):
             'sha256': value.sha256hash,
             'concat_hash': value.hash
         }
+        representation['file_type'] = TYPES[value.file_type]
         representation['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
@@ -120,6 +121,7 @@ class FileListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         representation = super().to_representation(value)
+        representation['file_type'] = TYPES[value.file_type]
         representation['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
