@@ -7,11 +7,11 @@ from files.file_info import GetFileInfo
 from users.models import CustomUser
 
 TYPES = {
-    0: 'Реклама',
-    1: 'Музыка',
-    2: 'Кртинка фон',
-    3: 'Видео фон',
-    4: 'Бегущая строка'
+    0: 'ad',
+    1: 'music',
+    2: 'image',
+    3: 'video',
+    4: 'ticker'
 }
 
 
