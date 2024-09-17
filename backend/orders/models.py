@@ -32,13 +32,14 @@ BROADCAST_TYPES = {
 
 
 class Mediaplan(models.Model):
-    """MP."""
+    """Медиаплан."""
 
     name = models.CharField()
     group = models.ForeignKey(
         NomenclatureGroup,
         verbose_name='group',
         related_name='mediaplans',
+        null=True,
         on_delete=models.SET_NULL
     )
     playlist = models.ForeignKey(
@@ -72,12 +73,6 @@ class BaseOrder(models.Model):
     created = models.DateTimeField(
         verbose_name='Дата создания',
         auto_now_add=True
-    )
-    mediaplan = models.ForeignKey(
-        Mediaplan,
-        verbose_name='MP',
-        related_name='orders',
-        on_delete=models.CASCADE
     )
 
     class Meta:
@@ -122,6 +117,12 @@ class AdOrder(BaseOrder):
         default=dict,
         verbose_name='Параметры заказа'
     )
+    mediaplan = models.ForeignKey(
+        Mediaplan,
+        verbose_name='Медиаплан',
+        related_name='ad_orders',
+        on_delete=models.CASCADE
+    )
 
     class Meta:
         db_table = 'ad_order'
@@ -156,6 +157,12 @@ class BgOrder(BaseOrder):
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
         verbose_name='Тип фона'
+    )
+    mediaplan = models.ForeignKey(
+        Mediaplan,
+        verbose_name='Медиаплан',
+        related_name='bg_orders',
+        on_delete=models.CASCADE
     )
 
     class Meta:

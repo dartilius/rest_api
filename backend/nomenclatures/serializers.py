@@ -7,7 +7,8 @@ from rest_framework import serializers
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureGroup,
-    TIMEZONES, StatusHistory
+    StatusHistory,
+    TIMEZONES
 )
 
 
@@ -165,12 +166,21 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         except AttributeError:
             return 'Не выходила в сеть'
 
-    def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['owner'] = (
-            f'{value.owner.last_name} {value.owner.first_name}'
-        )
-        representation['timezone'] = TIMEZONES[value.timezone]
+    def to_representation(self, obj):
+        representation = super().to_representation(obj)
+        representation['main_info'] = {
+            'name': obj.name,
+            'description': obj.description,
+            'owner': f'{obj.owner.last_name} {obj.owner.first_name}',
+            'timezone': TIMEZONES[obj.timezone],
+            'status': self.get_status(obj),
+            'last_answer': self.get_last_answer(obj),
+            'version': obj.version,
+            'created': obj.created.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        # чтобы поля не дублировались
+        for field in representation['main_info']:
+            representation.pop(field)
         for day, setting in representation['settings'].items():
             j = json.loads(setting)
             split_interval = j['worktime'].split('-')
@@ -191,7 +201,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     'worktime': (start, end),
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 

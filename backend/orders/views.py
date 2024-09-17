@@ -13,8 +13,6 @@ from orders.serializers import (
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 
-from users.permissions import AuthAndOnlySuperUserDelete
-
 
 class AdOrderViewSet(viewsets.ModelViewSet):
     """Работа с заказами."""

@@ -7,7 +7,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerStat
 from ch_statistic.serializers import (
@@ -18,7 +18,6 @@ from ch_statistic.serializers import (
     NomenclatureTickerStatSerializer
 )
 from ch_statistic.tasks import create_statistic
-from files.models import File
 from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
@@ -32,7 +31,6 @@ from nomenclatures.models import (
     NomenclatureGroup, NomenclatureAvailability
 )
 from tasks.models import Task
-from users.permissions import AuthAndOnlySuperUserDelete
 
 
 class NomenclatureViewSet(viewsets.ModelViewSet):
@@ -143,7 +141,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             statistics = request.data['statistic']
             for stat_type, stat_list in statistics.items():
                 create_statistic.delay(stat_type, pk, stat_list)
-
 
         if 'task_status' in request.data:
             task_list = list()
