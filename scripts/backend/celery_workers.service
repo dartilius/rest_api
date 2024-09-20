@@ -1,0 +1,11 @@
+[Unit]
+Description=Celery Workers Service
+After=network.target
+
+[Service]
+User=uid0001
+WorkingDirectory=/app/scripts
+ExecStart=/app/scripts/workers.sh
+
+[Install]
+WantedBy=multi-user.target

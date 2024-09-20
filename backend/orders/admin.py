@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from orders.models import AdOrder, BgOrder
+from orders.models import AdOrder, BgOrder, Mediaplan
 
 
 @admin.register(AdOrder)
@@ -52,3 +52,23 @@ class BgOrderAdmin(admin.ModelAdmin):
         return BgOrder.objects.all().select_related(
             'owner', 'client', 'playlist'
         )
+
+
+# @admin.register(Mediaplan)
+# class MediaplanAdmin(admin.ModelAdmin):
+#     """Фоновый заказ."""
+#
+#     list_display = (
+#         'id',
+#         'owner',
+#         'name',
+#         'orders',
+#         'created'
+#     )
+#     search_fields = (
+#         'id',
+#         'name'
+#     )
+#
+#     def get_queryset(self, request):
+#         return Mediaplan.objects.all().select_related('owner', 'orders')

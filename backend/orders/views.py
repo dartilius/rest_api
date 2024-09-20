@@ -35,7 +35,10 @@ class AdOrderViewSet(viewsets.ModelViewSet):
                     'broadcast_type': order.broadcast_type,
                     'broadcast_interval': order.broadcast_interval,
                     'file': order.file,
-                    'slides': order.slides if order.slides.exists() else None
+                    'slides': [
+                        {'id': str(slide.id),
+                         'name': slide.name} for slide in order.slides.all()
+                    ] if order.slides.exists() else None
                 }
             ) for client in clients
         )

@@ -78,6 +78,9 @@ class BaseOrder(models.Model):
     class Meta:
         abstract = True
 
+    def __str__(self):
+        return self.name
+
 
 class AdOrder(BaseOrder):
     """Рекламный заказ."""
@@ -117,12 +120,12 @@ class AdOrder(BaseOrder):
         default=dict,
         verbose_name='Параметры заказа'
     )
-    mediaplan = models.ForeignKey(
-        Mediaplan,
-        verbose_name='Медиаплан',
-        related_name='ad_orders',
-        on_delete=models.CASCADE
-    )
+    # mediaplan = models.ForeignKey(
+    #     Mediaplan,
+    #     verbose_name='Медиаплан',
+    #     related_name='ad_orders',
+    #     on_delete=models.CASCADE
+    # )
 
     class Meta:
         db_table = 'ad_order'
@@ -158,12 +161,12 @@ class BgOrder(BaseOrder):
         choices=ORDER_TYPES,
         verbose_name='Тип фона'
     )
-    mediaplan = models.ForeignKey(
-        Mediaplan,
-        verbose_name='Медиаплан',
-        related_name='bg_orders',
-        on_delete=models.CASCADE
-    )
+    # mediaplan = models.ForeignKey(
+    #     Mediaplan,
+    #     verbose_name='Медиаплан',
+    #     related_name='bg_orders',
+    #     on_delete=models.CASCADE
+    # )
 
     class Meta:
         db_table = 'bg_order'
