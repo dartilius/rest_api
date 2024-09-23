@@ -147,7 +147,7 @@ class File(models.Model):
             settings.MINIO_MEDIA_FILES_BUCKET,
             f'{TYPES[self.file_type]}/{self.name}'
         )
-        super().delete()
+        super().delete(*args, **kwargs)
 
 
 class Playlist(models.Model):

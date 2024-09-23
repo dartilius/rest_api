@@ -10,7 +10,7 @@ from orders.serializers import (
     BgOrderListSerializer
 )
 
-from orders.models import AdOrder, BgOrder
+from orders.models import AdOrder, BgOrder, Mediaplan
 from tasks.models import Task
 
 
@@ -34,7 +34,7 @@ class AdOrderViewSet(viewsets.ModelViewSet):
                     'order_parameters': order.parameters,
                     'broadcast_type': order.broadcast_type,
                     'broadcast_interval': order.broadcast_interval,
-                    'file': order.file,
+                    'playlist': order.playlist,
                     'slides': [
                         {'id': str(slide.id),
                          'name': slide.name} for slide in order.slides.all()
@@ -70,17 +70,20 @@ class BgOrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         order = serializer.save(owner=self.request.user)
-        task = Task.objects.create(
-            owner=self.request.user,
-            client=order.client,
-            type=order.order_type,
-            parameters={
-                'type': order.order_type,
-                'playlist': order.playlist.name,
-                'broadcast_interval': order.broadcast_interval
-            }
+        clients = order.group.clients.all()
+        task_list = (
+            Task(
+                owner=self.request.user,
+                client=client,
+                type=order.order_type,
+                parameters={
+                    'type': order.order_type,
+                    'playlist': order.playlist.name,
+                    'broadcast_interval': order.broadcast_interval
+                }
+            ) for client in clients
         )
-        task.save()
+        Task.objects.bulk_create(task_list)
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -94,3 +97,30 @@ class BgOrderViewSet(viewsets.ModelViewSet):
                 kwargs['many'] = True
 
         return serializer(*args, **kwargs)
+
+
+# class MediaplanViewSet(viewsets.ModelViewSet):
+#     """."""
+#
+#     queryset = Mediaplan.objects.all().select_related('owner')
+#
+#     def perform_create(self, serializer):
+#         mp = serializer.save(owner=self.request.user)
+#         order_list = (
+#             AdOrder(
+#                 owner=self.request.user,
+#                 client=client,
+#                 type=4,
+#                 parameters={
+#                     'order_parameters': order.parameters,
+#                     'broadcast_type': order.broadcast_type,
+#                     'broadcast_interval': order.broadcast_interval,
+#                     'file': order.file,
+#                     'slides': [
+#                         {'id': str(slide.id),
+#                          'name': slide.name} for slide in order.slides.all()
+#                     ] if order.slides.exists() else None
+#                 }
+#             ) for client in clients
+#         )
+#         Task.objects.bulk_create(task_list)

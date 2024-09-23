@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 from django.contrib.postgres.validators import KeysValidator
-from django.core.validators import MaxValueValidator
 from django.db import models
 from django.contrib.postgres.fields import HStoreField
 

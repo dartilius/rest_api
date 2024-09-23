@@ -1,7 +1,8 @@
-from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
+from django.contrib.postgres.fields import HStoreField
+# from django.core.exceptions import ValidationError
 from django.db import models
 
-from nomenclatures.models import NomenclatureGroup, Nomenclature
+from nomenclatures.models import NomenclatureGroup
 from users.models import CustomUser
 from files.models import Playlist, File
 
@@ -31,23 +32,91 @@ BROADCAST_TYPES = {
 }
 
 
-class Mediaplan(models.Model):
-    """Медиаплан."""
-
-    name = models.CharField()
-    group = models.ForeignKey(
-        NomenclatureGroup,
-        verbose_name='group',
-        related_name='mediaplans',
-        null=True,
-        on_delete=models.SET_NULL
-    )
-    playlist = models.ForeignKey(
-        Playlist,
-        verbose_name='playlist',
-        related_name='mediaplans',
-        on_delete=models.CASCADE
-    )
+# class Mediaplan(models.Model):
+#     """Медиаплан."""
+#
+#     name = models.CharField()
+#     type = models.BooleanField(
+#         choices={0: 'Рекламный',
+#                  1: 'Фоновый'},
+#         verbose_name='Тип',
+#         default=0
+#     )
+#     description = models.TextField(
+#         null=True,
+#         blank=True,
+#         verbose_name='Описание'
+#     )
+#     broadcast_interval = DateTimeRangeField(
+#         verbose_name='Интервал работы заказа'
+#     )
+#     created = models.DateTimeField(
+#         verbose_name='Дата создания',
+#         auto_now_add=True
+#     )
+#
+#     class Meta:
+#         abstract = True
+#
+#
+# class AdMediaplan(Mediaplan):
+#     """."""
+#
+#     parameters = ('times_in_hour',
+#                   'weight_val',
+#                   'event_val',
+#                   'ad_action',
+#                   'start_time',
+#                   'end_time',
+#                   'timedelta_val')
+#
+#     group = models.ForeignKey(
+#         NomenclatureGroup,
+#         verbose_name='group',
+#         related_name='ad_mediaplans',
+#         on_delete=models.DO_NOTHING
+#     )
+#     playlist = models.ForeignKey(
+#         Playlist,
+#         verbose_name='playlist',
+#         related_name='ad_mediaplans',
+#         on_delete=models.DO_NOTHING,
+#         blank=True,
+#         null=True
+#     )
+#     file = models.ForeignKey(
+#         File,
+#         verbose_name='Файл',
+#         related_name='ad_mediaplans',
+#         on_delete=models.DO_NOTHING,
+#         blank=True,
+#         null=True
+#     )
+#
+#     def clean(self):
+#         if self.playlist and self.file:
+#             raise ValidationError(
+#                 'Должно быть заполнено что-то одно - плейлист или файл.')
+#         elif not (self.playlist or self.file):
+#             raise ValidationError(
+#                 'Необходимо добавить плейлист или файл.')
+#
+#
+# class BgMediaplan(Mediaplan):
+#     """."""
+#
+#     group = models.ForeignKey(
+#         NomenclatureGroup,
+#         verbose_name='group',
+#         related_name='bg_mediaplans',
+#         on_delete=models.DO_NOTHING
+#     )
+#     playlist = models.ForeignKey(
+#         Playlist,
+#         verbose_name='playlist',
+#         related_name='bg_mediaplans',
+#         on_delete=models.DO_NOTHING
+#     )
 
 
 class BaseOrder(models.Model):
@@ -56,14 +125,6 @@ class BaseOrder(models.Model):
     name = models.CharField(
         max_length=255,
         verbose_name='Название'
-    )
-    description = models.TextField(
-        null=True,
-        blank=True,
-        verbose_name='Описание'
-    )
-    broadcast_interval = DateTimeRangeField(
-        verbose_name='Интервал работы заказа'
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
@@ -89,21 +150,19 @@ class AdOrder(BaseOrder):
         CustomUser,
         verbose_name='Создатель',
         related_name='ad_orders',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
+        on_delete=models.DO_NOTHING
     )
     group = models.ForeignKey(
         NomenclatureGroup,
         related_name='ad_orders',
         verbose_name='Группа номенклатур',
-        on_delete=models.CASCADE
+        on_delete=models.DO_NOTHING
     )
-    file = models.ForeignKey(
-        File,
-        verbose_name='Файл',
+    playlist = models.ForeignKey(
+        Playlist,
+        verbose_name='Ролики',
         related_name='ad_orders',
-        on_delete=models.CASCADE
+        on_delete=models.DO_NOTHING
     )
     slides = models.ManyToManyField(
         File,
@@ -121,10 +180,10 @@ class AdOrder(BaseOrder):
         verbose_name='Параметры заказа'
     )
     # mediaplan = models.ForeignKey(
-    #     Mediaplan,
+    #     AdMediaplan,
     #     verbose_name='Медиаплан',
-    #     related_name='ad_orders',
-    #     on_delete=models.CASCADE
+    #     related_name='orders',
+    #     on_delete=models.DO_NOTHING
     # )
 
     class Meta:
@@ -141,21 +200,19 @@ class BgOrder(BaseOrder):
         CustomUser,
         verbose_name='Создатель',
         related_name='bg_orders',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
+        on_delete=models.DO_NOTHING
     )
-    client = models.ForeignKey(
-        Nomenclature,
+    group = models.ForeignKey(
+        NomenclatureGroup,
         related_name='bg_orders',
-        verbose_name='Номенклатура',
-        on_delete=models.CASCADE
+        verbose_name='Группа номенклатур',
+        on_delete=models.DO_NOTHING
     )
     playlist = models.ForeignKey(
         Playlist,
         related_name='bg_orders',
         verbose_name='Плейлист',
-        on_delete=models.CASCADE
+        on_delete=models.DO_NOTHING
     )
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
@@ -165,7 +222,7 @@ class BgOrder(BaseOrder):
     #     Mediaplan,
     #     verbose_name='Медиаплан',
     #     related_name='bg_orders',
-    #     on_delete=models.CASCADE
+    #     on_delete=models.DO_NOTHING
     # )
 
     class Meta:
