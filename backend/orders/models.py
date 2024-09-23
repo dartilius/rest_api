@@ -1,4 +1,4 @@
-from django.contrib.postgres.fields import HStoreField
+from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
 # from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -41,14 +41,6 @@ BROADCAST_TYPES = {
 #                  1: 'Фоновый'},
 #         verbose_name='Тип',
 #         default=0
-#     )
-#     description = models.TextField(
-#         null=True,
-#         blank=True,
-#         verbose_name='Описание'
-#     )
-#     broadcast_interval = DateTimeRangeField(
-#         verbose_name='Интервал работы заказа'
 #     )
 #     created = models.DateTimeField(
 #         verbose_name='Дата создания',
@@ -126,6 +118,14 @@ class BaseOrder(models.Model):
         max_length=255,
         verbose_name='Название'
     )
+    description = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='Описание'
+    )
+    broadcast_interval = DateTimeRangeField(
+        verbose_name='Интервал работы заказа'
+    )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
         verbose_name='Статус',
@@ -158,9 +158,9 @@ class AdOrder(BaseOrder):
         verbose_name='Группа номенклатур',
         on_delete=models.DO_NOTHING
     )
-    playlist = models.ForeignKey(
-        Playlist,
-        verbose_name='Ролики',
+    file = models.ForeignKey(
+        File,
+        verbose_name='Файл',
         related_name='ad_orders',
         on_delete=models.DO_NOTHING
     )

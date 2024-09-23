@@ -10,7 +10,7 @@ from orders.serializers import (
     BgOrderListSerializer
 )
 
-from orders.models import AdOrder, BgOrder, Mediaplan
+from orders.models import AdOrder, BgOrder  #, Mediaplan
 from tasks.models import Task
 
 
@@ -23,26 +23,29 @@ class AdOrderViewSet(viewsets.ModelViewSet):
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
-        order = serializer.save(owner=self.request.user)
-        clients = order.group.clients.all()
-        task_list = (
-            Task(
-                owner=self.request.user,
-                client=client,
-                type=4,
-                parameters={
-                    'order_parameters': order.parameters,
-                    'broadcast_type': order.broadcast_type,
-                    'broadcast_interval': order.broadcast_interval,
-                    'playlist': order.playlist,
-                    'slides': [
-                        {'id': str(slide.id),
-                         'name': slide.name} for slide in order.slides.all()
-                    ] if order.slides.exists() else None
-                }
-            ) for client in clients
-        )
-        Task.objects.bulk_create(task_list)
+        orders = serializer.save(owner=self.request.user)
+        for order in orders:
+            clients = order.group.clients.all()
+            task_list = (
+                Task(
+                    owner=self.request.user,
+                    client=client,
+                    type=4,
+                    parameters={
+                        'order_parameters': order.parameters,
+                        'broadcast_type': order.broadcast_type,
+                        'broadcast_interval': order.broadcast_interval,
+                        'file': order.file,
+                        'slides': [
+                            {
+                                'id': str(slide.id),
+                                'name': slide.name
+                            } for slide in order.slides.all()
+                        ] if order.slides.exists() else None
+                    }
+                ) for client in clients
+            )
+            Task.objects.bulk_create(task_list)
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

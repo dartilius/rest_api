@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from orders.models import AdOrder, BgOrder, Mediaplan
+from orders.models import AdOrder, BgOrder  #, Mediaplan
 
 
 @admin.register(AdOrder)
@@ -25,7 +25,9 @@ class AdOrderAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return AdOrder.objects.all().select_related('owner', 'group', 'file')
+        return AdOrder.objects.all().select_related(
+            'owner', 'group', 'file'
+        )
 
 
 @admin.register(BgOrder)
@@ -37,20 +39,20 @@ class BgOrderAdmin(admin.ModelAdmin):
         'owner',
         'name',
         'description',
-        'client',
+        'group',
         'playlist',
         'created'
     )
     search_fields = (
         'id',
         'name',
-        'client',
+        'group',
         'playlist'
     )
 
     def get_queryset(self, request):
         return BgOrder.objects.all().select_related(
-            'owner', 'client', 'playlist'
+            'owner', 'group', 'playlist'
         )
 
 
