@@ -136,6 +136,17 @@ class Nomenclature(models.Model):
             ).first()
             group.delete()
 
+    def delete(self, using=None, keep_parents=False):
+        super().delete()
+        group = NomenclatureGroup.objects.exclude(
+            ~Q(clients=self.id)
+        ).first()
+        group.delete()
+        groups = NomenclatureGroup.objects.filter(clients=self)
+        for group in groups:
+            group.clients.remove(self)
+            group.save()
+
 
 class NomenclatureGroup(models.Model):
     """Группа номенклатур."""

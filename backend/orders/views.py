@@ -10,7 +10,6 @@ from orders.serializers import (
     BgOrderSerializer,
     BgOrderListSerializer
 )
-
 from orders.models import AdOrder, BgOrder
 from tasks.tasks import (
     create_ad_order_task,

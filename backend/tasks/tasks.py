@@ -2,6 +2,10 @@ from celery import shared_task
 
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
+from api.logger import setup_logger
+
+ad_logger = setup_logger('ad_orders', 'logs/ad_orders.log')
+bg_logger = setup_logger('bg_orders', 'logs/bg_orders.log')
 
 
 @shared_task
@@ -10,6 +14,8 @@ def create_ad_order_task(orders_ids: list):
     orders = AdOrder.objects.filter(pk__in=orders_ids)
     successful_tasks = 0
     failed_tasks = 0
+    result = f'Создано заказов: {successful_tasks}. '
+
     for order in orders:
         clients = order.group.clients.all()
         task_list = [
@@ -41,12 +47,16 @@ def create_ad_order_task(orders_ids: list):
         try:
             Task.objects.bulk_create(task_list)
             successful_tasks += count
-        except Exception:
+        except Exception as e:
             del_order = AdOrder.objects.get(pk=order.id)
             del_order.delete()
             failed_tasks += count
+            ad_logger.error(f'Не удалось создать {count} '
+                            f'заказов: {task_list}.\nОшибка: {e}')
 
-    return f'Создано заказов: {successful_tasks}. Ошибки: {failed_tasks}'
+    if failed_tasks:
+        result += f'Ошибки: {failed_tasks}'
+    return result
 
 
 @shared_task
@@ -87,6 +97,10 @@ def update_ad_order_task(orders_ids: list, updated_data: dict):
 def cancel_ad_order_task(orders_ids: list):
     """Отмена AD заказа."""
     orders = AdOrder.objects.filter(pk__in=orders_ids)
+    successful_tasks = 0
+    failed_tasks = 0
+    result = f'Отменено заказов: {successful_tasks}. '
+
     for order in orders:
         clients = order.group.clients.all()
         task_list = (
@@ -97,11 +111,20 @@ def cancel_ad_order_task(orders_ids: list):
                 parameters={'order_id': order.id}
             ) for client in clients
         )
-        Task.objects.bulk_create(task_list)
-        order.status = 3
-        order.save()
+        count = len(list(task_list))
+        try:
+            Task.objects.bulk_create(task_list)
+            order.status = 3
+            order.save()
+            successful_tasks += count
+        except Exception as e:
+            failed_tasks += count
+            bg_logger.error(f'Не удалось создать {count} '
+                            f'заказов: {task_list}.\nОшибка: {repr(e)}')
 
-    return f'Рекламных заказов отменено: {len(orders)}'
+    if failed_tasks:
+        result += f'Ошибки: {failed_tasks}'
+    return result
 
 
 @shared_task
@@ -110,6 +133,8 @@ def create_bg_order_task(orders_ids: list):
     orders = BgOrder.objects.filter(pk__in=orders_ids)
     successful_tasks = 0
     failed_tasks = 0
+    result = f'Создано заказов: {successful_tasks}. '
+
     for order in orders:
         clients = order.group.clients.all()
         task_list = [
@@ -135,12 +160,16 @@ def create_bg_order_task(orders_ids: list):
         try:
             Task.objects.bulk_create(task_list)
             successful_tasks += count
-        except Exception:
-            del_order = AdOrder.objects.get(pk=order.id)
+        except Exception as e:
+            del_order = BgOrder.objects.get(pk=order.id)
             del_order.delete()
             failed_tasks += count
+            bg_logger.error(f'Не удалось создать {count} '
+                            f'заказов: {task_list}.\nОшибка: {repr(e)}')
 
-    return f'Создано заказов: {successful_tasks}. Ошибки: {failed_tasks}'
+    if failed_tasks:
+        result += f'Ошибки: {failed_tasks}'
+    return result
 
 
 @shared_task
@@ -185,28 +214,36 @@ def update_bg_order_task(order_id: int, updated_data: dict):
 @shared_task
 def cancel_bg_order_task(orders_ids: list):
     orders = BgOrder.objects.filter(pk__in=orders_ids)
-    try:
-        for order in orders:
-            clients = order.group.clients.all()
-            # order_type -> cancel_{order_type}
-            match order.order_type:
-                case 0: task_type = 5
-                case 1: task_type = 6
-                case 2: task_type = 7
-                case 3: task_type = 8
-            task_list = (
-                Task(
-                    owner=order.owner,
-                    client=client,
-                    type=task_type,
-                    parameters={'order_id': order.id}
-                ) for client in clients
-            )
+    successful_tasks = 0
+    failed_tasks = 0
+    result = f'Отменено заказов: {successful_tasks}. '
+    for order in orders:
+        clients = order.group.clients.all()
+        # order_type -> cancel_{order_type}
+        match order.order_type:
+            case 0: task_type = 5
+            case 1: task_type = 6
+            case 2: task_type = 7
+            case 3: task_type = 8
+        task_list = [
+            Task(
+                owner=order.owner,
+                client=client,
+                type=task_type,
+                parameters={'order_id': order.id}
+            ) for client in clients
+        ]
+        count = len(list(task_list))
+        try:
             Task.objects.bulk_create(task_list)
             order.status = 3
             order.save()
+            successful_tasks += count
+        except Exception as e:
+            failed_tasks += count
+            bg_logger.error(f'Не удалось создать {count} '
+                            f'заказов: {task_list}.\nОшибка: {repr(e)}')
 
-        return f'Фоновых заказов отменено: {len(orders)}'
-
-    except Exception:
-        return False
+    if failed_tasks:
+        result += f'Ошибки: {failed_tasks}'
+    return result

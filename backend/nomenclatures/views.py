@@ -64,14 +64,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
-        nomenclatures = serializer.save(owner=self.request.user)
-        # for nomenclature in nomenclatures:
-        #     group = NomenclatureGroup.objects.create(
-        #         owner=self.request.user,
-        #         name=nomenclature.name,
-        #     )
-        #     group.clients.add(nomenclature)
-        #     group.save()
+        serializer.save(owner=self.request.user)
 
     def perform_update(self, serializer):
         nomenclature = serializer.instance
