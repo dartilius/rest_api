@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from orders.models import AdOrder, BgOrder  #, Mediaplan
+from orders.models import AdOrder, BgOrder, ORDER_TYPES
 
 
 @admin.register(AdOrder)
@@ -9,12 +9,19 @@ class AdOrderAdmin(admin.ModelAdmin):
 
     list_display = (
         'id',
-        'owner',
         'name',
-        'description',
+        'status',
         'group',
         'broadcast_interval',
         'file',
+        'owner',
+        'created'
+    )
+    list_filter = (
+        'owner',
+        'group',
+        'status',
+        'broadcast_interval',
         'created'
     )
     search_fields = (
@@ -34,13 +41,32 @@ class AdOrderAdmin(admin.ModelAdmin):
 class BgOrderAdmin(admin.ModelAdmin):
     """Фоновый заказ."""
 
+    @admin.display
+    def order_type(self, obj):
+        return ORDER_TYPES[obj.order_type]
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return ['order_type']
+        else:
+            return []
+
     list_display = (
         'id',
-        'owner',
+        'order_type',
         'name',
-        'description',
+        'status',
         'group',
         'playlist',
+        'owner',
+        'created'
+    )
+    list_filter = (
+        'owner',
+        'group',
+        'order_type',
+        'status',
+        'broadcast_interval',
         'created'
     )
     search_fields = (
@@ -54,23 +80,3 @@ class BgOrderAdmin(admin.ModelAdmin):
         return BgOrder.objects.all().select_related(
             'owner', 'group', 'playlist'
         )
-
-
-# @admin.register(Mediaplan)
-# class MediaplanAdmin(admin.ModelAdmin):
-#     """Фоновый заказ."""
-#
-#     list_display = (
-#         'id',
-#         'owner',
-#         'name',
-#         'orders',
-#         'created'
-#     )
-#     search_fields = (
-#         'id',
-#         'name'
-#     )
-#
-#     def get_queryset(self, request):
-#         return Mediaplan.objects.all().select_related('owner', 'orders')

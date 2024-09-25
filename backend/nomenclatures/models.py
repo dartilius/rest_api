@@ -3,6 +3,7 @@ from uuid import uuid4
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
 from django.contrib.postgres.fields import HStoreField
+from django.db.models import Q
 
 from users.models import CustomUser
 
@@ -119,6 +120,21 @@ class Nomenclature(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_active is True:
+            group = NomenclatureGroup.objects.create(
+                owner=self.owner,
+                name=self.name,
+            )
+            group.clients.add(self)
+            group.save()
+        else:
+            group = NomenclatureGroup.objects.exclude(
+                ~Q(clients=self.id)
+            ).first()
+            group.delete()
 
 
 class NomenclatureGroup(models.Model):

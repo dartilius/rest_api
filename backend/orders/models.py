@@ -32,85 +32,6 @@ BROADCAST_TYPES = {
 }
 
 
-# class Mediaplan(models.Model):
-#     """Медиаплан."""
-#
-#     name = models.CharField()
-#     type = models.BooleanField(
-#         choices={0: 'Рекламный',
-#                  1: 'Фоновый'},
-#         verbose_name='Тип',
-#         default=0
-#     )
-#     created = models.DateTimeField(
-#         verbose_name='Дата создания',
-#         auto_now_add=True
-#     )
-#
-#     class Meta:
-#         abstract = True
-#
-#
-# class AdMediaplan(Mediaplan):
-#     """."""
-#
-#     parameters = ('times_in_hour',
-#                   'weight_val',
-#                   'event_val',
-#                   'ad_action',
-#                   'start_time',
-#                   'end_time',
-#                   'timedelta_val')
-#
-#     group = models.ForeignKey(
-#         NomenclatureGroup,
-#         verbose_name='group',
-#         related_name='ad_mediaplans',
-#         on_delete=models.DO_NOTHING
-#     )
-#     playlist = models.ForeignKey(
-#         Playlist,
-#         verbose_name='playlist',
-#         related_name='ad_mediaplans',
-#         on_delete=models.DO_NOTHING,
-#         blank=True,
-#         null=True
-#     )
-#     file = models.ForeignKey(
-#         File,
-#         verbose_name='Файл',
-#         related_name='ad_mediaplans',
-#         on_delete=models.DO_NOTHING,
-#         blank=True,
-#         null=True
-#     )
-#
-#     def clean(self):
-#         if self.playlist and self.file:
-#             raise ValidationError(
-#                 'Должно быть заполнено что-то одно - плейлист или файл.')
-#         elif not (self.playlist or self.file):
-#             raise ValidationError(
-#                 'Необходимо добавить плейлист или файл.')
-#
-#
-# class BgMediaplan(Mediaplan):
-#     """."""
-#
-#     group = models.ForeignKey(
-#         NomenclatureGroup,
-#         verbose_name='group',
-#         related_name='bg_mediaplans',
-#         on_delete=models.DO_NOTHING
-#     )
-#     playlist = models.ForeignKey(
-#         Playlist,
-#         verbose_name='playlist',
-#         related_name='bg_mediaplans',
-#         on_delete=models.DO_NOTHING
-#     )
-
-
 class BaseOrder(models.Model):
     """Заказ."""
 
@@ -179,12 +100,6 @@ class AdOrder(BaseOrder):
         default=dict,
         verbose_name='Параметры заказа'
     )
-    # mediaplan = models.ForeignKey(
-    #     AdMediaplan,
-    #     verbose_name='Медиаплан',
-    #     related_name='orders',
-    #     on_delete=models.DO_NOTHING
-    # )
 
     class Meta:
         db_table = 'ad_order'
@@ -216,14 +131,9 @@ class BgOrder(BaseOrder):
     )
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
-        verbose_name='Тип фона'
+        verbose_name='Тип фона',
+        # editable=False
     )
-    # mediaplan = models.ForeignKey(
-    #     Mediaplan,
-    #     verbose_name='Медиаплан',
-    #     related_name='bg_orders',
-    #     on_delete=models.DO_NOTHING
-    # )
 
     class Meta:
         db_table = 'bg_order'

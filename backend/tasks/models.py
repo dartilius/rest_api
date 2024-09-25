@@ -14,16 +14,30 @@ STATUSES = {
 }
 
 TASK_TYPES = {
+    # create order
     0: 'BGMUSIC',
     1: 'BGVIDEO',
     2: 'BGIMAGE',
     3: 'TICKER',
     4: 'AD',
-    5: 'REBOOT',
-    6: 'UPDATE',
-    7: 'CUSTOM',
-    8: 'SET_PARAMETERS',
-    9: 'PLACEHOLDER'
+    # cancel order
+    5: 'CANCEL_BGMUSIC',
+    6: 'CANCEL_BGVIDEO',
+    7: 'CANCEL_BGIMAGE',
+    8: 'CANCEL_TICKER',
+    9: 'CANCEL_AD',
+    # update order
+    10: 'UPDATE_BGMUSIC',
+    11: 'UPDATE_BGVIDEO',
+    12: 'UPDATE_BGIMAGE',
+    13: 'UPDATE_TICKER',
+    14: 'UPDATE_AD',
+    # not order
+    15: 'REBOOT',
+    16: 'UPDATE',
+    17: 'CUSTOM',
+    18: 'SET_PARAMETERS',
+    19: 'PLACEHOLDER'
 }
 
 
@@ -57,13 +71,14 @@ class Task(models.Model):
     )
     type = models.PositiveSmallIntegerField(
         choices=TASK_TYPES,
-        default=8,
-        verbose_name='Тип'
+        verbose_name='Тип',
+        editable=False,
+        default=0
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
-        default=0,
-        verbose_name='Статус'
+        verbose_name='Статус',
+        default=0
     )
     created = models.DateTimeField(
         auto_now_add=True,

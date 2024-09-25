@@ -10,11 +10,11 @@ while [[ $count -le $workers ]]; do
    ((count += 1))
 done
 
-w_pids=()
-count=1
-
-while [[ $count -le $workers ]]; do
-  w_pids+=(`cat /app/logs/worker$count@backend.pid`)
-  ((count += 1))
-done
+#w_pids=()
+#count=1
+#
+#while [[ $count -le $workers ]]; do
+#  w_pids+=(`cat /app/logs/worker$count@backend.pid`)
+#  ((count += 1))
+#done
 

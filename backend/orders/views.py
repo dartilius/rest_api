@@ -1,6 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
 
 from orders.filters import AdOrderFilter, BgOrderFilter
 from orders.serializers import (
@@ -10,8 +11,15 @@ from orders.serializers import (
     BgOrderListSerializer
 )
 
-from orders.models import AdOrder, BgOrder  #, Mediaplan
-from tasks.models import Task
+from orders.models import AdOrder, BgOrder
+from tasks.tasks import (
+    create_ad_order_task,
+    update_ad_order_task,
+    cancel_ad_order_task,
+    create_bg_order_task,
+    update_bg_order_task,
+    cancel_bg_order_task
+)
 
 
 class AdOrderViewSet(viewsets.ModelViewSet):
@@ -24,28 +32,19 @@ class AdOrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         orders = serializer.save(owner=self.request.user)
-        for order in orders:
-            clients = order.group.clients.all()
-            task_list = (
-                Task(
-                    owner=self.request.user,
-                    client=client,
-                    type=4,
-                    parameters={
-                        'order_parameters': order.parameters,
-                        'broadcast_type': order.broadcast_type,
-                        'broadcast_interval': order.broadcast_interval,
-                        'file': order.file,
-                        'slides': [
-                            {
-                                'id': str(slide.id),
-                                'name': slide.name
-                            } for slide in order.slides.all()
-                        ] if order.slides.exists() else None
-                    }
-                ) for client in clients
-            )
-            Task.objects.bulk_create(task_list)
+        orders_ids = list(order.id for order in orders)
+        create_ad_order_task.delay(orders_ids)
+
+    def perform_update(self, serializer):
+        pass
+        # data = serializer.data
+        # updated_data = {k: v for k, v in data.items() if k != 'id'}
+        # orders = serializer.save(update_fields=[*updated_data.keys()])
+        # orders_ids = [order.id for order in orders]
+        # update_ad_order_task.delay(orders_ids, updated_data)
+
+    def perform_destroy(self, instance):
+        cancel_ad_order_task.delay([instance.id])
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -65,28 +64,26 @@ class BgOrderViewSet(viewsets.ModelViewSet):
     """Работа с заказами."""
 
     queryset = BgOrder.objects.all().select_related(
-        'owner', 'client', 'playlist'
+        'owner', 'group', 'playlist'
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
     # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
-        order = serializer.save(owner=self.request.user)
-        clients = order.group.clients.all()
-        task_list = (
-            Task(
-                owner=self.request.user,
-                client=client,
-                type=order.order_type,
-                parameters={
-                    'type': order.order_type,
-                    'playlist': order.playlist.name,
-                    'broadcast_interval': order.broadcast_interval
-                }
-            ) for client in clients
-        )
-        Task.objects.bulk_create(task_list)
+        orders = serializer.save(owner=self.request.user)
+        orders_ids = list(order.id for order in orders)
+        create_bg_order_task.delay(orders_ids)
+
+    def perform_update(self, serializer):
+        pass
+        # data = serializer.data
+        # updated_data = {k: v for k, v in data.items() if k != 'id'}
+        # order = serializer.save(update_fields=[*updated_data.keys()])
+        # update_bg_order_task.delay(order.id, updated_data)
+
+    def perform_destroy(self, instance):
+        cancel_bg_order_task.delay([instance.id])
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -100,30 +97,3 @@ class BgOrderViewSet(viewsets.ModelViewSet):
                 kwargs['many'] = True
 
         return serializer(*args, **kwargs)
-
-
-# class MediaplanViewSet(viewsets.ModelViewSet):
-#     """."""
-#
-#     queryset = Mediaplan.objects.all().select_related('owner')
-#
-#     def perform_create(self, serializer):
-#         mp = serializer.save(owner=self.request.user)
-#         order_list = (
-#             AdOrder(
-#                 owner=self.request.user,
-#                 client=client,
-#                 type=4,
-#                 parameters={
-#                     'order_parameters': order.parameters,
-#                     'broadcast_type': order.broadcast_type,
-#                     'broadcast_interval': order.broadcast_interval,
-#                     'file': order.file,
-#                     'slides': [
-#                         {'id': str(slide.id),
-#                          'name': slide.name} for slide in order.slides.all()
-#                     ] if order.slides.exists() else None
-#                 }
-#             ) for client in clients
-#         )
-#         Task.objects.bulk_create(task_list)

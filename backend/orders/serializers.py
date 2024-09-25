@@ -3,7 +3,7 @@ from datetime import time, datetime as dt
 from rest_framework import serializers
 
 from files.models import Playlist
-from nomenclatures.models import NomenclatureGroup, Nomenclature
+from nomenclatures.models import NomenclatureGroup
 from orders.models import AdOrder, BgOrder
 
 
@@ -359,10 +359,6 @@ class BgOrderSerializer(serializers.ModelSerializer):
         }
         representation['group'] = {'id': value.group.id,
                                    'name': value.group.name}
-        # representation['client'] = {
-        #     'id': value.client.id,
-        #     'name': value.client.name
-        # }
         representation['playlist'] = {
             'id': value.playlist.id,
             'name': value.playlist.name
@@ -391,10 +387,6 @@ class BgOrderListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        # representation['client'] = {
-        #     'id': value.client.id,
-        #     'name': value.client.name
-        # }
         representation['group'] = {'id': value.group.id,
                                    'name': value.group.name}
         representation['playlist'] = {

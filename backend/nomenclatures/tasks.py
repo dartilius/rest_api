@@ -6,6 +6,7 @@ from .models import NomenclatureAvailability, StatusHistory
 from celery import shared_task
 from celery_singleton import Singleton
 
+
 @shared_task(base=Singleton)
 def update_nomenclature_status():
     """
