@@ -3,6 +3,7 @@ import base64
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 
+from api.constants import Constants
 from files.models import File, Playlist, Tag, TYPES
 
 
@@ -14,8 +15,6 @@ class Base64FileField(serializers.FileField):
     https://github.com/Hipo/drf-extra-fields/
     """
 
-    empty_values = ([], {}, (), '', None)
-
     default_error_messages = {
         'invalid_file': 'Файл невозможно декодировать, либо он повреждён.',
         'invalid_format':
@@ -24,6 +23,7 @@ class Base64FileField(serializers.FileField):
         'empty_contents': 'Base64 строка ничего не содержит.',
         'empty': 'Отправлен пустой файл.'
     }
+    empty_values = Constants.empty_values
 
     def to_internal_value(self, data):
         if isinstance(data, str):
