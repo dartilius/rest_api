@@ -7,7 +7,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
-
+from rest_framework.permissions import AllowAny
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -130,7 +130,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(
         detail=True,
         methods=['POST'],
-        url_path='pending_tasks'
+        url_path='pending_tasks',
+        permission_classes=[AllowAny]
     )
     def pending_tasks(self, request, pk):
         """Отдача задач для клиентов и обработка присылаемых данных."""
