@@ -1,7 +1,8 @@
 from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
+# from django.core.exceptions import ValidationError
 from django.db import models
 
-from nomenclatures.models import NomenclatureGroup, Nomenclature
+from nomenclatures.models import NomenclatureGroup
 from users.models import CustomUser
 from files.models import Playlist, File
 
@@ -31,24 +32,6 @@ BROADCAST_TYPES = {
 }
 
 
-class Mediaplan(models.Model):
-    """MP."""
-
-    name = models.CharField()
-    group = models.ForeignKey(
-        NomenclatureGroup,
-        verbose_name='group',
-        related_name='mediaplans',
-        on_delete=models.SET_NULL
-    )
-    playlist = models.ForeignKey(
-        Playlist,
-        verbose_name='playlist',
-        related_name='mediaplans',
-        on_delete=models.CASCADE
-    )
-
-
 class BaseOrder(models.Model):
     """Заказ."""
 
@@ -73,15 +56,12 @@ class BaseOrder(models.Model):
         verbose_name='Дата создания',
         auto_now_add=True
     )
-    mediaplan = models.ForeignKey(
-        Mediaplan,
-        verbose_name='MP',
-        related_name='orders',
-        on_delete=models.CASCADE
-    )
 
     class Meta:
         abstract = True
+
+    def __str__(self):
+        return self.name
 
 
 class AdOrder(BaseOrder):
@@ -91,21 +71,19 @@ class AdOrder(BaseOrder):
         CustomUser,
         verbose_name='Создатель',
         related_name='ad_orders',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
+        on_delete=models.DO_NOTHING
     )
     group = models.ForeignKey(
         NomenclatureGroup,
         related_name='ad_orders',
         verbose_name='Группа номенклатур',
-        on_delete=models.CASCADE
+        on_delete=models.DO_NOTHING
     )
     file = models.ForeignKey(
         File,
         verbose_name='Файл',
         related_name='ad_orders',
-        on_delete=models.CASCADE
+        on_delete=models.DO_NOTHING
     )
     slides = models.ManyToManyField(
         File,
@@ -137,26 +115,24 @@ class BgOrder(BaseOrder):
         CustomUser,
         verbose_name='Создатель',
         related_name='bg_orders',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
+        on_delete=models.DO_NOTHING
     )
-    client = models.ForeignKey(
-        Nomenclature,
+    group = models.ForeignKey(
+        NomenclatureGroup,
         related_name='bg_orders',
-        verbose_name='Номенклатура',
-        on_delete=models.CASCADE
+        verbose_name='Группа номенклатур',
+        on_delete=models.DO_NOTHING
     )
     playlist = models.ForeignKey(
         Playlist,
         related_name='bg_orders',
         verbose_name='Плейлист',
-        on_delete=models.CASCADE
+        on_delete=models.DO_NOTHING
     )
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
-        editable=False,
-        verbose_name='Тип фона'
+        verbose_name='Тип фона',
+        # editable=False
     )
 
     class Meta:

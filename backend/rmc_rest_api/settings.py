@@ -75,10 +75,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('POSTGRES_DB'),
+        'HOST': os.getenv('POSTGRES_HOST'),
         'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT')
+        'PORT': os.getenv('POSTGRES_PORT'),
+        'PASSWORD': os.getenv('POSTGRES_PASS')
     },
     'clickhouse': {
         'ENGINE': 'clickhouse_backend.backend',
@@ -90,7 +90,7 @@ DATABASES = {
     }
 }
 
-DATABASE_ROUTERS = ["rmc_rest_api.dbrouters.ClickHouseRouter"]
+DATABASE_ROUTERS = ['rmc_rest_api.dbrouters.ClickHouseRouter']
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -132,8 +132,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
 MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
 MINIO_SECRET_KEY = os.getenv('MINIO_STORAGE_SECRET_KEY')
-MINIO_USE_HTTPS = os.getenv('MINIO_HTTPS', False)
-MINIO_URL_EXPIRY_HOURS = td(seconds=30)
+MINIO_USE_HTTPS = os.environ.get('MINIO_HTTPS').lower() == 'true'
 MINIO_PRIVATE_BUCKETS = [
     'local-media',
     'local-static'
@@ -144,10 +143,9 @@ STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER')
-CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND')
-CELERY_WORKER_POOL = 'solo'
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND')
+CELERY_SINGLETON_BACKEND_URL = CELERY_RESULT_BACKEND
 CELERY_TIMEZONE = TIME_ZONE
-CELERY_SINGLETON_BACKEND_URL = os.environ.get('REDIS_BROKER')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

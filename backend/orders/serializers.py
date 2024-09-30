@@ -3,7 +3,7 @@ from datetime import time, datetime as dt
 from rest_framework import serializers
 
 from files.models import Playlist
-from nomenclatures.models import NomenclatureGroup, Nomenclature
+from nomenclatures.models import NomenclatureGroup
 from orders.models import AdOrder, BgOrder
 
 
@@ -320,9 +320,9 @@ class AdOrderListSerializer(serializers.ModelSerializer):
 class BgOrderSerializer(serializers.ModelSerializer):
     """Сериализация одного фонового заказа."""
 
-    client = serializers.SlugRelatedField(
+    group = serializers.SlugRelatedField(
         slug_field='id',
-        queryset=Nomenclature.objects.all(),
+        queryset=NomenclatureGroup.objects.all(),
         write_only=True
     )
     playlist = serializers.SlugRelatedField(
@@ -338,7 +338,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'owner',
-            'client',
+            'group',
             'order_type',
             'playlist',
             'broadcast_interval',
@@ -357,10 +357,8 @@ class BgOrderSerializer(serializers.ModelSerializer):
         representation['owner'] = {
             'full_name': f'{value.owner.last_name} {value.owner.first_name}'
         }
-        representation['client'] = {
-            'id': value.client.id,
-            'name': value.client.name
-        }
+        representation['group'] = {'id': value.group.id,
+                                   'name': value.group.name}
         representation['playlist'] = {
             'id': value.playlist.id,
             'name': value.playlist.name
@@ -378,7 +376,7 @@ class BgOrderListSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'name',
-            'client',
+            'group',
             'order_type',
             'playlist',
             'status',
@@ -389,10 +387,8 @@ class BgOrderListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['client'] = {
-            'id': value.client.id,
-            'name': value.client.name
-        }
+        representation['group'] = {'id': value.group.id,
+                                   'name': value.group.name}
         representation['playlist'] = {
             'id': value.playlist.id,
             'name': value.playlist.name
