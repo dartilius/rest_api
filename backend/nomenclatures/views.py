@@ -5,7 +5,6 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
@@ -32,7 +31,6 @@ from nomenclatures.models import (
     NomenclatureGroup, NomenclatureAvailability
 )
 from tasks.models import Task
-from users.permissions import AuthAndOnlySuperUserDelete
 
 
 class NomenclatureViewSet(viewsets.ModelViewSet):

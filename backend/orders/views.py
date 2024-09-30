@@ -1,6 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from orders.filters import AdOrderFilter, BgOrderFilter
 from orders.serializers import (
@@ -12,8 +11,6 @@ from orders.serializers import (
 
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
-
-from users.permissions import AuthAndOnlySuperUserDelete
 
 
 class AdOrderViewSet(viewsets.ModelViewSet):

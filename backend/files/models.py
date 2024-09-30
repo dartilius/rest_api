@@ -1,3 +1,4 @@
+from lib2to3.pgen2.tokenize import blank_re
 from uuid import uuid4
 
 from django.db import models
@@ -94,7 +95,8 @@ class File(models.Model):
     tags = models.ManyToManyField(
         Tag,
         related_name='files',
-        verbose_name='Тэги'
+        verbose_name='Тэги',
+        blank=True
     )
     created = models.DateTimeField(
         auto_now_add=True,

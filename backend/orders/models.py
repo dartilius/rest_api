@@ -155,6 +155,7 @@ class BgOrder(BaseOrder):
     )
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
+        editable=False,
         verbose_name='Тип фона'
     )
 
