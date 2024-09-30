@@ -5,7 +5,6 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from tasks.filters import TaskFilter
 from tasks.serializers import TaskSerializer, TaskListSerializer
 from tasks.models import Task
-from users.permissions import AuthAndOnlySuperUserDelete
 
 
 class TaskViewSet(viewsets.ModelViewSet):

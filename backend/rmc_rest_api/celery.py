@@ -13,9 +13,8 @@ app.autodiscover_tasks()
 
 
 app.conf.beat_schedule = {
-    'every': {
+    'update_nomenclature_statuses_5_sec': {
         'task': 'nomenclatures.tasks.update_nomenclature_status',
         'schedule': 5.0,
-    },
-
+    }
 }

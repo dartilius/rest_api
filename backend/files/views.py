@@ -95,16 +95,18 @@ class FileViewSet(viewsets.ModelViewSet):
             case 3:
                 statistics_bg = VideoStat.objects.filter(file=pk)
                 statistics_ad = ADStat.objects.filter(file=pk)
-                data_bg = FileVideoStatSerializer(statistics_bg, many=True).data
+                data_bg = FileVideoStatSerializer(statistics_bg,
+                                                  many=True).data
                 data_ad = FileAdStatSerializer(statistics_ad, many=True).data
                 data = data_ad + data_bg
             case 4:
                 statistics = TickerStat.objects.filter(file=pk)
                 data = FileTickerStatSerializer(statistics, file=True).data
             case _:
-                data=[]
+                data = []
 
         return Response(data, status=HTTP_200_OK)
+
 
 class PlaylistViewSet(viewsets.ModelViewSet):
     """Работа с плейлистами."""

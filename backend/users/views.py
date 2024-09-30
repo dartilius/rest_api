@@ -9,7 +9,6 @@ from rest_framework.status import (
 
 from users.filters import CustomUserFilter
 from users.models import CustomUser
-from users.permissions import IsSuperUserOrAuthReadOnly
 from users.serializers import CustomUserSerializer, CustomUserListSerializer
 
 

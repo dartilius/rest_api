@@ -7,9 +7,15 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
-from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerStat
+from ch_statistic.models import (
+    ADStat,
+    MusicStat,
+    VideoStat,
+    ImageStat,
+    TickerStat
+)
 from ch_statistic.serializers import (
     NomenclatureAdStatSerializer,
     NomenclatureMusicStatSerializer,
@@ -18,7 +24,6 @@ from ch_statistic.serializers import (
     NomenclatureTickerStatSerializer
 )
 from ch_statistic.tasks import create_statistic
-from files.models import File
 from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
@@ -29,10 +34,10 @@ from nomenclatures.serializers import (
 )
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup, NomenclatureAvailability
+    NomenclatureGroup,
+    NomenclatureAvailability
 )
 from tasks.models import Task
-from users.permissions import AuthAndOnlySuperUserDelete
 
 
 class NomenclatureViewSet(viewsets.ModelViewSet):
@@ -59,22 +64,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
-        nomenclatures = serializer.save(owner=self.request.user)
-        if isinstance(nomenclatures, list):
-            for nomenclature in nomenclatures:
-                group = NomenclatureGroup.objects.create(
-                    owner=self.request.user,
-                    name=nomenclature.name,
-                )
-                group.clients.add(nomenclature)
-                group.save()
-        else:
-            group = NomenclatureGroup.objects.create(
-                owner=self.request.user,
-                name=nomenclatures.name,
-            )
-            group.clients.add(nomenclatures)
-            group.save()
+        serializer.save(owner=self.request.user)
 
     def perform_update(self, serializer):
         nomenclature = serializer.instance
@@ -90,11 +80,36 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_destroy(self, instance):
-        group = NomenclatureGroup.objects.exclude(
-            ~Q(clients=instance.id)
-        ).first()
-        group.delete()
-        instance.delete()
+        instance.is_active = False
+
+    # пока оставлю
+    # @action(
+    #     detail=True,
+    #     methods=['POST'],
+    #     url_path='is_active'
+    # )
+    # def toggle_is_active(self, request, pk):
+    #     try:
+    #         nomenclature = get_object_or_404(Nomenclature, id=pk)
+    #     except ValidationError:
+    #         return Response(
+    #             {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+    #             status=HTTP_400_BAD_REQUEST
+    #         )
+    #     if nomenclature.is_active is True:
+    #         self.perform_destroy(nomenclature)
+    #         status = 'деактивированна'
+    #     else:
+    #         nomenclature.is_active = True
+    #         group = NomenclatureGroup.objects.create(
+    #             owner=nomenclature.owner,
+    #             name=nomenclature.name,
+    #         )
+    #         group.clients.add(nomenclature)
+    #         group.save()
+    #         nomenclature.save()
+    #         status = 'активна'
+    #     return Response(f'Номенклатура {status}', status=HTTP_200_OK)
 
     @action(
         detail=True,
@@ -143,7 +158,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             statistics = request.data['statistic']
             for stat_type, stat_list in statistics.items():
                 create_statistic.delay(stat_type, pk, stat_list)
-
 
         if 'task_status' in request.data:
             task_list = list()
@@ -264,7 +278,7 @@ class NomenclatureGroupViewSet(viewsets.ModelViewSet):
     """Работа с группами номенклатур."""
 
     queryset = NomenclatureGroup.objects.all().prefetch_related(
-        'clients',
+        'clients'
     ).select_related('owner')
 
     def get_serializer(self, *args, **kwargs):
