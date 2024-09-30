@@ -1,5 +1,5 @@
 volumes:
-  rabbitdata:
+  rabbit_data:
   pg_data:
   static:
   celery:
@@ -108,7 +108,7 @@ services:
       timeout: 10s
       retries: 10
     volumes:
-      - rabbitdata:/var/lib/rabbitmq
+      - rabbit_data:/var/lib/rabbitmq
     ports:
       - 5672:5672
       - 15672:15672

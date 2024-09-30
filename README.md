@@ -73,7 +73,7 @@ docker compose up --build
 ```console
 docker exec rabbit sh -c "rabbitmqctl add_user <RABBITMQ_USER> <RABBITMQ_PASSWORD>"
 docker exec rabbit sh -c "rabbitmqctl set_permissions <RABBITMQ_USER> '.*' '.*' '.*'"
-docker exec rabbit sh -c "rabbitmqctl set_user_tags uid0001 administrator"
+docker exec rabbit sh -c "rabbitmqctl set_user_tags <RABBITMQ_USER> administrator"
 ```
 8. Проводим миграции, собираем статические файлы и создаем суперпользователя
 ```console

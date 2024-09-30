@@ -1,6 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from tasks.filters import TaskFilter
 from tasks.serializers import TaskSerializer, TaskListSerializer
