@@ -129,10 +129,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # а в переменной домен(ы) фронта
 CORS_ALLOW_ALL_ORIGINS = True
 
-MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
 MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
 MINIO_SECRET_KEY = os.getenv('MINIO_STORAGE_SECRET_KEY')
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
 MINIO_USE_HTTPS = os.environ.get('MINIO_HTTPS').lower() == 'true'
+MINIO_EXTERNAL_ENDPOINT = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
+MINIO_EXTERNAL_ENDPOINT_USE_HTTPS = not MINIO_USE_HTTPS
 MINIO_PRIVATE_BUCKETS = [
     'local-media',
     'local-static'

@@ -1,17 +1,11 @@
-from minio import Minio
-from minio.error import S3Error
+from api.constants import Constants
 from django.conf import settings
+from minio.error import S3Error
 
 
 def initialize_minio_buckets():
     """Проверка наличия и автоматическая инициализация незапущенных бакетов."""
-    minio_client = Minio(
-        settings.MINIO_ENDPOINT,
-        access_key=settings.MINIO_ACCESS_KEY,
-        secret_key=settings.MINIO_SECRET_KEY,
-        secure=settings.MINIO_USE_HTTPS,
-        cert_check=settings.MINIO_USE_HTTPS
-    )
+    minio_client = Constants.minio_client
 
     for bucket in settings.MINIO_PRIVATE_BUCKETS:
         try:

@@ -83,11 +83,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         instance.is_active = False
 
     # пока оставлю
-    # @action(
-    #     detail=True,
-    #     methods=['POST'],
-    #     url_path='is_active'
-    # )
+    # @action(detail=True, methods=['POST'], url_path='is_active')
     # def toggle_is_active(self, request, pk):
     #     try:
     #         nomenclature = get_object_or_404(Nomenclature, id=pk)
@@ -111,12 +107,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     #         status = 'активна'
     #     return Response(f'Номенклатура {status}', status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='status_history'
-    )
-    def get_status_history(self, request, pk):
+    @action(detail=True, methods=['GET'])
+    def status_history(self, request, pk):
         try:
             nomenclature = get_object_or_404(Nomenclature, id=pk)
         except ValidationError:
@@ -128,11 +120,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['POST'],
-        url_path='pending_tasks'
-    )
+    @action(detail=True, methods=['POST'])
     def pending_tasks(self, request, pk):
         """Отдача задач для клиентов и обработка присылаемых данных."""
         try:
@@ -183,11 +171,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             for task in pending_tasks]}
         return Response(tasks, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='ad_stat'
-    )
+    @action(detail=True, methods=['GET'], url_path='ad_stat')
     def get_ad_stat(self, request, pk):
         """Отображение статистики рекламы конкретной номенклатуры."""
         try:
@@ -201,11 +185,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureAdStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='music_stat'
-    )
+    @action(detail=True, methods=['GET'], url_path='music_stat')
     def get_music_stat(self, request, pk):
         """Отображение статистики музыки конкретной номенклатуры."""
         try:
@@ -219,11 +199,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureMusicStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='video_stat'
-    )
+    @action(detail=True, methods=['GET'],url_path='video_stat')
     def get_video_stat(self, request, pk):
         """Отображение статистики видео конкретной номенклатуры."""
         try:
@@ -237,11 +213,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureVideoStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='image_stat'
-    )
+    @action(detail=True, methods=['GET'], url_path='image_stat')
     def get_image_stat(self, request, pk):
         """Отображение статистики картинок конкретной номенклатуры."""
         try:
@@ -255,11 +227,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureImageStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='ticker_stat'
-    )
+    @action(detail=True, methods=['GET'], url_path='ticker_stat')
     def get_ticker_stat(self, request, pk):
         """Отображение статистики бегущих строк конкретной номенклатуры."""
         try:
