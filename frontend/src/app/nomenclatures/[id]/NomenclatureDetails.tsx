@@ -121,36 +121,39 @@ export default function NomenclatureDetails(props: Props) {
   };
 
   return (
-    <div className={styles.container}> {/*container*/}
-      <div className={styles.container_upperBlock}> {/*block main and hw*/}
-        <div className={styles.container_upperBlock_mainInfo}>
-          <span className={styles.container_upperBlock_mainInfo_name}>{data.main_info.name}</span>
-          <CustomTextarea placeholder='Описание' desc={data.main_info.description}/>
-          {data.main_info.status !== null &&
-              <div className={styles.container_upperBlock_mainInfo_status}>
+      <div className={styles.container}> {/*container*/}
+        <div className={styles.container_upperBlock}> {/*block main and hw*/}
+          <div className={styles.container_upperBlock_mainInfo}>
+            <span className={styles.container_upperBlock_mainInfo_name}>{data.main_info.name}</span>
+            <CustomTextarea placeholder='Описание' desc={data.main_info.description}/>
+            {data.main_info.status !== null &&
+                <div className={styles.container_upperBlock_mainInfo_status}>
                 <span className={styles.container_upperBlock_mainInfo_status_offline}>
                   {convertStatus(data.main_info.status)}
                 </span>
-              </div>
-          }
-          {(data.main_info.status === 1 || data.main_info.status === 2) &&
-              <div className={styles.container_upperBlock_mainInfo_lastOnline}>
+                </div>
+            }
+            {(data.main_info.status === 1 || data.main_info.status === 2) &&
+                <div className={styles.container_upperBlock_mainInfo_lastOnline}>
                 <span
                     className={styles.container_upperBlock_mainInfo_lastOnline_label}>Время последнего ответа:&nbsp;</span>
-                {data.main_info.last_answer}
-              </div>
-          }
-          {data.main_info.status === null &&
-              <span className={styles.container_upperBlock_mainInfo_status_offline}>Не выходила в сеть</span>}
-          {data.main_info.version !== '' &&
-              <div className={styles.container_upperBlock_mainInfo_versionBlock}>
-                <span className={styles.container_upperBlock_mainInfo_versionBlock_label}>Весрия ПО:&nbsp;</span>
-                {data.main_info.version}
-              </div>
-          }
-          <div className={styles.container_upperBlock_mainInfo_timezoneBlock}>
-            <span className={styles.container_upperBlock_mainInfo_timezoneBlock_label}>Часовой пояс:&nbsp;</span>
-            {convertZone(data.main_info.timezone)}
+                  {data.main_info.last_answer}
+                </div>
+            }
+            {data.main_info.status === null &&
+                <span className={styles.container_upperBlock_mainInfo_status_offline}>Не выходила в сеть</span>}
+            {data.main_info.version !== '' &&
+                <div className={styles.container_upperBlock_mainInfo_versionBlock}>
+                  <span className={styles.container_upperBlock_mainInfo_versionBlock_label}>Весрия ПО:&nbsp;</span>
+                  {data.main_info.version}
+                </div>
+            }
+            <div className={styles.container_upperBlock_mainInfo_timezoneBlock}>
+              <span className={styles.container_upperBlock_mainInfo_timezoneBlock_label}>Часовой пояс:&nbsp;</span>
+              {convertZone(data.main_info.timezone)}
+            </div>
+
+
           </div>
 
 
@@ -209,16 +212,16 @@ export default function NomenclatureDetails(props: Props) {
 
           <div className={styles.container_lowerBlock_settingsBlock_customTime}>Кастомное время</div>
           <div className={styles.container_lowerBlock_settingsBlock_customVolume}>Кастомная громкость</div>
+
         </div>
 
-      </div>
-      <div className={styles.container_lowerBlock}>
+        {/*settings*/}
+        <div className={styles.container_lowerBlock}>
 
-        <div className={styles.container_upperBlock_hwInfo}><h1>HW_INFO</h1></div>
-        <div className={styles.container_lowerBlock_daysBlock}><h1>statistic</h1></div>
+          <div className={styles.container_upperBlock_hwInfo}><h1>HW_INFO</h1></div>
+          {/*<div className={styles.container_lowerBlock_daysBlock}><h1>statistic</h1></div>*/}
+        </div>
+        {/*<button onClick={() => setEdit(true)}>Edit</button>*/}
       </div>
-      {/*settings*/}
-      {/*<button onClick={() => setEdit(true)}>Edit</button>*/}
-    </div>
   );
 }
