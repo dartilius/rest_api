@@ -52,21 +52,13 @@ class AdOrderViewSet(NoDeleteViewSet):
         Создание заказов.
 
         0. Получаем данные из сериализатора.
-        1. Сохраняем заказ и ставим ему владельца из запроса.
+        1. Сохраняем заказы, владельца берём из запроса.
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
         orders = serializer.save(owner=self.request.user)
         orders_ids = [order.id for order in orders]
         create_ad_order_task.delay(orders_ids)
-
-    def perform_update(self, serializer):
-        pass
-        # data = serializer.data
-        # updated_data = {k: v for k, v in data.items() if k != 'id'}
-        # orders = serializer.save(update_fields=[*updated_data.keys()])
-        # orders_ids = [order.id for order in orders]
-        # update_ad_order_task.delay(orders_ids, updated_data)
 
     @action(detail=False, methods=['DELETE'])
     def cancel(self, request):
@@ -159,20 +151,13 @@ class BgOrderViewSet(NoDeleteViewSet):
         Создание заказов.
 
         0. Получаем данные из сериализатора.
-        1. Сохраняем заказ и ставим ему владельца из запроса.
+        1. Сохраняем заказы, владельца берём из запроса.
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
         orders = serializer.save(owner=self.request.user)
         orders_ids = [order.id for order in orders]
         create_bg_order_task.delay(orders_ids)
-
-    def perform_update(self, serializer):
-        pass
-        # data = serializer.data
-        # updated_data = {k: v for k, v in data.items() if k != 'id'}
-        # order = serializer.save(update_fields=[*updated_data.keys()])
-        # update_bg_order_task.delay(order.id, updated_data)
 
     @action(detail=False, methods=['DELETE'])
     def cancel(self, request):
