@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import {
-  Button,
+  Button, Chip,
   Input,
   Select,
   SelectItem,
@@ -25,6 +25,15 @@ import { limitPages } from "@/src/types/types/limitPages";
 import { checkSize } from "@/src/types/types/checkSize";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import useFilesQuery from "@/src/hooks/files/useFilesQuery";
+
+const colorArray = ['default', 'primary', 'secondary', 'success', 'warning', 'danger'];
+
+const getTagColor = (tag: string) => {
+  const hash = tag.split('').reduce((acc, char) => {
+    return (acc * 31 + char.charCodeAt(0)) >>> 0;
+  }, 0);
+  return colorArray[hash % colorArray.length];
+};
 
 export default function FilesListClientPage() {
   const [limit, setLimit] = useState<number>(10);
@@ -164,7 +173,7 @@ export default function FilesListClientPage() {
               </TableHeader>
               <TableBody>
                 {data.results.map((item) => (
-                  <TableRow key={item.id} className="text-center">
+                  <TableRow key={item.id}>
                     <TableCell>
                       <Link href={`/files/${item.id}`} target="_blank">
                         {item.name}
@@ -172,8 +181,14 @@ export default function FilesListClientPage() {
                     </TableCell>
                     <TableCell>{item.length}</TableCell>
                     <TableCell>{checkSize(item.size)}</TableCell>
-                    <TableCell>{convertType(item.fileType)}</TableCell>
-                    <TableCell>{item.tags?.join(", ")}</TableCell>
+                    <TableCell>{convertType(item.file_type)}</TableCell>
+                    <TableCell>
+                      {item.tags?.map((tag) => (
+                          <Chip key={tag} color={getTagColor(tag)}>
+                            {tag}
+                          </Chip>
+                      ))}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

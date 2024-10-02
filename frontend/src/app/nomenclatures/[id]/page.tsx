@@ -16,7 +16,7 @@ export async function generateMetadata({
 
     if (response) {
       return {
-        title: `${response.data.name}`,
+        title: `${response.data.main_info.name}`,
         description: `Просмотр номенклатуры ${response.data.id}`,
       };
     }

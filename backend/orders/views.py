@@ -2,7 +2,6 @@ from django.core import serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_400_BAD_REQUEST,
@@ -20,11 +19,9 @@ from orders.serializers import (
 from orders.models import AdOrder, BgOrder
 from tasks.tasks import (
     create_ad_order_task,
-    update_ad_order_task,
     cancel_ad_order_task,
     resend_ad_order_task,
     create_bg_order_task,
-    update_bg_order_task,
     cancel_bg_order_task,
     resend_bg_order_task
 )
@@ -45,14 +42,13 @@ class AdOrderViewSet(NoDeleteViewSet):
     queryset = AdOrder.objects.all().select_related('owner', 'group', 'file')
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
-    # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
         """
         Создание заказов.
 
         0. Получаем данные из сериализатора.
-        1. Сохраняем заказ и ставим ему владельца из запроса.
+        1. Сохраняем заказы, владельца берём из запроса.
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
@@ -60,15 +56,7 @@ class AdOrderViewSet(NoDeleteViewSet):
         orders_ids = [order.id for order in orders]
         create_ad_order_task.delay(orders_ids)
 
-    def perform_update(self, serializer):
-        pass
-        # data = serializer.data
-        # updated_data = {k: v for k, v in data.items() if k != 'id'}
-        # orders = serializer.save(update_fields=[*updated_data.keys()])
-        # orders_ids = [order.id for order in orders]
-        # update_ad_order_task.delay(orders_ids, updated_data)
-
-    @action(methods=['DELETE'], detail=False)
+    @action(detail=False, methods=['DELETE'])
     def cancel(self, request):
         """
         Отмена заказов.
@@ -83,20 +71,22 @@ class AdOrderViewSet(NoDeleteViewSet):
         """
         cancel_list = request.data['orders']
         orders = AdOrder.objects.filter(pk__in=cancel_list, status__in=[0, 1])
-        bad_result = 'Данные заказы невозможно отменить'
+        bad_result = 'Данные заказы отменить невозможно'
         if orders not in Constants.empty_values:
             active_order_ids = [order.id for order in orders]
             orders_json = serializers.serialize('json', orders)
             bad_orders = list(set(cancel_list) - set(active_order_ids))
+            good_orders = list(set(cancel_list) - set(bad_orders))
         else:
             return Response(data=bad_result, status=HTTP_400_BAD_REQUEST)
 
         cancel_ad_order_task.delay(orders_json)
-        return Response(data=f'Запрос на отмену заказов {cancel_list} принят.'
-                             f'\n{bad_result}: {bad_orders}',
-                        status=HTTP_200_OK)
+        result_text = f'Запрос на отмену заказов {good_orders} принят.'
+        if bad_orders:
+            result_text += f' {bad_result}: {bad_orders}'
+        return Response(data=result_text, status=HTTP_200_OK)
 
-    @action(methods=['POST'], detail=False)
+    @action(detail=False, methods=['POST'])
     def resend(self, request):
         """
         Переотправка заказов.
@@ -112,19 +102,21 @@ class AdOrderViewSet(NoDeleteViewSet):
         """
         resend_list = request.data['orders']
         orders = AdOrder.objects.filter(pk__in=resend_list, status__in=[0, 1])
-        bad_result = 'Данные заказы невозможно переотправить'
+        bad_result = 'Данные заказы переотправить невозможно'
         if orders not in Constants.empty_values:
             active_order_ids = [order.id for order in orders]
             orders_json = serializers.serialize('json', orders)
             bad_orders = list(set(resend_list) - set(active_order_ids))
+            good_orders = list(set(resend_list) - set(bad_orders))
         else:
             return Response(data=f'{bad_result}: {resend_list}',
                             status=HTTP_400_BAD_REQUEST)
 
         resend_ad_order_task.delay(orders_json)
-        return Response(data=f'Запрос на отмену заказов {resend_list} принят.'
-                             f'\n{bad_result}: {bad_orders}',
-                        status=HTTP_200_OK)
+        result_text = f'Запрос на переотправку заказов {good_orders} принят.'
+        if bad_orders:
+            result_text += f' {bad_result}: {bad_orders}'
+        return Response(data=result_text, status=HTTP_200_OK)
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -148,14 +140,13 @@ class BgOrderViewSet(NoDeleteViewSet):
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
-    # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
         """
         Создание заказов.
 
         0. Получаем данные из сериализатора.
-        1. Сохраняем заказ и ставим ему владельца из запроса.
+        1. Сохраняем заказы, владельца берём из запроса.
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
@@ -163,14 +154,7 @@ class BgOrderViewSet(NoDeleteViewSet):
         orders_ids = [order.id for order in orders]
         create_bg_order_task.delay(orders_ids)
 
-    def perform_update(self, serializer):
-        pass
-        # data = serializer.data
-        # updated_data = {k: v for k, v in data.items() if k != 'id'}
-        # order = serializer.save(update_fields=[*updated_data.keys()])
-        # update_bg_order_task.delay(order.id, updated_data)
-
-    @action(methods=['DELETE'], detail=False)
+    @action(detail=False, methods=['DELETE'])
     def cancel(self, request):
         """
         Отмена заказов.
@@ -185,21 +169,23 @@ class BgOrderViewSet(NoDeleteViewSet):
         """
         cancel_list = request.data['orders']
         orders = BgOrder.objects.filter(pk__in=cancel_list, status__in=[0, 1])
-        bad_result = 'Данные заказы невозможно отменить'
+        bad_result = 'Данные заказы отменить невозможно'
         if orders not in Constants.empty_values:
             active_order_ids = [order.id for order in orders]
             orders_json = serializers.serialize('json', orders)
             bad_orders = list(set(cancel_list) - set(active_order_ids))
+            good_orders = list(set(cancel_list) - set(bad_orders))
         else:
             return Response(data=f'{bad_result}: {cancel_list}',
                             status=HTTP_400_BAD_REQUEST)
 
         cancel_bg_order_task.delay(orders_json)
-        return Response(data=f'Запрос на отмену заказов {cancel_list} принят.'
-                             f'\n{bad_result}: {bad_orders}',
-                        status=HTTP_200_OK)
+        result_text = f'Запрос на отмену заказов {good_orders} принят.'
+        if bad_orders:
+            result_text += f' {bad_result}: {bad_orders}'
+        return Response(data=result_text, status=HTTP_200_OK)
 
-    @action(methods=['POST'], detail=False)
+    @action(detail=False, methods=['POST'])
     def resend(self, request):
         """
         Переотправка заказов.
@@ -215,19 +201,21 @@ class BgOrderViewSet(NoDeleteViewSet):
         """
         resend_list = request.data['orders']
         orders = BgOrder.objects.filter(pk__in=resend_list, status__in=[0, 1])
-        bad_result = 'Данные заказы невозможно переотправить'
+        bad_result = 'Данные заказы переотправить невозможно'
         if orders not in Constants.empty_values:
             active_order_ids = [order.id for order in orders]
             orders_json = serializers.serialize('json', orders)
             bad_orders = list(set(resend_list) - set(active_order_ids))
+            good_orders = list(set(resend_list) - set(bad_orders))
         else:
             return Response(data=f'{bad_result}: {resend_list}',
                             status=HTTP_400_BAD_REQUEST)
 
         resend_bg_order_task.delay(orders_json)
-        return Response(data=f'Запрос на отмену заказов {resend_list} принят.'
-                             f'\n{bad_result}: {bad_orders}',
-                        status=HTTP_200_OK)
+        result_text = f'Запрос на переотправку заказов {good_orders} принят.'
+        if bad_orders:
+            result_text += f' {bad_result}: {bad_orders}'
+        return Response(data=result_text, status=HTTP_200_OK)
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

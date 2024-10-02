@@ -124,21 +124,28 @@ class File(models.Model):
 
     def delete(self, *args, **kwargs):
         """При удалении файла с базы удаляем его также и в Минио."""
-        from minio import Minio
+        from api.constants import Constants
         from django.conf import settings
 
-        minio_client = Minio(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_USE_HTTPS,
-            cert_check=settings.MINIO_USE_HTTPS
-        )
+        minio_client = Constants.get_minio_client()
         minio_client.remove_object(
             settings.MINIO_MEDIA_FILES_BUCKET,
             f'{TYPES[self.file_type]}/{self.name}'
         )
         super().delete(*args, **kwargs)
+
+    def get_url(self):
+        from api.constants import Constants
+        from datetime import timedelta as td
+
+        client = Constants.get_minio_client(external=True)
+        url = client.get_presigned_url(
+            'GET',
+            'local-media',
+            f'{self.source}',
+            expires=td(hours=2)
+        )
+        return url
 
 
 class Playlist(models.Model):
