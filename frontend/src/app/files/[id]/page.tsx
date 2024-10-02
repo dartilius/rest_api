@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import {
+  Button,
   Card,
   CardBody,
   CardFooter,
@@ -14,14 +15,34 @@ import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { checkSize } from "@/src/types/types/checkSize";
 import { convertType } from "@/src/types/types/fileTypes";
-import useFileQuery from "@/src/hooks/files/useFileQuery";
+import {useFileDeleteMutation, useFileQuery} from "@/src/hooks/files/useFileQuery";
+import useIdFromParams from "@/src/hooks/useIdFromParams";
+import {useEffect, useState} from "react";
+import {toastSuccess} from "@/src/utils/toast-success";
+import DeletingModal from "@/src/components/ui/DeletingModal";
 
 export default function ReadFile() {
-  const router = useParams();
-  const id = router?.id;
+  const id = useIdFromParams()
+  const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
   const { data, error, isError, isLoading, isSuccess } = useFileQuery(
     id.toString(),
   );
+
+  const {
+    mutateAsync: deleteFile,
+    isSuccess: isDeleteSuccess,
+    error: deleteError,
+    isError: isDeleteError,
+  } = useFileDeleteMutation();
+
+  useEffect(() => {
+    if (isDeleteSuccess) {
+      toastSuccess("Файл успешно удален");
+      setTimeout(() => {
+        window.location.replace("/files");
+      }, 2500);
+    }
+  }, [isDeleteSuccess]);
 
   if (isLoading) {
     return <Loader loading={!isSuccess} />;
@@ -29,6 +50,20 @@ export default function ReadFile() {
   if (isError) {
     return <>{toastError(error?.message)}</>;
   }
+
+  const handleDelete = () => {
+    deleteFile(id)
+  }
+
+  if (isDeleteError) {
+    return <>{toastError(deleteError?.message)}</>;
+  }
+
+  const handleCloseDeletingModal = () => {
+    setOpenDeletingModal(false);
+  };
+
+
 
   //TODO: Разбить на отдельные компоненты, чтобы не городить вот это вот всё
   return (
@@ -59,7 +94,7 @@ export default function ReadFile() {
           <div className="flex flex-row items-center gap-1">
             <p className="text-md p-0 m-0">Тип</p>
             <p className="text-default-500 p-0 m-0">
-              {convertType(data?.fileType)}
+              {/*{convertType(data?.fileType)}*/}
             </p>
           </div>
           <Divider />
@@ -84,16 +119,30 @@ export default function ReadFile() {
         <Divider />
         <CardFooter className="flex justify-center flex-col gap-2">
           <p className="text-md">Заглушка</p>
-          <Image
-            alt={`${data?.name}`}
-            height={240}
-            loading="lazy"
-            radius="sm"
-            src="https://bigpicture.ru/wp-content/uploads/2014/12/luchshie-foto-nedeli-v-dek-2014-0.jpg"
-            width={240}
-          />
+          <audio autoPlay={true} controls src="http://192.168.0.180:9000/local-media/music/%D0%9F%D0%B0%D1%88%D0%B0_%D0%A2%D0%B5%D1%85%D0%BD%D0%B8%D0%BA_%D0%9D%D1%83%D0%B6%D0%B5%D0%BD_%D0%9A%D1%81%D0%B0%D0%BD%D0%B0%D0%BA%D1%81_%D0%BD%D0%BE_%D1%8D%D1%82%D0%BE_%D0%B3%D1%80%D0%B8%D0%B3%D0%BE%D1%80%D0%B8%D0%B0%D0%BD%D1%81%D0%BA%D0%B8%D0%B9_%D1%85%D0%BE%D1%80.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=jV1io3iRsfHapjDWLZV2%2F20240930%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240930T075704Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=8d074f618de7a0909b3ef6c82b32bb071f1e2d49dfcc022a1d8dcf2c8b1e2478"></audio>
+
+          {/*<Image*/}
+          {/*  alt={`${data?.name}`}*/}
+          {/*  height={240}*/}
+          {/*  loading="lazy"*/}
+          {/*  radius="sm"*/}
+          {/*  src="https://bigpicture.ru/wp-content/uploads/2014/12/luchshie-foto-nedeli-v-dek-2014-0.jpg"*/}
+          {/*  width={240}*/}
+          {/*/>*/}
         </CardFooter>
+        <Button
+            color="danger"
+            style={{ width: "100%" }}
+            onClick={() => setOpenDeletingModal(true)}
+        >
+          Удалить
+        </Button>
       </Card>
+      <DeletingModal
+          close={handleCloseDeletingModal}
+          deleteProp={handleDelete}
+          open={openDeletingModal}
+      />
     </div>
   );
 }

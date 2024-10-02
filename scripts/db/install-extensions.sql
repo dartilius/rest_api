@@ -1,0 +1,2 @@
+\c rest_api;
+CREATE EXTENSION IF NOT EXISTS hstore;

@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import {
+  NomenclatureCreateInterface,
   NomenclatureInterface,
   NomenclatureListResponseInterface,
 } from "@/src/types/interface/nomenclature.interface";
@@ -49,6 +50,10 @@ class NomenclaturesService {
     const urlWithParams = `${this.URL}?${queryString}`;
 
     return axios.get<NomenclatureListResponseInterface>(urlWithParams);
+  }
+
+  create(data: any) {
+    return axios.post<NomenclatureCreateInterface>(this.URL, data)
   }
 
   getById(id: string) {

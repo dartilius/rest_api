@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@nextui-org/table";
-import { Chip, Select, SelectItem } from "@nextui-org/react";
+import {Button, Chip, Select, SelectItem} from "@nextui-org/react";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -113,6 +113,9 @@ export default function NomenclaturesList() {
               onSearchChange={handleVersionChange}
               onSearchSubmit={() => {}} // Submit обработчик теперь не нужен
             />
+            <Link href={'/nomenclatures/create'}>
+              <Button>Создать</Button>
+            </Link>
           </div>
 
           <div>
@@ -144,17 +147,17 @@ export default function NomenclaturesList() {
                   <TableRow key={item.id}>
                     <TableCell>
                       <Link href={`/nomenclatures/${item.id}`} target="_blank">
-                        {item.status === 0 && (
+                        {item?.status === 0 && (
                           <Chip color="success" variant="bordered">
                             {item.name}
                           </Chip>
                         )}
-                        {item.status === 1 && (
+                        {item?.status === 1 && (
                           <Chip color="warning" variant="bordered">
                             {item.name}
                           </Chip>
                         )}
-                        {item.status === 2 && (
+                        {item?.status === 2 && (
                           <Chip color="danger" variant="bordered">
                             {item.name}
                           </Chip>

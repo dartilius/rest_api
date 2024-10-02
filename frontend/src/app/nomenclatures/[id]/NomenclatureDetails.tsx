@@ -21,6 +21,8 @@ import DeletingModal from "../../../components/ui/DeletingModal";
 import TranscriptData from "./components/TranscriptData";
 import EditingModal from "./components/EditingModal";
 
+import styles from './NomenclatureDetails.module.scss'
+
 import {
   DaySettings,
   NomenclatureInterface,
@@ -30,6 +32,9 @@ import { toastSuccess } from "@/src/utils/toast-success";
 import { toastError } from "@/src/utils/toast-error";
 import { useDeleteNomenclatureQuery } from "@/src/hooks/nomenclatures/useNomenclatureQuery";
 import useIdFromParams from "@/src/hooks/useIdFromParams";
+import CustomTextarea from "@/src/app/nomenclatures/[id]/components/CustomTextArea";
+import {convertStatus} from "@/src/types/types/checkStatus";
+import {convertZone, timezonesArray} from "@/src/types/types/timezone";
 
 type Props = {
   id: string | undefined;
@@ -49,6 +54,7 @@ const dayNames: Record<string, string> = {
 export default function NomenclatureDetails(props: Props) {
   const { data } = props;
   const id = useIdFromParams();
+  const [edit, setEdit] = useState<boolean>(false)
 
   const [openEditingModal, setOpenEditingModal] = useState<boolean>(false);
   const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
@@ -84,11 +90,11 @@ export default function NomenclatureDetails(props: Props) {
     settings: Record<string, DaySettings | undefined>,
   ) => {
     const sortedSettings = Object.entries(settings)
-      .filter(([day, setting]) => setting !== undefined)
+      // .filter(([day, setting]) => setting !== undefined)
       .sort(([dayA], [dayB]) => dayNames[dayA].localeCompare(dayNames[dayB]));
 
     return (
-      <Table aria-label="Settings Table">
+      <Table aria-label="Settings Table" width='auto'>
         <TableHeader>
           <TableColumn>День</TableColumn>
           <TableColumn>Рабочее время</TableColumn>
@@ -115,62 +121,107 @@ export default function NomenclatureDetails(props: Props) {
   };
 
   return (
-    <div>
-      <Card className="w-auto">
-        <CardHeader className="flex justify-center">
-          <h1>{data?.name}</h1>
-        </CardHeader>
-        <Divider />
-        <CardBody className="flex items-center">
-          <TranscriptData data={data.id} label="id" />
-          <TranscriptData data={data.description} label="Описание" />
-          <TranscriptData data={data.last_answer} label="Последний ответ" />
-          <TranscriptData data={data.owner} label="Владелец" />
-          <TranscriptData data={data.status} label="Статус" />
-          <TranscriptData data={data.version} label="Версия" />
-          <TranscriptData data={data.timezone} label="timezone" />
-          <TranscriptData data={data.hw_info} label="Инфо тачки" />
-        </CardBody>
-        <Divider />
-        <CardFooter className="flex flex-col gap-3">
-          {renderSettingsTable(data.settings)}
-          <div
-            style={{
-              maxWidth: "8rem",
-              width: "100%",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
-            }}
-          >
-            <Button
-              color="primary"
-              style={{ width: "100%" }}
-              onClick={() => setOpenEditingModal(true)}
-            >
-              Редактировать
-            </Button>
-            <Button
-              color="danger"
-              style={{ width: "100%" }}
-              onClick={() => setOpenDeletingModal(true)}
-            >
-              Удалить
-            </Button>
+      <div className={styles.container}> {/*container*/}
+        <div className={styles.container_upperBlock}> {/*block main and hw*/}
+          <div className={styles.container_upperBlock_mainInfo}>
+            <span className={styles.container_upperBlock_mainInfo_name}>{data.main_info.name}</span>
+            <CustomTextarea placeholder='Описание' desc={data.main_info.description}/>
+            {data.main_info.status !== null &&
+                <div className={styles.container_upperBlock_mainInfo_status}>
+                <span className={styles.container_upperBlock_mainInfo_status_offline}>
+                  {convertStatus(data.main_info.status)}
+                </span>
+                </div>
+            }
+            {(data.main_info.status === 1 || data.main_info.status === 2) &&
+                <div className={styles.container_upperBlock_mainInfo_lastOnline}>
+                <span
+                    className={styles.container_upperBlock_mainInfo_lastOnline_label}>Время последнего ответа:&nbsp;</span>
+                  {data.main_info.last_answer}
+                </div>
+            }
+            {data.main_info.status === null &&
+                <span className={styles.container_upperBlock_mainInfo_status_offline}>Не выходила в сеть</span>}
+            {data.main_info.version !== '' &&
+                <div className={styles.container_upperBlock_mainInfo_versionBlock}>
+                  <span className={styles.container_upperBlock_mainInfo_versionBlock_label}>Весрия ПО:&nbsp;</span>
+                  {data.main_info.version}
+                </div>
+            }
+            <div className={styles.container_upperBlock_mainInfo_timezoneBlock}>
+              <span className={styles.container_upperBlock_mainInfo_timezoneBlock_label}>Часовой пояс:&nbsp;</span>
+              {convertZone(data.main_info.timezone)}
+            </div>
+
+
           </div>
-        </CardFooter>
-      </Card>
-      <EditingModal
-        close={handleCloseEditingModal}
-        data={data}
-        id={data.id}
-        open={openEditingModal}
-      />
-      <DeletingModal
-        close={handleCloseDeletingModal}
-        deleteProp={handleDeleteNomenclature}
-        open={openDeletingModal}
-      />
-    </div>
+
+
+        </div>
+        <div className={styles.container_lowerBlock_settingsBlock}>
+          {/*{renderSettingsTable(data.settings)}*/}
+          <div className={styles.container_lowerBlock_settingsBlock_start}>Время работы</div>
+          <div className={styles.container_lowerBlock_settingsBlock_volume}>Стандартная громкость</div>
+          <div className={styles.container_lowerBlock_settingsBlock_monday}>Понедельник</div>
+          <div
+              className={styles.container_lowerBlock_settingsBlock_monday_time}>{data.settings.mon?.worktime.join(" - ")}</div>
+          <div
+              className={styles.container_lowerBlock_settingsBlock_monday_volume}>{data.settings.mon?.default_volume.join(", ")}</div>
+          <div className={styles.container_lowerBlock_settingsBlock_tuesday}>Вторник</div>
+          <div className={styles.container_lowerBlock_settingsBlock_tuesday_time}>
+            {data.settings.tue?.worktime.join(" - ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_tuesday_volume}>
+            {data.settings.tue?.default_volume.join(", ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_wednesday}>Среда</div>
+          <div className={styles.container_lowerBlock_settingsBlock_wednesday_time}>
+            {data.settings.wed?.worktime.join(" - ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_wednesday_volume}>
+            {data.settings.wed?.default_volume.join(", ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_thusday}>Четверг</div>
+          <div className={styles.container_lowerBlock_settingsBlock_thusday_time}>
+            {data.settings.thu?.worktime.join(" - ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_thusday_volume}>
+            {data.settings.thu?.default_volume.join(", ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_friday}>Пятница</div>
+          <div className={styles.container_lowerBlock_settingsBlock_friday_time}>
+            {data.settings.fri?.worktime.join(" - ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_friday_volume}>
+            {data.settings.fri?.default_volume.join(", ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_saturday}>Суббота</div>
+          <div className={styles.container_lowerBlock_settingsBlock_saturday_time}>
+            {data.settings.sat?.worktime.join(" - ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_saturday_volume}>
+            {data.settings.sat?.default_volume.join(", ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_sunday}>Воскресенье</div>
+          <div className={styles.container_lowerBlock_settingsBlock_sunday_time}>
+            {data.settings.sun?.worktime.join(" - ")}
+          </div>
+          <div className={styles.container_lowerBlock_settingsBlock_sunday_volume}>
+            {data.settings.sun?.default_volume.join(", ")}
+          </div>
+
+          <div className={styles.container_lowerBlock_settingsBlock_customTime}>Кастомное время</div>
+          <div className={styles.container_lowerBlock_settingsBlock_customVolume}>Кастомная громкость</div>
+
+        </div>
+
+        {/*settings*/}
+        <div className={styles.container_lowerBlock}>
+
+          <div className={styles.container_upperBlock_hwInfo}><h1>HW_INFO</h1></div>
+          {/*<div className={styles.container_lowerBlock_daysBlock}><h1>statistic</h1></div>*/}
+        </div>
+        {/*<button onClick={() => setEdit(true)}>Edit</button>*/}
+      </div>
   );
 }
