@@ -20,3 +20,11 @@ export const useDeleteNomenclatureQuery = () => {
 
   return mutation;
 };
+
+export const useCreateNomenclatureQuery = () => {
+  const mutation = useMutation({
+    mutationKey: ["createNomenclature"],
+    mutationFn: (data: any) => nomenclaturesService.create(data)
+  })
+  return mutation
+}

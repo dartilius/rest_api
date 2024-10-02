@@ -1,10 +1,9 @@
-from asyncio import current_task
 from datetime import datetime, timedelta
 
-from rmc_rest_api.celery import app
 from .models import NomenclatureAvailability, StatusHistory
 from celery import shared_task
 from celery_singleton import Singleton
+
 
 @shared_task(base=Singleton)
 def update_nomenclature_status():

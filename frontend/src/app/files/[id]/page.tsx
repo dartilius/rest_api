@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import {
+  Button,
   Card,
   CardBody,
   CardFooter,
@@ -14,14 +15,34 @@ import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
 import { checkSize } from "@/src/types/types/checkSize";
 import { convertType } from "@/src/types/types/fileTypes";
-import useFileQuery from "@/src/hooks/files/useFileQuery";
+import {useFileDeleteMutation, useFileQuery} from "@/src/hooks/files/useFileQuery";
+import useIdFromParams from "@/src/hooks/useIdFromParams";
+import {useEffect, useState} from "react";
+import {toastSuccess} from "@/src/utils/toast-success";
+import DeletingModal from "@/src/components/ui/DeletingModal";
 
 export default function ReadFile() {
-  const router = useParams();
-  const id = router?.id;
+  const id = useIdFromParams()
+  const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
   const { data, error, isError, isLoading, isSuccess } = useFileQuery(
     id.toString(),
   );
+
+  const {
+    mutateAsync: deleteFile,
+    isSuccess: isDeleteSuccess,
+    error: deleteError,
+    isError: isDeleteError,
+  } = useFileDeleteMutation();
+
+  useEffect(() => {
+    if (isDeleteSuccess) {
+      toastSuccess("Файл успешно удален");
+      setTimeout(() => {
+        window.location.replace("/files");
+      }, 2500);
+    }
+  }, [isDeleteSuccess]);
 
   if (isLoading) {
     return <Loader loading={!isSuccess} />;
@@ -29,6 +50,20 @@ export default function ReadFile() {
   if (isError) {
     return <>{toastError(error?.message)}</>;
   }
+
+  const handleDelete = () => {
+    deleteFile(id)
+  }
+
+  if (isDeleteError) {
+    return <>{toastError(deleteError?.message)}</>;
+  }
+
+  const handleCloseDeletingModal = () => {
+    setOpenDeletingModal(false);
+  };
+
+
 
   //TODO: Разбить на отдельные компоненты, чтобы не городить вот это вот всё
   return (
@@ -95,7 +130,19 @@ export default function ReadFile() {
           {/*  width={240}*/}
           {/*/>*/}
         </CardFooter>
+        <Button
+            color="danger"
+            style={{ width: "100%" }}
+            onClick={() => setOpenDeletingModal(true)}
+        >
+          Удалить
+        </Button>
       </Card>
+      <DeletingModal
+          close={handleCloseDeletingModal}
+          deleteProp={handleDelete}
+          open={openDeletingModal}
+      />
     </div>
   );
 }

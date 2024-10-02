@@ -1,3 +1,4 @@
+from lib2to3.pgen2.tokenize import blank_re
 from uuid import uuid4
 
 from django.db import models
@@ -34,10 +35,6 @@ class Tag(models.Model):
         verbose_name_plural = 'Тэг'
 
 
-def media_path(instance, filename):
-    return f'{TYPES[instance.file_type]}/{filename}'
-
-
 class File(models.Model):
     """Файлы."""
 
@@ -62,7 +59,7 @@ class File(models.Model):
     )
     source = models.FileField(
         verbose_name='Файл',
-        upload_to=media_path,
+        upload_to='downloaded_files/source/',
         storage=MinioBackend(bucket_name='local-media')
     )
     md5hash = models.CharField(
@@ -98,7 +95,8 @@ class File(models.Model):
     tags = models.ManyToManyField(
         Tag,
         related_name='files',
-        verbose_name='Тэги'
+        verbose_name='Тэги',
+        blank=True
     )
     created = models.DateTimeField(
         auto_now_add=True,
@@ -115,15 +113,8 @@ class File(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        """
-        Сборка информации о файле при его прогрузке на сервер.
-
-        Имя берётся непосредственно с файла.
-        Хэш суммы, размер и продолжительность вычисляются в отдельной функции.
-        Суммированный хэш получается сложением md5 и sha256 хешей.
-        """
         file = self.source.file
-        self.name = file.name.split('/')[-1]
+        self.name = file.name
         self.md5hash = GetFileInfo.get_md5(file)
         self.sha256hash = GetFileInfo.get_sha256(file)
         self.hash = f'{self.md5hash}{self.sha256hash}'
@@ -147,7 +138,7 @@ class File(models.Model):
             settings.MINIO_MEDIA_FILES_BUCKET,
             f'{TYPES[self.file_type]}/{self.name}'
         )
-        super().delete()
+        super().delete(*args, **kwargs)
 
 
 class Playlist(models.Model):

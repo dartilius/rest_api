@@ -248,7 +248,7 @@ class NomenclatureGroupSerializer(serializers.ModelSerializer):
     clients = serializers.SlugRelatedField(
         slug_field='id',
         many=True,
-        queryset=Nomenclature.objects.all(),
+        queryset=Nomenclature.objects.filter(is_active=True),
         write_only=True
     )
 
@@ -277,7 +277,7 @@ class NomenclatureGroupSerializer(serializers.ModelSerializer):
             {
                 'id': client.id,
                 'name':  client.name
-            } for client in value.clients.all()
+            } for client in value.clients.filter(is_active=True)
         ]
         representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
@@ -297,7 +297,9 @@ class NomenclatureGroupListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['clients_count'] = len(value.clients.all())
+        representation['clients_count'] = len(
+            value.clients.filter(is_active=True)
+        )
         representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 

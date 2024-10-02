@@ -2,26 +2,16 @@
 
 import { API_URL } from "@/src/config/api.config";
 import {
-  TagsListResponse,
-  TagsListResponseDTO,
+  TagsListInterface,
 } from "@/src/types/interface/tags.interface";
-import { tagsListResponseTransformer } from "@/src/types/transformers/tags.trasformer";
+import axios from "axios";
 
-export const TagsService = {
-  async gatAll(): Promise<TagsListResponse> {
-    const response = await fetch(`${API_URL}/tags/`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+class TagsService {
+  private URL = `${API_URL}/tags/`;
 
-    if (response.ok) {
-      const data: TagsListResponseDTO = await response.json();
+  getAll() {
+    return axios.get<TagsListInterface>(`${this.URL}`);
+  }
+}
 
-      return tagsListResponseTransformer(data);
-    } else {
-      throw new Error("Не удалось получить список тэгов");
-    }
-  },
-};
+export default new TagsService()
