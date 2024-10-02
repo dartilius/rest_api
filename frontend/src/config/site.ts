@@ -43,7 +43,7 @@ export const siteConfig = {
     },
     {
       label: "Выйти",
-      href: "/logout",
+      href: "/login",
     },
   ],
 };
