@@ -1,32 +1,47 @@
 export interface NomenclatureListResponseInterface {
-  results: NomenclatureInterface[];
+  results: NomenclatureInterfaceList[];
   next: string;
   previous: string;
   count: number;
 }
 
-export interface NomenclatureInterface {
+export interface NomenclatureInterfaceList {
   id: string;
-  name: string;
-  timezone: string;
   last_answer: string;
+  name: string;
+  status: number | null;
+  timezone: string;
   version: string;
-  status: number;
 }
 
 export interface NomenclatureInterface {
-  created: string;
-  description: string;
-  hw_info: string | null;
   id: string;
-  last_answer: string;
-  name: string;
+  main_info: {
+    created: string;
+    description: string;
+    last_answer: string;
+    name: string;
+    owner: string;
+    status: number | null;
+    timezone: string;
+    version: string;
+  }
   settings: SettingsInterface;
-  status: number;
-  timezone: string;
-  version: string;
-  owner: string;
 }
+
+// export interface NomenclatureInterface {
+//   created: string;
+//   description: string;
+//   hw_info: string | null;
+//   id: string;
+//   last_answer: string;
+//   name: string;
+//   settings: SettingsInterface;
+//   status: number;
+//   timezone: string;
+//   version: string;
+//   owner: string;
+// }
 
 export interface SettingsInterface {
   fri?: DaySettings;

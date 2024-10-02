@@ -147,17 +147,17 @@ export default function NomenclaturesList() {
                   <TableRow key={item.id}>
                     <TableCell>
                       <Link href={`/nomenclatures/${item.id}`} target="_blank">
-                        {item.status === 0 && (
+                        {item?.status === 0 && (
                           <Chip color="success" variant="bordered">
                             {item.name}
                           </Chip>
                         )}
-                        {item.status === 1 && (
+                        {item?.status === 1 && (
                           <Chip color="warning" variant="bordered">
                             {item.name}
                           </Chip>
                         )}
-                        {item.status === 2 && (
+                        {item?.status === 2 && (
                           <Chip color="danger" variant="bordered">
                             {item.name}
                           </Chip>

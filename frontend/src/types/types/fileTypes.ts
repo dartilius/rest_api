@@ -19,14 +19,16 @@ type Types = {
   [key: number]: string;
 };
 
-export function convertType(typeId: number | undefined): string {
-  if (typeId === undefined) {
-    return "Undefined Type";
-  }
+export function convertType(typeId: number): any {
+  // if (typeId === undefined) {
+  //   return "Undefined Type";
+  // }
+  console.log(typeId)
 
   if (typeId in types) {
     return types[typeId];
-  } else {
-    throw new Error(`Unknown type ID: ${typeId}`);
   }
+  // else {
+  //   throw new Error(`Unknown type ID: ${typeId}`);
+  // }
 }
