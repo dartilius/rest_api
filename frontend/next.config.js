@@ -6,6 +6,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   output: "standalone",
+  staticPageGenerationTimeout: 120,
   redirects() {
     return [
       {
