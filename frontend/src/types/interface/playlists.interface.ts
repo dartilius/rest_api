@@ -44,7 +44,7 @@ export interface IPlaylist {
   id: number
   name: string
   description: string
-  owner: number
+  owner: string
   files: string[]
   created: string
 }
