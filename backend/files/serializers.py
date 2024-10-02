@@ -69,6 +69,7 @@ class FileSerializer(serializers.ModelSerializer):
         write_only=True
     )
     source = Base64FileField(write_only=True)
+    url = serializers.SerializerMethodField()
 
     class Meta:
         fields = (
@@ -77,7 +78,8 @@ class FileSerializer(serializers.ModelSerializer):
             'size',
             'file_type',
             'source',
-            'tags'
+            'tags',
+            'url'
         )
         read_only_fields = (
             'id',
@@ -85,6 +87,9 @@ class FileSerializer(serializers.ModelSerializer):
             'size'
         )
         model = File
+
+    def get_url(self, instance):
+        return instance.get_url()
 
     def to_representation(self, value):
         representation = super().to_representation(value)
@@ -160,7 +165,9 @@ class PlaylistSerializer(serializers.ModelSerializer):
             f'{value.owner.last_name} {value.owner.first_name}'
         )
         representation['files'] = [
-            {'id': file.id, 'name': file.name} for file in value.files.all()
+            {'id': file.id,
+             'name': file.name,
+             'url': file.get_url()} for file in value.files.all()
         ]
         representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation

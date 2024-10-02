@@ -124,17 +124,23 @@ class Nomenclature(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.is_active is True:
-            group = NomenclatureGroup.objects.create(
-                owner=self.owner,
-                name=self.name,
-            )
-            group.clients.add(self)
-            group.save()
+            try:
+                NomenclatureGroup.objects.get(name=self.name)
+            except NomenclatureGroup.DoesNotExist:
+                group = NomenclatureGroup.objects.create(
+                    owner=self.owner,
+                    name=self.name,
+                )
+                group.clients.add(self)
+                group.save()
         else:
-            group = NomenclatureGroup.objects.exclude(
-                ~Q(clients=self.id)
-            ).first()
-            group.delete()
+            try:
+                group = NomenclatureGroup.objects.exclude(
+                    ~Q(clients=self.id)
+                ).first()
+                group.delete()
+            except NomenclatureGroup.DoesNotExist:
+                pass
 
     def delete(self, using=None, keep_parents=False):
         super().delete()
