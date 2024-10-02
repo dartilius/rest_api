@@ -19,7 +19,7 @@ export type FileResponse = {
   name: string;
   length: string;
   size: number;
-  fileType: number;
+  file_type: number;
   tags: string[];
 };
 

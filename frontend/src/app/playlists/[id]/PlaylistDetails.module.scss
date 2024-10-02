@@ -1,0 +1,28 @@
+.label {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.span {
+  font-size: 16px;
+  font-weight: 400;
+}
+
+
+.container {
+  display: flex;
+  flex-direction: row;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  width: auto;
+  &_description {
+    display: flex;
+    flex-direction: row;
+
+    &_name {
+      display: flex;
+      flex-direction: row;
+    }
+  }
+}
