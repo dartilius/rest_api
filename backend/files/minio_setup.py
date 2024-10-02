@@ -5,7 +5,7 @@ from minio.error import S3Error
 
 def initialize_minio_buckets():
     """Проверка наличия и автоматическая инициализация незапущенных бакетов."""
-    minio_client = Constants.minio_client
+    minio_client = Constants.get_minio_client()
 
     for bucket in settings.MINIO_PRIVATE_BUCKETS:
         try:

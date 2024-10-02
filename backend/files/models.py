@@ -136,12 +136,25 @@ class File(models.Model):
         from api.constants import Constants
         from django.conf import settings
 
-        minio_client = Constants.minio_client
+        minio_client = Constants.get_minio_client()
         minio_client.remove_object(
             settings.MINIO_MEDIA_FILES_BUCKET,
             f'{TYPES[self.file_type]}/{self.name}'
         )
         super().delete(*args, **kwargs)
+
+    def get_url(self):
+        from api.constants import Constants
+        from datetime import timedelta as td
+
+        client = Constants.get_minio_client(external=True)
+        url = client.get_presigned_url(
+            'GET',
+            'local-media',
+            f'{self.source}',
+            expires=td(hours=2)
+        )
+        return url
 
 
 class Playlist(models.Model):

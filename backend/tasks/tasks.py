@@ -43,13 +43,13 @@ def create_ad_order_task(orders_ids: list):
                     'file': {
                         'id': str(order.file.id),
                         'hash': order.file.hash,
-                        'url': 'placeholder'
+                        'url': order.file.get_url()
                     },
                     'slides': [
                         {
                             'id': str(slide.id),
                             'hash': slide.hash,
-                            'url': 'placeholder'
+                            'url': slide.get_url()
                         } for slide in order.slides.all()
                     ] if order.slides.exists() else None
                 }
@@ -150,13 +150,13 @@ def resend_ad_order_task(orders_json: dict):
                     'file': {
                         'id': str(order.file.id),
                         'hash': order.file.hash,
-                        'url': 'placeholder'
+                        'url': order.file.get_url()
                     },
                     'slides': [
                         {
                             'id': str(slide.id),
                             'hash': slide.hash,
-                            'url': 'placeholder'
+                            'url': slide.get_url()
                         } for slide in order.slides.all()
                     ] if order.slides.exists() else None
                 }
@@ -212,7 +212,7 @@ def create_bg_order_task(orders_ids: list):
                         {
                             'id': str(file.id),
                             'hash': file.hash,
-                            'url': 'placeholder'
+                            'url': file.get_url()
                         } for file in order.playlist.files.all()
                     ]
                 }
@@ -319,7 +319,7 @@ def resend_bg_order_task(orders_json: dict):
                         {
                             'id': str(file.id),
                             'hash': file.hash,
-                            'url': 'placeholder'
+                            'url': file.get_url()
                         } for file in order.playlist.files.all()
                     ]
                 }

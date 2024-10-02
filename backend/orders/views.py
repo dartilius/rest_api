@@ -2,7 +2,6 @@ from django.core import serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_400_BAD_REQUEST,
@@ -20,11 +19,9 @@ from orders.serializers import (
 from orders.models import AdOrder, BgOrder
 from tasks.tasks import (
     create_ad_order_task,
-    update_ad_order_task,
     cancel_ad_order_task,
     resend_ad_order_task,
     create_bg_order_task,
-    update_bg_order_task,
     cancel_bg_order_task,
     resend_bg_order_task
 )
@@ -45,7 +42,6 @@ class AdOrderViewSet(NoDeleteViewSet):
     queryset = AdOrder.objects.all().select_related('owner', 'group', 'file')
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
-    # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
         """
@@ -144,7 +140,6 @@ class BgOrderViewSet(NoDeleteViewSet):
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
-    # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def perform_create(self, serializer):
         """

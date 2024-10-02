@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
@@ -120,7 +120,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(detail=True, methods=['POST'])
+    @action(detail=True, methods=['POST'], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
         """Отдача задач для клиентов и обработка присылаемых данных."""
         try:
