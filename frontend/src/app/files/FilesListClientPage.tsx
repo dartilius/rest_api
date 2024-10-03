@@ -25,6 +25,7 @@ import { limitPages } from "@/src/types/types/limitPages";
 import { checkSize } from "@/src/types/types/checkSize";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import useFilesQuery from "@/src/hooks/files/useFilesQuery";
+import FilesCreate from "@/src/app/files/create/page";
 
 const colorArray = ['default', 'primary', 'secondary', 'success', 'warning', 'danger'];
 
@@ -41,7 +42,7 @@ export default function FilesListClientPage() {
   const [search, setSearch] = useState<string>("");
   const [type, setType] = useState<string>("");
   const [inputValue, setInputValue] = useState<string>("");
-
+  const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
   const [hash, setHash] = useState<string>("");
   const [tagsList, setTagsList] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -133,10 +134,9 @@ export default function FilesListClientPage() {
               color="secondary"
               style={{ width: 220, height: 56 }}
               type="button"
+              onClick={() => setOpenCreatingModal(true)}
             >
-              <Link href={`/files/create`} target="_blank">
-                Создать
-              </Link>
+              Создать
             </Button>
           </div>
 
@@ -196,6 +196,7 @@ export default function FilesListClientPage() {
           </div>
         </div>
       )}
+      <FilesCreate open={openCreatingModal} close={() => setOpenCreatingModal(false)} />
     </>
   );
 }
