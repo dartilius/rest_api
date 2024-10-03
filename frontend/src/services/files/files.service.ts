@@ -7,6 +7,7 @@ import {
   ReadFileResponse,
 } from "@/src/types/interface/files.interface";
 import { API_URL } from "@/src/config/api.config";
+import {getTokenStorage} from "@/src/services/auth/auth.helper";
 
 interface Pagination {
   page?: number;
@@ -18,6 +19,7 @@ interface Pagination {
 }
 
 class FilesService {
+  private token = getTokenStorage();
   private URL = `${API_URL}/files/`;
 
   getAll(props: Pagination) {
@@ -45,11 +47,19 @@ class FilesService {
     const queryString = params.toString();
     const urlWithParams = `${this.URL}?${queryString}`;
 
-    return axios.get<FilesListResponse>(urlWithParams);
+    return axios.get<FilesListResponse>(urlWithParams, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
   }
 
   getById(id: string) {
-    return axios.get<ReadFileResponse>(`${this.URL}${id}`);
+    return axios.get<ReadFileResponse>(`${this.URL}${id}`, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
   }
 }
 

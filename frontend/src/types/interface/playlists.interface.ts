@@ -44,7 +44,13 @@ export interface IPlaylist {
   id: number
   name: string
   description: string
-  owner: number
-  files: string[]
+  owner: string
+  files: IPlaylistFiles[]
   created: string
+}
+
+export interface IPlaylistFiles {
+  id: string;
+  name: string;
+  url: string;
 }

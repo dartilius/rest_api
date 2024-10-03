@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import playlistsService from "@/src/services/playlists/playlists.service";
+import {toastError} from "@/src/utils/toast-error";
 
-export const useUserQuery = (id: string) => {
+export const usePlaylistQuery = (id: string) => {
   const { data, isLoading, error, isError, isSuccess, refetch } = useQuery({
     queryKey: ["playlistDetails", id],
     queryFn: () => playlistsService.getById(id),

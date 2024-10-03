@@ -59,7 +59,7 @@ export default function ReadFile() {
           <div className="flex flex-row items-center gap-1">
             <p className="text-md p-0 m-0">Тип</p>
             <p className="text-default-500 p-0 m-0">
-              {convertType(data?.fileType)}
+              {/*{convertType(data?.fileType)}*/}
             </p>
           </div>
           <Divider />
@@ -84,14 +84,7 @@ export default function ReadFile() {
         <Divider />
         <CardFooter className="flex justify-center flex-col gap-2">
           <p className="text-md">Заглушка</p>
-          <Image
-            alt={`${data?.name}`}
-            height={240}
-            loading="lazy"
-            radius="sm"
-            src="https://bigpicture.ru/wp-content/uploads/2014/12/luchshie-foto-nedeli-v-dek-2014-0.jpg"
-            width={240}
-          />
+          <p>не робит</p>
         </CardFooter>
       </Card>
     </div>

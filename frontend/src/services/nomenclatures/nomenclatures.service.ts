@@ -5,6 +5,7 @@ import {
   NomenclatureListResponseInterface,
 } from "@/src/types/interface/nomenclature.interface";
 import { API_URL } from "@/src/config/api.config";
+import {getTokenStorage} from "@/src/services/auth/auth.helper";
 
 interface Pagination {
   page?: number;
@@ -19,6 +20,7 @@ interface Pagination {
 
 class NomenclaturesService {
   private URL = `${API_URL}/nomenclatures`;
+  private token = getTokenStorage();
 
   getAll(props: Pagination) {
     const params = new URLSearchParams();
@@ -48,11 +50,21 @@ class NomenclaturesService {
     const queryString = params.toString();
     const urlWithParams = `${this.URL}?${queryString}`;
 
-    return axios.get<NomenclatureListResponseInterface>(urlWithParams);
+    return axios.get<NomenclatureListResponseInterface>(urlWithParams, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `access_token ${this.token}`,
+      }
+    });
   }
 
   getById(id: string) {
-    return axios.get<NomenclatureInterface>(`${this.URL}/${id}`);
+    return axios.get<NomenclatureInterface>(`${this.URL}/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `access_token ${this.token}`,
+      }
+    });
   }
 
   editById(
