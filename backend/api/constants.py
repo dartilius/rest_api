@@ -15,6 +15,7 @@ class Constants:
             endpoint = settings.MINIO_ENDPOINT
         minio_client = Minio(
             endpoint,
+            region=settings.MINIO_REGION,
             access_key=settings.MINIO_ACCESS_KEY,
             secret_key=settings.MINIO_SECRET_KEY,
             secure=settings.MINIO_USE_HTTPS,

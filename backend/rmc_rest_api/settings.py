@@ -129,6 +129,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # а в переменной домен(ы) фронта
 CORS_ALLOW_ALL_ORIGINS = True
 
+MINIO_REGION = os.getenv('MINIO_REGION')
 MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
 MINIO_SECRET_KEY = os.getenv('MINIO_STORAGE_SECRET_KEY')
 MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
@@ -152,6 +153,9 @@ CELERY_TIMEZONE = TIME_ZONE
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
     'PAGE_SIZE': 25
