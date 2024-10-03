@@ -39,16 +39,16 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'api.middleware.IntegrityMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'api.middleware.IntegrityMiddleware',
 ]
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
@@ -124,10 +124,10 @@ USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# здесь должно быть
-# CORS_ORIGIN_WHITELIST = os.environ.get('CORS_WHITELIST').split(',')
-# а в переменной домен(ы) фронта
 CORS_ALLOW_ALL_ORIGINS = True
+# здесь должны быть домен(ы) фронта
+# CORS_ORIGIN_WHITELIST = ['localhost:8000', '192.168.0.180:3000']  # os.environ.get('CORS_WHITELIST').split(',')
+# CORS_ALLOWED_ORIGINS = ['http://localhost:3000']
 
 MINIO_REGION = os.getenv('MINIO_REGION')
 MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
@@ -172,7 +172,7 @@ SIMPLE_JWT = {
 
 
 def show_toolbar(request):
-    return True
+    return DEBUG
 
 
 DEBUG_TOOLBAR_CONFIG = {
