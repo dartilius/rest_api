@@ -2,11 +2,25 @@
 import useIdFromParams from "@/src/hooks/useIdFromParams";
 import { usePlaylistQuery } from "@/src/hooks/playlists/usePlaylistQuery";
 import { useEffect, useRef, useState } from "react";
-import { Button, Skeleton } from "@nextui-org/react";
+import {Button, Image, Skeleton} from "@nextui-org/react";
+
+const getMediaType = (name: string | undefined) => {
+    if (!name) return undefined;
+    const extension = name.split('.').pop()?.toLowerCase()
+    if (['mp3', 'wav', 'ogg'].includes(extension!)) {
+        return 'audio';
+    } else if (['mp4', 'webm', 'ogg'].includes(extension!)) {
+        return 'video';
+    } else if (['png', 'jpg'].includes(extension!)) {
+        return 'image';
+    }
+    // return null; // Unknown type
+};
 
 function PlaylistPage() {
     const id = useIdFromParams();
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
     const [currentTrack, setCurrentTrack] = useState<number>(0);
     const { data, isLoading } = usePlaylistQuery(id);
     const [isAutoPlay, setIsAutoPlay] = useState<boolean>(false);
@@ -45,6 +59,27 @@ function PlaylistPage() {
         setIsAutoPlay(true); // Автовоспроизведение при выборе трека
     };
 
+    // Автоматический переход в полноэкранный режим и воспроизведение видео
+    const playFullscreen = () => {
+        if (videoRef.current) {
+            videoRef.current.play().then(() => {
+                if (videoRef.current?.requestFullscreen) {
+                    videoRef.current.requestFullscreen();
+                }
+            });
+            setIsPlaying(true);
+        }
+    };
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.play().catch((err) => {
+                console.error("Ошибка при воспроизведении:", err);
+            });
+            setIsPlaying(true);
+        }
+    }, [currentTrack]);
+
     useEffect(() => {
         // Воспроизводим только если трек переключился автоматически
         if (audioRef.current && isAutoPlay) {
@@ -53,6 +88,19 @@ function PlaylistPage() {
             setIsAutoPlay(false); // Сбрасываем флаг автопроигрывания
         }
     }, [currentTrack, isAutoPlay]);
+    console.log(currentTrack)
+
+    const type = getMediaType(tracks[currentTrack]?.name)
+    // console.log(img)
+    //
+    useEffect(() => {
+        if (type === 'image') {
+            setTimeout(() => {
+                playNext()
+            }, 10000)
+        }
+
+    }, [type, currentTrack]);
 
     return (
         <>
@@ -66,16 +114,37 @@ function PlaylistPage() {
                         <p>Сейчас играет: {tracks[currentTrack]?.name}</p>
                         <div className='flex flex-row items-center justify-center gap-2'>
                             <Button onClick={playPrev}>Prev</Button>
-                            <audio
-                                ref={audioRef}
-                                src={tracks[currentTrack]?.url}
-                                controls={false}
-                                onEnded={playNext}
-                                autoPlay={false}
-                            />
-                            <Button onClick={togglePlayPause}>
-                                {isPlaying ? "Pause" : "Play"}
-                            </Button>
+                            {getMediaType(tracks[currentTrack]?.name) === 'video' && (
+                                <div className="flex flex-col items-center gap-2">
+                                    <video
+                                        ref={videoRef}
+                                        src={tracks[currentTrack]?.url}
+                                        controls={true}
+                                        onEnded={playNext} // Переход на следующее видео при завершении
+                                        style={{width: '25%', height: 'auto'}}
+                                    />
+                                    <Button onClick={playFullscreen}>Play Fullscreen</Button>
+                                </div>
+                            )}
+                            {getMediaType(tracks[currentTrack]?.name) === 'audio' && (
+                                <div className="flex flex-col items-center gap-2">
+                                    <audio
+                                        ref={audioRef}
+                                        src={tracks[currentTrack]?.url}
+                                        controls
+                                        onEnded={playNext}
+                                        autoPlay={false}
+                                    />
+                                    <Button onClick={togglePlayPause}>
+                                        {isPlaying ? "Pause" : "Play"}
+                                    </Button>
+                                </div>
+                            )}
+                            {getMediaType(tracks[currentTrack]?.name) === 'image' && (
+                                <Image
+                                    src={tracks[currentTrack]?.url}
+                                />
+                            )}
                             <Button onClick={playNext}>Next</Button>
                         </div>
                     </div>
@@ -83,7 +152,7 @@ function PlaylistPage() {
             </div>
             <div>
                 <div className='flex flex-row items-center gap-2'>
-                    <h2>Название плейлиста</h2>
+                <h2>Название плейлиста</h2>
                     <span>{data?.name}</span>
                 </div>
                 <div className='flex flex-row items-center gap-2'>

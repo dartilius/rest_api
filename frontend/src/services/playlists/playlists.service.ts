@@ -39,12 +39,13 @@ class PlaylistsService {
     });
   }
 
-  getById(id: string) {
-    return axios.get<IPlaylist>(`${this.URL}${id}/`, {
+  async getById(id: string) {
+    const {data} = await axios.get<IPlaylist>(`${this.URL}${id}/`, {
       headers: {
         Authorization: `access_token ${this.token}`,
       },
     });
+    return data
   }
 
   deleteById(id: string) {
