@@ -32,11 +32,19 @@ class PlaylistsService {
     const queryString = params.toString();
     const urlWithParams = `${this.URL}?${queryString}`;
 
-    return axios.get<IPlaylistsList>(`${urlWithParams}`);
+    return axios.get<IPlaylistsList>(`${urlWithParams}`, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
   }
 
   getById(id: string) {
-    return axios.get<IPlaylist>(`${this.URL}${id}/`);
+    return axios.get<IPlaylist>(`${this.URL}${id}/`, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
   }
 
   deleteById(id: string) {
