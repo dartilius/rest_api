@@ -20,6 +20,7 @@ export default function FilesCreate(props: Props) {
   const [fileType, setFileType] = useState<string>("1");
   const [file, setFile] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nameFile, setNameFile] = useState<string | null>(null);
   const createFile = useCreateFileQuery();
 
   const getFileMimeType = (fileName: string) => {
@@ -53,7 +54,9 @@ export default function FilesCreate(props: Props) {
         const base64Data = reader.result as string;
         const mimeType = getFileMimeType(selectedFile.name);
 
-        const base64String = `data:${selectedFile.name}/${mimeType};base64,${base64Data.split(",")[1]}`;
+        const base64String = `data:${selectedFile.name};base64,${base64Data.split(",")[1]}`;
+        setNameFile(selectedFile.name)
+
 
         setFile(base64String);
       };
@@ -70,9 +73,10 @@ export default function FilesCreate(props: Props) {
       return;
     }
 
-    createFile.mutate({file_type: Number(fileType), source: file, name: '1', tags: ['msuic']})
+    createFile.mutate({file_type: Number(fileType), source: file, name: nameFile, tags: ['msuic']})
     setFile(null);
     setError(null);
+    setNameFile(null)
   };
 
   const handleTypeChange = (type: string) => {
