@@ -3,6 +3,7 @@
 import axios from "axios";
 
 import {
+  FilesCreateRequest,
   FilesListResponse,
   ReadFileResponse,
 } from "@/src/types/interface/files.interface";
@@ -60,6 +61,14 @@ class FilesService {
         Authorization: `access_token ${this.token}`,
       },
     });
+  }
+
+  create(data: FilesCreateRequest) {
+    return axios.post<FilesCreateRequest>(`${this.URL}`, data, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    })
   }
 }
 

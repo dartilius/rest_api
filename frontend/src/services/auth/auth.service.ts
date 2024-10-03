@@ -13,7 +13,7 @@ export const AuthService = {
     password: string,
   ): Promise<AxiosResponse<ITokens>> {
     const response = await axios.post<ITokens>(
-      `${AUTH_URL}/jwt/create`,
+      `${AUTH_URL}/jwt/create/`,
       {
         email,
         password,

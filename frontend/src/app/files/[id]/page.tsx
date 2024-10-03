@@ -15,6 +15,7 @@ import Loader from "@/src/components/ui/Loader";
 import { checkSize } from "@/src/types/types/checkSize";
 import { convertType } from "@/src/types/types/fileTypes";
 import useFileQuery from "@/src/hooks/files/useFileQuery";
+import {getMediaType} from "@/src/types/types/getMediaType";
 
 export default function ReadFile() {
   const router = useParams();
@@ -22,6 +23,8 @@ export default function ReadFile() {
   const { data, error, isError, isLoading, isSuccess } = useFileQuery(
     id.toString(),
   );
+
+  const type = getMediaType(data?.name)
 
   if (isLoading) {
     return <Loader loading={!isSuccess} />;
@@ -82,11 +85,31 @@ export default function ReadFile() {
           </div>
         </CardBody>
         <Divider />
-        <CardFooter className="flex justify-center flex-col gap-2">
-          <p className="text-md">Заглушка</p>
-          <p>не робит</p>
-        </CardFooter>
+
       </Card>
+      <div className="flex flex-col items-center justify-center gap-2">
+        <h2>Файл</h2>
+        {type === 'image' && (
+            <Image
+                src={data?.url}
+                loading="lazy"
+            />
+        )}
+        {type === 'video' && (
+            <video
+                src={data?.url}
+                controls={true}
+                style={{width: '25%', height: 'auto'}}
+            />
+        )}
+        {type === 'audio' && (
+            <audio
+                src={data?.url}
+                controls
+                autoPlay={false}
+            />
+        )}
+      </div>
     </div>
   );
 }

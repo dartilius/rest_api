@@ -3,19 +3,9 @@ import useIdFromParams from "@/src/hooks/useIdFromParams";
 import { usePlaylistQuery } from "@/src/hooks/playlists/usePlaylistQuery";
 import { useEffect, useRef, useState } from "react";
 import {Button, Image, Skeleton} from "@nextui-org/react";
+import { getMediaType } from "@/src/types/types/getMediaType";
 
-const getMediaType = (name: string | undefined) => {
-    if (!name) return undefined;
-    const extension = name.split('.').pop()?.toLowerCase()
-    if (['mp3', 'wav', 'ogg'].includes(extension!)) {
-        return 'audio';
-    } else if (['mp4', 'webm', 'ogg'].includes(extension!)) {
-        return 'video';
-    } else if (['png', 'jpg'].includes(extension!)) {
-        return 'image';
-    }
-    // return null; // Unknown type
-};
+
 
 function PlaylistPage() {
     const id = useIdFromParams();
@@ -88,10 +78,8 @@ function PlaylistPage() {
             setIsAutoPlay(false); // Сбрасываем флаг автопроигрывания
         }
     }, [currentTrack, isAutoPlay]);
-    console.log(currentTrack)
 
     const type = getMediaType(tracks[currentTrack]?.name)
-    // console.log(img)
     //
     useEffect(() => {
         if (type === 'image') {
