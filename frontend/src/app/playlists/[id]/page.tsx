@@ -7,6 +7,7 @@ import { Button, Skeleton } from "@nextui-org/react";
 function PlaylistPage() {
     const id = useIdFromParams();
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
     const [currentTrack, setCurrentTrack] = useState<number>(0);
     const { data, isLoading } = usePlaylistQuery(id);
     const [isAutoPlay, setIsAutoPlay] = useState<boolean>(false);
@@ -45,6 +46,27 @@ function PlaylistPage() {
         setIsAutoPlay(true); // Автовоспроизведение при выборе трека
     };
 
+    // Автоматический переход в полноэкранный режим и воспроизведение видео
+    const playFullscreen = () => {
+        if (videoRef.current) {
+            videoRef.current.play().then(() => {
+                if (videoRef.current?.requestFullscreen) {
+                    videoRef.current.requestFullscreen();
+                }
+            });
+            setIsPlaying(true);
+        }
+    };
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.play().catch((err) => {
+                console.error("Ошибка при воспроизведении:", err);
+            });
+            setIsPlaying(true);
+        }
+    }, [currentTrack]);
+
     useEffect(() => {
         // Воспроизводим только если трек переключился автоматически
         if (audioRef.current && isAutoPlay) {
@@ -66,16 +88,24 @@ function PlaylistPage() {
                         <p>Сейчас играет: {tracks[currentTrack]?.name}</p>
                         <div className='flex flex-row items-center justify-center gap-2'>
                             <Button onClick={playPrev}>Prev</Button>
-                            <audio
-                                ref={audioRef}
+                            {/*<audio*/}
+                            {/*    ref={audioRef}*/}
+                            {/*    src={tracks[currentTrack]?.url}*/}
+                            {/*    controls*/}
+                            {/*    onEnded={playNext}*/}
+                            {/*    autoPlay={false}*/}
+                            {/*/>*/}
+                            <video
+                                ref={videoRef}
                                 src={tracks[currentTrack]?.url}
-                                controls={false}
-                                onEnded={playNext}
-                                autoPlay={false}
+                                controls={true}
+                                onEnded={playNext} // Переход на следующее видео при завершении
+                                style={{width: '25%', height: 'auto'}}
                             />
                             <Button onClick={togglePlayPause}>
                                 {isPlaying ? "Pause" : "Play"}
                             </Button>
+                            <Button onClick={playFullscreen}>Play Fullscreen</Button>
                             <Button onClick={playNext}>Next</Button>
                         </div>
                     </div>
