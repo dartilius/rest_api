@@ -14,13 +14,13 @@ export const usePlaylistQuery = (id: string) => {
   return { data, isLoading, error, isError, isSuccess, refetch };
 };
 
-export const useDeleteUserQuery = (data: any) => {
+export const useDeleteUserQuery = () => {
   const router = useRouter()
   const mutation = useMutation({
     mutationKey: ["deletePlaylist"],
     mutationFn: (id: number) => playlistsService.deleteById(id),
     onSuccess: () => {
-      toastSuccess(`Плейлист \`${data.name} успешно удален` )
+      toastSuccess(`Плейлист успешно удален` )
       router.replace('/playlists')
     },
     onError: (error) => {
@@ -38,7 +38,7 @@ export const useCreatePlaylistQuery = () => {
     mutationKey: ["createPlaylist"],
     mutationFn: (data: any) => playlistsService.create(data),
     onSuccess: () => {
-      toastSuccess(`Плейлист успешно удален` )
+      toastSuccess(`Плейлист успешно здан` )
       queryClient.invalidateQueries({ queryKey: ["playlistsList"] });
     },
   });
@@ -54,7 +54,9 @@ export const useUpdatePlaylistQuery = (id: number) => {
     mutationFn: (data: any) => playlistsService.updateById(id, data),
     onSuccess: (data: any) => {
       toastSuccess(`Плейлист \`${data.name} успешно обновлен` )
-      queryClient.invalidateQueries({ queryKey: ["playlistDetails"] });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["playlistDetails"] });
+      }, 1500)
     },
     onError: (error) => {
       console.log(error)
