@@ -2,12 +2,11 @@
 import useIdFromParams from "@/src/hooks/useIdFromParams";
 import {useDeleteUserQuery, usePlaylistQuery} from "@/src/hooks/playlists/usePlaylistQuery";
 import React, { useEffect, useRef, useState } from "react";
-import {Button, Image, Skeleton} from "@nextui-org/react";
+import {Button, Skeleton, Image} from "@nextui-org/react";
 import { getMediaType } from "@/src/types/types/getMediaType";
 import EditingPlaylistModal from "@/src/app/playlists/[id]/components/EditingPlaylistModal";
-import Loader from "@/src/components/ui/Loader";
 import DeletingModal from "@/src/components/ui/DeletingModal";
-
+import styles from './PlaylistDetails.module.scss'
 
 
 function PlaylistPage() {
@@ -86,14 +85,14 @@ function PlaylistPage() {
     }, [currentTrack, isAutoPlay]);
 
     const type = getMediaType(tracks[currentTrack]?.name)
-    useEffect(() => {
-        if (type === 'image') {
-            setTimeout(() => {
-                playNext()
-            }, 10000)
-        }
-
-    }, [type, currentTrack]);
+    // useEffect(() => {
+    //     if (type === 'image') {
+    //         setTimeout(() => {
+    //             playNext()
+    //         }, 10000)
+    //     }
+    //
+    // }, [type, currentTrack]);
 
     const handleDeletePlaylist = () => {
         deletePlaylist.mutate(Number(id))
@@ -104,25 +103,39 @@ function PlaylistPage() {
     };
 
     return (
-        <>
-            <div>
+        <div className={styles.container}>
+            <div className={styles.container_info}>
+                <div className='flex flex-row items-center gap-2'>
+                    <h2>Название плейлиста</h2>
+                    <span>{data?.name}</span>
+                </div>
+                <div className='flex flex-row items-center gap-2'>
+                    <h2>Описание</h2>
+                    <span>{data?.description}</span>
+                </div>
+                <div className='flex flex-row gap-2'>
+                    <Button onClick={() => setOpenCreatingModal(true)} style={{width: '100%'}}>Edit</Button>
+                    <Button color="danger" onClick={() => setOpenDeletingModal(true)} style={{width: '100%'}}>Delete</Button>
+                </div>
+            </div>
+            <div className={styles.container_playerBlock}>
                 {isLoading ? (
                     <Skeleton className="w-3/5 rounded-lg">
                         <div className="h-3 w-3/5 rounded-lg bg-default-200"></div>
                     </Skeleton>
                 ) : (
-                    <div className='flex flex-col justify-center items-center gap-3'>
+                    <div className={styles.container_playerBlock_player}>
                         <p>Сейчас играет: {tracks[currentTrack]?.name}</p>
-                        <div className='flex flex-row items-center justify-center gap-2'>
+                        <div className={styles.container_playerBlock_player_block}>
                             <Button onClick={playPrev}>Prev</Button>
                             {getMediaType(tracks[currentTrack]?.name) === 'video' && (
-                                <div className="flex flex-col items-center gap-2">
+                                <div className="flex flex-col items-center gap-3">
                                     <video
                                         ref={videoRef}
                                         src={tracks[currentTrack]?.url}
                                         controls={true}
                                         onEnded={playNext} // Переход на следующее видео при завершении
-                                        style={{width: '25%', height: 'auto'}}
+                                        style={{height: 'auto'}}
                                     />
                                     <Button onClick={playFullscreen}>Play Fullscreen</Button>
                                 </div>
@@ -144,23 +157,15 @@ function PlaylistPage() {
                             {getMediaType(tracks[currentTrack]?.name) === 'image' && (
                                 <Image
                                     src={tracks[currentTrack]?.url}
+                                    alt={tracks[currentTrack]?.name}
+                                    style={{height: '240px', width: 'auto'}}
                                 />
                             )}
                             <Button onClick={playNext}>Next</Button>
                         </div>
                     </div>
                 )}
-            </div>
-            <div>
-                <div className='flex flex-row items-center gap-2'>
-                <h2>Название плейлиста</h2>
-                    <span>{data?.name}</span>
-                </div>
-                <div className='flex flex-row items-center gap-2'>
-                    <h2>Описание</h2>
-                    <span>{data?.description}</span>
-                </div>
-                <div className='flex flex-col'>
+                <div className={styles.container_playerBlock_files}>
                     <h2>Файлы</h2>
                     {data?.files.map((file, index) => (
                         <span
@@ -176,16 +181,20 @@ function PlaylistPage() {
                         </span>
                     ))}
                 </div>
-                <Button onClick={() => setOpenCreatingModal(true)}>Edit</Button>
-                <Button color="danger" onClick={() => setOpenDeletingModal(true)}>Delete</Button>
             </div>
             <DeletingModal
                 close={handleCloseDeletingModal}
                 deleteProp={handleDeletePlaylist}
                 open={openDeletingModal}
             />
-            <EditingPlaylistModal open={openCreatingModal} close={() => setOpenCreatingModal(false)} id={data?.id} filesPlaylist={data?.files} namePlaylist={data?.name} desc={data?.description}/>
-        </>
+            <EditingPlaylistModal
+                open={openCreatingModal}
+                close={() => setOpenCreatingModal(false)}
+                id={data?.id}
+                filesPlaylist={data?.files}
+                namePlaylist={data?.name}
+                desc={data?.description}/>
+        </div>
     );
 }
 

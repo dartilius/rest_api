@@ -24,7 +24,7 @@ function EditingPlaylistModal(props: Props) {
     const {open, close, desc, filesPlaylist, namePlaylist, id} = props
     const page = 1;
     const limit = 1000;
-    if (!namePlaylist || !desc || filesPlaylist || !id) return <Loader />;
+    if (!namePlaylist || !desc || !filesPlaylist || !id) return <Loader />;
     const { data } = useFilesQuery({ page, limit });
     const [files, setFiles] = useState<string[]>([]);
     const [name, setName] = useState<string>(namePlaylist);
