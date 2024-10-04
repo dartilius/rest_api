@@ -163,7 +163,9 @@ function PlaylistPage() {
                         </span>
                     ))}
                 </div>
+                <Button>Edit</Button>
             </div>
+            
         </>
     );
 }

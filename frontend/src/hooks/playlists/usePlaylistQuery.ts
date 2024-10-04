@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import playlistsService from "@/src/services/playlists/playlists.service";
+import {toastSuccess} from "@/src/utils/toast-success";
+import {toastError} from "@/src/utils/toast-error";
 
 export const usePlaylistQuery = (id: string) => {
   const { data, isLoading, error, isError, isSuccess, refetch } = useQuery({
@@ -32,3 +34,20 @@ export const useCreatePlaylistQuery = () => {
 
   return mutation;
 };
+
+
+export const useUpdatePlaylistQuery = (id: string) => {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationKey: ["updatePlaylist"],
+    mutationFn: (data: any) => playlistsService.updateById(id, data),
+    onSuccess: (data: any) => {
+      toastSuccess(`Плейлист \`${data.name} успешно обновлен` )
+      queryClient.invalidateQueries({ queryKey: ["playlistDetails"] });
+    },
+    onError: (error) => {
+      console.log(error)
+      toastError(`${error}`)
+    }
+  })
+}
