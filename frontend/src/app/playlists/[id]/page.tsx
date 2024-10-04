@@ -4,6 +4,8 @@ import { usePlaylistQuery } from "@/src/hooks/playlists/usePlaylistQuery";
 import { useEffect, useRef, useState } from "react";
 import {Button, Image, Skeleton} from "@nextui-org/react";
 import { getMediaType } from "@/src/types/types/getMediaType";
+import EditingPlaylistModal from "@/src/app/playlists/[id]/components/EditingPlaylistModal";
+import Loader from "@/src/components/ui/Loader";
 
 
 
@@ -15,6 +17,8 @@ function PlaylistPage() {
     const { data, isLoading } = usePlaylistQuery(id);
     const [isAutoPlay, setIsAutoPlay] = useState<boolean>(false);
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
+    const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
+
 
     // Чтобы хуки всегда вызывались одинаково, используем заглушку для треков
     const tracks = data?.files || [];
@@ -80,7 +84,6 @@ function PlaylistPage() {
     }, [currentTrack, isAutoPlay]);
 
     const type = getMediaType(tracks[currentTrack]?.name)
-    //
     useEffect(() => {
         if (type === 'image') {
             setTimeout(() => {
@@ -89,6 +92,10 @@ function PlaylistPage() {
         }
 
     }, [type, currentTrack]);
+
+    if (!data) {
+        return <Loader />;
+    }
 
     return (
         <>
@@ -163,9 +170,9 @@ function PlaylistPage() {
                         </span>
                     ))}
                 </div>
-                <Button>Edit</Button>
+                <Button onClick={() => setOpenCreatingModal(true)}>Edit</Button>
             </div>
-            
+            <EditingPlaylistModal open={openCreatingModal} close={() => setOpenCreatingModal(false)} id={data.id} filesPlaylist={data.files} namePlaylist={data.name} desc={data.description}/>
         </>
     );
 }

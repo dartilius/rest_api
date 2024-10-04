@@ -36,7 +36,7 @@ export const useCreatePlaylistQuery = () => {
 };
 
 
-export const useUpdatePlaylistQuery = (id: string) => {
+export const useUpdatePlaylistQuery = (id: number) => {
   const queryClient = useQueryClient()
   const mutation = useMutation({
     mutationKey: ["updatePlaylist"],
@@ -50,4 +50,6 @@ export const useUpdatePlaylistQuery = (id: string) => {
       toastError(`${error}`)
     }
   })
+
+  return mutation
 }
