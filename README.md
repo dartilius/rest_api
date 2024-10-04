@@ -6,12 +6,14 @@
 ```console
 git clone git@webgit.krasrm.com:shaleinikove/rmc_rest_api.git
 ```
-2. создайте файл ```.env``` в корневой директории и задайте следующие переменные:
+2. Для работы проекта нужно создать файл ```.env``` в корневой директории 
+со следующими переменными:
 ```
-# settings.py
+# django
 SECRET_KEY
 ALLOWED_HOSTS
 DEBUG
+FRONTEND_DOMEN
 
 # healthcheck
 BACKEND_HC
@@ -25,8 +27,11 @@ DJANGO_SUPERUSER_PASS
 MINIO_STORAGE_ACCESS_KEY
 MINIO_STORAGE_SECRET_KEY
 MINIO_ENDPOINT
+MINIO_EXTERNAL_ENDPOINT
 MINIO_ROOT_USER
 MINIO_ROOT_PASSWORD
+MINIO_HTTPS
+MINIO_REGION
 
 # postgres
 POSTGRES_DB
@@ -65,17 +70,19 @@ docker compose up --build files
 и входим используя ```MINIO_ROOT_USER``` и ```MINIO_ROOT_PASSWORD```
 5. Во вкладке ```Access Keys``` создайте новый ключ 
 доступа и внесите данные в ```.env```
-6. Собираем проект
+6. Переменная ```MINIO_REGION``` нужна для генерации ссылок на медиа файлы.
+Написать в неё можно что-угодно
+7. Собираем проект
 ```console
 docker compose up --build
 ```
-7. Добавляем пользователя RabbitMQ
+8. Добавляем пользователя RabbitMQ
 ```console
 docker exec rabbit sh -c "rabbitmqctl add_user <RABBITMQ_USER> <RABBITMQ_PASSWORD>"
 docker exec rabbit sh -c "rabbitmqctl set_permissions <RABBITMQ_USER> '.*' '.*' '.*'"
 docker exec rabbit sh -c "rabbitmqctl set_user_tags uid0001 administrator"
 ```
-8. Проводим миграции, собираем статические файлы и создаем суперпользователя
+9. Проводим миграции, собираем статические файлы и создаем суперпользователя
 ```console
 docker exec backend sh -c "python manage.py makemigrations"
 docker exec backend sh -c "python manage.py migrate"

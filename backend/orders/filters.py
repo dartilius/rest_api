@@ -12,7 +12,7 @@ class AdOrderFilter(FilterSet):
         name     - частичное совпадение
         brc_type - точное совпадение
         id       - точное совпадение
-        group    - частичное совпадение
+        client   - частичное совпадение
         created  - попадание в заданный промежуток времени
     """
 
@@ -20,16 +20,16 @@ class AdOrderFilter(FilterSet):
     name = CharFilter(field_name='name', lookup_expr='icontains')
     brc_type = CharFilter(field_name='broadcast_type', lookup_expr='exact')
     id = CharFilter(field_name='id', lookup_expr='exact')
-    group = CharFilter(
-        field_name='group__name',
+    client = CharFilter(
+        field_name='client__name',
         lookup_expr='icontains',
-        label='Целевая группа Целевая рабочих станций'
+        label='Целевая рабочая станция'
     )
     created = DateFromToRangeFilter(field_name='created')
 
     class Meta:
         model = AdOrder
-        fields = ('name', 'brc_type', 'id', 'group', 'owner', 'created')
+        fields = ('name', 'brc_type', 'id', 'client', 'owner', 'created')
 
     def filter_by_owner_name(self, queryset, name, value):
         """

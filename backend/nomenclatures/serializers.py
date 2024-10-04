@@ -6,7 +6,6 @@ from rest_framework import serializers
 
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup,
     StatusHistory,
     TIMEZONES
 )
@@ -239,68 +238,6 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         representation = super().to_representation(value)
         representation['timezone'] = TIMEZONES[value.timezone]
-        return representation
-
-
-class NomenclatureGroupSerializer(serializers.ModelSerializer):
-    """Сериализация групп номенклатуры."""
-
-    clients = serializers.SlugRelatedField(
-        slug_field='id',
-        many=True,
-        queryset=Nomenclature.objects.filter(is_active=True),
-        write_only=True
-    )
-
-    class Meta:
-        fields = (
-            'id',
-            'name',
-            'description',
-            'owner',
-            'clients',
-            'created'
-        )
-        read_only_fields = (
-            'id',
-            'owner',
-            'created',
-        )
-        model = NomenclatureGroup
-
-    def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['owner'] = (
-            f'{value.owner.last_name} {value.owner.first_name}'
-        )
-        representation['clients'] = [
-            {
-                'id': client.id,
-                'name':  client.name
-            } for client in value.clients.filter(is_active=True)
-        ]
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
-
-
-class NomenclatureGroupListSerializer(serializers.ModelSerializer):
-    """Сериализация групп номенклатуры."""
-
-    class Meta:
-        fields = (
-            'id',
-            'name',
-            'created'
-        )
-        read_only_fields = fields
-        model = NomenclatureGroup
-
-    def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['clients_count'] = len(
-            value.clients.filter(is_active=True)
-        )
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 

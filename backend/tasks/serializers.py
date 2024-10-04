@@ -37,10 +37,8 @@ class TaskSerializer(serializers.ModelSerializer):
         representation['owner'] = {
             'full_name': f'{value.owner.last_name} {value.owner.first_name}'
         }
-        representation['client'] = {
-            'id': value.client.id,
-            'name': value.client.name
-        }
+        representation['client'] = {'id': value.client.id,
+                                    'name': value.client.name}
         representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         representation['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
         return representation

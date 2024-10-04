@@ -1,6 +1,5 @@
 from datetime import datetime as dt
 from django.core.exceptions import ValidationError
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -28,13 +27,10 @@ from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    NomenclatureGroupSerializer,
-    NomenclatureGroupListSerializer,
     StatusHistorySerializer
 )
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup,
     NomenclatureAvailability
 )
 from tasks.models import Task
@@ -66,46 +62,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    def perform_update(self, serializer):
-        nomenclature = serializer.instance
-        if (
-            'name' in serializer.validated_data and
-            serializer.validated_data['name'] != nomenclature.name
-        ):
-            group = NomenclatureGroup.objects.exclude(
-                ~Q(clients=nomenclature.id)
-            ).first()
-            group.name = serializer.validated_data['name']
-            group.save()
-        serializer.save()
-
     def perform_destroy(self, instance):
         instance.is_active = False
-
-    # пока оставлю
-    # @action(detail=True, methods=['POST'], url_path='is_active')
-    # def toggle_is_active(self, request, pk):
-    #     try:
-    #         nomenclature = get_object_or_404(Nomenclature, id=pk)
-    #     except ValidationError:
-    #         return Response(
-    #             {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-    #             status=HTTP_400_BAD_REQUEST
-    #         )
-    #     if nomenclature.is_active is True:
-    #         self.perform_destroy(nomenclature)
-    #         status = 'деактивированна'
-    #     else:
-    #         nomenclature.is_active = True
-    #         group = NomenclatureGroup.objects.create(
-    #             owner=nomenclature.owner,
-    #             name=nomenclature.name,
-    #         )
-    #         group.clients.add(nomenclature)
-    #         group.save()
-    #         nomenclature.save()
-    #         status = 'активна'
-    #     return Response(f'Номенклатура {status}', status=HTTP_200_OK)
 
     @action(detail=True, methods=['GET'])
     def status_history(self, request, pk):
@@ -240,27 +198,3 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         statistics = TickerStat.objects.filter(client=pk)
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
-
-
-class NomenclatureGroupViewSet(viewsets.ModelViewSet):
-    """Работа с группами номенклатур."""
-
-    queryset = NomenclatureGroup.objects.all().prefetch_related(
-        'clients'
-    ).select_related('owner')
-
-    def get_serializer(self, *args, **kwargs):
-        if self.action == 'list':
-            serializer = NomenclatureGroupListSerializer
-        else:
-            serializer = NomenclatureGroupSerializer
-        if 'data' in kwargs:
-            data = kwargs['data']
-
-            if isinstance(data, list):
-                kwargs['many'] = True
-
-        return serializer(*args, **kwargs)
-
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)

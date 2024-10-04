@@ -11,15 +11,15 @@ class AdOrderAdmin(admin.ModelAdmin):
         'id',
         'name',
         'status',
-        'group',
+        'client',
         'broadcast_interval',
-        'file',
+        'playlist',
         'owner',
         'created'
     )
     list_filter = (
         'owner',
-        'group',
+        'client',
         'status',
         'broadcast_interval',
         'created'
@@ -27,13 +27,13 @@ class AdOrderAdmin(admin.ModelAdmin):
     search_fields = (
         'id',
         'name',
-        'group',
-        'file'
+        'client',
+        'playlist'
     )
 
     def get_queryset(self, request):
         return AdOrder.objects.all().select_related(
-            'owner', 'group', 'file'
+            'owner', 'client', 'playlist'
         )
 
 
@@ -56,14 +56,14 @@ class BgOrderAdmin(admin.ModelAdmin):
         'order_type',
         'name',
         'status',
-        'group',
+        'client',
         'playlist',
         'owner',
         'created'
     )
     list_filter = (
         'owner',
-        'group',
+        'client',
         'order_type',
         'status',
         'broadcast_interval',
@@ -72,11 +72,11 @@ class BgOrderAdmin(admin.ModelAdmin):
     search_fields = (
         'id',
         'name',
-        'group',
+        'client',
         'playlist'
     )
 
     def get_queryset(self, request):
         return BgOrder.objects.all().select_related(
-            'owner', 'group', 'playlist'
+            'owner', 'client', 'playlist'
         )
