@@ -48,7 +48,7 @@ class PlaylistsService {
     return data
   }
 
-  deleteById(id: string) {
+  deleteById(id: number) {
     return axios.delete(`${this.URL}${id}/`, {
       headers: {
         Authorization: `access_token ${this.token}`,
@@ -64,7 +64,7 @@ class PlaylistsService {
     });
   }
 
-  updateById(id: string, data: any) {
+  updateById(id: number, data: any) {
     return axios.put(`${this.URL}${id}/`, data, {
       headers: {
         Authorization: `access_token ${this.token}`,

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import playlistsService from "@/src/services/playlists/playlists.service";
 import {toastSuccess} from "@/src/utils/toast-success";
 import {toastError} from "@/src/utils/toast-error";
+import {useRouter} from "next/navigation";
 
 export const usePlaylistQuery = (id: string) => {
   const { data, isLoading, error, isError, isSuccess, refetch } = useQuery({
@@ -13,10 +14,19 @@ export const usePlaylistQuery = (id: string) => {
   return { data, isLoading, error, isError, isSuccess, refetch };
 };
 
-export const useDeleteUserQuery = () => {
+export const useDeleteUserQuery = (data: any) => {
+  const router = useRouter()
   const mutation = useMutation({
     mutationKey: ["deletePlaylist"],
-    mutationFn: (id: string) => playlistsService.deleteById(id),
+    mutationFn: (id: number) => playlistsService.deleteById(id),
+    onSuccess: () => {
+      toastSuccess(`Плейлист \`${data.name} успешно удален` )
+      router.replace('/playlists')
+    },
+    onError: (error) => {
+      console.log(error)
+      toastError(`${error}`)
+    }
   });
 
   return mutation;
@@ -28,6 +38,7 @@ export const useCreatePlaylistQuery = () => {
     mutationKey: ["createPlaylist"],
     mutationFn: (data: any) => playlistsService.create(data),
     onSuccess: () => {
+      toastSuccess(`Плейлист успешно удален` )
       queryClient.invalidateQueries({ queryKey: ["playlistsList"] });
     },
   });

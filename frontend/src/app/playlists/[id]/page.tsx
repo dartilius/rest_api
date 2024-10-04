@@ -1,6 +1,6 @@
 'use client';
 import useIdFromParams from "@/src/hooks/useIdFromParams";
-import { usePlaylistQuery } from "@/src/hooks/playlists/usePlaylistQuery";
+import {useDeleteUserQuery, usePlaylistQuery} from "@/src/hooks/playlists/usePlaylistQuery";
 import { useEffect, useRef, useState } from "react";
 import {Button, Image, Skeleton} from "@nextui-org/react";
 import { getMediaType } from "@/src/types/types/getMediaType";
@@ -18,6 +18,7 @@ function PlaylistPage() {
     const [isAutoPlay, setIsAutoPlay] = useState<boolean>(false);
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
+    const deletePlaylist = useDeleteUserQuery(data?.name)
 
 
     // Чтобы хуки всегда вызывались одинаково, используем заглушку для треков
@@ -92,6 +93,10 @@ function PlaylistPage() {
         }
 
     }, [type, currentTrack]);
+
+    const handleDeletePlaylist = () => {
+        deletePlaylist.mutate(Number(id))
+    }
 
     if (!data) {
         return <Loader />;
@@ -171,6 +176,7 @@ function PlaylistPage() {
                     ))}
                 </div>
                 <Button onClick={() => setOpenCreatingModal(true)}>Edit</Button>
+                <Button onClick={handleDeletePlaylist}>Delete</Button>
             </div>
             <EditingPlaylistModal open={openCreatingModal} close={() => setOpenCreatingModal(false)} id={data.id} filesPlaylist={data.files} namePlaylist={data.name} desc={data.description}/>
         </>
