@@ -39,7 +39,9 @@ class NoDeleteViewSet(mixins.CreateModelMixin,
 class AdOrderViewSet(NoDeleteViewSet):
     """Работа с рекламными заказами."""
 
-    queryset = AdOrder.objects.all().select_related('owner', 'client', 'file')
+    queryset = AdOrder.objects.all().select_related(
+        'owner', 'client', 'playlist'
+    )
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
 

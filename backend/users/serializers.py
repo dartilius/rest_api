@@ -21,8 +21,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
         model = CustomUser
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['full_name'] = {
+        repr_ = super().to_representation(value)
+        repr_['full_name'] = {
             'last_name': value.last_name,
             'first_name': value.first_name,
             'middle_name': value.middle_name
@@ -30,8 +30,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'last_name': value.last_name,
             'first_name': value.first_name,
         }
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
+        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return repr_
 
 
 class CustomUserListSerializer(serializers.ModelSerializer):
@@ -47,8 +47,8 @@ class CustomUserListSerializer(serializers.ModelSerializer):
         model = CustomUser
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['full_name'] = (
+        repr_ = super().to_representation(value)
+        repr_['full_name'] = (
             f'{value.last_name} '
             f'{value.first_name} '
             f'{value.middle_name}'
@@ -56,5 +56,5 @@ class CustomUserListSerializer(serializers.ModelSerializer):
             f'{value.last_name} '
             f'{value.first_name}'
         )
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
+        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return repr_

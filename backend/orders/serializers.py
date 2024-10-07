@@ -277,27 +277,37 @@ class AdOrderSerializer(serializers.ModelSerializer):
             order_list.append(AdOrder(client=client,
                                       **validated_data))
         saved_orders = AdOrder.objects.bulk_create(order_list)
-
         return saved_orders
 
-    def to_representation(self, values):
-        for value in values:
-            representation = super().to_representation(value)
-            representation['owner'] = (
-                f'{value.owner.last_name} {value.owner.first_name}'
-            )
-            representation['client'] = {'id': value.client.id,
-                                        'name': value.client.name}
-            representation['playlist'] = [
-                {'id': file.id,
-                 'name': file.name} for file in value.playlist.files.all()
-            ]
-            # representation['slides'] = [
-            #     {'id': slide.id,
-            #      'name': slide.name} for slide in value.slides.all()
-            # ] if value.slides.exists() else None
-            representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-            return representation
+    def to_representation(self, value):
+        """Десериализация с поддержкой списка объектов."""
+        def _serialize_order(obj):
+            repr_ = super(self.__class__, self).to_representation(obj)
+            repr_['owner'] = {
+                'full_name': f'{obj.owner.last_name} '
+                             f'{obj.owner.first_name}'
+            }
+            repr_['client'] = {
+                'id': obj.client.id,
+                'name': obj.client.name
+            }
+            repr_['playlist'] = {
+                'id': str(obj.playlist.id),
+                'name': obj.playlist.name
+            }
+            repr_['slides'] = [
+                {
+                    'id': slide.id,
+                    'name': slide.name
+                } for slide in obj.slides.all()
+            ] if obj.slides else None
+            repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
+            return repr_
+
+        if isinstance(value, list):
+            return [_serialize_order(order) for order in value]
+        else:
+            return _serialize_order(value)
 
 
 class AdOrderListSerializer(serializers.ModelSerializer):
@@ -319,31 +329,28 @@ class AdOrderListSerializer(serializers.ModelSerializer):
         model = AdOrder
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['client'] = {'id': value.client.id,
-                                    'name': value.client.name}
-        representation['playlist'] = len([
-            {'id': file.id,
-             'name': file.name} for file in value.playlist.files.all()
-        ])
-        return representation
+        repr_ = super().to_representation(value)
+        repr_['client'] = {
+            'id': value.client.id,
+            'name': value.client.name
+        }
+        repr_['playlist'] = {
+            'id': value.playlist.id,
+            'files_count': len([file for file in value.playlist.files.all()])
+        }
+        return repr_
 
 
 class BgOrderSerializer(serializers.ModelSerializer):
     """Сериализация одного фонового заказа."""
 
-    clients = serializers.SlugRelatedField(
-        slug_field='id',
-        queryset=Nomenclature.objects.filter(is_active=True),
-        write_only=True,
-        many=True
-    )
     playlist = serializers.SlugRelatedField(
         slug_field='id',
         queryset=Playlist.objects.all(),
         write_only=True
     )
     broadcast_interval = DateTimeTZRangeField()
+    clients = serializers.ListField(write_only=True)
 
     class Meta:
         fields = (
@@ -365,25 +372,43 @@ class BgOrderSerializer(serializers.ModelSerializer):
         )
         model = BgOrder
 
-    def save(self, **kwargs):
+    def create(self, validated_data):
         """Внесение клиентов из списка айди."""
-        clients = self.data['clients']
+        client_ids = validated_data.pop('clients')
+        clients = Nomenclature.objects.filter(id__in=client_ids)
+        order_list = []
         for client in clients:
-            super().save(client=client, **kwargs)
+            order_list.append(AdOrder(client=client,
+                                      **validated_data))
+        saved_orders = AdOrder.objects.bulk_create(order_list)
+        return saved_orders
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['owner'] = {
-            'full_name': f'{value.owner.last_name} {value.owner.first_name}'
-        }
-        representation['client'] = {'id': value.client.id,
-                                    'name': value.client.name}
-        representation['playlist'] = {
-            'id': value.playlist.id,
-            'name': value.playlist.name
-        }
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
+        """Десериализация с поддержкой списка объектов."""
+        def _serialize_order(obj):
+            repr_ = super(self.__class__, self).to_representation(obj)
+            repr_['owner'] = {
+                'full_name': f'{obj.owner.last_name} '
+                             f'{obj.owner.first_name}'
+            }
+            repr_['client'] = {
+                'id': obj.client.id,
+                'name': obj.client.name
+            }
+            repr_['playlist'] = {
+                'id': obj.playlist.id,
+                'name': obj.playlist.name,
+                'files_count': len(
+                    [file for file in value.playlist.files.all()]
+                )
+            }
+            repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
+            return repr_
+
+        if isinstance(value, list):
+            return [_serialize_order(order) for order in value]
+        else:
+            return _serialize_order(value)
 
 
 class BgOrderListSerializer(serializers.ModelSerializer):
@@ -405,11 +430,13 @@ class BgOrderListSerializer(serializers.ModelSerializer):
         model = BgOrder
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['client'] = {'id': value.client.id,
-                                    'name': value.client.name}
-        representation['playlist'] = [
-            {'id': file.id,
-             'name': file.name} for file in value.playlist.files.all()
-        ]
-        return representation
+        repr_ = super().to_representation(value)
+        repr_['client'] = {
+            'id': value.client.id,
+            'name': value.client.name
+        }
+        repr_['playlist'] = {
+            'id': value.playlist.id,
+            'files_count': len([file for file in value.playlist.files.all()])
+        }
+        return repr_
