@@ -70,6 +70,8 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_started
+      rabbit:
+        condition: service_healthy
 
   frontend:
     env_file: .env

@@ -292,13 +292,14 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 'name': obj.client.name
             }
             repr_['playlist'] = {
-                'id': str(obj.playlist.id),
-                'name': obj.playlist.name
+                'id': obj.playlist.id,
+                'name': obj.playlist.name,
+                'files_count': len([file for file in obj.playlist.files.all()])
             }
             repr_['slides'] = [
                 {
                     'id': slide.id,
-                    'name': slide.name
+                    'file_id': slide.file_id
                 } for slide in obj.slides.all()
             ] if obj.slides else None
             repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')

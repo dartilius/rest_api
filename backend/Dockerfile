@@ -1,4 +1,4 @@
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
@@ -29,6 +29,6 @@ COPY . .
 # RUN useradd uid0001
 # USER uid0001
 
-# ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/entrypoint.sh"]
 # CMD ["su", "uid0001", "/app/scripts/workers.sh", "${CELERY_WORKERS}"]
-CMD ["gunicorn", "--bind", "0:8000", "--workers", "4", "rmc_rest_api.wsgi"]
+# CMD ["gunicorn", "--bind", "0:8000", "--workers", "4", "rmc_rest_api.wsgi"]
