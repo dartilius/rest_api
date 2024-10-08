@@ -12,17 +12,50 @@
 .container {
   display: flex;
   flex-direction: row;
+  gap: 16px;
   padding: 0;
   margin: 0;
-  height: 100%;
+  height: auto;
   width: auto;
-  &_description {
+  &_info {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
+    height: 100%;
+    width: 35%;
+  }
 
-    &_name {
+  &_playerBlock {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    width: 100%;
+    align-items: center;
+    &_player {
       display: flex;
-      flex-direction: row;
+      flex-direction: column;
+      height: auto;
+      width: 100%;
+      margin: 24px;
+      align-items: center;
+
+      &_block {
+        display: flex;
+        flex-direction: row;
+        height: 100%;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+      }
+    }
+
+    &_files {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      width: 100%;
     }
   }
+
+
 }

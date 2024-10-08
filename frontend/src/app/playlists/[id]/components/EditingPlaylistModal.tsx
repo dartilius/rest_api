@@ -13,10 +13,10 @@ import {useUpdatePlaylistQuery} from "@/src/hooks/playlists/usePlaylistQuery";
 type Props = {
     open: boolean;
     close: () => void;
-    namePlaylist: string;
-    desc: string;
-    filesPlaylist: IPlaylistFiles[];
-    id: number;
+    namePlaylist: string | undefined;
+    desc: string | undefined;
+    filesPlaylist: IPlaylistFiles[] | undefined;
+    id: number | undefined;
 };
 
 function EditingPlaylistModal(props: Props) {
@@ -24,6 +24,7 @@ function EditingPlaylistModal(props: Props) {
     const {open, close, desc, filesPlaylist, namePlaylist, id} = props
     const page = 1;
     const limit = 1000;
+    if (!namePlaylist || !desc || !filesPlaylist || !id) return <Loader />;
     const { data } = useFilesQuery({ page, limit });
     const [files, setFiles] = useState<string[]>([]);
     const [name, setName] = useState<string>(namePlaylist);
@@ -43,13 +44,6 @@ function EditingPlaylistModal(props: Props) {
         event.preventDefault();
         updatePlaylist.mutate({ name, description, files });
         close();
-        toastSuccess(`Плейлист \`${name}\` успешно создан`);
-        //   setTimeout(() => {
-        //     window.location.reload();
-        //   }, 2000);
-        setName("");
-        setDescription("");
-        setFiles([]);
     };
 
     if (!data) {
@@ -60,7 +54,7 @@ function EditingPlaylistModal(props: Props) {
         <div>
             <Modal isOpen={open} onClose={close}>
                 <ModalContent>
-                    <ModalHeader>Создание плейлсита</ModalHeader>
+                    <ModalHeader>Редактирование плейлсита</ModalHeader>
                     <ModalBody>
                         <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
                             <Input
@@ -79,7 +73,7 @@ function EditingPlaylistModal(props: Props) {
                                 label="Клиенты"
                                 selectionMode="multiple"
                                 defaultSelectedKeys={filesPlaylist?.map((file) => file.id) || []}
-                                onSelectionChange={(selectedKeys) => setFiles([...selectedKeys])}
+                                onSelectionChange={(selectedKeys) => setFiles([...selectedKeys].map(String))} // Преобразуем ключи в строки
                             >
                                 {data.results.map((file) => (
                                     <SelectItem

@@ -41,7 +41,6 @@ const CreatingModalPlaylists = (props: Props) => {
     event.preventDefault();
     createPlaylist.mutate({ name, description, files });
     close();
-    toastSuccess(`Плейлист \`${name}\` успешно создан`);
     //   setTimeout(() => {
     //     window.location.reload();
     //   }, 2000);
