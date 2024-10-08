@@ -51,7 +51,7 @@ const dayNames: Record<string, string> = {
   sun: "Воскресенье",
 };
 
-function parseStringData(data) {
+function parseStringData(data: any) {
   return JSON.parse(data.replace(/'/g, '"'));
 }
 
@@ -182,7 +182,7 @@ export default function NomenclatureDetails(props: Props) {
             <div>
               <strong>Interfaces:</strong>
               <ul>
-                {interfaces.map((iface, index) => (
+                {interfaces.map((iface: any, index: any) => (
                     <li key={index}>
                       {iface.iface} - MAC: {iface.mac}, IP: {iface.ip || "N/A"}
                     </li>
@@ -192,7 +192,7 @@ export default function NomenclatureDetails(props: Props) {
             <div>
               <strong>Audio Devices:</strong>
               <ul>
-                {audiodevices.map((device, index) => (
+                {audiodevices.map((device: any, index: any) => (
                     <li key={index}>
                       Card {device.card}: {device.name}
                     </li>

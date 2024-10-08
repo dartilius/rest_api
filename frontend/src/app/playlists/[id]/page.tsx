@@ -127,7 +127,7 @@ function PlaylistPage() {
                     <div className={styles.container_playerBlock_player}>
                         <p>Сейчас играет: {tracks[currentTrack]?.name}</p>
                         <div className={styles.container_playerBlock_player_block}>
-                            <Button onClick={playPrev}>Prev</Button>
+
                             {getMediaType(tracks[currentTrack]?.name) === 'video' && (
                                 <div className="flex flex-col items-center gap-3">
                                     <video
@@ -149,9 +149,6 @@ function PlaylistPage() {
                                         onEnded={playNext}
                                         autoPlay={false}
                                     />
-                                    <Button onClick={togglePlayPause}>
-                                        {isPlaying ? "Pause" : "Play"}
-                                    </Button>
                                 </div>
                             )}
                             {getMediaType(tracks[currentTrack]?.name) === 'image' && (
@@ -161,7 +158,10 @@ function PlaylistPage() {
                                     style={{height: '240px', width: 'auto'}}
                                 />
                             )}
-                            <Button onClick={playNext}>Next</Button>
+                            <div className="flex flex-row items-center gap-2">
+                                <Button onClick={playPrev}>Prev</Button>
+                                <Button onClick={playNext}>Next</Button>
+                            </div>
                         </div>
                     </div>
                 )}
