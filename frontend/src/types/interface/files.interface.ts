@@ -98,7 +98,7 @@ export type ReadFileResponse = {
   hash: {
     md5: string;
     sha256: string;
-    concatHash: string;
+    concat_hash: string;
   };
   url: string;
 };

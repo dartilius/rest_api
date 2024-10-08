@@ -1,0 +1,57 @@
+.container {
+  display: flex;
+  flex-direction: row;
+  padding: 16px;
+  gap: 12px;
+  height: 100%;
+  width: 100%;
+
+  &_description {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: auto;
+    width: 35%;
+    &_name {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+  }
+
+  &_file {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: auto;
+    width: 100%;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .container {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    gap: 12px;
+    height: 100%;
+    width: 100%;
+
+    &_description {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 50%;
+      gap: 8px;
+    }
+
+    &_file {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: auto;
+      width: 100%;
+      background: #666666;
+    }
+  }
+}
