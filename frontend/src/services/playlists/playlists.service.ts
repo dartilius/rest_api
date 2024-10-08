@@ -9,8 +9,9 @@ import {
 } from "@/src/types/interface/playlists.interface";
 
 type Params = {
-  page?: number;
-  limit?: number;
+  page: number;
+  limit: number;
+  search: string;
 };
 
 class PlaylistsService {
@@ -18,7 +19,7 @@ class PlaylistsService {
   private token = getTokenStorage();
   getAll(props: Params) {
 
-    const { page, limit } = props;
+    const { page, limit , search} = props;
 
     const params = new URLSearchParams();
 
@@ -27,6 +28,9 @@ class PlaylistsService {
     }
     if (limit !== undefined) {
       params.append("limit", limit.toString());
+    }
+    if (search !== undefined) {
+      params.append("name", search.toString());
     }
 
     const queryString = params.toString();

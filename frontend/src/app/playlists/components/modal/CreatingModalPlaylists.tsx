@@ -72,7 +72,7 @@ const CreatingModalPlaylists = (props: Props) => {
                   value={description}
                   onChange={changeDescription}
                 />
-                <Select required label="Клиенты" selectionMode="multiple">
+                <Select required label="Файлы" selectionMode="multiple">
                   {data.results.map((file) => (
                     <SelectItem
                       key={file.id}
