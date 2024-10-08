@@ -3,7 +3,6 @@ from uuid import uuid4
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
 from django.contrib.postgres.fields import HStoreField
-from django.db.models import Q
 
 from users.models import CustomUser
 
@@ -117,79 +116,6 @@ class Nomenclature(models.Model):
         ordering = ('-created',)
         verbose_name = 'Номенклатуру'
         verbose_name_plural = 'Номенклатуры'
-
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        if self.is_active is True:
-            try:
-                NomenclatureGroup.objects.get(name=self.name)
-            except NomenclatureGroup.DoesNotExist:
-                group = NomenclatureGroup.objects.create(
-                    owner=self.owner,
-                    name=self.name,
-                )
-                group.clients.add(self)
-                group.save()
-        else:
-            try:
-                group = NomenclatureGroup.objects.exclude(
-                    ~Q(clients=self.id)
-                ).first()
-                group.delete()
-            except NomenclatureGroup.DoesNotExist:
-                pass
-
-    def delete(self, using=None, keep_parents=False):
-        super().delete()
-        group = NomenclatureGroup.objects.exclude(
-            ~Q(clients=self.id)
-        ).first()
-        group.delete()
-        groups = NomenclatureGroup.objects.filter(clients=self)
-        for group in groups:
-            group.clients.remove(self)
-            group.save()
-
-
-class NomenclatureGroup(models.Model):
-    """Группа номенклатур."""
-
-    clients = models.ManyToManyField(
-        Nomenclature,
-        verbose_name='Рабочие станции',
-        related_name='nomenclature_groups'
-    )
-    owner = models.ForeignKey(
-        CustomUser,
-        related_name='nomenclature_groups',
-        verbose_name='Создатель',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Название',
-        unique=True
-    )
-    description = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name='Описание'
-    )
-    created = models.DateTimeField(
-        verbose_name='Дата создания',
-        auto_now_add=True
-    )
-
-    class Meta:
-        db_table = 'nomenclature_group'
-        ordering = ('-created',)
-        verbose_name = 'Группу'
-        verbose_name_plural = 'Группы'
 
     def __str__(self):
         return self.name

@@ -2,7 +2,7 @@ from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
 # from django.core.exceptions import ValidationError
 from django.db import models
 
-from nomenclatures.models import NomenclatureGroup
+from nomenclatures.models import Nomenclature
 from users.models import CustomUser
 from files.models import Playlist, File
 
@@ -69,36 +69,35 @@ class AdOrder(BaseOrder):
 
     owner = models.ForeignKey(
         CustomUser,
+        related_name='ad_orders',
         verbose_name='Создатель',
-        related_name='ad_orders',
         on_delete=models.DO_NOTHING
     )
-    group = models.ForeignKey(
-        NomenclatureGroup,
+    client = models.ForeignKey(
+        Nomenclature,
         related_name='ad_orders',
-        verbose_name='Группа номенклатур',
+        verbose_name='Рабочая станция',
         on_delete=models.DO_NOTHING
     )
-    file = models.ForeignKey(
-        File,
-        verbose_name='Файл',
+    playlist = models.ForeignKey(
+        Playlist,
         related_name='ad_orders',
+        verbose_name='Плейлист',
         on_delete=models.DO_NOTHING
     )
-    slides = models.ManyToManyField(
-        File,
+    slides = HStoreField(
         verbose_name='Слайды',
-        related_name='slides_orders',
+        null=True,
         blank=True
     )
     broadcast_type = models.PositiveSmallIntegerField(
         choices=BROADCAST_TYPES,
-        default=0,
-        verbose_name='Тип вещания'
+        verbose_name='Тип вещания',
+        default=0
     )
     parameters = HStoreField(
-        default=dict,
-        verbose_name='Параметры заказа'
+        verbose_name='Параметры заказа',
+        default=dict
     )
 
     class Meta:
@@ -117,10 +116,10 @@ class BgOrder(BaseOrder):
         related_name='bg_orders',
         on_delete=models.DO_NOTHING
     )
-    group = models.ForeignKey(
-        NomenclatureGroup,
+    client = models.ForeignKey(
+        Nomenclature,
         related_name='bg_orders',
-        verbose_name='Группа номенклатур',
+        verbose_name='Рабочая станция',
         on_delete=models.DO_NOTHING
     )
     playlist = models.ForeignKey(
@@ -131,8 +130,7 @@ class BgOrder(BaseOrder):
     )
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
-        verbose_name='Тип фона',
-        # editable=False
+        verbose_name='Тип фона'
     )
 
     class Meta:

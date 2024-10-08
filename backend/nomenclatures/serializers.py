@@ -6,7 +6,6 @@ from rest_framework import serializers
 
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup,
     StatusHistory,
     TIMEZONES
 )
@@ -167,8 +166,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             return 'Не выходила в сеть'
 
     def to_representation(self, obj):
-        representation = super().to_representation(obj)
-        representation['main_info'] = {
+        repr_ = super().to_representation(obj)
+        repr_['main_info'] = {
             'name': obj.name,
             'description': obj.description,
             'owner': f'{obj.owner.last_name} {obj.owner.first_name}',
@@ -179,15 +178,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             'created': obj.created.strftime('%Y-%m-%d %H:%M:%S')
         }
         # чтобы поля не дублировались
-        for field in representation['main_info']:
-            representation.pop(field)
-        for day, setting in representation['settings'].items():
+        for field in repr_['main_info']:
+            repr_.pop(field)
+        for day, setting in repr_['settings'].items():
             j = json.loads(setting)
             split_interval = j['worktime'].split('-')
             start = split_interval[0]
             end = split_interval[1]
             try:
-                representation['settings'][day] = {
+                repr_['settings'][day] = {
                     'worktime': (start, end),
                     'custom_volume': [(
                         f'{time(*ast.literal_eval(k)[0])} - '
@@ -197,11 +196,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
             except KeyError:
-                representation['settings'][day] = {
+                repr_['settings'][day] = {
                     'worktime': (start, end),
                     'default_volume': ast.literal_eval(j['default_volume'])
                 }
-        return representation
+        return repr_
 
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
@@ -237,71 +236,9 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             return 'Не выходила в сеть'
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['timezone'] = TIMEZONES[value.timezone]
-        return representation
-
-
-class NomenclatureGroupSerializer(serializers.ModelSerializer):
-    """Сериализация групп номенклатуры."""
-
-    clients = serializers.SlugRelatedField(
-        slug_field='id',
-        many=True,
-        queryset=Nomenclature.objects.filter(is_active=True),
-        write_only=True
-    )
-
-    class Meta:
-        fields = (
-            'id',
-            'name',
-            'description',
-            'owner',
-            'clients',
-            'created'
-        )
-        read_only_fields = (
-            'id',
-            'owner',
-            'created',
-        )
-        model = NomenclatureGroup
-
-    def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['owner'] = (
-            f'{value.owner.last_name} {value.owner.first_name}'
-        )
-        representation['clients'] = [
-            {
-                'id': client.id,
-                'name':  client.name
-            } for client in value.clients.filter(is_active=True)
-        ]
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
-
-
-class NomenclatureGroupListSerializer(serializers.ModelSerializer):
-    """Сериализация групп номенклатуры."""
-
-    class Meta:
-        fields = (
-            'id',
-            'name',
-            'created'
-        )
-        read_only_fields = fields
-        model = NomenclatureGroup
-
-    def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['clients_count'] = len(
-            value.clients.filter(is_active=True)
-        )
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
+        repr_ = super().to_representation(value)
+        repr_['timezone'] = TIMEZONES[value.timezone]
+        return repr_
 
 
 class StatusHistorySerializer(serializers.ModelSerializer):
@@ -316,8 +253,6 @@ class StatusHistorySerializer(serializers.ModelSerializer):
         model = StatusHistory
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['change_time'] = value.change_time.strftime(
-            '%Y-%m-%d %H:%M:%S'
-        )
-        return representation
+        repr_ = super().to_representation(value)
+        repr_['change_time'] = value.change_time.strftime('%Y-%m-%d %H:%M:%S')
+        return repr_

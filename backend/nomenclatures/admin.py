@@ -2,7 +2,6 @@ from django.contrib import admin
 
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup,
     NomenclatureAvailability,
     StatusHistory,
     STATUSES
@@ -37,7 +36,9 @@ class NomenclatureAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return Nomenclature.objects.all().select_related('owner', 'availability')
+        return Nomenclature.objects.all().select_related(
+            'owner', 'availability'
+        )
 
 
 @admin.register(NomenclatureAvailability)
@@ -48,18 +49,6 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return NomenclatureAvailability.objects.all().select_related('client')
-
-
-@admin.register(NomenclatureGroup)
-class NomenclatureGroupAdmin(admin.ModelAdmin):
-    """Группы."""
-
-    list_display = ('name',)
-
-    def get_queryset(self, request):
-        return NomenclatureGroup.objects.all().prefetch_related(
-            'clients'
-        ).select_related('owner')
 
 
 @admin.register(StatusHistory)

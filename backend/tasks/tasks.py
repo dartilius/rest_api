@@ -25,49 +25,34 @@ def create_ad_order_task(orders_ids: list):
     3. Возвращаем ответ со списком удачных и, если есть, неудачных репликаций.
     """
     orders = AdOrder.objects.filter(pk__in=orders_ids)
-    successful_tasks = 0
-    failed_tasks = 0
+    task_list = []
 
     for order in orders:
-        clients = order.group.clients.all()
-        task_list = [
+        task_list.append(
             Task(
                 owner=order.owner,
-                client=client,
+                client=order.client,
                 type=4,
                 parameters={
                     'order_id': order.id,
                     'order_parameters': order.parameters,
                     'broadcast_type': order.broadcast_type,
                     'broadcast_interval': order.broadcast_interval,
-                    'file': {
-                        'id': str(order.file.id),
-                        'hash': order.file.hash,
-                        'url': order.file.get_url()
-                    },
-                    'slides': [
-                        {
-                            'id': str(slide.id),
-                            'hash': slide.hash,
-                            'url': slide.get_url()
-                        } for slide in order.slides.all()
-                    ] if order.slides.exists() else None
+                    'playlist': {
+                        'id': str(order.playlist.id),
+                        'files': [
+                            {
+                                'id': str(file.id),
+                                'hash': file.hash
+                            } for file in order.playlist.files.all()
+                        ],
+                        'slides': order.slides if order.slides else None
+                    }
                 }
-            ) for client in clients
-        ]
-        count = len(list(task_list))
-        try:
-            Task.objects.bulk_create(task_list)
-            successful_tasks += count
-        except Exception as e:
-            # TODO retry
-            failed_tasks += count
-            ad_logger.error(f'Не удалось отправить {count} '
-                            f'заказов: {task_list}.\nОшибка: {e}')
-
-    result = f'Отправленно заказов: {successful_tasks}. '
-    if failed_tasks:
-        result += f'Ошибки: {failed_tasks}'
+            )
+        )
+    Task.objects.bulk_create(task_list)
+    result = f'Отправленно заказов: {len(task_list)}.'
     return result
 
 
@@ -83,35 +68,22 @@ def cancel_ad_order_task(orders_json: dict):
     4. Кол-во ошибок фиксируем и возвращаем, а также логгируем с причиной.
     """
     orders = list(serializers.deserialize('json', orders_json))
-    successful_tasks = 0
-    failed_tasks = 0
+    task_list = []
 
     for order in orders:
         order = order.object
-        clients = order.group.clients.all()
-        task_list = [
+        task_list.append(
             Task(
                 owner=order.owner,
-                client=client,
+                client=order.client,
                 type=9,
                 parameters={'order_id': order.id}
-            ) for client in clients
-        ]
-        count = len(list(task_list))
-        try:
-            Task.objects.bulk_create(task_list)
-            order.status = 3
-            order.save()
-            successful_tasks += count
-        except Exception as e:
-            # TODO retry
-            failed_tasks += count
-            ad_logger.error(f'Не удалось отменить {count} '
-                            f'заказов: {task_list}.\nОшибка: {repr(e)}')
-
-    result = f'Отменено заказов: {successful_tasks}. '
-    if failed_tasks:
-        result += f'Ошибки: {failed_tasks}'
+            )
+        )
+        order.status = 3
+        order.save()
+    Task.objects.bulk_create(task_list)
+    result = f'Отменено заказов: {len(task_list)}.'
     return result
 
 
@@ -131,50 +103,35 @@ def resend_ad_order_task(orders_json: dict):
     3. Возвращаем ответ со списком удачных и, если есть, неудачных репликаций.
     """
     orders = list(serializers.deserialize('json', orders_json))
-    successful_tasks = 0
-    failed_tasks = 0
+    task_list = []
 
     for order in orders:
         order = order.object
-        clients = order.group.clients.all()
-        task_list = [
+        task_list.append(
             Task(
                 owner=order.owner,
-                client=client,
+                client=order.client,
                 type=4,
                 parameters={
                     'order_id': order.id,
                     'order_parameters': order.parameters,
                     'broadcast_type': order.broadcast_type,
                     'broadcast_interval': order.broadcast_interval,
-                    'file': {
-                        'id': str(order.file.id),
-                        'hash': order.file.hash,
-                        'url': order.file.get_url()
-                    },
-                    'slides': [
-                        {
-                            'id': str(slide.id),
-                            'hash': slide.hash,
-                            'url': slide.get_url()
-                        } for slide in order.slides.all()
-                    ] if order.slides.exists() else None
+                    'playlist': {
+                        'id': str(order.playlist.id),
+                        'files': [
+                            {
+                                'id': str(file.id),
+                                'hash': file.hash
+                            } for file in order.playlist.files.all()
+                        ],
+                        'slides': order.slides if order.slides else None
+                    }
                 }
-            ) for client in clients
-        ]
-        count = len(list(task_list))
-        try:
-            Task.objects.bulk_create(task_list)
-            successful_tasks += count
-        except Exception as e:
-            # TODO retry
-            failed_tasks += count
-            ad_logger.error(f'Не удалось переотправить {count} '
-                            f'заказов: {task_list}.\nОшибка: {e}')
-
-    result = f'Переотправленно заказов: {successful_tasks}. '
-    if failed_tasks:
-        result += f'Ошибки: {failed_tasks}'
+            )
+        )
+    Task.objects.bulk_create(task_list)
+    result = f'Переотправленно заказов: {len(task_list)}.'
     return result
 
 
@@ -194,43 +151,32 @@ def create_bg_order_task(orders_ids: list):
     3. Возвращаем ответ со списком удачных и, если есть, неудачных репликаций.
     """
     orders = BgOrder.objects.filter(pk__in=orders_ids)
-    successful_tasks = 0
-    failed_tasks = 0
+    task_list = []
 
     for order in orders:
-        clients = order.group.clients.all()
-        task_list = [
+        task_list.append(
             Task(
                 owner=order.owner,
-                client=client,
+                client=order.client,
                 type=order.order_type,
                 parameters={
                     'order_id': order.id,
                     'type': order.order_type,
                     'broadcast_interval': order.broadcast_interval,
-                    'playlist': [
-                        {
-                            'id': str(file.id),
-                            'hash': file.hash,
-                            'url': file.get_url()
-                        } for file in order.playlist.files.all()
-                    ]
+                    'playlist': {
+                        'id': str(order.playlist.id),
+                        'files': [
+                            {
+                                'id': str(file.id),
+                                'hash': file.hash
+                            } for file in order.playlist.files.all()
+                        ]
+                    }
                 }
-            ) for client in clients
-        ]
-        count = len(list(task_list))
-        try:
-            Task.objects.bulk_create(task_list)
-            successful_tasks += count
-        except Exception as e:
-            # TODO retry
-            failed_tasks += count
-            bg_logger.error(f'Не удалось создать {count} '
-                            f'заказов: {task_list}.\nОшибка: {repr(e)}')
-
-    result = f'Создано заказов: {successful_tasks}. '
-    if failed_tasks:
-        result += f'Ошибки: {failed_tasks}'
+            )
+        )
+    Task.objects.bulk_create(task_list)
+    result = f'Создано заказов: {len(task_list)}.'
     return result
 
 
@@ -246,41 +192,28 @@ def cancel_bg_order_task(orders_json: dict):
     4. Кол-во ошибок фиксируем и возвращаем, а также логгируем с причиной.
     """
     orders = list(serializers.deserialize('json', orders_json))
-    successful_tasks = 0
-    failed_tasks = 0
+    task_list = []
 
     for order in orders:
         order = order.object
-        clients = order.group.clients.all()
         # order_type -> cancel_{order_type}
         match order.order_type:
             case 0: task_type = 5
             case 1: task_type = 6
             case 2: task_type = 7
             case 3: task_type = 8
-        task_list = [
+        task_list.append(
             Task(
                 owner=order.owner,
-                client=client,
+                client=order.client,
                 type=task_type,
                 parameters={'order_id': order.id}
-            ) for client in clients
-        ]
-        count = len(list(task_list))
-        try:
-            Task.objects.bulk_create(task_list)
-            order.status = 3
-            order.save()
-            successful_tasks += count
-        except Exception as e:
-            # TODO retry
-            failed_tasks += count
-            bg_logger.error(f'Не удалось отменить {count} '
-                            f'заказов: {task_list}.\nОшибка: {repr(e)}')
-
-    result = f'Отменено заказов: {successful_tasks}. '
-    if failed_tasks:
-        result += f'Ошибки: {failed_tasks}'
+            )
+        )
+        order.status = 3
+        order.save()
+    Task.objects.bulk_create(task_list)
+    result = f'Отменено заказов: {len(task_list)}.'
     return result
 
 
@@ -300,42 +233,31 @@ def resend_bg_order_task(orders_json: dict):
     3. Возвращаем ответ со списком удачных и, если есть, неудачных репликаций.
     """
     orders = list(serializers.deserialize('json', orders_json))
-    successful_tasks = 0
-    failed_tasks = 0
+    task_list = []
 
     for order in orders:
         order = order.object
-        clients = order.group.clients.all()
-        task_list = [
+        task_list.append(
             Task(
                 owner=order.owner,
-                client=client,
+                client=order.client,
                 type=order.order_type,
                 parameters={
                     'order_id': order.id,
                     'type': order.order_type,
                     'broadcast_interval': order.broadcast_interval,
-                    'playlist': [
-                        {
-                            'id': str(file.id),
-                            'hash': file.hash,
-                            'url': file.get_url()
-                        } for file in order.playlist.files.all()
-                    ]
+                    'playlist': {
+                        'id': str(order.playlist.id),
+                        'files': [
+                            {
+                                'id': str(file.id),
+                                'hash': file.hash
+                            } for file in order.playlist.files.all()
+                        ]
+                    }
                 }
-            ) for client in clients
-        ]
-        count = len(list(task_list))
-        try:
-            Task.objects.bulk_create(task_list)
-            successful_tasks += count
-        except Exception as e:
-            # TODO retry
-            failed_tasks += count
-            bg_logger.error(f'Не удалось переотправить {count} '
-                            f'заказов: {task_list}.\nОшибка: {repr(e)}')
-
-    result = f'Переотправленно заказов: {successful_tasks}. '
-    if failed_tasks:
-        result += f'Ошибки: {failed_tasks}'
+            )
+        )
+    Task.objects.bulk_create(task_list)
+    result = f'Переотправленно заказов: {len(task_list)}.'
     return result

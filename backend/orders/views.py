@@ -39,7 +39,9 @@ class NoDeleteViewSet(mixins.CreateModelMixin,
 class AdOrderViewSet(NoDeleteViewSet):
     """Работа с рекламными заказами."""
 
-    queryset = AdOrder.objects.all().select_related('owner', 'group', 'file')
+    queryset = AdOrder.objects.all().select_related(
+        'owner', 'client', 'playlist'
+    )
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
 
@@ -52,9 +54,10 @@ class AdOrderViewSet(NoDeleteViewSet):
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
-        orders = serializer.save(owner=self.request.user)
-        orders_ids = [order.id for order in orders]
-        create_ad_order_task.delay(orders_ids)
+        orders_list = serializer.save(owner=self.request.user)
+        for orders in orders_list:
+            orders_ids = [order.id for order in orders]
+            create_ad_order_task.delay(orders_ids)
 
     @action(detail=False, methods=['DELETE'])
     def cancel(self, request):
@@ -136,7 +139,7 @@ class BgOrderViewSet(NoDeleteViewSet):
     """Работа с фоновыми заказами."""
 
     queryset = BgOrder.objects.all().select_related(
-        'owner', 'group', 'playlist'
+        'owner', 'client', 'playlist'
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
@@ -150,9 +153,16 @@ class BgOrderViewSet(NoDeleteViewSet):
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
-        orders = serializer.save(owner=self.request.user)
-        orders_ids = [order.id for order in orders]
-        create_bg_order_task.delay(orders_ids)
+        orders_list = serializer.save(owner=self.request.user)
+        for orders in orders_list:
+            orders_ids = [order.id for order in orders]
+            create_bg_order_task.delay(orders_ids)
+
+    def perform_update(self, serializer):
+        """Запрет на обновление типа заказа."""
+        if 'order_type' in serializer.data:
+            return Response(data='Нельзя менять тип заказа.')
+        super().perform_update(serializer)
 
     @action(detail=False, methods=['DELETE'])
     def cancel(self, request):

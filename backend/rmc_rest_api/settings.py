@@ -124,10 +124,9 @@ USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True
-# здесь должны быть домен(ы) фронта
-# CORS_ORIGIN_WHITELIST = ['localhost:8000', '192.168.0.180:3000']  # os.environ.get('CORS_WHITELIST').split(',')
-# CORS_ALLOWED_ORIGINS = ['http://localhost:3000']
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+if not CORS_ALLOW_ALL_ORIGINS:
+    CORS_ALLOWED_ORIGINS = os.environ.get('FRONTEND_DOMEN')
 
 MINIO_REGION = os.getenv('MINIO_REGION')
 MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
@@ -154,12 +153,14 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
     'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
     'PAGE_SIZE': 25
 }
+if not DEBUG:
+    REST_FRAMEWORK.update({
+        'DEFAULT_PERMISSION_CLASSES': (
+            'rest_framework.permissions.IsAuthenticated',
+        )})
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': td(days=30),
