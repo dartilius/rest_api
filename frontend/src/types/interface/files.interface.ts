@@ -38,9 +38,9 @@ export type FilesCreateRequestDTO = {
 };
 
 export type FilesCreateRequest = {
-  // name: string;
-  fileType: number;
-  tags: number[];
+  name: string;
+  file_type: number;
+  tags?: number[];
   source: string; // новое поле для файла
 };
 
@@ -98,8 +98,9 @@ export type ReadFileResponse = {
   hash: {
     md5: string;
     sha256: string;
-    concatHash: string;
+    concat_hash: string;
   };
+  url: string;
 };
 
 export type UpdateFileRequest = {

@@ -52,12 +52,6 @@ class BaseNomenclatureSerializer(StatisticSerializer):
         read_only_fields = ('file',)
         abstract=True
 
-    def to_representation(self, value):
-        representation = super().to_representation(value)
-        file = File.objects.filter(id=value.file)
-        representation['file'] = file[0].name if file else value.file
-        return representation
-
 
 class BaseFileSerializer(StatisticSerializer):
     """Базовый класс сериализации для срезов по файлам."""
@@ -68,14 +62,6 @@ class BaseFileSerializer(StatisticSerializer):
         fields = StatisticSerializer.Meta.fields + ('client',)
         read_only_fields = ('client',)
         abstract = True
-
-    def to_representation(self, value):
-        representation = super().to_representation(value)
-        nomenclature = Nomenclature.objects.filter(id=value.client)
-        representation['client'] = (
-            nomenclature[0].name if nomenclature else value.client
-        )
-        return representation
 
 
 class NomenclatureAdStatSerializer(

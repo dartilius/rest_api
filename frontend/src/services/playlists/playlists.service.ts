@@ -9,8 +9,9 @@ import {
 } from "@/src/types/interface/playlists.interface";
 
 type Params = {
-  page?: number;
-  limit?: number;
+  page: number;
+  limit: number;
+  search: string;
 };
 
 class PlaylistsService {
@@ -18,7 +19,7 @@ class PlaylistsService {
   private token = getTokenStorage();
   getAll(props: Params) {
 
-    const { page, limit } = props;
+    const { page, limit , search} = props;
 
     const params = new URLSearchParams();
 
@@ -27,6 +28,9 @@ class PlaylistsService {
     }
     if (limit !== undefined) {
       params.append("limit", limit.toString());
+    }
+    if (search !== undefined) {
+      params.append("name", search.toString());
     }
 
     const queryString = params.toString();
@@ -39,15 +43,16 @@ class PlaylistsService {
     });
   }
 
-  getById(id: string) {
-    return axios.get<IPlaylist>(`${this.URL}${id}/`, {
+  async getById(id: string) {
+    const {data} = await axios.get<IPlaylist>(`${this.URL}${id}/`, {
       headers: {
         Authorization: `access_token ${this.token}`,
       },
     });
+    return data
   }
 
-  deleteById(id: string) {
+  deleteById(id: number) {
     return axios.delete(`${this.URL}${id}/`, {
       headers: {
         Authorization: `access_token ${this.token}`,
@@ -63,7 +68,7 @@ class PlaylistsService {
     });
   }
 
-  updateById(id: string, data: any) {
+  updateById(id: number, data: any) {
     return axios.put(`${this.URL}${id}/`, data, {
       headers: {
         Authorization: `access_token ${this.token}`,
