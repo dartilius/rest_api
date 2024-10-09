@@ -174,7 +174,7 @@ export default function FilesListClientPage() {
               <TableBody>
                 {data.results.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>
+                    <TableCell style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '30vw', width: '100%'}}>
                       <Link href={`/files/${item.id}`} target="_blank">
                         {item.name}
                       </Link>
