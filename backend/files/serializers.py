@@ -65,7 +65,8 @@ class FileSerializer(serializers.ModelSerializer):
         slug_field='name',
         many=True,
         queryset=Tag.objects.all(),
-        write_only=True
+        write_only=True,
+        required=False
     )
     source = Base64FileField(write_only=True)
     url = serializers.SerializerMethodField()
@@ -77,6 +78,7 @@ class FileSerializer(serializers.ModelSerializer):
             'size',
             'file_type',
             'source',
+            'tags',
             'url'
         )
         read_only_fields = (
