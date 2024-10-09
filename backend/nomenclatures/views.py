@@ -1,4 +1,7 @@
+from crypt import methods
 from datetime import datetime as dt
+from importlib.metadata import version
+
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -128,6 +131,16 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
              'parameters': task.parameters}
             for task in pending_tasks]}
         return Response(tasks, status=HTTP_200_OK)
+
+    @action(detail=False, methods=['GET'], url_path='versions')
+    def get_versions(self, request):
+        versions = Nomenclature.objects.filter(
+            is_active=True
+        ).values('version').distinct()
+        return Response(
+            {'versions': versions},
+            status=HTTP_200_OK
+        )
 
     @action(detail=True, methods=['GET'], url_path='ad_stat')
     def get_ad_stat(self, request, pk):

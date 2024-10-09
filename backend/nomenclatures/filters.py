@@ -16,6 +16,7 @@ class NomenclatureFilter(FilterSet):
     """
 
     versions = AllValuesMultipleFilter(field_name='version')
+    version = CharFilter(field_name='version', lookup_expr='icontains')
     status = CharFilter(method='get_status')
     name = CharFilter(field_name='name', lookup_expr='icontains')
     id = CharFilter(field_name='id', lookup_expr='iexact')
