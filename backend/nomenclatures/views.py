@@ -1,6 +1,4 @@
-from crypt import methods
 from datetime import datetime as dt
-from importlib.metadata import version
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
