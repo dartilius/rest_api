@@ -12,7 +12,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'role',
             'email',
             'phone_number',
-            'created'
+            'first_name',
+            'last_name'
         )
         read_only_fields = (
             'id',
@@ -30,6 +31,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'last_name': value.last_name,
             'first_name': value.first_name,
         }
+        for field in repr_['full_name']:
+            repr_.pop(field)
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return repr_
 

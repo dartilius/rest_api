@@ -161,7 +161,7 @@ class BgOrderViewSet(NoDeleteViewSet):
     def perform_update(self, serializer):
         """Запрет на обновление типа заказа."""
         if 'order_type' in serializer.data:
-            return Response(data='Нельзя менять тип заказа.')
+            return Response(data='Нельзя менять тип заказа.', status=400)
         super().perform_update(serializer)
 
     @action(detail=False, methods=['DELETE'])

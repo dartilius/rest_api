@@ -21,6 +21,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     filterset_class = CustomUserFilter
     # permission_classes = [IsSuperUserOrAuthReadOnly, ]
 
+    def perform_create(self, serializer):
+        user = serializer.save()
+        user.set_password(self.request.data['password'])
+        user.save()
+
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
             serializer = CustomUserListSerializer
