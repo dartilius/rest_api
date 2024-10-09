@@ -7,7 +7,7 @@ type Props = {
   limit: number;
   name: string;
   file_type?: string;
-  tags?: string[];
+  tags: string[];
   hash?: string;
 };
 
@@ -19,9 +19,11 @@ const useFilesQuery = (props: Props) => {
     queryFn: () =>
       filesService.getAll({
         page,
+          tags,
         limit,
         file_type,
-        name
+        name,
+
       }),
     select: ({ data }) => data,
   });

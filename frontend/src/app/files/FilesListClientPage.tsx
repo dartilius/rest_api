@@ -27,6 +27,7 @@ import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import useFilesQuery from "@/src/hooks/files/useFilesQuery";
 import FilesCreate from "@/src/app/files/create/page";
 import {useDebounce} from "@/src/hooks/useDebounce";
+import {useTagsQuery} from "@/src/hooks/files/useFileQuery";
 
 const colorArray = ['default', 'primary', 'secondary', 'success', 'warning', 'danger'];
 
@@ -45,16 +46,21 @@ export default function FilesListClientPage() {
   const [inputValue, setInputValue] = useState<string | undefined>(undefined);
   const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
   const [hash, setHash] = useState<string>("");
-  const [tagsList, setTagsList] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[] | undefined>(undefined);
   const debouncedName = useDebounce(inputValue, 500);
+  const debounceTags = useDebounce(tags, 500)
   console.log(debouncedName)
   const { data, error, isError, isLoading, isSuccess } = useFilesQuery({
     page,
     limit,
     file_type: type,
     name: debouncedName,
+    tags: debounceTags ? debounceTags : []
   });
+
+  const {data: dataTags} = useTagsQuery({page: 1, limit: 1000})
+
+  const listTagsName = dataTags?.results.map((tag) => tag.name)
 
   const pages = Math.ceil((data?.count || 0) / limit);
 
@@ -116,14 +122,15 @@ export default function FilesListClientPage() {
             <Select
               label="Теги"
               placeholder="Выберите тег"
-              value={tagsList} // Ensure default value is a string
+              value={listTagsName} // Ensure default value is a string
               onChange={(e) => setTags([e.target.value])}
+              selectionMode="multiple"
             >
-              {tagsList.map((option) => (
+              {listTagsName ? listTagsName.map((option) => (
                 <SelectItem key={option} value={option}>
                   {option}
                 </SelectItem>
-              ))}
+              )) : <span>Pusto</span>}
             </Select>
 
             <Input

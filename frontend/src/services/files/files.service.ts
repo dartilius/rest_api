@@ -37,7 +37,7 @@ class FilesService {
     if (props.file_type !== undefined) {
       params.append("file_type", props.file_type);
     }
-    if (props.tags !== undefined) {
+    if (props.tags && props.tags.length > 0) {
       params.append("tags", props.tags.toString());
     }
     if (props.hash !== undefined) {
