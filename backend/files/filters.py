@@ -12,7 +12,7 @@ class FileFilter(FilterSet):
         name        - частичное совпадение
         id          - точное совпадение
         file_type   - точное совпадение
-        tags        - точное совпадение из множества вариантов
+        tags        - селектор из всех возможных вариантов
     """
 
     hash = CharFilter(field_name='hash', lookup_expr='iexact', label='Хэш')
