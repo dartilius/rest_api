@@ -4,12 +4,15 @@ import { useParams } from "next/navigation";
 
 import { toastError } from "@/src/utils/toast-error";
 import Loader from "@/src/components/ui/Loader";
-import useFileQuery from "@/src/hooks/files/useFileQuery";
+import useFileQuery, {useDeleteFileQuery} from "@/src/hooks/files/useFileQuery";
 import {getMediaType} from "@/src/types/types/getMediaType";
 
 import styles from './FileDesc.module.scss'
 import {checkSize} from "@/src/types/types/checkSize";
-import {Image} from "@nextui-org/react";
+import {Button, Image} from "@nextui-org/react";
+import React, {useState} from "react";
+import EditingFileModal from "@/src/app/files/[id]/create/EditingFileModal";
+import DeletingModal from "@/src/components/ui/DeletingModal";
 
 export default function ReadFile() {
   const router = useParams();
@@ -17,9 +20,12 @@ export default function ReadFile() {
   const { data, error, isError, isLoading, isSuccess } = useFileQuery(
     id.toString(),
   );
+  const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
+  const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
+  const deleteFile = useDeleteFileQuery()
+
 
   const type = getMediaType(data?.name)
-  console.log(type)
 
   if (isLoading) {
     return <Loader loading={!isSuccess} />;
@@ -28,7 +34,14 @@ export default function ReadFile() {
     return <>{toastError(error?.message)}</>;
   }
 
-  //TODO: Разбить на отдельные компоненты, чтобы не городить вот это вот всё
+  const handleCloseDeletingModal = () => {
+    setOpenDeletingModal(false);
+  };
+
+  const handleDeletePlaylist = () => {
+    deleteFile.mutate(id?.toString())
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.container_description}>
@@ -38,7 +51,7 @@ export default function ReadFile() {
         </div>
         <div className={styles.container_description_name}>
           <label>Тэги:&nbsp;</label>
-          <span>{data?.tags ? data?.tags?.join(", ") : 'Не указано'}</span>
+          <span>{data?.tags ? data?.tags?.map((v: any) => v.name).join(", ") : 'Не указано'}</span>
         </div>
         <div className={styles.container_description_name}>
           <label>Длина:&nbsp;</label>
@@ -55,6 +68,10 @@ export default function ReadFile() {
         <div className={styles.container_description_name}>
           <label>Hash:&nbsp;</label>
           <span style={{wordBreak: 'break-all'}}>{data?.hash.concat_hash}</span>
+        </div>
+        <div className={styles.container_description_buttons}>
+          <Button onClick={() => setOpenCreatingModal(true)}>Edit</Button>
+          <Button color="danger" onClick={() => setOpenDeletingModal(true)}>Delete</Button>
         </div>
       </div>
       <div className={styles.container_file}>
@@ -79,6 +96,17 @@ export default function ReadFile() {
             />
         )}
       </div>
+      <EditingFileModal
+          open={openCreatingModal}
+          close={() => setOpenCreatingModal(false)}
+          tags={data?.tags}
+          id={id.toString()}
+      />
+      <DeletingModal
+          close={handleCloseDeletingModal}
+          deleteProp={handleDeletePlaylist}
+          open={openDeletingModal}
+      />
     </div>
   );
 }

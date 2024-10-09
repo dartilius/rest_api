@@ -142,7 +142,7 @@ export default function NomenclaturesList() {
               >
                 {data.results.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '50vw'}}>
+                    <TableCell style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '30vw'}}>
                       <Link href={`/nomenclatures/${item.id}`} target="_blank">
                         {item?.status === 0 && (
                           <Chip color="success" variant="bordered">

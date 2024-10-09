@@ -26,6 +26,8 @@ import { checkSize } from "@/src/types/types/checkSize";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import useFilesQuery from "@/src/hooks/files/useFilesQuery";
 import FilesCreate from "@/src/app/files/create/page";
+import {useDebounce} from "@/src/hooks/useDebounce";
+import {useTagsQuery} from "@/src/hooks/files/useFileQuery";
 
 const colorArray = ['default', 'primary', 'secondary', 'success', 'warning', 'danger'];
 
@@ -39,18 +41,26 @@ const getTagColor = (tag: string) => {
 export default function FilesListClientPage() {
   const [limit, setLimit] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState<string | undefined>(undefined);
   const [type, setType] = useState<string>("");
-  const [inputValue, setInputValue] = useState<string>("");
+  const [inputValue, setInputValue] = useState<string | undefined>(undefined);
   const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
   const [hash, setHash] = useState<string>("");
-  const [tagsList, setTagsList] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
-
+  const [tags, setTags] = useState<string[] | undefined>(undefined);
+  const debouncedName = useDebounce(inputValue, 500);
+  const debounceTags = useDebounce(tags, 500)
+  console.log(debouncedName)
   const { data, error, isError, isLoading, isSuccess } = useFilesQuery({
     page,
     limit,
+    file_type: type,
+    name: debouncedName,
+    tags: debounceTags ? debounceTags : []
   });
+
+  const {data: dataTags} = useTagsQuery({page: 1, limit: 1000})
+
+  const listTagsName = dataTags?.results.map((tag) => tag.name)
 
   const pages = Math.ceil((data?.count || 0) / limit);
 
@@ -76,11 +86,11 @@ export default function FilesListClientPage() {
         <div className={styles.container}>
           <div className={styles.sidebar}>
             <Search
-              label="Поиск"
-              placeholder="Введите название"
-              searchValue={search}
-              onSearchChange={handleSearchChange}
-              onSearchSubmit={handleSearchSubmit}
+                label='Поиск'
+                placeholder='Введите название'
+                searchValue={inputValue ? inputValue : ""}
+                onSearchChange={handleSearchChange}
+                onSearchSubmit={() => {}}
             />
 
             <Select
@@ -112,14 +122,15 @@ export default function FilesListClientPage() {
             <Select
               label="Теги"
               placeholder="Выберите тег"
-              value={tagsList} // Ensure default value is a string
+              value={listTagsName} // Ensure default value is a string
               onChange={(e) => setTags([e.target.value])}
+              selectionMode="multiple"
             >
-              {tagsList.map((option) => (
+              {listTagsName ? listTagsName.map((option) => (
                 <SelectItem key={option} value={option}>
                   {option}
                 </SelectItem>
-              ))}
+              )) : <span>Pusto</span>}
             </Select>
 
             <Input
@@ -174,7 +185,7 @@ export default function FilesListClientPage() {
               <TableBody>
                 {data.results.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>
+                    <TableCell style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '30vw', width: '100%'}}>
                       <Link href={`/files/${item.id}`} target="_blank">
                         {item.name}
                       </Link>

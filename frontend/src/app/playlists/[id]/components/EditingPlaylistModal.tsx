@@ -70,7 +70,7 @@ function EditingPlaylistModal(props: Props) {
                             />
                             <Select
                                 required
-                                label="Клиенты"
+                                label="Файлы"
                                 selectionMode="multiple"
                                 defaultSelectedKeys={filesPlaylist?.map((file) => file.id) || []}
                                 onSelectionChange={(selectedKeys) => setFiles([...selectedKeys].map(String))} // Преобразуем ключи в строки

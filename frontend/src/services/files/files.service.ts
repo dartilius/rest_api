@@ -1,10 +1,8 @@
-//TODO: Переписать на классы
-
 import axios from "axios";
 
 import {
   FilesCreateRequest,
-  FilesListResponse,
+  FilesListResponse, ITagsList,
   ReadFileResponse,
 } from "@/src/types/interface/files.interface";
 import { API_URL } from "@/src/config/api.config";
@@ -22,6 +20,7 @@ interface Pagination {
 class FilesService {
   private token = getTokenStorage();
   private URL = `${API_URL}/files/`;
+  private TAGS = `${API_URL}/tags/`
 
   getAll(props: Pagination) {
     const params = new URLSearchParams();
@@ -38,7 +37,7 @@ class FilesService {
     if (props.file_type !== undefined) {
       params.append("file_type", props.file_type);
     }
-    if (props.tags !== undefined) {
+    if (props.tags && props.tags.length > 0) {
       params.append("tags", props.tags.toString());
     }
     if (props.hash !== undefined) {
@@ -70,182 +69,43 @@ class FilesService {
       },
     })
   }
+
+  getALlTags(props: Pagination) {
+    const params = new URLSearchParams();
+    const {page, limit} = props;
+
+    if (page !== undefined) {
+      params.append("page", page.toString());
+    }
+    if (limit !== undefined) {
+      params.append("limit", limit.toString());
+    }
+
+    const queryString = params.toString();
+    const urlWithParams = `${this.TAGS}?${queryString}`;
+
+    return axios.get<ITagsList>(urlWithParams, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      }
+    })
+  }
+
+  updateById(id: string, data: any) {
+    return axios.patch(`${this.URL}${id}/`, data, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    })
+  }
+
+  deleteById(id: string) {
+    return axios.delete(`${this.URL}${id}/`, {
+      headers: {
+        Authorization: `access_token ${this.token}`,
+      },
+    });
+  }
 }
 
 export default new FilesService();
-
-// export const FilesService = {
-//   async getAll({
-//     page,
-//     limit,
-//     name,
-//     file_type,
-//     tags,
-//     hash,
-//   }: Pagination = {}): Promise<FilesListResponse> {
-//     const params = new URLSearchParams();
-
-//     if (page !== undefined) {
-//       params.append("page", page.toString());
-//     }
-//     if (limit !== undefined) {
-//       params.append("limit", limit.toString());
-//     }
-//     if (name !== undefined) {
-//       params.append("name", name);
-//     }
-//     if (file_type !== undefined) {
-//       params.append("file_type", file_type);
-//     }
-//     if (tags !== undefined) {
-//       tags.forEach((tag) => params.append("tags", tag));
-//     }
-//     if (hash !== undefined) {
-//       params.append("hash", hash);
-//     }
-
-//     const url = `${API_URL}/api/files/?${params.toString()}`;
-
-//     const response = await fetch(url, {
-//       method: "GET",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//     });
-
-//     if (response.ok) {
-//       const data: FilesListResponseDTO = await response.json();
-
-//       return filesListResponseTransformer(data);
-//     } else {
-//       throw new Error("Не удалось получить список файлов");
-//     }
-//   },
-
-//   async createFiles(
-//     fileData: { file_type: number; source: string; tags: number[] },
-//     token: string | null,
-//   ): Promise<FilesCreateResponse> {
-//     const url = `${API_URL}/api/files/`;
-
-//     const payload = {
-//       ...fileData,
-//       file_type: Number(fileData.file_type),
-//     };
-
-//     try {
-//       const response = await fetch(url, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `access_token ${token}`,
-//         },
-//         body: JSON.stringify(payload),
-//       });
-
-//       if (response.ok) {
-//         const data = await response.json();
-
-//         // toastSuccess("Файл успешно создан");
-
-//         return filesCreateResponseTransformer(data);
-//       } else {
-//         const errorData = await response.json();
-
-//         throw new Error(
-//           `Не удалось создать файл: ${errorData.detail || response.statusText}`,
-//         );
-//       }
-//     } catch (error) {
-//       // toastError(error);
-//       throw error;
-//     }
-//   },
-
-//   async createTags(
-//     tagsData: TagsCreateRequest,
-//     token: string | null,
-//   ): Promise<TagsCreateResponse> {
-//     const url = `${API_URL}/api/tags/`;
-//     const body = JSON.stringify(tagsData);
-
-//     try {
-//       const response = await fetch(url, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `access_token ${token}`,
-//         },
-//         body: body,
-//       });
-
-//       if (response.ok) {
-//         const data: TagsCreateResponse = await response.json();
-
-//         // toastSuccess("Тег успешно создан");
-
-//         return data;
-//       } else {
-//         throw new Error(`${(response.status, response.statusText)}`);
-//       }
-//     } catch (error) {
-//       // toastError(error);
-//       throw error;
-//     }
-//   },
-
-//   async getById(id: string | string[] | undefined): Promise<ReadFileResponse> {
-//     const url = `${API_URL}/api/files/${id}`;
-
-//     const token = getTokenStorage();
-
-//     try {
-//       const response = await fetch(url, {
-//         method: "GET",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `access_token ${token}`,
-//         },
-//       });
-
-//       if (response.ok) {
-//         const data: ReadFileResponseDTO = await response.json();
-
-//         return readFileResponseTransformer(data);
-//       } else {
-//         throw new Error(`Не удалось получить файл: ${response.statusText}`);
-//       }
-//     } catch (error) {
-//       throw error;
-//     }
-//   },
-
-//   async update(
-//     id: string,
-//     data: UpdateFileRequest,
-//     token: string | undefined,
-//   ): Promise<any> {
-//     const url = `${API_URL}/api/files/${id}`;
-//     const body = JSON.stringify(data);
-
-//     try {
-//       const response = await fetch(url, {
-//         method: "PUT",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `access_token ${token}`,
-//         },
-//         body: body,
-//       });
-
-//       if (response.ok) {
-//         // toastSuccess("Файл успешно обновлен");
-//       } else {
-//         throw new Error(`Не удалось обновить файл: ${response.statusText}`);
-//       }
-//     } catch (error) {
-//       // toastError(error);
-//       throw error;
-//     }
-//   },
-// };
