@@ -29,4 +29,4 @@ COPY . .
 # RUN useradd uid0001
 # USER uid0001
 
-CMD ["/app/start.sh"]
+CMD ["bash", "/app/start.sh"]
