@@ -379,9 +379,9 @@ class BgOrderSerializer(serializers.ModelSerializer):
         clients = Nomenclature.objects.filter(id__in=client_ids)
         order_list = []
         for client in clients:
-            order_list.append(AdOrder(client=client,
+            order_list.append(BgOrder(client=client,
                                       **validated_data))
-        saved_orders = AdOrder.objects.bulk_create(order_list)
+        saved_orders = BgOrder.objects.bulk_create(order_list)
         return saved_orders
 
     def to_representation(self, value):
@@ -400,7 +400,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
                 'id': obj.playlist.id,
                 'name': obj.playlist.name,
                 'files_count': len(
-                    [file for file in value.playlist.files.all()]
+                    [file for file in obj.playlist.files.all()]
                 )
             }
             repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
