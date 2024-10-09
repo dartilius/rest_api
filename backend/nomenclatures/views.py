@@ -1,5 +1,4 @@
 from datetime import datetime as dt
-
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -132,9 +131,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'], url_path='versions')
     def get_versions(self, request):
-        versions = Nomenclature.objects.filter(
-            is_active=True
-        ).values('version').distinct()
+        versions = Nomenclature.values('version').distinct()
         return Response(
             {'versions': versions},
             status=HTTP_200_OK
