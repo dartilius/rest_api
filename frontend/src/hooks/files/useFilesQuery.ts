@@ -5,22 +5,23 @@ import filesService from "@/src/services/files/files.service";
 type Props = {
   page: number;
   limit: number;
-  search?: string;
-  id?: string;
-  versions?: string;
-  status?: string;
-  timezone?: string;
+  name: string;
+  file_type?: string;
+  tags?: string[];
+  hash?: string;
 };
 
 const useFilesQuery = (props: Props) => {
-  const { page, limit, search, status, versions, timezone } = props;
+  const { page, limit, hash, tags, name, file_type } = props;
 
   const { data, isLoading, error, isError, isSuccess } = useQuery({
-    queryKey: ["filesList", page, limit, search, status, versions, timezone],
+    queryKey: ["filesList", page, limit, hash, tags, name, file_type],
     queryFn: () =>
       filesService.getAll({
         page,
         limit,
+        file_type,
+        name
       }),
     select: ({ data }) => data,
   });

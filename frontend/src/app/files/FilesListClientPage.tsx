@@ -26,6 +26,7 @@ import { checkSize } from "@/src/types/types/checkSize";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import useFilesQuery from "@/src/hooks/files/useFilesQuery";
 import FilesCreate from "@/src/app/files/create/page";
+import {useDebounce} from "@/src/hooks/useDebounce";
 
 const colorArray = ['default', 'primary', 'secondary', 'success', 'warning', 'danger'];
 
@@ -39,17 +40,20 @@ const getTagColor = (tag: string) => {
 export default function FilesListClientPage() {
   const [limit, setLimit] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState<string | undefined>(undefined);
   const [type, setType] = useState<string>("");
-  const [inputValue, setInputValue] = useState<string>("");
+  const [inputValue, setInputValue] = useState<string | undefined>(undefined);
   const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
   const [hash, setHash] = useState<string>("");
   const [tagsList, setTagsList] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
-
+  const debouncedName = useDebounce(inputValue, 500);
+  console.log(debouncedName)
   const { data, error, isError, isLoading, isSuccess } = useFilesQuery({
     page,
     limit,
+    file_type: type,
+    name: debouncedName,
   });
 
   const pages = Math.ceil((data?.count || 0) / limit);
@@ -76,11 +80,11 @@ export default function FilesListClientPage() {
         <div className={styles.container}>
           <div className={styles.sidebar}>
             <Search
-              label="Поиск"
-              placeholder="Введите название"
-              searchValue={search}
-              onSearchChange={handleSearchChange}
-              onSearchSubmit={handleSearchSubmit}
+                label='Поиск'
+                placeholder='Введите название'
+                searchValue={inputValue ? inputValue : ""}
+                onSearchChange={handleSearchChange}
+                onSearchSubmit={() => {}}
             />
 
             <Select
