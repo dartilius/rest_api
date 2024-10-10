@@ -117,6 +117,7 @@ export default function FilesCreate(props: Props) {
                     placeholder="Выберите файл"
                     type="file"
                     onChange={handleFileChange}
+                    multiple={true}
                 />
                 {/* </Button> */}
               </div>

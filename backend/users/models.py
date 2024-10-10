@@ -1,11 +1,8 @@
-# from uuid import uuid4
-
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
-# from nomenclatures.models import Nomenclature
 
 ROLES = {
     'admin': 'Сотрудник ТО',
@@ -76,6 +73,10 @@ class CustomUser(AbstractUser):
         """Проверяем, что пользователь админ."""
         return self.role == 'admin'
 
+    def save(self, *args, **kwargs):
+        self.username = self.email
+        super().save(*args, **kwargs)
+
     class Meta:
         db_table = 'custom_user'
         ordering = ('-created',)
@@ -84,20 +85,3 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return f'{self.last_name} {self.first_name}'
-
-
-# class RMPIUser(AbstractUser):
-#     """Пользователи разбы."""
-#
-#     id = models.ForeignKey(
-#         Nomenclature,
-#         related_name="rmpi",
-#         primary_key=True,
-#         on_delete=models.CASCADE
-#     )
-#     username = models.UUIDField(
-#         max_length=36,
-#         default=uuid4,
-#         editable=False,
-#         verbose_name="Логин"
-#     )

@@ -1,5 +1,5 @@
 from django.db.utils import IntegrityError
-from django.http import JsonResponse, HttpResponse
+from django.http import HttpResponse
 
 
 class IntegrityMiddleware:

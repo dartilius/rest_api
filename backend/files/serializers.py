@@ -65,7 +65,8 @@ class FileSerializer(serializers.ModelSerializer):
         slug_field='name',
         many=True,
         queryset=Tag.objects.all(),
-        write_only=True
+        write_only=True,
+        required=False
     )
     source = Base64FileField(write_only=True)
     url = serializers.SerializerMethodField()
@@ -104,7 +105,10 @@ class FileSerializer(serializers.ModelSerializer):
         }
         repr_['file_type'] = TYPES[value.file_type]
         repr_['tags'] = [
-            tag.name for tag in value.tags.all()
+            {
+                "id": tag.id,
+                "name": tag.name
+            } for tag in value.tags.all()
         ] if value.tags.exists() else None
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return repr_

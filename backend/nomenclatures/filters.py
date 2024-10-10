@@ -8,7 +8,8 @@ class NomenclatureFilter(FilterSet):
     Фильтрация номенклатур.
 
     Выполняется по полям:
-        versions    - точное совпадение из множества вариантов
+        versions    - селектор из всех возможных вариантов
+        version     - частичное совпадение
         status      - специальный метод
         name        - частичное совпадение
         id          - точное совпадение
@@ -17,7 +18,7 @@ class NomenclatureFilter(FilterSet):
 
     versions = AllValuesMultipleFilter(field_name='version')
     version = CharFilter(field_name='version', lookup_expr='icontains')
-    status = CharFilter(method='get_status')
+    status = CharFilter(method='get_status', label='Статус')
     name = CharFilter(field_name='name', lookup_expr='icontains')
     id = CharFilter(field_name='id', lookup_expr='iexact')
     timezone = CharFilter(field_name='timezone', lookup_expr='iexact')

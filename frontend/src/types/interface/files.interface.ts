@@ -1,3 +1,5 @@
+import {TagsListResponseDTO} from "@/src/types/interface/tags.interface";
+
 export type FilesListResponseDTO = {
   results: FileResponseDTO[];
   next: string;
@@ -43,6 +45,18 @@ export type FilesCreateRequest = {
   tags?: number[];
   source: string; // новое поле для файла
 };
+
+export interface ITagsList {
+  count: number;
+  next: string;
+  previous: string;
+  results: ITagsListResponseDTO[];
+}
+
+export type ITagsListResponseDTO = {
+  id: number;
+  name: string;
+}
 
 export type FilesCreateResponseDTO = {
   id: string;
@@ -94,11 +108,11 @@ export type ReadFileResponse = {
   length: string;
   size: number;
   fileType: number;
-  tags: string[];
+  tags: any;
   hash: {
     md5: string;
     sha256: string;
-    concatHash: string;
+    concat_hash: string;
   };
   url: string;
 };

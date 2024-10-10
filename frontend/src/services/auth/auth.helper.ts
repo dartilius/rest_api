@@ -2,12 +2,13 @@ import Cookies from "js-cookie";
 
 import { ITokens } from "@/src/types/interface/user.interface";
 import { IAuthResponse } from "@/src/store/user/user.interface";
+import axios, {AxiosInstance} from "axios";
 
 export const saveTokensStorage = (data: ITokens) => {
-  localStorage.setItem("access", data.access);
-  Cookies.set("access", data.access);
-  localStorage.setItem("refresh", data.refresh);
-  Cookies.set("refresh", data.refresh);
+  localStorage.setItem("access_admin", data.access);
+  Cookies.set("access_admin", data.access);
+  localStorage.setItem("refresh_admin", data.refresh);
+  Cookies.set("refresh_admin", data.refresh);
 };
 
 export const saveToStorage = (data: IAuthResponse) => {
@@ -16,10 +17,40 @@ export const saveToStorage = (data: IAuthResponse) => {
 };
 
 export const removeTokensStorage = () => {
-  Cookies.remove("access");
-  Cookies.remove("refresh");
+  Cookies.remove("access_admin");
+  Cookies.remove("refresh_admin");
 };
 
 export const getTokenStorage = () => {
-  return Cookies.get("access");
+  return Cookies.get("access_admin");
 };
+
+
+const createAxiosInstance = (): AxiosInstance => {
+  const token = getTokenStorage();
+
+  const axiosInstance = axios.create({
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `access_token ${token}`,
+    },
+  });
+
+  // Set up an interceptor to handle 401 errors
+  axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        // Ensure the code is executed only on the client side
+        if (typeof window !== 'undefined' && error.response && error.response.status === 401) {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+  );
+
+  return axiosInstance;
+};
+
+const axiosInstance = createAxiosInstance();
+
+export default axiosInstance;
