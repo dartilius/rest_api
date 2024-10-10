@@ -131,7 +131,9 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'], url_path='versions')
     def get_versions(self, request):
-        versions = Nomenclature.values('version').distinct()
+        versions = Nomenclature.objects.order_by().values_list(
+            'version', flat=True
+        ).distinct()
         return Response(
             {'versions': versions},
             status=HTTP_200_OK
