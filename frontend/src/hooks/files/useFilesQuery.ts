@@ -19,7 +19,7 @@ const useFilesQuery = (props: Props) => {
     queryFn: () =>
       filesService.getAll({
         page,
-          tags,
+        tags,
         limit,
         file_type,
         name,
