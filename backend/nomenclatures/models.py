@@ -1,10 +1,8 @@
-from uuid import uuid4
-
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
 from django.contrib.postgres.fields import HStoreField
 
-from users.models import CustomUser
+from api import APIBaseModel
 
 TIMEZONES = {
     'Etc/GMT+11': 'UTC -11',
@@ -50,7 +48,7 @@ STATUSES = {
 }
 
 
-class Nomenclature(models.Model):
+class Nomenclature(APIBaseModel):
     """Рабочая станция."""
 
     keys_validator = KeysValidator(
@@ -58,48 +56,19 @@ class Nomenclature(models.Model):
         strict=True
     )
 
-    id = models.UUIDField(
-        default=uuid4,
-        primary_key=True,
-        unique=True,
-        editable=False,
-        verbose_name='Уникальный идентификатор'
-    )
-    owner = models.ForeignKey(
-        CustomUser,
-        related_name='nomenclatures',
-        verbose_name='Создатель',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Наименование',
-        unique=True
-    )
+    owner = APIBaseModel.owner(related_name='nomenclatures')
     timezone = models.CharField(
         choices=TIMEZONES,
         max_length=31,
         verbose_name='Часовой пояс',
         default='Etc/GMT-7'
     )
-    is_active = models.BooleanField(
-        verbose_name='Актуальность номенклтауры',
-        default=True
+    is_active = APIBaseModel.is_active(
+        verbose_name='Актуальность номенклтауры'
     )
     version = models.CharField(
         max_length=127,
         verbose_name='Версия ПО'
-    )
-    description = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name='Описание'
-    )
-    created = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата создания'
     )
     settings = HStoreField(
         verbose_name='Настройки вещания',

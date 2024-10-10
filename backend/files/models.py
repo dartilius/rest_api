@@ -1,8 +1,7 @@
-from uuid import uuid4
-
 from django.db import models
 from django_minio_backend import MinioBackend
 
+from api import UUIDPKField, APIBaseModel
 from files.file_info import GetFileInfo
 from users.models import CustomUser
 
@@ -38,28 +37,10 @@ def media_path(instance, filename):
     return f'{TYPES[instance.file_type]}/{filename}'
 
 
-class File(models.Model):
+class File(APIBaseModel):
     """Файлы."""
 
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid4,
-        editable=False,
-        verbose_name='Уникальный идентификатор'
-    )
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Наименование',
-        unique=True
-    )
-    owner = models.ForeignKey(
-        CustomUser,
-        related_name='files',
-        blank=True,
-        null=True,
-        verbose_name='Кто загрузил',
-        on_delete=models.SET_NULL
-    )
+    owner = APIBaseModel.owner(related_name='files')
     source = models.FileField(
         verbose_name='Файл',
         upload_to=media_path,
@@ -100,10 +81,6 @@ class File(models.Model):
         related_name='files',
         verbose_name='Тэги',
         blank=True
-    )
-    created = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата создания'
     )
 
     class Meta:

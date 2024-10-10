@@ -1,7 +1,7 @@
-from uuid import uuid4
-
 from django.contrib.postgres.fields import HStoreField
 from django.db import models
+
+from api import UUIDPKField
 from nomenclatures.models import Nomenclature
 from users.models import CustomUser
 
@@ -44,12 +44,7 @@ TASK_TYPES = {
 class Task(models.Model):
     """Репликация."""
 
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid4,
-        editable=False,
-        verbose_name='Уникальный идентификатор'
-    )
+    id = UUIDPKField()
     client = models.ForeignKey(
         Nomenclature,
         related_name='tasks',

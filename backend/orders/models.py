@@ -1,10 +1,10 @@
 from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
-# from django.core.exceptions import ValidationError
 from django.db import models
 
+from api import APIBaseModel
 from nomenclatures.models import Nomenclature
 from users.models import CustomUser
-from files.models import Playlist, File
+from files.models import Playlist
 
 ORDER_TYPES = {
     0: 'Фоновая музыка',
@@ -32,18 +32,9 @@ BROADCAST_TYPES = {
 }
 
 
-class BaseOrder(models.Model):
+class BaseOrder(APIBaseModel):
     """Заказ."""
 
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Название'
-    )
-    description = models.TextField(
-        null=True,
-        blank=True,
-        verbose_name='Описание'
-    )
     broadcast_interval = DateTimeRangeField(
         verbose_name='Интервал работы заказа'
     )
@@ -52,9 +43,17 @@ class BaseOrder(models.Model):
         verbose_name='Статус',
         default=0
     )
-    created = models.DateTimeField(
-        verbose_name='Дата создания',
-        auto_now_add=True
+    client = models.ForeignKey(
+        Nomenclature,
+        related_name='%(class.Meta.db_table)s',
+        verbose_name='Рабочая станция',
+        on_delete=models.DO_NOTHING
+    )
+    playlist = models.ForeignKey(
+        Playlist,
+        related_name='%(class.Meta.db_table)s',
+        verbose_name='Плейлист',
+        on_delete=models.DO_NOTHING
     )
 
     class Meta:
@@ -67,24 +66,6 @@ class BaseOrder(models.Model):
 class AdOrder(BaseOrder):
     """Рекламный заказ."""
 
-    owner = models.ForeignKey(
-        CustomUser,
-        related_name='ad_orders',
-        verbose_name='Создатель',
-        on_delete=models.DO_NOTHING
-    )
-    client = models.ForeignKey(
-        Nomenclature,
-        related_name='ad_orders',
-        verbose_name='Рабочая станция',
-        on_delete=models.DO_NOTHING
-    )
-    playlist = models.ForeignKey(
-        Playlist,
-        related_name='ad_orders',
-        verbose_name='Плейлист',
-        on_delete=models.DO_NOTHING
-    )
     slides = HStoreField(
         verbose_name='Слайды',
         null=True,
@@ -110,24 +91,6 @@ class AdOrder(BaseOrder):
 class BgOrder(BaseOrder):
     """Фоновый заказ."""
 
-    owner = models.ForeignKey(
-        CustomUser,
-        verbose_name='Создатель',
-        related_name='bg_orders',
-        on_delete=models.DO_NOTHING
-    )
-    client = models.ForeignKey(
-        Nomenclature,
-        related_name='bg_orders',
-        verbose_name='Рабочая станция',
-        on_delete=models.DO_NOTHING
-    )
-    playlist = models.ForeignKey(
-        Playlist,
-        related_name='bg_orders',
-        verbose_name='Плейлист',
-        on_delete=models.DO_NOTHING
-    )
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
         verbose_name='Тип фона'
