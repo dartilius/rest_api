@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, {AxiosInstance} from "axios";
 
 import {
   FilesCreateRequest,
@@ -21,6 +21,30 @@ class FilesService {
   private token = getTokenStorage();
   private URL = `${API_URL}/files/`;
   private TAGS = `${API_URL}/tags/`
+  private axiosInstance: AxiosInstance;
+
+  constructor() {
+    this.axiosInstance = axios.create({
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `access_token ${this.token}`,
+      },
+    });
+
+    // Set up an interceptor to handle 401 errors
+    this.axiosInstance.interceptors.response.use(
+        (response) => response,
+        (error) => {
+          // Ensure the code is executed only on the client side
+          if (typeof window !== 'undefined' && error.response && error.response.status === 401) {
+            window.location.href = '/login';
+          }
+          return Promise.reject(error);
+        }
+    );
+
+  }
+
 
   getAll(props: Pagination) {
     const params = new URLSearchParams();
@@ -47,7 +71,7 @@ class FilesService {
     const queryString = params.toString();
     const urlWithParams = `${this.URL}?${queryString}`;
 
-    return axios.get<FilesListResponse>(urlWithParams, {
+    return this.axiosInstance.get<FilesListResponse>(urlWithParams, {
       headers: {
         Authorization: `access_token ${this.token}`,
       },
@@ -55,7 +79,7 @@ class FilesService {
   }
 
   getById(id: string) {
-    return axios.get<ReadFileResponse>(`${this.URL}${id}`, {
+    return this.axiosInstance.get<ReadFileResponse>(`${this.URL}${id}`, {
       headers: {
         Authorization: `access_token ${this.token}`,
       },
@@ -63,7 +87,7 @@ class FilesService {
   }
 
   create(data: FilesCreateRequest) {
-    return axios.post<FilesCreateRequest>(`${this.URL}`, data, {
+    return this.axiosInstance.post<FilesCreateRequest>(`${this.URL}`, data, {
       headers: {
         Authorization: `access_token ${this.token}`,
       },
@@ -84,7 +108,7 @@ class FilesService {
     const queryString = params.toString();
     const urlWithParams = `${this.TAGS}?${queryString}`;
 
-    return axios.get<ITagsList>(urlWithParams, {
+    return this.axiosInstance.get<ITagsList>(urlWithParams, {
       headers: {
         Authorization: `access_token ${this.token}`,
       }
@@ -92,7 +116,7 @@ class FilesService {
   }
 
   updateById(id: string, data: any) {
-    return axios.patch(`${this.URL}${id}/`, data, {
+    return this.axiosInstance.patch(`${this.URL}${id}/`, data, {
       headers: {
         Authorization: `access_token ${this.token}`,
       },
@@ -100,7 +124,7 @@ class FilesService {
   }
 
   deleteById(id: string) {
-    return axios.delete(`${this.URL}${id}/`, {
+    return this.axiosInstance.delete(`${this.URL}${id}/`, {
       headers: {
         Authorization: `access_token ${this.token}`,
       },

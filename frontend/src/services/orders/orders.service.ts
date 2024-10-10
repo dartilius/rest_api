@@ -5,6 +5,7 @@ import {
   AdOrdersListResponse,
   BgOrdersListResponse,
 } from "@/src/types/interface/orders.interface";
+import axiosInstance from "@/src/services/auth/auth.helper";
 
 interface BgOrdersQueryParams {
   name?: string;
@@ -48,7 +49,7 @@ class OrdersService {
         const queryString = params.toString();
         const urlWithParams = `${advertisingUrl}?${queryString}`;
 
-        return axios.get<AdOrdersListResponse>(urlWithParams);
+        return axiosInstance.get<AdOrdersListResponse>(urlWithParams);
       },
     };
   }
@@ -70,7 +71,7 @@ class OrdersService {
         const queryString = params.toString();
         const urlWithParams = `${backgroundUrl}?${queryString}`;
 
-        return axios.get<BgOrdersListResponse>(urlWithParams);
+        return axiosInstance.get<BgOrdersListResponse>(urlWithParams);
       },
     };
   }

@@ -58,7 +58,7 @@ export const useFileUpdateQuery = (id: string) => {
     mutationFn: (data: any) => filesService.updateById(id, data),
     onSuccess: () => {
       toastSuccess(`Файл успешно Обновлен`);
-      queryClient.invalidateQueries({queryKey: ["fileDetails"]});
+      queryClient.invalidateQueries({queryKey: ["fileDetails", "filesList", id]});
     },
     onError: (e: any) => {
       console.log(e)
