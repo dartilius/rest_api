@@ -40,10 +40,9 @@ export type FilesCreateRequestDTO = {
 };
 
 export type FilesCreateRequest = {
-  name: string;
   file_type: number;
   tags?: number[];
-  source: string; // новое поле для файла
+  source: string[];
 };
 
 export interface ITagsList {

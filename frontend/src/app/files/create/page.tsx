@@ -1,14 +1,12 @@
 "use client";
 
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { Select, SelectItem } from "@nextui-org/select";
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
-import { toastSuccess } from "@/src/utils/toast-success";
+import { useCreateFileQuery, useTagsQuery } from "@/src/hooks/files/useFileQuery";
+import { Modal, ModalBody, ModalContent, ModalHeader } from "@nextui-org/react";
 import { fileTypes } from "@/src/types/types/fileTypes";
-import {useCreateFileQuery} from "@/src/hooks/files/useFileQuery";
-import {Modal, ModalBody, ModalContent, ModalHeader} from "@nextui-org/react";
-
 
 type Props = {
   open: boolean;
@@ -18,117 +16,147 @@ type Props = {
 export default function FilesCreate(props: Props) {
   const { open, close } = props;
   const [fileType, setFileType] = useState<string>("1");
-  const [file, setFile] = useState<string | null>(null);
+  const [files, setFiles] = useState<{ file_type: number; source: string; tags: string[] }[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [nameFile, setNameFile] = useState<string | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
   const createFile = useCreateFileQuery();
+
+  const { data: dataTags } = useTagsQuery({ page: 1, limit: 1000 });
+  const listTagsName = dataTags?.results.map((tag) => tag.name);
 
   const getFileMimeType = (fileName: string) => {
     const extension = fileName.split(".").pop();
 
     switch (extension) {
       case "mp3":
-        return "mp3";
+        return "audio/mp3";
       case "wav":
-        return "wav";
+        return "audio/wav";
       case "png":
-        return "png";
+        return "image/png";
       case "jpg":
       case "jpeg":
-        return "jpeg";
+        return "image/jpeg";
       case "gif":
-        return "gif";
+        return "image/gif";
       case "pdf":
         return "application/pdf";
       default:
         return "application/octet-stream";
     }
   };
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
+    const selectedFiles = e.target.files;
+    if (selectedFiles) {
+      const fileReaders: FileReader[] = [];
+      const newFiles: { file_type: number; source: string; tags: string[] }[] = [];
 
-    if (selectedFile) {
-      const reader = new FileReader();
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const reader = new FileReader();
 
-      reader.onloadend = () => {
-        const base64Data = reader.result as string;
-        const mimeType = getFileMimeType(selectedFile.name);
+        reader.onloadend = () => {
+          const base64Data = reader.result as string;
+          const mimeType = getFileMimeType(file.name);
+          const base64String = `data:${file.name};base64,${base64Data.split(",")[1]}`;
 
-        const base64String = `data:${selectedFile.name};base64,${base64Data.split(",")[1]}`;
-        setNameFile(selectedFile.name)
+          newFiles.push({
+            file_type: Number(fileType),
+            source: base64String,
+            tags: tags, // Using the array of tags
+          });
 
+          if (newFiles.length === selectedFiles.length) {
+            setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+          }
+        };
 
-        setFile(base64String);
-      };
-      reader.readAsDataURL(selectedFile);
+        fileReaders.push(reader);
+        reader.readAsDataURL(file);
+      }
     } else {
-      setFile(null);
+      setFiles([]);
     }
   };
 
-  const handleCreateFile = async () => {
-    if (!file) {
-      setError("Пожалуйста, выберите файл");
-
+  const handleCreateFiles = async () => {
+    if (files.length === 0) {
+      setError("Пожалуйста, выберите файлы");
       return;
     }
 
-    createFile.mutate({file_type: Number(fileType), source: file, name: nameFile, tags: ['msuic']})
-    setFile(null);
+    // Send all files as an array in a single request
+    createFile.mutate(files);
+
+    setFiles([]);
     setError(null);
-    setNameFile(null)
   };
 
   const handleTypeChange = (type: string) => {
     setFileType(type);
   };
 
+  const handleTagChange = (selectedTags: string[]) => {
+    setTags(selectedTags); // Update tags as an array of strings
+  };
+
   return (
-    <div>
-      <Modal isOpen={open} onClose={close}>
-        <ModalContent>
-          <ModalHeader>Создание файла</ModalHeader>
-          <ModalBody>
-            <form
-                className="flex gap-4 flex-col"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleCreateFile();
-                }}
-            >
-              <div>
-                <Select
-                    defaultSelectedKeys={[`${fileType}`]}
-                    label="Выберите тип файла"
-                    onChange={(e) => handleTypeChange(e.target.value)}
-                >
-                  {fileTypes.map((option) => (
-                      <SelectItem key={option.key} value={option.key}>
-                        {option.label}
-                      </SelectItem>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                {/* <Button style={{ width: "100%" }}> */}
-                <Input
-                    // className={styles.file}
-                    label="Выберите файл"
-                    placeholder="Выберите файл"
-                    type="file"
-                    onChange={handleFileChange}
-                    multiple={true}
-                />
-                {/* </Button> */}
-              </div>
-              <Button color="secondary" type="submit">
-                Создать файл
-              </Button>
-            </form>
-            {error && <p style={{ color: "red" }}>{error}</p>}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </div>
+      <div>
+        <Modal isOpen={open} onClose={close}>
+          <ModalContent>
+            <ModalHeader>Создание файлов</ModalHeader>
+            <ModalBody>
+              <form
+                  className="flex gap-4 flex-col"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleCreateFiles();
+                  }}
+              >
+                <div>
+                  <Select
+                      defaultSelectedKeys={[`${fileType}`]}
+                      label="Выберите тип файла"
+                      onChange={(e) => handleTypeChange(e.target.value)}
+                  >
+                    {fileTypes.map((option) => (
+                        <SelectItem key={option.key} value={option.key}>
+                          {option.label}
+                        </SelectItem>
+                    ))}
+                  </Select>
+                  <Select
+                      label="Теги"
+                      placeholder="Выберите теги"
+                      value={tags} // Use the tags state as the value
+                      onSelectionChange={(selected) => handleTagChange(Array.from(selected as Set<string>))}
+                      selectionMode="multiple" // Allows multiple tag selection
+                  >
+                    {listTagsName ? listTagsName.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                    )) : <span>Pusto</span>}
+                  </Select>
+                </div>
+                <div>
+                  <Input
+                      label="Выберите файлы"
+                      placeholder="Выберите файлы"
+                      type="file"
+                      onChange={handleFileChange}
+                      multiple={true}
+                  />
+                </div>
+                <Button color="secondary" type="submit">
+                  Создать файлы
+                </Button>
+              </form>
+              {error && <p style={{ color: "red" }}>{error}</p>}
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+      </div>
   );
 }
