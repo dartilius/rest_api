@@ -1,8 +1,10 @@
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import EmailValidator
 from django.db import models
+from uuid import uuid4
 from phonenumber_field.modelfields import PhoneNumberField
 
+from api.custom_base_user import CustomUserManager
 
 ROLES = {
     'admin': 'Сотрудник ТО',
@@ -14,15 +16,21 @@ ROLES = {
 class CustomUser(AbstractUser):
     """Пользователи."""
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
-
     email_validator = EmailValidator(
         message='Такая почта уже занята, либо введены запрещённые символы. '
                 'Разрешены только буквы, цифры и @/./+/-/_ символы, '
                 'а почта должна иметь такой вид: адрес@домен'
     )
 
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+    objects = CustomUserManager()
+
+    username = models.CharField(
+        max_length=32,
+        unique=True,
+        default=uuid4()
+    )
     last_name = models.CharField(
         max_length=150,
         verbose_name='Фамилия',

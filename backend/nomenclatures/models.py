@@ -2,7 +2,7 @@ from django.contrib.postgres.validators import KeysValidator
 from django.db import models
 from django.contrib.postgres.fields import HStoreField
 
-from api import APIBaseModel
+from api import APIBaseObjectModel
 
 TIMEZONES = {
     'Etc/GMT+11': 'UTC -11',
@@ -48,7 +48,7 @@ STATUSES = {
 }
 
 
-class Nomenclature(APIBaseModel):
+class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
 
     keys_validator = KeysValidator(
@@ -56,15 +56,16 @@ class Nomenclature(APIBaseModel):
         strict=True
     )
 
-    owner = APIBaseModel.owner(related_name='nomenclatures')
+    description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Описание'
+    )
     timezone = models.CharField(
         choices=TIMEZONES,
         max_length=31,
         verbose_name='Часовой пояс',
         default='Etc/GMT-7'
-    )
-    is_active = APIBaseModel.is_active(
-        verbose_name='Актуальность номенклтауры'
     )
     version = models.CharField(
         max_length=127,
@@ -85,9 +86,6 @@ class Nomenclature(APIBaseModel):
         ordering = ('-created',)
         verbose_name = 'Номенклатуру'
         verbose_name_plural = 'Номенклатуры'
-
-    def __str__(self):
-        return self.name
 
 
 class NomenclatureAvailability(models.Model):

@@ -1,5 +1,6 @@
-from django.db import models
-from api.custom_models import UUIDPKField, APIBaseModel
+from django.db.models import base, fields
 
-models.fields.UUIDPKField = UUIDPKField
-models.base.APIBaseModel = APIBaseModel
+from api.base_objects import APIBaseObjectModel, UUIDPKField
+
+fields.UUIDPKField = UUIDPKField
+base.APIBaseModel = APIBaseObjectModel

@@ -1,9 +1,8 @@
 from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
 from django.db import models
 
-from api import APIBaseModel
+from api import APIBaseObjectModel
 from nomenclatures.models import Nomenclature
-from users.models import CustomUser
 from files.models import Playlist
 
 ORDER_TYPES = {
@@ -32,9 +31,14 @@ BROADCAST_TYPES = {
 }
 
 
-class BaseOrder(APIBaseModel):
+class BaseOrder(APIBaseObjectModel):
     """Заказ."""
 
+    description = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='Описание'
+    )
     broadcast_interval = DateTimeRangeField(
         verbose_name='Интервал работы заказа'
     )
@@ -45,13 +49,13 @@ class BaseOrder(APIBaseModel):
     )
     client = models.ForeignKey(
         Nomenclature,
-        related_name='%(class.Meta.db_table)s',
+        related_name='%(class)ss',
         verbose_name='Рабочая станция',
         on_delete=models.DO_NOTHING
     )
     playlist = models.ForeignKey(
         Playlist,
-        related_name='%(class.Meta.db_table)s',
+        related_name='%(class)ss',
         verbose_name='Плейлист',
         on_delete=models.DO_NOTHING
     )
@@ -82,7 +86,7 @@ class AdOrder(BaseOrder):
     )
 
     class Meta:
-        db_table = 'ad_order'
+        db_table = 'adorder'
         ordering = ('-created',)
         verbose_name = 'Рекламный заказ'
         verbose_name_plural = 'Реклама'
@@ -97,7 +101,7 @@ class BgOrder(BaseOrder):
     )
 
     class Meta:
-        db_table = 'bg_order'
+        db_table = 'bgorder'
         ordering = ('-created',)
         verbose_name = 'Фоновый заказ'
         verbose_name_plural = 'Фон'

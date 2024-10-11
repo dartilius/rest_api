@@ -2,7 +2,6 @@ import json
 from datetime import time, datetime as dt
 from rest_framework import serializers
 
-from files.models import Playlist
 from nomenclatures.models import Nomenclature
 from orders.models import AdOrder, BgOrder
 
@@ -345,11 +344,6 @@ class AdOrderListSerializer(serializers.ModelSerializer):
 class BgOrderSerializer(serializers.ModelSerializer):
     """Сериализация одного фонового заказа."""
 
-    playlist = serializers.SlugRelatedField(
-        slug_field='id',
-        queryset=Playlist.objects.all(),
-        write_only=True
-    )
     broadcast_interval = DateTimeTZRangeField()
     clients = serializers.ListField(write_only=True)
 
