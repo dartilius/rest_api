@@ -65,6 +65,23 @@ class TagFileSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
 
 
+class FileSourceSerializer(serializers.ModelSerializer):
+    """Сериализация одного файла."""
+
+    source = serializers.FileField()
+
+    class Meta:
+        fields = (
+            'id',
+            'file_type',
+            'source'
+        )
+        read_only_fields = (
+            'id',
+        )
+        model = File
+
+
 class FileSerializer(serializers.ModelSerializer):
     """Сериализация одного файла."""
 
