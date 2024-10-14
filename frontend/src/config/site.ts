@@ -11,16 +11,12 @@ export const siteConfig = {
       href: "/files",
     },
     {
-      label: "Пользователи",
-      href: "/users",
-    },
-    {
-      label: "Группы",
-      href: "/groups",
-    },
-    {
       label: "Плейлисты",
       href: "/playlists",
+    },
+    {
+      label: "Пользователи",
+      href: "/users",
     },
     {
       label: "Репликации",
@@ -29,10 +25,6 @@ export const siteConfig = {
     {
       label: "Заказы",
       href: "/orders",
-    },
-    {
-      label: "Статистика",
-      href: "/statistic",
     },
   ],
   //TODO: добавить остальные разделы, чтобы переделать потом под мобилку.
@@ -48,19 +40,13 @@ export const siteConfig = {
       index: 1,
     },
     {
+      label: "Плейлисты",
+      href: "/playlists",
+    },
+    {
       label: "Пользователи",
       href: "/users",
       index: 2,
-    },
-    {
-      label: "Группы",
-      href: "/groups",
-      index: 3,
-    },
-    {
-      label: "Плейлисты",
-      href: "/playlists",
-      index: 4,
     },
     {
       label: "Репликации",
@@ -71,11 +57,6 @@ export const siteConfig = {
       label: "Заказы",
       href: "/orders",
       index: 7,
-    },
-    {
-      label: "Статистика",
-      href: "/statistic",
-      index: 8,
     },
     {
       label: "Войти",
