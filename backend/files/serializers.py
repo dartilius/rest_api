@@ -1,5 +1,4 @@
 import base64
-from importlib.metadata import requires
 
 from django.core.files.base import ContentFile
 from rest_framework import serializers
