@@ -16,13 +16,45 @@ type Props = {
 export default function FilesCreate(props: Props) {
   const { open, close } = props;
   const [fileType, setFileType] = useState<string>("1");
-  const [files, setFiles] = useState<{ file_type: number; source: string; tags: string[] }[]>([]);
+  const [files, setFiles] = useState<{ file_type: number; source: string; tags: { name: string }[] }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
+  const [searchTag, setSearchTag] = useState<string>(""); // Новый стейт для поиска тега
   const createFile = useCreateFileQuery();
 
   const { data: dataTags } = useTagsQuery({ page: 1, limit: 1000 });
-  const listTagsName = dataTags?.results.map((tag) => tag.name);
+  const listTagsName = dataTags?.results.map((tag) => tag.name) || [];
+
+  // Фильтруем теги на основе введенного текста
+  const filteredTags = listTagsName.filter((tag) =>
+      tag.toLowerCase().includes(searchTag.toLowerCase())
+  );
+
+  const handleTagSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchTag(e.target.value);
+  };
+
+  const handleTagChange = (selectedTags: string[]) => {
+    setTags(selectedTags); // Update tags as an array of strings
+  };
+
+  const handleAddNewTag = () => {
+    if (searchTag && !listTagsName.includes(searchTag) && !tags.includes(searchTag)) {
+      setTags((prevTags) => {
+        // Обновляем состояние тегов
+        return [...prevTags, searchTag];
+      });
+      setSearchTag(""); // Clear the input after adding the new tag
+    }
+  };
+
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleAddNewTag(); // Add the tag if Enter key is pressed
+      e.preventDefault(); // Prevent form submission on Enter
+    }
+  };
 
   const getFileMimeType = (fileName: string) => {
     const extension = fileName.split(".").pop();
@@ -50,7 +82,7 @@ export default function FilesCreate(props: Props) {
     const selectedFiles = e.target.files;
     if (selectedFiles) {
       const fileReaders: FileReader[] = [];
-      const newFiles: { file_type: number; source: string; tags: string[] }[] = [];
+      const newFiles: { file_type: number; source: string; tags: { name: string }[] }[] = [];
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
@@ -64,7 +96,7 @@ export default function FilesCreate(props: Props) {
           newFiles.push({
             file_type: Number(fileType),
             source: base64String,
-            tags: tags, // Using the array of tags
+            tags: tags.map(tag => ({ name: tag })), // Convert string array to array of objects with a name property
           });
 
           if (newFiles.length === selectedFiles.length) {
@@ -90,15 +122,14 @@ export default function FilesCreate(props: Props) {
     createFile.mutate(files);
 
     setFiles([]);
+    setTags([])
+    setSearchTag('')
+    setFileType('')
     setError(null);
   };
 
   const handleTypeChange = (type: string) => {
     setFileType(type);
-  };
-
-  const handleTagChange = (selectedTags: string[]) => {
-    setTags(selectedTags); // Update tags as an array of strings
   };
 
   return (
@@ -114,7 +145,7 @@ export default function FilesCreate(props: Props) {
                     handleCreateFiles();
                   }}
               >
-                <div>
+                <div className='flex flex-col gap-2'>
                   <Select
                       defaultSelectedKeys={[`${fileType}`]}
                       label="Выберите тип файла"
@@ -126,19 +157,38 @@ export default function FilesCreate(props: Props) {
                         </SelectItem>
                     ))}
                   </Select>
-                  <Select
-                      label="Теги"
-                      placeholder="Выберите теги"
-                      value={tags} // Use the tags state as the value
-                      onSelectionChange={(selected) => handleTagChange(Array.from(selected as Set<string>))}
-                      selectionMode="multiple" // Allows multiple tag selection
-                  >
-                    {listTagsName ? listTagsName.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                    )) : <span>Pusto</span>}
-                  </Select>
+                  <div>
+                    {/* Input для поиска или добавления тегов */}
+                    <Input
+                        placeholder="Введите тег для поиска или добавления"
+                        value={searchTag}
+                        onChange={handleTagSearchChange}
+                        onKeyDown={handleKeyDown} // Добавляем новый тег по нажатию Enter
+                    />
+                    {/* Показываем Select только если есть текст в инпуте */}
+                    {/*{searchTag && (*/}
+                    {/*    <Select*/}
+                    {/*        label="Теги"*/}
+                    {/*        placeholder="Выберите теги"*/}
+                    {/*        value={tags}*/}
+                    {/*        onSelectionChange={(selected) => handleTagChange(Array.from(selected as Set<string>))}*/}
+                    {/*        selectionMode="multiple"*/}
+                    {/*        defaultOpen*/}
+                    {/*    >*/}
+                    {/*      {filteredTags.length > 0 ? (*/}
+                    {/*          filteredTags.map((option) => (*/}
+                    {/*              <SelectItem key={option} value={option}>*/}
+                    {/*                {option}*/}
+                    {/*              </SelectItem>*/}
+                    {/*          ))*/}
+                    {/*      ) : (*/}
+                    {/*          <SelectItem isDisabled key="no-options" value="no-options">*/}
+                    {/*            Нет доступных тегов*/}
+                    {/*          </SelectItem>*/}
+                    {/*      )}*/}
+                    {/*    </Select>*/}
+                    {/*)}*/}
+                  </div>
                 </div>
                 <div>
                   <Input
