@@ -58,16 +58,34 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
 
 
+class TagFileSerializer(serializers.Serializer):
+    """Сериализация тегов в файле."""
+
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(max_length=255)
+
+
+class FileSourceSerializer(serializers.ModelSerializer):
+    """Сериализация одного файла."""
+
+    source = serializers.FileField()
+
+    class Meta:
+        fields = (
+            'id',
+            'file_type',
+            'source'
+        )
+        read_only_fields = (
+            'id',
+        )
+        model = File
+
+
 class FileSerializer(serializers.ModelSerializer):
     """Сериализация одного файла."""
 
-    tags = serializers.SlugRelatedField(
-        slug_field='name',
-        many=True,
-        queryset=Tag.objects.all(),
-        write_only=True,
-        required=False
-    )
+    tags = TagFileSerializer(many=True, required=False, allow_empty=True)
     source = Base64FileField(write_only=True)
     url = serializers.SerializerMethodField()
 
@@ -104,14 +122,23 @@ class FileSerializer(serializers.ModelSerializer):
             'concat_hash': value.hash
         }
         repr_['file_type'] = TYPES[value.file_type]
-        repr_['tags'] = [
-            {
-                "id": tag.id,
-                "name": tag.name
-            } for tag in value.tags.all()
-        ] if value.tags.exists() else None
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return repr_
+
+    def create(self, validated_data):
+        tags = validated_data.pop('tags')
+        instance = File.objects.create(**validated_data)
+        tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
+        instance.tags.set(tag_ids)
+        return instance
+
+    def update(self, instance, validated_data):
+        tags = validated_data.pop('tags')
+        tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
+        instance.tags.set(tag_ids)
+        super(self.__class__, self).update(instance, validated_data)
+        instance.save()
+        return instance
 
 
 class FileListSerializer(serializers.ModelSerializer):
