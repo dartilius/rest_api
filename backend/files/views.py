@@ -165,3 +165,6 @@ class UploadFilesViewSet(viewsets.ModelViewSet):
                 kwargs['many'] = True
 
         return serializer(*args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
