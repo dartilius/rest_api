@@ -40,13 +40,11 @@ export default function FilesCreate(props: Props) {
 
   const handleAddNewTag = () => {
     if (searchTag && !listTagsName.includes(searchTag) && !tags.includes(searchTag)) {
-      setTags((prevTags) => {
-        // Обновляем состояние тегов
-        return [...prevTags, searchTag];
-      });
-      setSearchTag(""); // Clear the input after adding the new tag
+      setTags((prevTags) => [...prevTags, searchTag]);
+      setSearchTag(""); // Очистить поле ввода после добавления тега
     }
   };
+
 
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -96,9 +94,10 @@ export default function FilesCreate(props: Props) {
           newFiles.push({
             file_type: Number(fileType),
             source: base64String,
-            tags: tags.map(tag => ({ name: tag })), // Convert string array to array of objects with a name property
+            tags: tags.map((tag) => ({ name: tag })), // Конвертируем строки тегов в объекты
           });
 
+          // Проверяем, что все файлы обработаны
           if (newFiles.length === selectedFiles.length) {
             setFiles((prevFiles) => [...prevFiles, ...newFiles]);
           }
@@ -111,6 +110,7 @@ export default function FilesCreate(props: Props) {
       setFiles([]);
     }
   };
+
 
   const handleCreateFiles = async () => {
     if (files.length === 0) {
@@ -165,29 +165,6 @@ export default function FilesCreate(props: Props) {
                         onChange={handleTagSearchChange}
                         onKeyDown={handleKeyDown} // Добавляем новый тег по нажатию Enter
                     />
-                    {/* Показываем Select только если есть текст в инпуте */}
-                    {/*{searchTag && (*/}
-                    {/*    <Select*/}
-                    {/*        label="Теги"*/}
-                    {/*        placeholder="Выберите теги"*/}
-                    {/*        value={tags}*/}
-                    {/*        onSelectionChange={(selected) => handleTagChange(Array.from(selected as Set<string>))}*/}
-                    {/*        selectionMode="multiple"*/}
-                    {/*        defaultOpen*/}
-                    {/*    >*/}
-                    {/*      {filteredTags.length > 0 ? (*/}
-                    {/*          filteredTags.map((option) => (*/}
-                    {/*              <SelectItem key={option} value={option}>*/}
-                    {/*                {option}*/}
-                    {/*              </SelectItem>*/}
-                    {/*          ))*/}
-                    {/*      ) : (*/}
-                    {/*          <SelectItem isDisabled key="no-options" value="no-options">*/}
-                    {/*            Нет доступных тегов*/}
-                    {/*          </SelectItem>*/}
-                    {/*      )}*/}
-                    {/*    </Select>*/}
-                    {/*)}*/}
                   </div>
                 </div>
                 <div>
