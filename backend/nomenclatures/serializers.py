@@ -1,14 +1,11 @@
 from datetime import time
 from rest_framework import serializers
 
-from api.logger import setup_logger
 from nomenclatures.models import (
     Nomenclature,
     StatusHistory,
     TIMEZONES
 )
-
-logger = setup_logger('nom', 'nom.log')
 
 
 class NomenclatureSerializer(serializers.ModelSerializer):
