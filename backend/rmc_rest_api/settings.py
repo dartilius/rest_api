@@ -48,7 +48,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
-    'api.middleware.IntegrityMiddleware',
+    'api.middleware.IntegrityMiddleware',  # ждём фикса в джанге и убираем это
 ]
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
@@ -124,6 +124,14 @@ USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
+    'PAGE_SIZE': 25,
+}
+
 # ---------------------------------- MINIO ---------------------------------- #
 
 MINIO_REGION = os.getenv('MINIO_REGION')
@@ -148,14 +156,6 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND')
 CELERY_SINGLETON_BACKEND_URL = CELERY_RESULT_BACKEND
 CELERY_TIMEZONE = TIME_ZONE
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
-    'PAGE_SIZE': 25
-}
 
 # -------------------------------- SECURITY --------------------------------- #
 

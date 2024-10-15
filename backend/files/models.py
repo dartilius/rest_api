@@ -1,5 +1,6 @@
 from django.db import models
 from django_minio_backend import MinioBackend
+from psycopg.errors import UniqueViolation
 
 from api import APIBaseObjectModel
 from files.file_info import GetFileInfo
@@ -86,6 +87,22 @@ class File(APIBaseObjectModel):
         ordering = ('-created',)
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
+        # добавляем это после фикса в джанге
+        # https://github.com/django/django/pull/17723
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=['name'],
+        #         name='unique_file_name',
+        #         violation_error_message='Файл с таким названием уже существует',
+        #         violation_error_code=400
+        #     ),
+        #     models.UniqueConstraint(
+        #         fields=['hash'],
+        #         name='unique_file_hash',
+        #         violation_error_message='Файл с таким хешем уже существует',
+        #         violation_error_code=400
+        #     )
+        # ]
 
     def save(self, *args, **kwargs):
         """

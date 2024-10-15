@@ -1,8 +1,7 @@
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
-from django.contrib.postgres.fields import HStoreField
 
-from api import APIBaseObjectModel
+from api import APIBaseObjectModel, Article
 
 TIMEZONES = {
     'Etc/GMT+11': 'UTC -11',
@@ -56,6 +55,7 @@ class Nomenclature(APIBaseObjectModel):
         strict=True
     )
 
+    article = Article()
     description = models.TextField(
         blank=True,
         null=True,
@@ -71,11 +71,11 @@ class Nomenclature(APIBaseObjectModel):
         max_length=127,
         verbose_name='Версия ПО'
     )
-    settings = HStoreField(
+    settings = models.JSONField(
         verbose_name='Настройки вещания',
         validators=(keys_validator,)
     )
-    hw_info = HStoreField(
+    hw_info = models.JSONField(
         verbose_name='Информация о железе',
         blank=True,
         null=True
@@ -84,8 +84,16 @@ class Nomenclature(APIBaseObjectModel):
     class Meta:
         db_table = 'nomenclature'
         ordering = ('-created',)
-        verbose_name = 'Номенклатуру'
+        verbose_name = 'Номенклатура'
         verbose_name_plural = 'Номенклатуры'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name'],
+                name='unique_nomenclature_name',
+                violation_error_message='Номенклатура с таким названием '
+                                        'уже существует'
+            )
+        ]
 
 
 class NomenclatureAvailability(models.Model):
@@ -136,7 +144,7 @@ class StatusHistory(models.Model):
     class Meta:
         db_table = 'status_history'
         ordering = ('-change_time',)
-        verbose_name = 'Историю доступности'
+        verbose_name = 'История доступности'
         verbose_name_plural = 'История доступности'
 
     def __str__(self):

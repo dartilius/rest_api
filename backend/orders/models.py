@@ -1,4 +1,4 @@
-from django.contrib.postgres.fields import DateTimeRangeField, HStoreField
+from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
 
 from api import APIBaseObjectModel
@@ -70,7 +70,7 @@ class BaseOrder(APIBaseObjectModel):
 class AdOrder(BaseOrder):
     """Рекламный заказ."""
 
-    slides = HStoreField(
+    slides = models.JSONField(
         verbose_name='Слайды',
         null=True,
         blank=True
@@ -80,7 +80,7 @@ class AdOrder(BaseOrder):
         verbose_name='Тип вещания',
         default=0
     )
-    parameters = HStoreField(
+    parameters = models.JSONField(
         verbose_name='Параметры заказа',
         default=dict
     )
