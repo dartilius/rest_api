@@ -31,6 +31,11 @@ class UUIDPKField(UUIDField):
 
 
 class Article(Field):
+    """
+    Авто-инкрементное поле, но при этом не PK.
+
+    Собрано из стандартных AutoField и IntegerField.
+    """
     description = _("Integer")
 
     empty_strings_allowed = False
