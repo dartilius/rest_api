@@ -1,6 +1,5 @@
 from django.db import models
 from django_minio_backend import MinioBackend
-from psycopg.errors import UniqueViolation
 
 from api import APIBaseObjectModel
 from files.file_info import GetFileInfo
