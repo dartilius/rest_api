@@ -1,6 +1,3 @@
-import ast
-import json
-
 from datetime import time
 from rest_framework import serializers
 
@@ -22,6 +19,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             'id',
             'owner',
             'name',
+            'article',
             'timezone',
             'status',
             'last_answer',
@@ -48,50 +46,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         Проверяется наличие обязательных ключей worktime и default_volume,
         корректность значений этих ключей и опциональных значений custom_volume
-
-        Пояснение к валидации пользовательских настроек громкости.
-        ----------------------------------------------------------
-        Пример пользовательских настроек:
-        ...
-        \"custom_volume\": {\"((14,),(16,))\": \"(77, 77, 77, 77)\",
-                        \"((13,),(15,))\": \"(11, 11, 11, 11)\"}}"
-        ...
-        Разберём код по шагам:
-
-        1.  if 'custom_volume' in j:
-                for k, v in j['custom_volume'].items():
-                    _validate_time(*ast.literal_eval(k))
-                    _validate_volume(ast.literal_eval(v))
-
-        2.      sorted_times = sorted((j['custom_volume']))
-
-        3.      for curr, next_ in zip(sorted_times, sorted_times[1:]):
-                    curr = ast.literal_eval(curr)[1][0]
-                    next_ = ast.literal_eval(next_)[0][0]
-
-        4.          if curr > next_:
-                        raise serializers.ValidationError(
-                            'Обнаружено пересечение в часах '
-                            'пользовательских настроек громкости'
-                        )
-
-        1.  Сперва проверяем корректность настроек
-        2.  Далее сравниваем заданные периоды времени на пересечение, для этого
-            сначала сортируем периоды. В нашем примере получится:
-
-            sorted_times = ['((13,),(15,))', '((14,),(16,))']
-
-        3.  Теперь нужно сравнить конец предшествующего периода
-            с началом следующего. Чтобы извлечь только конец периода,
-            мы обращаемся ко вложенному кортежу:
-
-            ast.literal_eval(curr)[1][0] = 15
-
-        4.  Если конец предыдущего периода меньше начала следующего периода,
-            значит есть пересечение, вызываем исключение
-
-        Узнать больше про zip можно в официальной документации
-        https://docs.python.org/3/library/functions.html#zip
         """
 
         def _validate_time(interval: str) -> None:
@@ -110,8 +64,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
 
         def _validate_volume(volume: tuple) -> None:
-            """Валидация натроек громкости."""
+            """Валидация настроек громкости."""
             length = 4
+            if len(volume) != length:
+                raise serializers.ValidationError(
+                    f'Значений громкости должно быть ровно {length}'
+                )
             if not all(isinstance(vol, int) for vol in volume):
                 raise serializers.ValidationError(
                     'Громкость должна передаваться целочисленным значением'
@@ -120,35 +78,36 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     'Громкость может быть только от 0 до 100'
                 )
-            if len(volume) != length:
-                raise serializers.ValidationError(
-                    f'Значений громкости должно быть ровно {length}'
-                )
 
-        for day in value:
-            j = json.loads(value[day])
+        def _validate_collision(custom_settings: dict) -> None:
+            """Валидация пересечения временных отрезков для custom_volume."""
+            sorted_settings = sorted(custom_settings)
+            for curr, next_ in zip(sorted_settings, sorted_settings[1:]):
+                split_curr = curr.split('-')
+                end_curr = list(map(int, split_curr[1].split(':')))
+                split_next = next_.split('-')
+                start_next = list(map(int, split_next[0].split(':')))
+                if time(*end_curr) > time(*start_next):
+                    raise serializers.ValidationError(
+                        'Обнаружено пересечение в часах '
+                        'пользовательских настроек громкости'
+                    )
+
+        for day, settings in value.items():
             try:
                 req_keys = {
-                    'worktime': j['worktime'],
-                    'default_volume': ast.literal_eval(j['default_volume'])
+                    'worktime': settings['worktime'],
+                    'default_volume': tuple(settings['default_volume'])
                 }
             except KeyError as k:
                 raise serializers.ValidationError(f'{k} не передан')
             _validate_time(req_keys['worktime'])
             _validate_volume(req_keys['default_volume'])
-            if 'custom_volume' in j:
-                for k, v in j['custom_volume'].items():
-                    _validate_time(*ast.literal_eval(k))
-                    _validate_volume(ast.literal_eval(v))
-                sorted_times = sorted((j['custom_volume']))
-                for curr, next_ in zip(sorted_times, sorted_times[1:]):
-                    curr = ast.literal_eval(curr)[1][0]
-                    next_ = ast.literal_eval(next_)[0][0]
-                    if curr > next_:
-                        raise serializers.ValidationError(
-                            'Обнаружено пересечение в часах '
-                            'пользовательских настроек громкости'
-                        )
+            if 'custom_volume' in settings:
+                for interval, volume in settings['custom_volume'].items():
+                    _validate_time(interval)
+                    _validate_volume(tuple(volume))
+                _validate_collision(settings['custom_volume'])
         return value
 
     def get_status(self, obj):
@@ -181,25 +140,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         for field in repr_['main_info']:
             repr_.pop(field)
         for day, setting in repr_['settings'].items():
-            j = json.loads(setting)
-            split_interval = j['worktime'].split('-')
-            start = split_interval[0]
-            end = split_interval[1]
-            try:
-                repr_['settings'][day] = {
-                    'worktime': (start, end),
-                    'custom_volume': [(
-                        f'{time(*ast.literal_eval(k)[0])} - '
-                        f'{time(*ast.literal_eval(k)[1])}',
-                        ast.literal_eval(v)
-                    ) for k, v in j['custom_volume'].items()],
-                    'default_volume': ast.literal_eval(j['default_volume'])
-                }
-            except KeyError:
-                repr_['settings'][day] = {
-                    'worktime': (start, end),
-                    'default_volume': ast.literal_eval(j['default_volume'])
-                }
+            repr_['settings'][day] = {
+                'worktime': setting['worktime'],
+                'default_volume': setting['default_volume'],
+                'custom_volume': setting['custom_volume']
+                if 'custom_volume' in setting else {}
+            }
         return repr_
 
 
@@ -212,6 +158,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     class Meta:
         fields = (
             'id',
+            'article',
             'name',
             'timezone',
             'status',

@@ -67,25 +67,6 @@ class FileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    # @action(detail=False, methods=['POST'])
-    # def download(self, request):
-    #     from api.constants import Constants
-    #     from datetime import timedelta as td
-    #
-    #     client = Constants.get_minio_client()
-    #     file_ids = request.data['file_id']
-    #     file_urls = []
-    #     for file_id in file_ids:
-    #         file = File.objects.get(pk=file_id)
-    #         url = client.get_presigned_url(
-    #             'GET',
-    #             'local-media',
-    #             f'{file.source}',
-    #             expires=td(hours=2)
-    #         )
-    #         file_urls.append(url)
-    #     return Response(file_urls)
-
     @action(detail=True, methods=['GET'], url_path='stat')
     def get_stat(self, request, pk):
         """Отображение статистики музыки."""

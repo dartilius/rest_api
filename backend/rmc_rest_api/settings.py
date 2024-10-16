@@ -48,7 +48,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
-    'api.middleware.IntegrityMiddleware',
+    'api.middleware.IntegrityMiddleware',  # ждём фикса в джанге и убираем это
 ]
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
@@ -124,10 +124,15 @@ USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
-    CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
+    'PAGE_SIZE': 25,
+}
+
+# ---------------------------------- MINIO ---------------------------------- #
 
 MINIO_REGION = os.getenv('MINIO_REGION')
 MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
@@ -145,23 +150,24 @@ MINIO_MEDIA_FILES_BUCKET = 'local-media'
 STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
 
+# --------------------------------- CELERY ---------------------------------- #
+
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND')
 CELERY_SINGLETON_BACKEND_URL = CELERY_RESULT_BACKEND
 CELERY_TIMEZONE = TIME_ZONE
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
-    'PAGE_SIZE': 25
-}
+# -------------------------------- SECURITY --------------------------------- #
+
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
+    CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
     REST_FRAMEWORK.update({
         'DEFAULT_PERMISSION_CLASSES': (
             'rest_framework.permissions.IsAuthenticated',
         )})
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': td(days=30),
@@ -171,6 +177,8 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',)
 }
+
+# ------------------------------ DEBUG TOOLBAR ------------------------------ #
 
 
 def show_toolbar(request):
