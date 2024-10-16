@@ -34,7 +34,7 @@ def create_ad_order_task(orders_ids: list):
                 client=order.client,
                 type=4,
                 parameters={
-                    'order_id': order.id,
+                    'order_id': str(order.id),
                     'order_parameters': order.parameters,
                     'broadcast_type': order.broadcast_type,
                     'broadcast_interval': order.broadcast_interval,

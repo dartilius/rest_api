@@ -1,10 +1,8 @@
-from uuid import uuid4
-
 from django.db import models
 from django_minio_backend import MinioBackend
 
+from api import APIBaseObjectModel
 from files.file_info import GetFileInfo
-from users.models import CustomUser
 
 TYPES = {
     0: 'ad',
@@ -38,28 +36,9 @@ def media_path(instance, filename):
     return f'{TYPES[instance.file_type]}/{filename}'
 
 
-class File(models.Model):
+class File(APIBaseObjectModel):
     """Файлы."""
 
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid4,
-        editable=False,
-        verbose_name='Уникальный идентификатор'
-    )
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Наименование',
-        unique=True
-    )
-    owner = models.ForeignKey(
-        CustomUser,
-        related_name='files',
-        blank=True,
-        null=True,
-        verbose_name='Кто загрузил',
-        on_delete=models.SET_NULL
-    )
     source = models.FileField(
         verbose_name='Файл',
         upload_to=media_path,
@@ -88,8 +67,8 @@ class File(models.Model):
     )
     size = models.IntegerField(
         editable=False,
-        default=0,
-        verbose_name='Размер'
+        verbose_name='Размер',
+        default=0
     )
     file_type = models.PositiveSmallIntegerField(
         choices=TYPES,
@@ -101,19 +80,28 @@ class File(models.Model):
         verbose_name='Тэги',
         blank=True
     )
-    created = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата создания'
-    )
 
     class Meta:
         db_table = 'file'
         ordering = ('-created',)
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
-
-    def __str__(self):
-        return self.name
+        # добавляем это после фикса в джанге
+        # https://github.com/django/django/pull/17723
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=['name'],
+        #         name='unique_file_name',
+        #         violation_error_message='Файл с таким названием уже существует',
+        #         violation_error_code=400
+        #     ),
+        #     models.UniqueConstraint(
+        #         fields=['hash'],
+        #         name='unique_file_hash',
+        #         violation_error_message='Файл с таким хешем уже существует',
+        #         violation_error_code=400
+        #     )
+        # ]
 
     def save(self, *args, **kwargs):
         """
@@ -158,35 +146,18 @@ class File(models.Model):
         return url
 
 
-class Playlist(models.Model):
+class Playlist(APIBaseObjectModel):
     """Плейлисты."""
 
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Название',
-        unique=True
-    )
     description = models.TextField(
         blank=True,
         null=True,
         verbose_name='Описание'
     )
-    owner = models.ForeignKey(
-        CustomUser,
-        related_name='playlists',
-        verbose_name='Создатель',
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True
-    )
     files = models.ManyToManyField(
         File,
         related_name='files',
         verbose_name='Файлы'
-    )
-    created = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата создания'
     )
 
     class Meta:
@@ -194,6 +165,3 @@ class Playlist(models.Model):
         ordering = ('-created',)
         verbose_name = 'Плейлист'
         verbose_name_plural = 'Плейлисты'
-
-    def __str__(self):
-        return self.name
