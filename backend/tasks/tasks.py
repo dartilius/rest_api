@@ -37,7 +37,8 @@ def create_ad_order_task(orders_ids: list):
                     'order_id': str(order.id),
                     'order_parameters': order.parameters,
                     'broadcast_type': order.broadcast_type,
-                    'broadcast_interval': order.broadcast_interval,
+                    'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                          f'{order.broadcast_interval.upper}',
                     'playlist': {
                         'id': str(order.playlist.id),
                         'files': [
@@ -77,7 +78,7 @@ def cancel_ad_order_task(orders_json: dict):
                 owner=order.owner,
                 client=order.client,
                 type=9,
-                parameters={'order_id': order.id}
+                parameters={'order_id': str(order.id)}
             )
         )
         order.status = 3
@@ -113,10 +114,11 @@ def resend_ad_order_task(orders_json: dict):
                 client=order.client,
                 type=4,
                 parameters={
-                    'order_id': order.id,
+                    'order_id': str(order.id),
                     'order_parameters': order.parameters,
                     'broadcast_type': order.broadcast_type,
-                    'broadcast_interval': order.broadcast_interval,
+                    'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                          f'{order.broadcast_interval.upper}',
                     'playlist': {
                         'id': str(order.playlist.id),
                         'files': [
@@ -160,9 +162,10 @@ def create_bg_order_task(orders_ids: list):
                 client=order.client,
                 type=order.order_type,
                 parameters={
-                    'order_id': order.id,
+                    'order_id': str(order.id),
                     'type': order.order_type,
-                    'broadcast_interval': order.broadcast_interval,
+                    'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                          f'{order.broadcast_interval.upper}',
                     'playlist': {
                         'id': str(order.playlist.id),
                         'files': [
@@ -207,7 +210,7 @@ def cancel_bg_order_task(orders_json: dict):
                 owner=order.owner,
                 client=order.client,
                 type=task_type,
-                parameters={'order_id': order.id}
+                parameters={'order_id': str(order.id)}
             )
         )
         order.status = 3
@@ -243,9 +246,10 @@ def resend_bg_order_task(orders_json: dict):
                 client=order.client,
                 type=order.order_type,
                 parameters={
-                    'order_id': order.id,
+                    'order_id': str(order.id),
                     'type': order.order_type,
-                    'broadcast_interval': order.broadcast_interval,
+                    'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                          f'{order.broadcast_interval.upper}',
                     'playlist': {
                         'id': str(order.playlist.id),
                         'files': [
