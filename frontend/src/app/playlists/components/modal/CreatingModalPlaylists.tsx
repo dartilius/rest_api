@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import {ChangeEvent, useState} from "react";
 import {
   Button,
   Input,
@@ -30,18 +30,17 @@ const CreatingModalPlaylists = (props: Props) => {
   const { data } = useFilesQuery({ page, limit });
   const createPlaylist = useCreatePlaylistQuery();
 
-  const changeName = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const changeName = (event: ChangeEvent<HTMLInputElement>) => {
     setName(event.target.value);
   };
-  const changeDescription = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const changeDescription = (event: ChangeEvent<HTMLInputElement>) => {
     setDescription(event.target.value);
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: ChangeEvent<HTMLFormElement>) => {
     event.preventDefault();
     createPlaylist.mutate({ name, description, files });
     close();
-    toastSuccess("Группа успешно создана");
     //   setTimeout(() => {
     //     window.location.reload();
     //   }, 2000);
@@ -73,7 +72,7 @@ const CreatingModalPlaylists = (props: Props) => {
                   value={description}
                   onChange={changeDescription}
                 />
-                <Select required label="Клиенты" selectionMode="multiple">
+                <Select required label="Файлы" selectionMode="multiple">
                   {data.results.map((file) => (
                     <SelectItem
                       key={file.id}

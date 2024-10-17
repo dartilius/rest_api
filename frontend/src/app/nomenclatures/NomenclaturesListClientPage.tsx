@@ -67,7 +67,7 @@ export default function NomenclaturesList() {
 
   return (
     <>
-      {data && (
+
         <div className={styles.container}>
           <div className={styles.sidebar}>
             <Search
@@ -114,80 +114,80 @@ export default function NomenclaturesList() {
               onSearchSubmit={() => {}} // Submit обработчик теперь не нужен
             />
           </div>
-
-          <div>
-            <Table
-              isHeaderSticky
-              aria-label="Example table with static content"
-              bottomContent={
-                <PaginationComponent
-                  limit={limit}
-                  page={page}
-                  total={pages}
-                  onLimitChange={setLimit}
-                  onPageChange={setPage}
-                />
-              }
-            >
-              <TableHeader>
-                <TableColumn>Название</TableColumn>
-                <TableColumn>Версия</TableColumn>
-                <TableColumn>Последний ответ</TableColumn>
-                <TableColumn>Временная зона</TableColumn>
-              </TableHeader>
-              <TableBody
-                emptyContent={"Нет данных для отображения."}
-                isLoading={!isSuccess}
-                loadingContent={<Loader loading={!isSuccess} />}
+          {data && (
+            <div>
+              <Table
+                isHeaderSticky
+                aria-label="Example table with static content"
+                bottomContent={
+                  <PaginationComponent
+                    limit={limit}
+                    page={page}
+                    total={pages}
+                    onLimitChange={setLimit}
+                    onPageChange={setPage}
+                  />
+                }
               >
-                {data.results.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <Link href={`/nomenclatures/${item.id}`} target="_blank">
-                        {item?.status === 0 && (
-                          <Chip color="success" variant="bordered">
-                            {item.name}
-                          </Chip>
-                        )}
-                        {item?.status === 1 && (
-                          <Chip color="warning" variant="bordered">
-                            {item.name}
-                          </Chip>
-                        )}
-                        {item?.status === 2 && (
-                          <Chip color="danger" variant="bordered">
-                            {item.name}
-                          </Chip>
-                        )}
-                        {item.status === null && (
-                          <Chip color="default" variant="bordered">
-                            {item.name}
-                          </Chip>
-                        )}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Link href={`/nomenclatures/${item.id}`} target="_blank">
-                        {item.version}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Link href={`/nomenclatures/${item.id}`} target="_blank">
-                        {item.last_answer}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Link href={`/nomenclatures/${item.id}`} target="_blank">
-                        {item.timezone}
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                <TableHeader>
+                  <TableColumn>Название</TableColumn>
+                  <TableColumn>Версия</TableColumn>
+                  <TableColumn>Последний ответ</TableColumn>
+                  <TableColumn>Временная зона</TableColumn>
+                </TableHeader>
+                <TableBody
+                  emptyContent={"Нет данных для отображения."}
+                  isLoading={!isSuccess}
+                  loadingContent={<Loader loading={!isSuccess} />}
+                >
+                  {data.results.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '30vw'}}>
+                        <Link href={`/nomenclatures/${item.id}`} target="_blank">
+                          {item?.status === 0 && (
+                            <Chip color="success" variant="bordered">
+                              <span>{item.name}</span>
+                            </Chip>
+                          )}
+                          {item?.status === 1 && (
+                            <Chip color="warning" variant="bordered">
+                              {item.name}
+                            </Chip>
+                          )}
+                          {item?.status === 2 && (
+                            <Chip color="danger" variant="bordered">
+                              {item.name}
+                            </Chip>
+                          )}
+                          {item.status === null && (
+                            <Chip color="default" variant="bordered">
+                              {item.name}
+                            </Chip>
+                          )}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/nomenclatures/${item.id}`} target="_blank">
+                          {item.version}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/nomenclatures/${item.id}`} target="_blank">
+                          {item.last_answer}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/nomenclatures/${item.id}`} target="_blank">
+                          {item.timezone}
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
-      )}
     </>
   );
 }

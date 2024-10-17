@@ -27,6 +27,7 @@ export interface NomenclatureInterface {
     version: string;
   }
   settings: SettingsInterface;
+  hw_info: any;
 }
 
 // export interface NomenclatureInterface {

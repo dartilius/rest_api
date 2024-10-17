@@ -28,7 +28,7 @@ from files.serializers import (
     PlaylistListSerializer,
     FileSerializer,
     FileListSerializer,
-    TagSerializer
+    TagSerializer, FileSourceSerializer
 )
 from files.models import Playlist, File, Tag
 
@@ -117,6 +117,28 @@ class PlaylistViewSet(viewsets.ModelViewSet):
             serializer = PlaylistListSerializer
         else:
             serializer = PlaylistSerializer
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return serializer(*args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+
+class UploadFilesViewSet(viewsets.ModelViewSet):
+    """Для загрузки файлов из старой админки."""
+
+    queryset = File.objects.all().select_related(
+        'owner'
+    )
+    serializer_class = FileSourceSerializer()
+
+    def get_serializer(self, *args, **kwargs):
+        serializer = FileSourceSerializer
         if 'data' in kwargs:
             data = kwargs['data']
 

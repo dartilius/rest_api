@@ -51,6 +51,10 @@ const dayNames: Record<string, string> = {
   sun: "Воскресенье",
 };
 
+function parseStringData(data: any) {
+  return JSON.parse(data.replace(/'/g, '"'));
+}
+
 export default function NomenclatureDetails(props: Props) {
   const { data } = props;
   const id = useIdFromParams();
@@ -120,6 +124,19 @@ export default function NomenclatureDetails(props: Props) {
     setOpenDeletingModal(false);
   };
 
+  const interfaces = parseStringData(data.hw_info.interfaces);
+
+// Парсим audiodevices
+  const audiodevices = parseStringData(data.hw_info.audiodevices);
+
+// Парсим sd_card_data
+  const sd_card_data = parseStringData(data.hw_info.sd_card_data);
+
+// Выводим результаты
+  console.log('Interfaces:', interfaces);
+  console.log('Audio Devices:', audiodevices);
+  console.log('SD Card Data:', sd_card_data);
+
   return (
       <div className={styles.container}> {/*container*/}
         <div className={styles.container_upperBlock}> {/*block main and hw*/}
@@ -155,9 +172,41 @@ export default function NomenclatureDetails(props: Props) {
 
 
           </div>
-
+          <div className={styles.container_upperBlock_hwInfo}>
+            <div>
+              <strong>Model:</strong> {data.hw_info.model}
+            </div>
+            <div>
+              <strong>Revision:</strong> {data.hw_info.revision}
+            </div>
+            <div>
+              <strong>Interfaces:</strong>
+              <ul>
+                {interfaces.map((iface: any, index: any) => (
+                    <li key={index}>
+                      {iface.iface} - MAC: {iface.mac}, IP: {iface.ip || "N/A"}
+                    </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <strong>Audio Devices:</strong>
+              <ul>
+                {audiodevices.map((device: any, index: any) => (
+                    <li key={index}>
+                      Card {device.card}: {device.name}
+                    </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <strong>SD Card Data:</strong> {sd_card_data.name}, Manufacturer ID: {sd_card_data.manf_id}
+            </div>
+          </div>
 
         </div>
+
+
         <div className={styles.container_lowerBlock_settingsBlock}>
           {/*{renderSettingsTable(data.settings)}*/}
           <div className={styles.container_lowerBlock_settingsBlock_start}>Время работы</div>
@@ -218,7 +267,7 @@ export default function NomenclatureDetails(props: Props) {
         {/*settings*/}
         <div className={styles.container_lowerBlock}>
 
-          <div className={styles.container_upperBlock_hwInfo}><h1>HW_INFO</h1></div>
+
           {/*<div className={styles.container_lowerBlock_daysBlock}><h1>statistic</h1></div>*/}
         </div>
         {/*<button onClick={() => setEdit(true)}>Edit</button>*/}

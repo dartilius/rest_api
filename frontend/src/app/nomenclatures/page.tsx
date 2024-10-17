@@ -14,10 +14,6 @@ export default function Page() {
     limit,
   });
 
-  if (isLoading) {
-    return <Loader loading={!isSuccess} />;
-  }
-
   if (isError) {
     return <>{toastError(error?.message)}</>;
   }

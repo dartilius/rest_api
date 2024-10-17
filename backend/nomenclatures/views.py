@@ -129,6 +129,16 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             for task in pending_tasks]}
         return Response(tasks, status=HTTP_200_OK)
 
+    @action(detail=False, methods=['GET'], url_path='versions')
+    def get_versions(self, request):
+        versions = Nomenclature.objects.order_by().values_list(
+            'version', flat=True
+        ).distinct()
+        return Response(
+            {'versions': versions},
+            status=HTTP_200_OK
+        )
+
     @action(detail=True, methods=['GET'], url_path='ad_stat')
     def get_ad_stat(self, request, pk):
         """Отображение статистики рекламы конкретной номенклатуры."""
@@ -140,6 +150,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = ADStat.objects.filter(client=pk)
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureAdStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = NomenclatureAdStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
@@ -154,6 +168,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = MusicStat.objects.filter(client=pk)
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureMusicStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = NomenclatureMusicStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
@@ -168,6 +186,11 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = VideoStat.objects.filter(client=pk)
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureVideoStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = NomenclatureVideoStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
@@ -182,6 +205,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = ImageStat.objects.filter(client=pk)
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureImageStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = NomenclatureImageStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
@@ -196,5 +223,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = TickerStat.objects.filter(client=pk)
+
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureTickerStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)

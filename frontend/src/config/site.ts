@@ -11,16 +11,12 @@ export const siteConfig = {
       href: "/files",
     },
     {
-      label: "Пользователи",
-      href: "/users",
-    },
-    {
-      label: "Группы",
-      href: "/groups",
-    },
-    {
       label: "Плейлисты",
       href: "/playlists",
+    },
+    {
+      label: "Пользователи",
+      href: "/users",
     },
     {
       label: "Репликации",
@@ -30,20 +26,47 @@ export const siteConfig = {
       label: "Заказы",
       href: "/orders",
     },
-    {
-      label: "Статистика",
-      href: "/statistic",
-    },
   ],
   //TODO: добавить остальные разделы, чтобы переделать потом под мобилку.
   navMenuItems: [
     {
+      label: "Номенлкатуры",
+      href: "/nomenclatures",
+      index: 0,
+    },
+    {
+      label: "Файлы",
+      href: "/files",
+      index: 1,
+    },
+    {
+      label: "Плейлисты",
+      href: "/playlists",
+    },
+    {
+      label: "Пользователи",
+      href: "/users",
+      index: 2,
+    },
+    {
+      label: "Репликации",
+      href: "/tasks",
+      index: 6,
+    },
+    {
+      label: "Заказы",
+      href: "/orders",
+      index: 7,
+    },
+    {
       label: "Войти",
       href: "/login",
+      index: 9,
     },
     {
       label: "Выйти",
       href: "/login",
+      index: 10,
     },
   ],
 };

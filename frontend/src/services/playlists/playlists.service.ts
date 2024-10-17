@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { getTokenStorage } from "../auth/auth.helper";
+import axiosInstance, { getTokenStorage } from "../auth/auth.helper";
 
 import { API_URL } from "@/src/config/api.config";
 import {
@@ -9,8 +9,9 @@ import {
 } from "@/src/types/interface/playlists.interface";
 
 type Params = {
-  page?: number;
-  limit?: number;
+  page: number;
+  limit: number;
+  search: string;
 };
 
 class PlaylistsService {
@@ -18,7 +19,7 @@ class PlaylistsService {
   private token = getTokenStorage();
   getAll(props: Params) {
 
-    const { page, limit } = props;
+    const { page, limit , search} = props;
 
     const params = new URLSearchParams();
 
@@ -28,55 +29,35 @@ class PlaylistsService {
     if (limit !== undefined) {
       params.append("limit", limit.toString());
     }
+    if (search !== undefined) {
+      params.append("name", search.toString());
+    }
 
     const queryString = params.toString();
     const urlWithParams = `${this.URL}?${queryString}`;
 
-    return axios.get<IPlaylistsList>(`${urlWithParams}`, {
-      headers: {
-        Authorization: `access_token ${this.token}`,
-      },
-    });
+    return axiosInstance.get<IPlaylistsList>(`${urlWithParams}`);
   }
 
-  getById(id: string) {
-    return axios.get<IPlaylist>(`${this.URL}${id}/`, {
-      headers: {
-        Authorization: `access_token ${this.token}`,
-      },
-    });
+  async getById(id: string) {
+    const {data} = await axiosInstance.get<IPlaylist>(`${this.URL}${id}/`);
+    return data
   }
 
-  deleteById(id: string) {
-    return axios.delete(`${this.URL}${id}/`, {
-      headers: {
-        Authorization: `access_token ${this.token}`,
-      },
-    });
+  deleteById(id: number) {
+    return axiosInstance.delete(`${this.URL}${id}/`);
   }
 
   patchById(id: string, data: any) {
-    return axios.patch(`${this.URL}${id}/`, data, {
-      headers: {
-        Authorization: `access_token ${this.token}`,
-      },
-    });
+    return axiosInstance.patch(`${this.URL}${id}/`, data);
   }
 
-  updateById(id: string, data: any) {
-    return axios.put(`${this.URL}${id}/`, data, {
-      headers: {
-        Authorization: `access_token ${this.token}`,
-      },
-    });
+  updateById(id: number, data: any) {
+    return axiosInstance.put(`${this.URL}${id}/`, data);
   }
 
   create(data: any) {
-    return axios.post(`${this.URL}`, data, {
-      headers: {
-        Authorization: `access_token ${this.token}`,
-      },
-    });
+    return axiosInstance.post(`${this.URL}`, data);
   }
 }
 

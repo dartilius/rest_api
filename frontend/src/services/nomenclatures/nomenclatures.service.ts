@@ -1,11 +1,10 @@
-import axios from "axios";
-
+import axios, {AxiosInstance} from "axios";
 import {
   NomenclatureInterface,
   NomenclatureListResponseInterface,
 } from "@/src/types/interface/nomenclature.interface";
 import { API_URL } from "@/src/config/api.config";
-import {getTokenStorage} from "@/src/services/auth/auth.helper";
+import axiosInstance, {getTokenStorage} from "@/src/services/auth/auth.helper";
 
 interface Pagination {
   page?: number;
@@ -20,7 +19,6 @@ interface Pagination {
 
 class NomenclaturesService {
   private URL = `${API_URL}/nomenclatures`;
-  private token = getTokenStorage();
 
   getAll(props: Pagination) {
     const params = new URLSearchParams();
@@ -50,28 +48,18 @@ class NomenclaturesService {
     const queryString = params.toString();
     const urlWithParams = `${this.URL}?${queryString}`;
 
-    return axios.get<NomenclatureListResponseInterface>(urlWithParams, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `access_token ${this.token}`,
-      }
-    });
+    return axiosInstance.get<NomenclatureListResponseInterface>(urlWithParams);
   }
 
   getById(id: string) {
-    return axios.get<NomenclatureInterface>(`${this.URL}/${id}`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `access_token ${this.token}`,
-      }
-    });
+    return axiosInstance.get<NomenclatureInterface>(`${this.URL}/${id}`);
   }
 
   editById(
     id: string,
     data: { name: string; description: string; timezone: string },
   ) {
-    return axios.patch<NomenclatureInterface>(`${this.URL}/${id}/`, {
+    return axiosInstance.patch<NomenclatureInterface>(`${this.URL}/${id}/`, {
       name: data.name,
       description: data.description,
       timezone: data.timezone,
@@ -79,7 +67,7 @@ class NomenclaturesService {
   }
 
   deleteById(id: string) {
-    return axios.delete(`${this.URL}/${id}`);
+    return axiosInstance.delete(`${this.URL}/${id}`);
   }
 }
 

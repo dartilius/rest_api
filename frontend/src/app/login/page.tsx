@@ -32,7 +32,7 @@ export default function LoginPage() {
         throw new Error("Не удалось выполнить вход");
       }
     } catch (error: Error | any) {
-      toastError(`${error.response.status} ${error.response.statusText}`);
+      toastError(`${error.response}`);
     }
   };
 
