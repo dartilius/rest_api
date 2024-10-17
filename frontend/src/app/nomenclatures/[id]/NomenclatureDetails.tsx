@@ -51,7 +51,8 @@ const dayNames: Record<string, string> = {
   sun: "Воскресенье",
 };
 
-function parseStringData(data: any) {
+function parseStringData(data: any | undefined) {
+  if (!data) return
   return JSON.parse(data.replace(/'/g, '"'));
 }
 
@@ -124,13 +125,13 @@ export default function NomenclatureDetails(props: Props) {
     setOpenDeletingModal(false);
   };
 
-  const interfaces = parseStringData(data.hw_info.interfaces);
+  const interfaces = parseStringData(data.hw_info?.interfaces);
 
 // Парсим audiodevices
-  const audiodevices = parseStringData(data.hw_info.audiodevices);
+  const audiodevices = parseStringData(data.hw_info?.audiodevices);
 
 // Парсим sd_card_data
-  const sd_card_data = parseStringData(data.hw_info.sd_card_data);
+  const sd_card_data = parseStringData(data.hw_info?.sd_card_data);
 
 // Выводим результаты
   console.log('Interfaces:', interfaces);
@@ -174,15 +175,15 @@ export default function NomenclatureDetails(props: Props) {
           </div>
           <div className={styles.container_upperBlock_hwInfo}>
             <div>
-              <strong>Model:</strong> {data.hw_info.model}
+              <strong>Model:</strong> {data.hw_info?.model}
             </div>
             <div>
-              <strong>Revision:</strong> {data.hw_info.revision}
+              <strong>Revision:</strong> {data.hw_info?.revision}
             </div>
             <div>
               <strong>Interfaces:</strong>
               <ul>
-                {interfaces.map((iface: any, index: any) => (
+                {interfaces?.map((iface: any, index: any) => (
                     <li key={index}>
                       {iface.iface} - MAC: {iface.mac}, IP: {iface.ip || "N/A"}
                     </li>
@@ -192,77 +193,77 @@ export default function NomenclatureDetails(props: Props) {
             <div>
               <strong>Audio Devices:</strong>
               <ul>
-                {audiodevices.map((device: any, index: any) => (
+                {audiodevices?.map((device: any, index: any) => (
                     <li key={index}>
-                      Card {device.card}: {device.name}
+                      Card {device?.card}: {device?.name}
                     </li>
                 ))}
               </ul>
             </div>
             <div>
-              <strong>SD Card Data:</strong> {sd_card_data.name}, Manufacturer ID: {sd_card_data.manf_id}
+              <strong>SD Card Data:</strong> {sd_card_data?.name}, Manufacturer ID: {sd_card_data?.manf_id}
             </div>
           </div>
 
         </div>
 
 
-        <div className={styles.container_lowerBlock_settingsBlock}>
-          {/*{renderSettingsTable(data.settings)}*/}
-          <div className={styles.container_lowerBlock_settingsBlock_start}>Время работы</div>
-          <div className={styles.container_lowerBlock_settingsBlock_volume}>Стандартная громкость</div>
-          <div className={styles.container_lowerBlock_settingsBlock_monday}>Понедельник</div>
-          <div
-              className={styles.container_lowerBlock_settingsBlock_monday_time}>{data.settings.mon?.worktime.join(" - ")}</div>
-          <div
-              className={styles.container_lowerBlock_settingsBlock_monday_volume}>{data.settings.mon?.default_volume.join(", ")}</div>
-          <div className={styles.container_lowerBlock_settingsBlock_tuesday}>Вторник</div>
-          <div className={styles.container_lowerBlock_settingsBlock_tuesday_time}>
-            {data.settings.tue?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_tuesday_volume}>
-            {data.settings.tue?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_wednesday}>Среда</div>
-          <div className={styles.container_lowerBlock_settingsBlock_wednesday_time}>
-            {data.settings.wed?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_wednesday_volume}>
-            {data.settings.wed?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_thusday}>Четверг</div>
-          <div className={styles.container_lowerBlock_settingsBlock_thusday_time}>
-            {data.settings.thu?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_thusday_volume}>
-            {data.settings.thu?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_friday}>Пятница</div>
-          <div className={styles.container_lowerBlock_settingsBlock_friday_time}>
-            {data.settings.fri?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_friday_volume}>
-            {data.settings.fri?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_saturday}>Суббота</div>
-          <div className={styles.container_lowerBlock_settingsBlock_saturday_time}>
-            {data.settings.sat?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_saturday_volume}>
-            {data.settings.sat?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_sunday}>Воскресенье</div>
-          <div className={styles.container_lowerBlock_settingsBlock_sunday_time}>
-            {data.settings.sun?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_sunday_volume}>
-            {data.settings.sun?.default_volume.join(", ")}
-          </div>
+        {/*<div className={styles.container_lowerBlock_settingsBlock}>*/}
+        {/*  /!*{renderSettingsTable(data.settings)}*!/*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_start}>Время работы</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_volume}>Стандартная громкость</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_monday}>Понедельник</div>*/}
+        {/*  <div*/}
+        {/*      className={styles.container_lowerBlock_settingsBlock_monday_time}>{data.settings.mon?.worktime?.join(" - ")}</div>*/}
+        {/*  <div*/}
+        {/*      className={styles.container_lowerBlock_settingsBlock_monday_volume}>{data.settings.mon?.default_volume?.join(", ")}</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_tuesday}>Вторник</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_tuesday_time}>*/}
+        {/*    {data.settings.tue?.worktime.join(" - ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_tuesday_volume}>*/}
+        {/*    {data.settings.tue?.default_volume.join(", ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_wednesday}>Среда</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_wednesday_time}>*/}
+        {/*    {data.settings.wed?.worktime.join(" - ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_wednesday_volume}>*/}
+        {/*    {data.settings.wed?.default_volume.join(", ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_thusday}>Четверг</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_thusday_time}>*/}
+        {/*    {data.settings.thu?.worktime.join(" - ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_thusday_volume}>*/}
+        {/*    {data.settings.thu?.default_volume.join(", ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_friday}>Пятница</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_friday_time}>*/}
+        {/*    {data.settings.fri?.worktime.join(" - ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_friday_volume}>*/}
+        {/*    {data.settings.fri?.default_volume.join(", ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_saturday}>Суббота</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_saturday_time}>*/}
+        {/*    {data.settings.sat?.worktime.join(" - ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_saturday_volume}>*/}
+        {/*    {data.settings.sat?.default_volume.join(", ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_sunday}>Воскресенье</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_sunday_time}>*/}
+        {/*    {data.settings.sun?.worktime.join(" - ")}*/}
+        {/*  </div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_sunday_volume}>*/}
+        {/*    {data.settings.sun?.default_volume.join(", ")}*/}
+        {/*  </div>*/}
 
-          <div className={styles.container_lowerBlock_settingsBlock_customTime}>Кастомное время</div>
-          <div className={styles.container_lowerBlock_settingsBlock_customVolume}>Кастомная громкость</div>
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_customTime}>Кастомное время</div>*/}
+        {/*  <div className={styles.container_lowerBlock_settingsBlock_customVolume}>Кастомная громкость</div>*/}
 
-        </div>
+        {/*</div>*/}
 
         {/*settings*/}
         <div className={styles.container_lowerBlock}>
