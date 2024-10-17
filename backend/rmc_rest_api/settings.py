@@ -170,8 +170,12 @@ if not DEBUG:
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': td(days=30),
-    'REFRESH_TOKEN_LIFETIME': td(days=60),
+    'ACCESS_TOKEN_LIFETIME': td(
+        days=30 #int(os.environ.get("ACCESS_TOKEN_LIFETIME_DAYS"))
+    ),
+    'REFRESH_TOKEN_LIFETIME': td(
+        days=60 #int(os.environ.get("REFRESH_TOKEN_LIFETIME_DAYS"))
+    ),
     'AUTH_HEADER_TYPES': ('access_token',),
     'BLACKLIST_AFTER_ROTATION': True,
     'ROTATE_REFRESH_TOKENS': True,

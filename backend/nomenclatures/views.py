@@ -1,3 +1,4 @@
+from crypt import methods
 from datetime import datetime as dt
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
@@ -230,3 +231,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(detail=False, methods=['GET'], url_path='get_uuid_by_id', permission_classes=[AllowAny])
+    def get_id(self, request):
+        nomenclature = Nomenclature.objects.get(description=request.data['description'])
+        return Response({"id": nomenclature.pk})
