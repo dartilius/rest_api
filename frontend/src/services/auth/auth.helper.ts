@@ -36,11 +36,9 @@ const createAxiosInstance = (): AxiosInstance => {
     },
   });
 
-  // Set up an interceptor to handle 401 errors
   axiosInstance.interceptors.response.use(
       (response) => response,
       (error) => {
-        // Ensure the code is executed only on the client side
         if (typeof window !== 'undefined' && error.response && error.response.status === 401) {
           window.location.href = '/login';
         }

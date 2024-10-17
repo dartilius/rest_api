@@ -6,7 +6,8 @@ count=1
 while [[ $count -le $workers ]]; do
   celery -A rmc_rest_api worker -n worker$count@backend -D -l INFO \
    --logfile=/app/logs/%n.log \
-   --pidfile=/app/logs/%n.pid
+   --pidfile=/app/logs/%n.pid \
+   --pool=solo
    ((count += 1))
 done
 

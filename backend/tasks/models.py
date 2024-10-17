@@ -1,7 +1,13 @@
-from uuid import uuid4
+from django.db.models import (
+    DateTimeField,
+    DO_NOTHING,
+    ForeignKey,
+    JSONField,
+    Model,
+    PositiveSmallIntegerField
+)
 
-from django.contrib.postgres.fields import HStoreField
-from django.db import models
+from api import UUIDPKField
 from nomenclatures.models import Nomenclature
 from users.models import CustomUser
 
@@ -41,50 +47,45 @@ TASK_TYPES = {
 }
 
 
-class Task(models.Model):
+class Task(Model):
     """Репликация."""
 
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid4,
-        editable=False,
-        verbose_name='Уникальный идентификатор'
-    )
-    client = models.ForeignKey(
+    id = UUIDPKField()
+    client = ForeignKey(
         Nomenclature,
         related_name='tasks',
-        on_delete=models.CASCADE,
+        on_delete=DO_NOTHING,
         verbose_name='Целевая рабочая станция'
     )
-    owner = models.ForeignKey(
+    owner = ForeignKey(
         CustomUser,
         related_name='tasks',
         verbose_name='Кто создал',
-        on_delete=models.SET_NULL,
+        on_delete=DO_NOTHING,
         blank=True,
         null=True
     )
-    parameters = HStoreField(
+    parameters = JSONField(
         blank=True,
         null=True,
         verbose_name='Параметры'
     )
-    type = models.PositiveSmallIntegerField(
+    type = PositiveSmallIntegerField(
         choices=TASK_TYPES,
         verbose_name='Тип',
         editable=False,
         default=0
     )
-    status = models.PositiveSmallIntegerField(
+    status = PositiveSmallIntegerField(
         choices=STATUSES,
         verbose_name='Статус',
         default=0
     )
-    created = models.DateTimeField(
+    created = DateTimeField(
         auto_now_add=True,
         verbose_name='Время создания'
     )
-    updated = models.DateTimeField(
+    updated = DateTimeField(
         auto_now=True,
         verbose_name='Время выполнения'
     )

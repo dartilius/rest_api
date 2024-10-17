@@ -80,7 +80,7 @@ class CustomUser(AbstractUser):
     class Meta:
         db_table = 'custom_user'
         ordering = ('-created',)
-        verbose_name = 'Пользователя'
+        verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
     def __str__(self):

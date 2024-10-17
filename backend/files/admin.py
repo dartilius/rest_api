@@ -53,7 +53,6 @@ class PlaylistAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'name',
-        'description',
         'owner'
     )
     search_fields = (

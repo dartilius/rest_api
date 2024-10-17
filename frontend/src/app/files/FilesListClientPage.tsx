@@ -106,20 +106,6 @@ export default function FilesListClientPage() {
             </Select>
 
             <Select
-              defaultSelectedKeys={[`${limit}`]}
-              label="Кол-во элементов"
-              placeholder="Выберите количество"
-              value={limit.toString()} // Ensure default value is a string
-              onChange={(e) => setLimit(parseInt(e.target.value))}
-            >
-              {limitPages.map((option) => (
-                <SelectItem key={option.key} value={option.key}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </Select>
-
-            <Select
               label="Теги"
               placeholder="Выберите тег"
               value={listTagsName} // Ensure default value is a string
@@ -186,7 +172,7 @@ export default function FilesListClientPage() {
                 {data.results.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '30vw', width: '100%'}}>
-                      <Link href={`/files/${item.id}`} target="_blank">
+                      <Link href={`/files/${item.id}`}>
                         {item.name}
                       </Link>
                     </TableCell>
