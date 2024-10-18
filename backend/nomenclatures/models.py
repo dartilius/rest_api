@@ -1,11 +1,7 @@
-from uuid import uuid4
-
 from django.contrib.postgres.validators import KeysValidator
-from django.core.validators import MaxValueValidator
 from django.db import models
-from django.contrib.postgres.fields import HStoreField
 
-from users.models import CustomUser
+from api import APIBaseObjectModel, Article
 
 TIMEZONES = {
     'Etc/GMT+11': 'UTC -11',
@@ -51,7 +47,7 @@ STATUSES = {
 }
 
 
-class Nomenclature(models.Model):
+class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
 
     keys_validator = KeysValidator(
@@ -59,25 +55,11 @@ class Nomenclature(models.Model):
         strict=True
     )
 
-    id = models.UUIDField(
-        default=uuid4,
-        primary_key=True,
-        unique=True,
-        editable=False,
-        verbose_name='Уникальный идентификатор'
-    )
-    owner = models.ForeignKey(
-        CustomUser,
-        related_name='nomenclatures',
-        verbose_name='Создатель',
-        on_delete=models.SET_NULL,
+    article = Article()
+    description = models.TextField(
+        blank=True,
         null=True,
-        blank=True
-    )
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Наименование',
-        unique=True
+        verbose_name='Описание'
     )
     timezone = models.CharField(
         choices=TIMEZONES,
@@ -85,28 +67,15 @@ class Nomenclature(models.Model):
         verbose_name='Часовой пояс',
         default='Etc/GMT-7'
     )
-    is_active = models.BooleanField(
-        verbose_name='Актуальность номенклтауры',
-        default=True
-    )
     version = models.CharField(
         max_length=127,
         verbose_name='Версия ПО'
     )
-    description = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name='Описание'
-    )
-    created = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата создания'
-    )
-    settings = HStoreField(
+    settings = models.JSONField(
         verbose_name='Настройки вещания',
         validators=(keys_validator,)
     )
-    hw_info = HStoreField(
+    hw_info = models.JSONField(
         verbose_name='Информация о железе',
         blank=True,
         null=True
@@ -115,52 +84,16 @@ class Nomenclature(models.Model):
     class Meta:
         db_table = 'nomenclature'
         ordering = ('-created',)
-        verbose_name = 'Номенклатуру'
+        verbose_name = 'Номенклатура'
         verbose_name_plural = 'Номенклатуры'
-
-    def __str__(self):
-        return self.name
-
-
-class NomenclatureGroup(models.Model):
-    """Группа номенклатур."""
-
-    clients = models.ManyToManyField(
-        Nomenclature,
-        verbose_name='Рабочие станции',
-        related_name='nomenclature_groups'
-    )
-    owner = models.ForeignKey(
-        CustomUser,
-        related_name='nomenclature_groups',
-        verbose_name='Создатель',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Название',
-        unique=True
-    )
-    description = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name='Описание'
-    )
-    created = models.DateTimeField(
-        verbose_name='Дата создания',
-        auto_now_add=True
-    )
-
-    class Meta:
-        db_table = 'nomenclature_group'
-        ordering = ('-created',)
-        verbose_name = 'Группу'
-        verbose_name_plural = 'Группы'
-
-    def __str__(self):
-        return self.name
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name'],
+                name='unique_nomenclature_name',
+                violation_error_message='Номенклатура с таким названием '
+                                        'уже существует'
+            )
+        ]
 
 
 class NomenclatureAvailability(models.Model):
@@ -211,7 +144,7 @@ class StatusHistory(models.Model):
     class Meta:
         db_table = 'status_history'
         ordering = ('-change_time',)
-        verbose_name = 'Историю доступности'
+        verbose_name = 'История доступности'
         verbose_name_plural = 'История доступности'
 
     def __str__(self):

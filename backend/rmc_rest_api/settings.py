@@ -39,16 +39,16 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'api.middleware.IntegrityMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'api.middleware.IntegrityMiddleware',  # ждём фикса в джанге и убираем это
 ]
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
@@ -90,7 +90,7 @@ DATABASES = {
     }
 }
 
-DATABASE_ROUTERS = ["rmc_rest_api.dbrouters.ClickHouseRouter"]
+DATABASE_ROUTERS = ['rmc_rest_api.dbrouters.ClickHouseRouter']
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -124,15 +124,23 @@ USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# здесь должно быть
-# CORS_ORIGIN_WHITELIST = os.environ.get('CORS_WHITELIST').split(',')
-# а в переменной домен(ы) фронта
-CORS_ALLOW_ALL_ORIGINS = True
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
+    'PAGE_SIZE': 25,
+}
 
-MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
+# ---------------------------------- MINIO ---------------------------------- #
+
+MINIO_REGION = os.getenv('MINIO_REGION')
 MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
 MINIO_SECRET_KEY = os.getenv('MINIO_STORAGE_SECRET_KEY')
-MINIO_USE_HTTPS = os.getenv('MINIO_HTTPS', False)
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
+MINIO_USE_HTTPS = os.environ.get('MINIO_HTTPS').lower() == 'true'
+MINIO_EXTERNAL_ENDPOINT = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
+MINIO_EXTERNAL_ENDPOINT_USE_HTTPS = os.environ.get('MINIO_EXTERNAL_HTTPS').lower() == 'true'
 MINIO_PRIVATE_BUCKETS = [
     'local-media',
     'local-static'
@@ -142,17 +150,24 @@ MINIO_MEDIA_FILES_BUCKET = 'local-media'
 STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
 
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER')
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_SINGLETON_BACKEND_URL = os.environ.get('CELERY_SINGLETON_BACKEND')
+# --------------------------------- CELERY ---------------------------------- #
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
-    'PAGE_SIZE': 25
-}
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND')
+CELERY_SINGLETON_BACKEND_URL = CELERY_RESULT_BACKEND
+CELERY_TIMEZONE = TIME_ZONE
+
+# -------------------------------- SECURITY --------------------------------- #
+
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
+    CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
+    REST_FRAMEWORK.update({
+        'DEFAULT_PERMISSION_CLASSES': (
+            'rest_framework.permissions.IsAuthenticated',
+        )})
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': td(days=30),
@@ -163,9 +178,11 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',)
 }
 
+# ------------------------------ DEBUG TOOLBAR ------------------------------ #
+
 
 def show_toolbar(request):
-    return True
+    return DEBUG
 
 
 DEBUG_TOOLBAR_CONFIG = {

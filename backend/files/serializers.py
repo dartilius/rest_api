@@ -3,6 +3,7 @@ import base64
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 
+from api.constants import Constants
 from files.models import File, Playlist, Tag, TYPES
 
 
@@ -14,8 +15,6 @@ class Base64FileField(serializers.FileField):
     https://github.com/Hipo/drf-extra-fields/
     """
 
-    empty_values = ([], {}, (), '', None)
-
     default_error_messages = {
         'invalid_file': 'Файл невозможно декодировать, либо он повреждён.',
         'invalid_format':
@@ -24,6 +23,7 @@ class Base64FileField(serializers.FileField):
         'empty_contents': 'Base64 строка ничего не содержит.',
         'empty': 'Отправлен пустой файл.'
     }
+    empty_values = Constants.empty_values
 
     def to_internal_value(self, data):
         if isinstance(data, str):
@@ -58,16 +58,36 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
 
 
+class TagFileSerializer(serializers.Serializer):
+    """Сериализация тегов в файле."""
+
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(max_length=255)
+
+
+class FileSourceSerializer(serializers.ModelSerializer):
+    """Сериализация одного файла."""
+
+    source = serializers.FileField()
+
+    class Meta:
+        fields = (
+            'id',
+            'file_type',
+            'source'
+        )
+        read_only_fields = (
+            'id',
+        )
+        model = File
+
+
 class FileSerializer(serializers.ModelSerializer):
     """Сериализация одного файла."""
 
-    tags = serializers.SlugRelatedField(
-        slug_field='name',
-        many=True,
-        queryset=Tag.objects.all(),
-        write_only=True
-    )
+    tags = TagFileSerializer(many=True, required=False, allow_empty=True)
     source = Base64FileField(write_only=True)
+    url = serializers.SerializerMethodField()
 
     class Meta:
         fields = (
@@ -76,7 +96,8 @@ class FileSerializer(serializers.ModelSerializer):
             'size',
             'file_type',
             'source',
-            'tags'
+            'tags',
+            'url'
         )
         read_only_fields = (
             'id',
@@ -85,23 +106,39 @@ class FileSerializer(serializers.ModelSerializer):
         )
         model = File
 
+    def get_url(self, instance):
+        return instance.get_url()
+
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['name'] = value.name
-        representation['owner'] = (
-            f'{value.owner.last_name} {value.owner.first_name}'
-        )
-        representation['hash'] = {
+        repr_ = super().to_representation(value)
+        repr_['name'] = value.name
+        repr_['owner'] = {
+            'full_name': f'{value.owner.last_name} '
+                         f'{value.owner.first_name}'
+        }
+        repr_['hash'] = {
             'md5': value.md5hash,
             'sha256': value.sha256hash,
             'concat_hash': value.hash
         }
-        representation['file_type'] = TYPES[value.file_type]
-        representation['tags'] = [
-            tag.name for tag in value.tags.all()
-        ] if value.tags.exists() else None
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
+        repr_['file_type'] = TYPES[value.file_type]
+        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return repr_
+
+    def create(self, validated_data):
+        tags = validated_data.pop('tags')
+        instance = File.objects.create(**validated_data)
+        tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
+        instance.tags.set(tag_ids)
+        return instance
+
+    def update(self, instance, validated_data):
+        tags = validated_data.pop('tags')
+        tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
+        instance.tags.set(tag_ids)
+        super(self.__class__, self).update(instance, validated_data)
+        instance.save()
+        return instance
 
 
 class FileListSerializer(serializers.ModelSerializer):
@@ -119,12 +156,12 @@ class FileListSerializer(serializers.ModelSerializer):
         model = File
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['file_type'] = TYPES[value.file_type]
-        representation['tags'] = [
+        repr_ = super().to_representation(value)
+        repr_['file_type'] = TYPES[value.file_type]
+        repr_['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
-        return representation
+        return repr_
 
 
 class PlaylistSerializer(serializers.ModelSerializer):
@@ -154,15 +191,18 @@ class PlaylistSerializer(serializers.ModelSerializer):
         model = Playlist
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['owner'] = (
-            f'{value.owner.last_name} {value.owner.first_name}'
-        )
-        representation['files'] = [
-            {'id': file.id, 'name': file.name} for file in value.files.all()
+        repr_ = super().to_representation(value)
+        repr_['owner'] = {
+            'full_name': f'{value.owner.last_name} '
+                         f'{value.owner.first_name}'
+        }
+        repr_['files'] = [
+            {'id': file.id,
+             'name': file.name,
+             'url': file.get_url()} for file in value.files.all()
         ]
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
+        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return repr_
 
 
 class PlaylistListSerializer(serializers.ModelSerializer):
@@ -178,10 +218,11 @@ class PlaylistListSerializer(serializers.ModelSerializer):
         model = Playlist
 
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        representation['owner'] = (
-            f'{value.owner.last_name} {value.owner.first_name}'
-        )
-        representation['files_count'] = len(value.files.all())
-        representation['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        return representation
+        repr_ = super().to_representation(value)
+        repr_['owner'] = {
+            'full_name': f'{value.owner.last_name} '
+                         f'{value.owner.first_name}'
+        }
+        repr_['files_count'] = len(value.files.all())
+        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        return repr_

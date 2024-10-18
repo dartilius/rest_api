@@ -12,8 +12,8 @@ services:
     container_name: clickhouse
     env_file: .env
     ports:
-      - '8123:8123'
-      - '8888:9000'
+      - 8123:8123
+      - 8888:9000
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     ulimits:
@@ -23,6 +23,13 @@ services:
     image: postgres:16.2
     container_name: db
     env_file: .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_NAME=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_PASSWORD=${POSTGRES_PASS}
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 5s
@@ -63,6 +70,8 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_started
+      rabbit:
+        condition: service_healthy
 
   frontend:
     env_file: .env
@@ -106,23 +115,6 @@ services:
       - 5672:5672
       - 15672:15672
 
-#  celery:
-#    build:
-#      context: ./backend
-#      dockerfile: ./celeryDockerfile
-#    container_name: celery
-#    env_file: .env
-#    healthcheck:
-#      test: celery -b ${CELERY_BROKER} inspect ping || exit 1
-#      interval: 5s
-#      timeout: 5s
-#      retries: 10
-#    depends_on:
-#      backend:
-#        condition: service_healthy
-#      rabbit:
-#        condition: service_healthy
-
   dashboard:
     image: mher/flower
     container_name: dashboard
@@ -133,10 +125,8 @@ services:
     ports:
       - 5555:5555
     depends_on:
-      backend:
-        condition: service_healthy
-      rabbit:
-        condition: service_healthy
+      gateway:
+        condition: service_started
 
   redis:
     image: redis:7.0.5-alpine

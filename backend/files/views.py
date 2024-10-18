@@ -28,7 +28,7 @@ from files.serializers import (
     PlaylistListSerializer,
     FileSerializer,
     FileListSerializer,
-    TagSerializer
+    TagSerializer, FileSourceSerializer
 )
 from files.models import Playlist, File, Tag
 
@@ -50,7 +50,6 @@ class FileViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = FileFilter
     parser_classes = [JSONParser]
-    # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -68,11 +67,7 @@ class FileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='stat'
-    )
+    @action(detail=True, methods=['GET'], url_path='stat')
     def get_stat(self, request, pk):
         """Отображение статистики музыки."""
         try:
@@ -116,13 +111,34 @@ class PlaylistViewSet(viewsets.ModelViewSet):
     ).prefetch_related('files')
     filter_backends = [DjangoFilterBackend]
     filterset_class = PlaylistFilter
-    # permission_classes = [AuthAndOnlySuperUserDelete, ]
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
             serializer = PlaylistListSerializer
         else:
             serializer = PlaylistSerializer
+        if 'data' in kwargs:
+            data = kwargs['data']
+
+            if isinstance(data, list):
+                kwargs['many'] = True
+
+        return serializer(*args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+
+class UploadFilesViewSet(viewsets.ModelViewSet):
+    """Для загрузки файлов из старой админки."""
+
+    queryset = File.objects.all().select_related(
+        'owner'
+    )
+    serializer_class = FileSourceSerializer()
+
+    def get_serializer(self, *args, **kwargs):
+        serializer = FileSourceSerializer
         if 'data' in kwargs:
             data = kwargs['data']
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from orders.models import AdOrder, BgOrder, Mediaplan
+from orders.models import AdOrder, BgOrder, ORDER_TYPES
 
 
 @admin.register(AdOrder)
@@ -9,36 +9,64 @@ class AdOrderAdmin(admin.ModelAdmin):
 
     list_display = (
         'id',
-        'owner',
         'name',
-        'description',
-        'group',
+        'status',
+        'client',
         'broadcast_interval',
-        'file',
+        'playlist',
+        'owner',
+        'created'
+    )
+    list_filter = (
+        'owner',
+        'client',
+        'status',
+        'broadcast_interval',
         'created'
     )
     search_fields = (
         'id',
         'name',
-        'group',
-        'file'
+        'client',
+        'playlist'
     )
 
     def get_queryset(self, request):
-        return AdOrder.objects.all().select_related('owner', 'group', 'file')
+        return AdOrder.objects.all().select_related(
+            'owner', 'client', 'playlist'
+        )
 
 
 @admin.register(BgOrder)
 class BgOrderAdmin(admin.ModelAdmin):
     """Фоновый заказ."""
 
+    @admin.display
+    def order_type(self, obj):
+        return ORDER_TYPES[obj.order_type]
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return ['order_type']
+        else:
+            return []
+
     list_display = (
         'id',
-        'owner',
+        'order_type',
         'name',
-        'description',
+        'status',
         'client',
         'playlist',
+        'owner',
+        'created'
+    )
+    list_filter = (
+        'owner',
+        'client',
+        'order_type',
+        'status',
+        'broadcast_interval',
         'created'
     )
     search_fields = (
@@ -52,23 +80,3 @@ class BgOrderAdmin(admin.ModelAdmin):
         return BgOrder.objects.all().select_related(
             'owner', 'client', 'playlist'
         )
-
-
-# @admin.register(Mediaplan)
-# class MediaplanAdmin(admin.ModelAdmin):
-#     """Фоновый заказ."""
-#
-#     list_display = (
-#         'id',
-#         'owner',
-#         'name',
-#         'orders',
-#         'created'
-#     )
-#     search_fields = (
-#         'id',
-#         'name'
-#     )
-#
-#     def get_queryset(self, request):
-#         return Mediaplan.objects.all().select_related('owner', 'orders')

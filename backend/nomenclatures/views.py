@@ -1,15 +1,20 @@
 from datetime import datetime as dt
 from django.core.exceptions import ValidationError
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
-from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerStat
+from ch_statistic.models import (
+    ADStat,
+    MusicStat,
+    VideoStat,
+    ImageStat,
+    TickerStat
+)
 from ch_statistic.serializers import (
     NomenclatureAdStatSerializer,
     NomenclatureMusicStatSerializer,
@@ -22,13 +27,11 @@ from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    NomenclatureGroupSerializer,
-    NomenclatureGroupListSerializer,
     StatusHistorySerializer
 )
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureGroup, NomenclatureAvailability
+    NomenclatureAvailability
 )
 from tasks.models import Task
 
@@ -57,49 +60,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
-        nomenclatures = serializer.save(owner=self.request.user)
-        if isinstance(nomenclatures, list):
-            for nomenclature in nomenclatures:
-                group = NomenclatureGroup.objects.create(
-                    owner=self.request.user,
-                    name=nomenclature.name,
-                )
-                group.clients.add(nomenclature)
-                group.save()
-        else:
-            group = NomenclatureGroup.objects.create(
-                owner=self.request.user,
-                name=nomenclatures.name,
-            )
-            group.clients.add(nomenclatures)
-            group.save()
-
-    def perform_update(self, serializer):
-        nomenclature = serializer.instance
-        if (
-            'name' in serializer.validated_data and
-            serializer.validated_data['name'] != nomenclature.name
-        ):
-            group = NomenclatureGroup.objects.exclude(
-                ~Q(clients=nomenclature.id)
-            ).first()
-            group.name = serializer.validated_data['name']
-            group.save()
-        serializer.save()
+        serializer.save(owner=self.request.user)
 
     def perform_destroy(self, instance):
-        group = NomenclatureGroup.objects.exclude(
-            ~Q(clients=instance.id)
-        ).first()
-        group.delete()
-        instance.delete()
+        instance.is_active = False
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='status_history'
-    )
-    def get_status_history(self, request, pk):
+    @action(detail=True, methods=['GET'])
+    def status_history(self, request, pk):
         try:
             nomenclature = get_object_or_404(Nomenclature, id=pk)
         except ValidationError:
@@ -111,11 +78,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['POST'],
-        url_path='pending_tasks'
-    )
+    @action(detail=True, methods=['POST'], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
         """Отдача задач для клиентов и обработка присылаемых данных."""
         try:
@@ -166,11 +129,17 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             for task in pending_tasks]}
         return Response(tasks, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='ad_stat'
-    )
+    @action(detail=False, methods=['GET'], url_path='versions')
+    def get_versions(self, request):
+        versions = Nomenclature.objects.order_by().values_list(
+            'version', flat=True
+        ).distinct()
+        return Response(
+            {'versions': versions},
+            status=HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['GET'], url_path='ad_stat')
     def get_ad_stat(self, request, pk):
         """Отображение статистики рекламы конкретной номенклатуры."""
         try:
@@ -181,14 +150,14 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = ADStat.objects.filter(client=pk)
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureAdStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = NomenclatureAdStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='music_stat'
-    )
+    @action(detail=True, methods=['GET'], url_path='music_stat')
     def get_music_stat(self, request, pk):
         """Отображение статистики музыки конкретной номенклатуры."""
         try:
@@ -199,14 +168,14 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = MusicStat.objects.filter(client=pk)
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureMusicStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = NomenclatureMusicStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='video_stat'
-    )
+    @action(detail=True, methods=['GET'],url_path='video_stat')
     def get_video_stat(self, request, pk):
         """Отображение статистики видео конкретной номенклатуры."""
         try:
@@ -217,14 +186,15 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = VideoStat.objects.filter(client=pk)
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureVideoStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = NomenclatureVideoStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='image_stat'
-    )
+    @action(detail=True, methods=['GET'], url_path='image_stat')
     def get_image_stat(self, request, pk):
         """Отображение статистики картинок конкретной номенклатуры."""
         try:
@@ -235,14 +205,14 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = ImageStat.objects.filter(client=pk)
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureImageStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = NomenclatureImageStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['GET'],
-        url_path='ticker_stat'
-    )
+    @action(detail=True, methods=['GET'], url_path='ticker_stat')
     def get_ticker_stat(self, request, pk):
         """Отображение статистики бегущих строк конкретной номенклатуры."""
         try:
@@ -253,29 +223,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=HTTP_400_BAD_REQUEST
             )
         statistics = TickerStat.objects.filter(client=pk)
+
+        page = self.paginate_queryset(statistics)
+        if page is not None:
+            serializer = NomenclatureTickerStatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
-
-
-class NomenclatureGroupViewSet(viewsets.ModelViewSet):
-    """Работа с группами номенклатур."""
-
-    queryset = NomenclatureGroup.objects.all().prefetch_related(
-        'clients',
-    ).select_related('owner')
-
-    def get_serializer(self, *args, **kwargs):
-        if self.action == 'list':
-            serializer = NomenclatureGroupListSerializer
-        else:
-            serializer = NomenclatureGroupSerializer
-        if 'data' in kwargs:
-            data = kwargs['data']
-
-            if isinstance(data, list):
-                kwargs['many'] = True
-
-        return serializer(*args, **kwargs)
-
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
