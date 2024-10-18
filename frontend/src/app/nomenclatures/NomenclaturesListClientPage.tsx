@@ -23,6 +23,10 @@ import { convertStatus } from "@/src/types/types/checkStatus";
 import { timezonesArray } from "@/src/types/types/timezone";
 import { useDebounce } from "@/src/hooks/useDebounce";
 
+const truncateText = (text: string, maxLength: number) => {
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+};
+
 export default function NomenclaturesList() {
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
@@ -143,41 +147,41 @@ export default function NomenclaturesList() {
                   {data.results.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '30vw'}}>
-                        <Link href={`/nomenclatures/${item.id}`} target="_blank">
+                        <Link href={`/nomenclatures/${item.id}`}>
                           {item?.status === 0 && (
                             <Chip color="success" variant="bordered">
-                              <span>{item.name}</span>
+                              <span>{truncateText(item.name, 60)}</span>
                             </Chip>
                           )}
                           {item?.status === 1 && (
                             <Chip color="warning" variant="bordered">
-                              {item.name}
+                              {truncateText(item.name, 60)}
                             </Chip>
                           )}
                           {item?.status === 2 && (
                             <Chip color="danger" variant="bordered">
-                              {item.name}
+                              {truncateText(item.name, 60)}
                             </Chip>
                           )}
                           {item.status === null && (
                             <Chip color="default" variant="bordered">
-                              {item.name}
+                              {truncateText(item.name, 60)}
                             </Chip>
                           )}
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <Link href={`/nomenclatures/${item.id}`} target="_blank">
+                        <Link href={`/nomenclatures/${item.id}`}>
                           {item.version}
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <Link href={`/nomenclatures/${item.id}`} target="_blank">
+                        <Link href={`/nomenclatures/${item.id}`}>
                           {item.last_answer}
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <Link href={`/nomenclatures/${item.id}`} target="_blank">
+                        <Link href={`/nomenclatures/${item.id}`}>
                           {item.timezone}
                         </Link>
                       </TableCell>
