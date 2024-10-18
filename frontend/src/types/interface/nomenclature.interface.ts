@@ -27,22 +27,8 @@ export interface NomenclatureInterface {
     version: string;
   }
   settings: SettingsInterface;
-  hw_info: any;
+  hw_info: HwInfo;
 }
-
-// export interface NomenclatureInterface {
-//   created: string;
-//   description: string;
-//   hw_info: string | null;
-//   id: string;
-//   last_answer: string;
-//   name: string;
-//   settings: SettingsInterface;
-//   status: number;
-//   timezone: string;
-//   version: string;
-//   owner: string;
-// }
 
 export interface SettingsInterface {
   fri?: DaySettings;
@@ -56,44 +42,25 @@ export interface SettingsInterface {
 }
 
 export interface DaySettings {
-  worktime: [string, string];
+  worktime: string;
   default_volume: [number, number, number, number];
 }
 
-export interface NomenclatureCreateInterface {
-  name: string;
-  timezone: string;
-  description: string;
-  settings: SettingsInterface;
+export interface HwInfo {
+  audiodevices: {
+    card: number;
+    name: string;
+  }[]
+  interfaces: {
+    ip: string;
+    mac: string;
+    iface: string;
+  }[]
+  model: string;
+  revision: string;
+  sd_card_data: {
+    manf_id: string;
+    name: string;
+  }
+  serial_number: string;
 }
-
-// interface SettingsInterface {
-//     fri: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     mon: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     sat: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     sun: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     thu: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     tue: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-//     wed: {
-//         default_volume: [number, number, number, number]
-//         worktime: [string, string]
-//     }
-// }
