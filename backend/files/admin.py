@@ -30,11 +30,7 @@ class FileAdmin(admin.ModelAdmin):
         'formatted_size',
         'created'
     )
-    search_fields = (
-        'id',
-        'name',
-        'owner'
-    )
+    search_fields = ('name',)
 
     def get_queryset(self, request):
         return File.objects.all().select_related(
@@ -55,11 +51,7 @@ class PlaylistAdmin(admin.ModelAdmin):
         'name',
         'owner'
     )
-    search_fields = (
-        'id',
-        'name',
-        'owner',
-    )
+    search_fields = ('name',)
 
     def get_queryset(self, request):
         return Playlist.objects.all().select_related(
