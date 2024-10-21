@@ -62,7 +62,7 @@ def update_nomenclature_status():
                     )
                 )
 
-        NomenclatureAvailability.objects.bulk_update(statuses_to_update, ["status"])
-        StatusHistory.objects.bulk_create(status_histories_to_create)
+    NomenclatureAvailability.objects.bulk_update(statuses_to_update, ["status"])
+    StatusHistory.objects.bulk_create(status_histories_to_create)
 
     return f"Обновлено {len(statuses_to_update)} статусов доступности."
