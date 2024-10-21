@@ -104,7 +104,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         if 'statistic' in request.data:
             statistics = request.data['statistic']
             for stat_type, stat_list in statistics.items():
-                create_statistic.delay(stat_type, pk, stat_list)
+                if len(stat_list) > 0:
+                    create_statistic.delay(stat_type, pk, stat_list)
 
         if 'task_status' in request.data:
             task_list = list()
