@@ -6,8 +6,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 ROLES = {
     'admin': 'Сотрудник ТО',
-    'manager': 'Менеджер',
-    'superuser': 'Суперпользователь'
+    'manager': 'Менеджер'
 }
 
 

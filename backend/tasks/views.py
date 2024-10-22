@@ -4,6 +4,7 @@ from rest_framework import viewsets
 from tasks.filters import TaskFilter
 from tasks.serializers import TaskSerializer, TaskListSerializer
 from tasks.models import Task
+from users.permissions import OnlyAdminAndSuperuserUpdate, OnlySuperuserDelete
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -12,6 +13,8 @@ class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all().select_related('owner', 'client')
     filter_backends = [DjangoFilterBackend]
     filterset_class = TaskFilter
+    permission_classes = [OnlyAdminAndSuperuserUpdate,
+                          OnlySuperuserDelete]
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)

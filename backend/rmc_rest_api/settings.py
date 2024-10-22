@@ -145,10 +145,16 @@ MINIO_PRIVATE_BUCKETS = [
     'local-media',
     'local-static'
 ]
-DEFAULT_FILE_STORAGE = 'django_minio_backend.models.MinioBackend'
 MINIO_MEDIA_FILES_BUCKET = 'local-media'
-STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django_minio_backend.models.MinioBackend'
+    },
+    'staticfiles': {
+        'BACKEND': 'django_minio_backend.models.MinioBackendStatic'
+    },
+}
 
 # --------------------------------- CELERY ---------------------------------- #
 
