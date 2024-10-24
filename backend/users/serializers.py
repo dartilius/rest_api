@@ -13,7 +13,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'email',
             'phone_number',
             'first_name',
-            'last_name'
+            'last_name',
+            'middle_name'
         )
         read_only_fields = (
             'id',

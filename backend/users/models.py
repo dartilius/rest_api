@@ -3,10 +3,12 @@ from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
+from api.custom_user import CustomUserManager
 
 ROLES = {
     'admin': 'Сотрудник ТО',
-    'manager': 'Менеджер'
+    'manager': 'Менеджер',
+    'ordinary': 'Пользователь'
 }
 
 
@@ -14,7 +16,9 @@ class CustomUser(AbstractUser):
     """Пользователи."""
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = []
+
+    objects = CustomUserManager()
 
     email_validator = EmailValidator(
         message='Такая почта уже занята, либо введены запрещённые символы. '
@@ -32,16 +36,16 @@ class CustomUser(AbstractUser):
     )
     middle_name = models.CharField(
         max_length=150,
-        blank=True,
+        verbose_name='Отчество',
         null=True,
-        verbose_name='Отчество'
+        blank=True
     )
     role = models.CharField(
         choices=ROLES,
         max_length=32,
+        verbose_name='Роль',
         null=True,
-        blank=True,
-        verbose_name='Роль'
+        blank=True
     )
     phone_number = PhoneNumberField(
         unique=True,
@@ -54,8 +58,8 @@ class CustomUser(AbstractUser):
         verbose_name='Электронная почта'
     )
     is_active = models.BooleanField(
-        default=True,
-        verbose_name='Актуальность пользователя'
+        verbose_name='Актуальность пользователя',
+        default=True
     )
     created = models.DateTimeField(
         auto_now_add=True,
