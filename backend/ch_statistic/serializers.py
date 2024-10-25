@@ -22,14 +22,10 @@ class StatisticSerializer(serializers.Serializer):
 
     class Meta:
         fields = (
-            'played',
             'length',
-            'created'
         )
         read_only_fields = (
-            'played',
             'length',
-            'created'
         )
         abstract = True
 
@@ -83,6 +79,8 @@ class NomenclatureAdStatSerializer(
 
     def to_representation(self, value):
         representation = super().to_representation(value)
+        representation.pop('created')
+        representation.pop('played')
         td = timedelta(seconds=value.ad_block)
         representation['ad_block'] = datetime.strftime(
             datetime.strptime(str(td), "%H:%M:%S"),

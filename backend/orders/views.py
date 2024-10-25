@@ -55,9 +55,14 @@ class AdOrderViewSet(NoDeleteViewSet):
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
         orders_list = serializer.save(owner=self.request.user)
+        orders_ids = []
         for orders in orders_list:
-            orders_ids = [order.id for order in orders]
-            create_ad_order_task.delay(orders_ids)
+            orders_ids.append(
+                [
+                    order.id for order in orders
+                ] if isinstance(orders, list) else orders.id
+            )
+        create_ad_order_task.delay(orders_ids)
 
     @action(detail=False, methods=['DELETE'])
     def cancel(self, request):
@@ -154,9 +159,14 @@ class BgOrderViewSet(NoDeleteViewSet):
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
         orders_list = serializer.save(owner=self.request.user)
+        orders_ids = []
         for orders in orders_list:
-            orders_ids = [order.id for order in orders]
-            create_bg_order_task.delay(orders_ids)
+            orders_ids.append(
+                [
+                    order.id for order in orders
+                ] if isinstance(orders, list) else orders.id
+            )
+        create_bg_order_task.delay(orders_ids)
 
     def perform_update(self, serializer):
         """Запрет на обновление типа заказа."""

@@ -160,8 +160,8 @@ CELERY_TIMEZONE = TIME_ZONE
 # -------------------------------- SECURITY --------------------------------- #
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
 if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
     CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
     REST_FRAMEWORK.update({
         'DEFAULT_PERMISSION_CLASSES': (

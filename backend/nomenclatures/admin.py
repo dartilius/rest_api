@@ -30,7 +30,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
     search_fields = (
         'id',
         'name',
-        'status',
         'timezone',
         'is_active'
     )
