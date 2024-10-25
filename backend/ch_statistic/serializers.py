@@ -16,29 +16,19 @@ from nomenclatures.models import Nomenclature
 class StatisticSerializer(serializers.Serializer):
     """Базовый класс сериализации статистики."""
 
-    played = serializers.DateTimeField()
     length = serializers.IntegerField()
-    created = serializers.DateTimeField()
 
     class Meta:
         fields = (
-            'played',
             'length',
-            'created'
         )
         read_only_fields = (
-            'played',
             'length',
-            'created'
         )
         abstract = True
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['created'] = value.created.strftime(
-            '%Y-%m-%d %H:%M:%S'
-        )
-        representation['played'] = value.played.strftime('%Y-%m-%d %H:%M:%S')
         return representation
 
 

@@ -151,11 +151,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
                 status=HTTP_400_BAD_REQUEST
             )
-        statistics = ADStat.objects.filter(client=pk)
-        page = self.paginate_queryset(statistics)
-        if page is not None:
-            serializer = NomenclatureAdStatSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        date = request.data['date']
+        statistics = ADStat.objects.filter(
+            client=pk, played__contains=date
+        ).order_by('played')
         serializer = NomenclatureAdStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
