@@ -25,7 +25,7 @@ export default function ListPage(props: Props) {
   }
 
   if (isSuccess) {
-    return <NomenclatureDetails data={data} id={id} />;
+    return <NomenclatureDetails id={id} />;
   }
 
   return <></>;

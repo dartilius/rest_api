@@ -20,3 +20,13 @@ export const useDeleteNomenclatureQuery = () => {
 
   return mutation;
 };
+
+export const useNomenclatureAdQuery = (id: string) => {
+  const { data: adStat, isLoading, error, isError, isSuccess, refetch } = useQuery({
+    queryKey: ["nomenclatureAdStat", id],
+    queryFn: () => nomenclaturesService.getAdStats(id),
+    select: ({ data }) => data,
+  });
+
+  return { adStat, isLoading, error, isError, isSuccess, refetch};
+};

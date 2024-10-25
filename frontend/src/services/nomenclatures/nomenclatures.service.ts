@@ -69,6 +69,10 @@ class NomenclaturesService {
   deleteById(id: string) {
     return axiosInstance.delete(`${this.URL}/${id}`);
   }
+
+  getAdStats(id: string) {
+    return axiosInstance.get(`${this.URL}/${id}/ad_stat`)
+  }
 }
 
 export default new NomenclaturesService();
