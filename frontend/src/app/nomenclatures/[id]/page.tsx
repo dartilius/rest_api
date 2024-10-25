@@ -5,11 +5,12 @@ import ListPage from "./ListPage";
 import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
 
 export async function generateMetadata({
-  params,
-}: {
+                                         params,
+                                       }: {
   params: { id: string };
 }): Promise<Metadata> {
   const { id } = params;
+  console.log(id)
 
   try {
     const response = await nomenclaturesService.getById(id);

@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@nextui-org/react";
-import { useEffect, useState } from "react";
+import {MouseEvent, useEffect, useMemo, useState} from "react";
 
 import DeletingModal from "../../../components/ui/DeletingModal";
 
@@ -30,15 +30,21 @@ import {
 import Loader from "@/src/components/ui/Loader";
 import { toastSuccess } from "@/src/utils/toast-success";
 import { toastError } from "@/src/utils/toast-error";
-import { useDeleteNomenclatureQuery } from "@/src/hooks/nomenclatures/useNomenclatureQuery";
+import {
+  useDeleteNomenclatureQuery,
+  useNomenclatureAdQuery,
+  useNomenclatureQuery
+} from "@/src/hooks/nomenclatures/useNomenclatureQuery";
 import useIdFromParams from "@/src/hooks/useIdFromParams";
 import CustomTextarea from "@/src/app/nomenclatures/[id]/components/CustomTextArea";
 import {convertStatus} from "@/src/types/types/checkStatus";
 import {convertZone, timezonesArray} from "@/src/types/types/timezone";
+import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
+import {AxisOptions, Chart} from "react-charts";
 
 type Props = {
   id: string | undefined;
-  data: NomenclatureInterface | undefined;
+  // data: NomenclatureInterface | undefined;
 };
 
 const dayNames: Record<string, string> = {
@@ -51,28 +57,91 @@ const dayNames: Record<string, string> = {
   sun: "Воскресенье",
 };
 
-export default function NomenclatureDetails(props: Props) {
-  const { data } = props;
-  const id = useIdFromParams();
-  const [edit, setEdit] = useState<boolean>(false)
+// type MyDatum = { date: Date, stars: number }
+//
+// function MyChart() {
+//   const data = [
+//     {
+//       label: 'React Charts',
+//       data: [
+//         {
+//           date: 50,
+//           stars: 234,
+//         },
+//       ],
+//     },
+//     {
+//       label: 'React Charts 2',
+//       data: [
+//         {
+//           date: 110,
+//           stars: 23,
+//         },
+//       ],
+//     },
+//     {
+//       label: 'React Charts 3',
+//       data: [
+//         {
+//           date: 1000,
+//           stars: 265,
+//         },
+//       ],
+//     },
+//   ]
+//
+//   const primaryAxis = useMemo(
+//       (): AxisOptions<MyDatum> => ({
+//         getValue: datum => datum.date,
+//       }),
+//       []
+//   )
+//
+//   const secondaryAxes = useMemo(
+//       (): AxisOptions<MyDatum>[] => [
+//         {
+//           getValue: datum => datum.stars,
+//         },
+//       ],
+//       []
+//   )
+//
+//   return (
+//       <Chart
+//           options={{
+//             data,
+//             primaryAxis,
+//             secondaryAxes,
+//
+//           }}
+//       />
+//   )
+// }
 
+
+export default function NomenclatureDetails(props: Props) {
+  // const { data } = props;
+  const id = useIdFromParams();
+  const [edit, setEdit] = useState<boolean>(false);
   const [openEditingModal, setOpenEditingModal] = useState<boolean>(false);
   const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
-  const {
-    mutateAsync: deleteNomenclature,
-    isSuccess: isDeleteSuccess,
-    error: deleteError,
-    isError: isDeleteError,
-  } = useDeleteNomenclatureQuery();
+  const [fetchAdStats, setFetchAdStats] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
+
+  const { mutateAsync: deleteNomenclature, isSuccess: isDeleteSuccess, error: deleteError, isError: isDeleteError } = useDeleteNomenclatureQuery();
+
+  const {data} = useNomenclatureQuery(id)
 
   useEffect(() => {
     if (isDeleteSuccess) {
       toastSuccess("Номенклатура успешно удалена");
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         window.location.replace("/nomenclatures");
       }, 2500);
+      return () => clearTimeout(timeoutId);
     }
   }, [isDeleteSuccess]);
+
 
   const handleDeleteNomenclature = () => {
     deleteNomenclature(id);
@@ -86,18 +155,16 @@ export default function NomenclatureDetails(props: Props) {
     return <Loader />;
   }
 
-  const handleCloseEditingModal = () => {
-    setOpenEditingModal(false);
-  };
-  const handleCloseDeletingModal = () => {
-    setOpenDeletingModal(false);
-  };
+  const hwInfo = data.hw_info
 
-  const hwInfo: HwInfo = data.hw_info
+  const {adStat} = useNomenclatureAdQuery(id)
+  console.log(adStat)
 
 
   return (
+      // <MyChart />
       <div className={styles.container}> {/*container*/}
+
         <div className={styles.container_upperBlock}> {/*block main and hw*/}
           <div className={styles.container_upperBlock_mainInfo}>
             <span className={styles.container_upperBlock_mainInfo_name}>{data.main_info.name}</span>
@@ -190,9 +257,9 @@ export default function NomenclatureDetails(props: Props) {
         {/*settings*/}
         <div className={styles.container_lowerBlock}>
           <div className={styles.container_upperBlock_hwInfo}>
-            <h1 className={styles.container_upperBlock_mainInfo_name}>Информация о железе:</h1>
+            <h1 className={styles.container_upperBlock_mainInfo_name} style={{justifyContent: 'flex-start'}}>Информация о железе:</h1>
             {data.hw_info ? (
-                <div className='flex flex-row gap-2 justify-between w-full'>
+                <div>
                   <div>
                     <p><i>Модель</i>: {hwInfo.model}</p>
                     <p><i>Ревизия</i>: {hwInfo.revision}</p>
