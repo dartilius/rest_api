@@ -7,7 +7,9 @@ def user(django_user_model):
         email='user@test.com',
         username='user@test.com',
         phone_number='+78005553535',
-        password='test'
+        password='test',
+        first_name='name',
+        last_name='surname'
     )
 
 

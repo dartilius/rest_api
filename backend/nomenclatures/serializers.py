@@ -129,7 +129,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         repr_['main_info'] = {
             'name': obj.name,
             'description': obj.description,
-            'owner': f'{obj.owner.last_name} {obj.owner.first_name}',
+            'owner': obj.owner.get_full_name(),
             'timezone': TIMEZONES[obj.timezone],
             'status': self.get_status(obj),
             'last_answer': self.get_last_answer(obj),

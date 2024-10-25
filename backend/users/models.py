@@ -76,6 +76,11 @@ class CustomUser(AbstractUser):
         """Проверяем, что пользователь админ."""
         return self.role == 'admin'
 
+    def get_full_name(self):
+        return {
+            'full_name': f'{self.last_name} {self.first_name}'
+        }
+
     def save(self, *args, **kwargs):
         self.username = self.email
         super().save(*args, **kwargs)

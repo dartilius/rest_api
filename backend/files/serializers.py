@@ -112,10 +112,7 @@ class FileSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_['name'] = value.name
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
+        repr_['owner'] = value.owner.get_full_name()
         repr_['hash'] = {
             'md5': value.md5hash,
             'sha256': value.sha256hash,
@@ -192,10 +189,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
+        repr_['owner'] = value.owner.get_full_name()
         repr_['files'] = [
             {'id': file.id,
              'name': file.name,
@@ -219,10 +213,7 @@ class PlaylistListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
+        repr_['owner'] = value.owner.get_full_name()
         repr_['files_count'] = len(value.files.all())
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return repr_

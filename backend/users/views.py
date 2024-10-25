@@ -9,7 +9,7 @@ from rest_framework.status import (
 
 from users.filters import CustomUserFilter
 from users.models import CustomUser
-from users.permissions import OnlySuperuserCUDAuthRetrieve
+from users.permissions import SuperuserCUDAuthRetrieve
 from users.serializers import CustomUserSerializer, CustomUserListSerializer
 
 
@@ -20,7 +20,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     serializer_class = CustomUserSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = CustomUserFilter
-    permission_classes = [OnlySuperuserCUDAuthRetrieve]
+    permission_classes = [SuperuserCUDAuthRetrieve]
 
     def perform_create(self, serializer):
         user = serializer.save()

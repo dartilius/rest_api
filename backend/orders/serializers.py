@@ -282,10 +282,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
         """Десериализация с поддержкой списка объектов."""
         def _serialize_order(obj):
             repr_ = super(self.__class__, self).to_representation(obj)
-            repr_['owner'] = {
-                'full_name': f'{obj.owner.last_name} '
-                             f'{obj.owner.first_name}'
-            }
+            repr_['owner'] = obj.owner.get_full_name()
             repr_['client'] = {
                 'id': obj.client.id,
                 'name': obj.client.name
@@ -382,10 +379,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
         """Десериализация с поддержкой списка объектов."""
         def _serialize_order(obj):
             repr_ = super(self.__class__, self).to_representation(obj)
-            repr_['owner'] = {
-                'full_name': f'{obj.owner.last_name} '
-                             f'{obj.owner.first_name}'
-            }
+            repr_['owner'] = obj.owner.get_full_name()
             repr_['client'] = {
                 'id': obj.client.id,
                 'name': obj.client.name

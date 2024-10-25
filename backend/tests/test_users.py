@@ -54,10 +54,10 @@ class TestUsers:
         assert test_data['phone_number'] == data['phone_number'], (
             'Номер телефона нового пользователя отличается от отправленного.'
         )
-        assert test_data['full_name']['first_name'] == data['first_name'], (
+        assert test_data['first_name'] == data['first_name'], (
             'Имя нового пользователя отличается от отправленного.'
         )
-        assert test_data['full_name']['last_name'] == data['last_name'], (
+        assert test_data['last_name'] == data['last_name'], (
             'Фамилия нового пользователя отличается от отправленного.'
         )
 
@@ -86,13 +86,13 @@ class TestUsers:
         assert test_data['phone_number'] == data['phone_number'], (
             'Номер телефона нового пользователя отличается от отправленного.'
         )
-        assert test_data['full_name']['first_name'] == data['first_name'], (
+        assert test_data['first_name'] == data['first_name'], (
             'Имя нового пользователя отличается от отправленного.'
         )
-        assert test_data['full_name']['last_name'] == data['last_name'], (
+        assert test_data['last_name'] == data['last_name'], (
             'Фамилия нового пользователя отличается от отправленного.'
         )
-        assert test_data['full_name']['middle_name'] == data['middle_name'], (
+        assert test_data['middle_name'] == data['middle_name'], (
             'Отчество нового пользователя отличается от отправленного.'
         )
 

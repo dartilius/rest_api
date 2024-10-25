@@ -34,12 +34,9 @@ class TaskSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
+        repr_['owner'] = value.owner.get_full_name()
         repr_['client'] = {
-            'id': value.client.id,
+            'id': str(value.client.id),
             'name': value.client.name
         }
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
@@ -65,12 +62,9 @@ class TaskListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
+        repr_['owner'] = value.owner.get_full_name()
         repr_['client'] = {
-            'id': value.client.id,
+            'id': str(value.client.id),
             'name': value.client.name
         }
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')

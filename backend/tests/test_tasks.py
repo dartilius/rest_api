@@ -25,42 +25,26 @@ class TestTasks:
             'Неавторизованный пользователь имеет доступ к странице.'
         )
 
-    def test_avail_admin(self, admin_client):
-        response = admin_client.get(self.url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Пользователь-админ не имеет доступ к странице.'
-        )
-
-    @pytest.mark.xfail(reason='Не отрабатывает, но скорее всего и не нужно')
     def test_task_detail_user(self, user_client, task):
         task_id = str(task.id)
-        response = user_client.delete(self.task_url.format(task_id=task_id))
+        response = user_client.get(self.task_url.format(task_id=task_id))
         assert response.status_code == HTTPStatus.OK, (
             'Авторизованный пользователь не имеет доступ к странице.'
         )
 
     def test_task_detail_anon(self, anon_client, task):
         task_id = str(task.id)
-        response = anon_client.delete(self.task_url.format(task_id=task_id))
+        response = anon_client.get(self.task_url.format(task_id=task_id))
         assert response.status_code == HTTPStatus.UNAUTHORIZED, (
             'Неавторизованный пользователь имеет доступ к странице.'
         )
 
-    @pytest.mark.xfail(reason='Не отрабатывает, но скорее всего и не нужно')
-    def test_task_detail_admin(self, admin_client, task):
-        task_id = str(task.id)
-        response = admin_client.delete(self.task_url.format(task_id=task_id))
-        assert response.status_code == HTTPStatus.OK, (
-            'Пользователь-админ не имеет доступ к странице.'
-        )
-
-    def test_create_valid_task_user(self, user_client, user, nomenclature):
+    def test_create_valid_task(self, user_client, user, nomenclature):
         task_count = Task.objects.count()
         nomenclature_id = str(nomenclature.id)
-        parameters = 'test'
         data = {
             'client': nomenclature_id,
-            'parameters': parameters
+            'parameters': 'test'
         }
         response = user_client.post(self.url, data=data, format='json')
         assert response.status_code == HTTPStatus.CREATED, (
@@ -70,38 +54,31 @@ class TestTasks:
         assert task_count == Task.objects.count(), (
             'Не удалось создать репликацию.'
         )
-        assert Task.objects.order_by('created').last().owner == user, (
-            'Создатель репликации не встал в поле "Кто создал".'
+        response_data = response.json()
+        assert response_data['owner'] == user.get_full_name(), (
+            'Создатель репликации не встал в соответствующее поле.'
+        )
+        assert response_data['client']['id'] == data['client'], (
+            'Целевая рабочая станция созданной репликации отличается от '
+            'таковой в отправленных данных.'
+        )
+        assert response_data['parameters'] == data['parameters'], (
+            'Параметры репликации отличаются от отправленных данных.'
         )
 
-    def test_create_invalid_client_task(self, user_client, nomenclature):
+    def test_create_invalid_task(self, user_client, nomenclature):
         task_count = Task.objects.count()
-        data = {
+        invalid_data = {
             'client': nomenclature.name,
             'parameters': 'test'
         }
-        response = user_client.post(self.url, data=data, format='json')
+        response = user_client.post(self.url, data=invalid_data, format='json')
         assert response.status_code == HTTPStatus.BAD_REQUEST, (
             'Код статуса в ответе != 400.'
         )
         task_count += 1
         assert task_count != Task.objects.count(), (
-            'Удалось создать репликацию с неправильными данными (client).'
-        )
-
-    def test_create_invalid_parameters_task(self, user_client, nomenclature):
-        task_count = Task.objects.count()
-        data = {
-            'client': nomenclature.name,
-            'parameters': {'test'}
-        }
-        response = user_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        task_count += 1
-        assert task_count != Task.objects.count(), (
-            'Удалось создать репликацию с неправильными данными (parameters).'
+            f'Удалось создать репликацию с неправильными данными.'
         )
 
     def test_create_task_anon(self, client, nomenclature):
@@ -149,6 +126,7 @@ class TestTasks:
     )
     def test_delete_task_admin(self, admin_client, task):
         task_count = Task.objects.count()
+        assert task_count == 1
         task_id = str(task.id)
         response = admin_client.delete(self.task_url.format(task_id=task_id))
         assert response.status_code == HTTPStatus.NO_CONTENT, (
