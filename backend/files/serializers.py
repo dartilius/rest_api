@@ -123,16 +123,20 @@ class FileSerializer(serializers.ModelSerializer):
         return repr_
 
     def create(self, validated_data):
-        tags = validated_data.pop('tags')
-        instance = File.objects.create(**validated_data)
-        tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
-        instance.tags.set(tag_ids)
+        try:
+            tags = validated_data.pop('tags')
+            tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
+            instance = File.objects.create(**validated_data)
+            instance.tags.set(tag_ids)
+        except KeyError:
+            instance = File.objects.create(**validated_data)
         return instance
 
     def update(self, instance, validated_data):
-        tags = validated_data.pop('tags')
-        tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
-        instance.tags.set(tag_ids)
+        if 'tags' in validated_data:
+            tags = validated_data.pop('tags')
+            tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
+            instance.tags.set(tag_ids)
         super(self.__class__, self).update(instance, validated_data)
         instance.save()
         return instance

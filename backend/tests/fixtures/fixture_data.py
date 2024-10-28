@@ -1,3 +1,5 @@
+import tempfile
+
 import pytest
 
 from files.models import File, Playlist, Tag
@@ -48,34 +50,44 @@ def tag_2():
     )
 
 
-# @pytest.fixture
-# def file_1(user, tag_1):
-#     with open('/app/tests/fixtures/test_audio.mp3', 'rb') as file:
-#         audio_source = file.read()
-#     file_obj = File.objects.create(
-#         owner=user,
-#         source=audio_source,
-#         file_type=1
-#     )
-#     file_obj.tags.set([tag_1, tag_2])
-#     return file_obj
-#
-#
-# @pytest.fixture
-# def file_2(user, tag_1, tag_2):
-#     with open('/app/tests/fixtures/test_image.png', 'rb') as file:
-#         image_source = file.read()
-#     return File.objects.create(
-#         owner=user,
-#         source=image_source,
-#         file_type=2
-#     )
+@pytest.fixture
+def file_1(user_client, user, tag_1, tag_2):
+    with open('/app/tests/fixtures/test_audio.txt', 'r') as file:
+        audio_source = file.read()
+    file_start = 'data:test.mp3;base64,'
+    file_start += audio_source
+    data = {
+        'source': file_start,
+        'file_type': 1,
+        'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
+    }
+    response = user_client.post('/api/files/', data=data, format='json')
+    response_data = response.json()
+    file_obj = File.objects.get(id=response_data['id'])
+    return file_obj
 
 
-# @pytest.fixture
-# def playlist(user, file_1, file_2):
-#     return Playlist.objects.create(
-#         name='test',
-#         owner=user,
-#         files=[str(file_1.id), str(file_2.id)]
-#     )
+@pytest.fixture
+def file_2(user_client, user):
+    with open('/app/tests/fixtures/test_image.txt', 'r') as file:
+        image_source = file.read()
+    file_start = 'data:test.jpg;base64,'
+    file_start += image_source
+    data = {
+        'source': file_start,
+        'file_type': 1
+    }
+    response = user_client.post('/api/files/', data=data, format='json')
+    response_data = response.json()
+    file_obj = File.objects.get(id=response_data['id'])
+    return file_obj
+
+
+@pytest.fixture
+def playlist(user, file_1, file_2):
+    pls_obj = Playlist.objects.create(
+        name='test',
+        owner=user
+    )
+    pls_obj.files.set([str(file_1.id), str(file_2.id)])
+    return pls_obj
