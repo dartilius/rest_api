@@ -1,10 +1,45 @@
 volumes:
-  rabbitdata:
+  rabbit_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/rabbit_data
+
   pg_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/pg_data
+
   static:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/static
+
   celery:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/celery
+
   clickhouse_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/clickhouse_data
+
   s3:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/s3
 
 services:
   clickhouse:
@@ -144,7 +179,7 @@ services:
       timeout: 10s
       retries: 10
     volumes:
-      - rabbitdata:/var/lib/rabbitmq
+      - rabbit_data:/var/lib/rabbitmq
     ports:
       - 5672:5672
       - 15672:15672
