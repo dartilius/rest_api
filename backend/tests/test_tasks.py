@@ -1,10 +1,7 @@
 import pytest
 from http import HTTPStatus
-from dotenv import load_dotenv
 
 from tasks.models import Task
-
-load_dotenv()
 
 
 @pytest.mark.django_db

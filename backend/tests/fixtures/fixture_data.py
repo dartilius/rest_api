@@ -4,6 +4,7 @@ import pytest
 
 from files.models import File, Playlist, Tag
 from nomenclatures.models import Nomenclature
+from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 
 
@@ -91,3 +92,26 @@ def playlist(user, file_1, file_2):
     )
     pls_obj.files.set([str(file_1.id), str(file_2.id)])
     return pls_obj
+
+
+@pytest.fixture
+def adorder(user, file_1, file_2, playlist, nomenclature):
+    return AdOrder.objects.create(
+        name='test',
+        owner=user,
+        broadcast_interval="(\"2024-10-27 09:00:00\", \"2024-10-29 18:00:00\"]",
+        client=nomenclature,
+        playlist=playlist,
+    )
+
+
+@pytest.fixture
+def bgorder(user, file_1, file_2, playlist, nomenclature):
+    return BgOrder.objects.create(
+        name='test',
+        owner=user,
+        broadcast_interval="(\"2024-10-27 09:00:00\", \"2024-10-29 18:00:00\"]",
+        order_type=0,
+        client=nomenclature,
+        playlist=playlist,
+    )

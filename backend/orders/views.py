@@ -17,13 +17,11 @@ from orders.serializers import (
     BgOrderListSerializer
 )
 from orders.models import AdOrder, BgOrder
-from tasks.tasks import (
+from orders.tasks import (
     create_ad_order_task,
     cancel_ad_order_task,
-    resend_ad_order_task,
     create_bg_order_task,
     cancel_bg_order_task,
-    resend_bg_order_task
 )
 
 
@@ -85,38 +83,6 @@ class AdOrderViewSet(NoDeleteViewSet):
 
         cancel_ad_order_task.delay(orders_json)
         result_text = f'Запрос на отмену заказов {good_orders} принят.'
-        if bad_orders:
-            result_text += f' {bad_result}: {bad_orders}'
-        return Response(data=result_text, status=HTTP_200_OK)
-
-    @action(detail=False, methods=['POST'])
-    def resend(self, request):
-        """
-        Переотправка заказов.
-
-        0. Получаем список заказов на переотпарвку.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в целери
-            для создания соответствующих репликаций в фоне.
-        1.2. Заказы, которые нельзя переотправить,
-            записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут
-            переотправленны и которые переотправить нельзя.
-        """
-        resend_list = request.data['orders']
-        orders = AdOrder.objects.filter(pk__in=resend_list, status__in=[0, 1])
-        bad_result = 'Данные заказы переотправить невозможно'
-        if orders not in Constants.empty_values:
-            active_order_ids = [order.id for order in orders]
-            orders_json = serializers.serialize('json', orders)
-            bad_orders = list(set(resend_list) - set(active_order_ids))
-            good_orders = list(set(resend_list) - set(bad_orders))
-        else:
-            return Response(data=f'{bad_result}: {resend_list}',
-                            status=HTTP_400_BAD_REQUEST)
-
-        resend_ad_order_task.delay(orders_json)
-        result_text = f'Запрос на переотправку заказов {good_orders} принят.'
         if bad_orders:
             result_text += f' {bad_result}: {bad_orders}'
         return Response(data=result_text, status=HTTP_200_OK)
@@ -191,38 +157,6 @@ class BgOrderViewSet(NoDeleteViewSet):
 
         cancel_bg_order_task.delay(orders_json)
         result_text = f'Запрос на отмену заказов {good_orders} принят.'
-        if bad_orders:
-            result_text += f' {bad_result}: {bad_orders}'
-        return Response(data=result_text, status=HTTP_200_OK)
-
-    @action(detail=False, methods=['POST'])
-    def resend(self, request):
-        """
-        Переотправка заказов.
-
-        0. Получаем список заказов на переотпарвку.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в celery
-            для создания соответствующих репликаций на фоне.
-        1.2. Заказы, которые нельзя переотправить,
-            записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут
-            переотправленны и которые переотправить нельзя.
-        """
-        resend_list = request.data['orders']
-        orders = BgOrder.objects.filter(pk__in=resend_list, status__in=[0, 1])
-        bad_result = 'Данные заказы переотправить невозможно'
-        if orders not in Constants.empty_values:
-            active_order_ids = [order.id for order in orders]
-            orders_json = serializers.serialize('json', orders)
-            bad_orders = list(set(resend_list) - set(active_order_ids))
-            good_orders = list(set(resend_list) - set(bad_orders))
-        else:
-            return Response(data=f'{bad_result}: {resend_list}',
-                            status=HTTP_400_BAD_REQUEST)
-
-        resend_bg_order_task.delay(orders_json)
-        result_text = f'Запрос на переотправку заказов {good_orders} принят.'
         if bad_orders:
             result_text += f' {bad_result}: {bad_orders}'
         return Response(data=result_text, status=HTTP_200_OK)

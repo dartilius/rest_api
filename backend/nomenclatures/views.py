@@ -1,4 +1,6 @@
 from datetime import datetime as dt
+from itertools import chain
+
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -6,8 +8,13 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from rest_framework.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_400_BAD_REQUEST
+)
 
+from api.constants import Constants
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -33,6 +40,7 @@ from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability
 )
+from nomenclatures.tasks import resend_orders_task
 from tasks.models import Task
 
 
@@ -230,3 +238,34 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(detail=True, methods=['POST'])
+    def resend_orders(self, request, pk):
+        """
+        Переотправка заказов.
+
+        0. Получаем список заказов на переотпарвку.
+        1. Проверяем, что заказы в списке активны.
+        1.1. Активные заказы сериализуются в JSON и отправляются в целери
+            для создания соответствующих репликаций в фоне.
+        1.2. Заказы, которые нельзя переотправить,
+            записываем в отдельный список.
+        2. В ответ отдаём сообщение со списком заказов, которые будут
+            переотправленны и которые переотправить нельзя.
+        """
+        nomenclature = get_object_or_404(Nomenclature, id=pk)
+        empty_values = Constants.empty_values
+        orders = chain(
+            nomenclature.adorders.filter(status__in=[0, 1]),
+            nomenclature.bgorders.filter(status__in=[0, 1])
+        )
+
+        if orders in empty_values:
+            result_text = 'Нет активных заказов.'
+            return Response(data=result_text, status=HTTP_200_OK)
+
+        order_ids = [order.id for order in orders]
+        resend_orders_task.delay(order_ids)
+
+        result_text = 'Запрос на переотправку заказов принят.'
+        return Response(data=result_text, status=HTTP_201_CREATED)
