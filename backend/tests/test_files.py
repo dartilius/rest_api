@@ -203,7 +203,7 @@ class TestFiles:
             )
 
     def test_detail_user(self, user_client, file_1, playlist):
-        file_id = file_1.id
+        file_id = str(file_1.id)
         file_url = self.file_detail_url.format(file_id=file_id)
         playlist_id = str(playlist.id)
         playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
@@ -219,7 +219,7 @@ class TestFiles:
         )
 
     def test_detail_anon(self, anon_client, file_1, playlist):
-        file_id = file_1.id
+        file_id = str(file_1.id)
         file_url = self.file_detail_url.format(file_id=file_id)
         playlist_id = str(playlist.id)
         playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
@@ -235,7 +235,7 @@ class TestFiles:
         )
 
     def test_detail_admin(self, admin_client, file_1, playlist):
-        file_id = file_1.id
+        file_id = str(file_1.id)
         file_url = self.file_detail_url.format(file_id=file_id)
         playlist_id = str(playlist.id)
         playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
