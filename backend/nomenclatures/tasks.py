@@ -3,11 +3,11 @@ from itertools import chain
 from celery import shared_task
 from celery_singleton import Singleton
 from datetime import datetime, timedelta
-from django.core import serializers
 
-from nomenclatures.models import NomenclatureAvailability, StatusHistory
+from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
+from users.models import CustomUser
 
 
 @shared_task(base=Singleton)
@@ -131,3 +131,63 @@ def resend_orders_task(order_ids: list):
     Task.objects.bulk_create(task_list)
     result = f'Переотправленно заказов: {len(task_list)}.'
     return result
+
+
+def get_owner(owner_id):
+    owner = CustomUser.objects.get(pk=owner_id)
+    return owner
+
+
+def get_nomenclature(nomenclature_id):
+    nomenclature = Nomenclature.objects.get(pk=nomenclature_id)
+    return nomenclature
+
+
+@shared_task
+def reboot_task(nomenclature_id: str, owner_id: str):
+    nomenclature = get_nomenclature(nomenclature_id)
+    owner = get_owner(owner_id)
+    Task.objects.create(
+        owner=owner,
+        client=nomenclature,
+        type=15
+    )
+    return f'Запрос на перезагрузку отправлен для {nomenclature.name}'
+
+
+@shared_task
+def update_task(nomenclature_id: str, owner_id: str):
+    nomenclature = get_nomenclature(nomenclature_id)
+    owner = get_owner(owner_id)
+    Task.objects.create(
+        owner=owner,
+        client=nomenclature,
+        type=16
+    )
+    return f'Запрос на обновление отправлен для {nomenclature.name}'
+
+
+@shared_task
+def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
+    nomenclature = get_nomenclature(nomenclature_id)
+    owner = get_owner(owner_id)
+    Task.objects.create(
+        owner=owner,
+        client=nomenclature,
+        type=16,
+        parameters=parameters
+    )
+    return f'Отправлена SH команда для {nomenclature.name}'
+
+
+@shared_task
+def settings_task(nomenclature_id: str, settings: dict, owner_id: str):
+    nomenclature = get_nomenclature(nomenclature_id)
+    owner = get_owner(owner_id)
+    Task.objects.create(
+        owner=owner,
+        client=nomenclature,
+        type=16,
+        parameters=settings
+    )
+    return f'Настройки вещания отправлены для {nomenclature.name}'

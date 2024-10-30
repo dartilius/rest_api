@@ -40,7 +40,13 @@ from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability
 )
-from nomenclatures.tasks import resend_orders_task
+from nomenclatures.tasks import (
+    resend_orders_task,
+    reboot_task,
+    update_task,
+    custom_task,
+    settings_task
+)
 from tasks.models import Task
 
 
@@ -253,7 +259,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         2. В ответ отдаём сообщение со списком заказов, которые будут
             переотправленны и которые переотправить нельзя.
         """
-        nomenclature = get_object_or_404(Nomenclature, id=pk)
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
         empty_values = Constants.empty_values
         orders = chain(
             nomenclature.adorders.filter(status__in=[0, 1]),
@@ -269,3 +281,35 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         result_text = 'Запрос на переотправку заказов принят.'
         return Response(data=result_text, status=HTTP_201_CREATED)
+
+    @action(detail=True, methods=['POST'], url_path='actions')
+    def send_task(self, request, pk):
+        """
+        Отправка административных репликаций на тачку.
+
+        Типы репликаций:
+         - Перезагрузка
+         - Обновление
+         - SH команда
+            parameters = {'command': 'rm -rf /'}
+         - Настройки вещания
+            settings = {'mon' = {'default_volume': [50, 50, 50, 50], ...}
+        """
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
+        task = request.data['task']
+        owner = str(request.user.id)
+        match task:
+            case 'reboot': reboot_task.delay(pk, owner)
+            case 'update': update_task.delay(pk, owner)
+            case 'custom':
+                parameters = request.data['parameters']
+                custom_task.delay(pk, parameters, owner)
+            case 'settings':
+                settings = request.data['settings']
+                settings_task.delay(pk, settings, owner)
