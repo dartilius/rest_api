@@ -321,6 +321,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['POST'], url_path='tasks')
     def get_tasks(self, request, pk):
+        """Запрос списка репликаций номенклатуры."""
         try:
             nomenclature = get_object_or_404(Nomenclature, id=pk)
         except ValidationError:
