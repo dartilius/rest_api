@@ -1,14 +1,9 @@
-from django.core import serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.status import (
-    HTTP_400_BAD_REQUEST,
-    HTTP_200_OK
-)
+from rest_framework.status import HTTP_200_OK
 
-from api.constants import Constants
 from orders.filters import AdOrderFilter, BgOrderFilter
 from orders.serializers import (
     AdOrderSerializer,
@@ -57,34 +52,11 @@ class AdOrderViewSet(NoDeleteViewSet):
             orders_ids = [order.id for order in orders]
             create_ad_order_task.delay(orders_ids)
 
-    @action(detail=False, methods=['DELETE'])
-    def cancel(self, request):
-        """
-        Отмена заказов.
-
-        0. Получаем список заказов на отмену.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в целери
-            для отмены и создания соответствующих репликаций в фоне.
-        1.2. Заказы, которые нельзя отменить, записываются в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут отменены
-            и которые отменить нельзя.
-        """
-        cancel_list = request.data['orders']
-        orders = AdOrder.objects.filter(pk__in=cancel_list, status__in=[0, 1])
-        bad_result = 'Данные заказы отменить невозможно'
-        if orders not in Constants.empty_values:
-            active_order_ids = [order.id for order in orders]
-            orders_json = serializers.serialize('json', orders)
-            bad_orders = list(set(cancel_list) - set(active_order_ids))
-            good_orders = list(set(cancel_list) - set(bad_orders))
-        else:
-            return Response(data=bad_result, status=HTTP_400_BAD_REQUEST)
-
-        cancel_ad_order_task.delay(orders_json)
-        result_text = f'Запрос на отмену заказов {good_orders} принят.'
-        if bad_orders:
-            result_text += f' {bad_result}: {bad_orders}'
+    @action(detail=True, methods=['DELETE'])
+    def cancel(self, request, pk):
+        """Отмена заказа."""
+        cancel_ad_order_task.delay([str(pk)])
+        result_text = f'Запрос на отмену заказа принят.'
         return Response(data=result_text, status=HTTP_200_OK)
 
     def get_serializer(self, *args, **kwargs):
@@ -130,35 +102,11 @@ class BgOrderViewSet(NoDeleteViewSet):
             return Response(data='Нельзя менять тип заказа.', status=400)
         super().perform_update(serializer)
 
-    @action(detail=False, methods=['DELETE'])
-    def cancel(self, request):
-        """
-        Отмена заказов.
-
-        0. Получаем список заказов на отмену.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в целери
-            для отмены и создания соответствующих репликаций в фоне.
-        1.2. Заказы, которые нельзя отменить, записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут отменены
-            и которые отменить нельзя.
-        """
-        cancel_list = request.data['orders']
-        orders = BgOrder.objects.filter(pk__in=cancel_list, status__in=[0, 1])
-        bad_result = 'Данные заказы отменить невозможно'
-        if orders not in Constants.empty_values:
-            active_order_ids = [order.id for order in orders]
-            orders_json = serializers.serialize('json', orders)
-            bad_orders = list(set(cancel_list) - set(active_order_ids))
-            good_orders = list(set(cancel_list) - set(bad_orders))
-        else:
-            return Response(data=f'{bad_result}: {cancel_list}',
-                            status=HTTP_400_BAD_REQUEST)
-
-        cancel_bg_order_task.delay(orders_json)
-        result_text = f'Запрос на отмену заказов {good_orders} принят.'
-        if bad_orders:
-            result_text += f' {bad_result}: {bad_orders}'
+    @action(detail=True, methods=['DELETE'])
+    def cancel(self, request, pk):
+        """Отмена заказа."""
+        cancel_bg_order_task.delay([str(pk)])
+        result_text = f'Запрос на отмену заказа принят.'
         return Response(data=result_text, status=HTTP_200_OK)
 
     def get_serializer(self, *args, **kwargs):

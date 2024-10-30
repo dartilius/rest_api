@@ -89,7 +89,7 @@ class AdOrder(BaseOrder):
         db_table = 'adorder'
         ordering = ('-created',)
         verbose_name = 'Рекламный заказ'
-        verbose_name_plural = 'Реклама'
+        verbose_name_plural = 'Рекламные заказы'
 
 
 class BgOrder(BaseOrder):
@@ -104,4 +104,4 @@ class BgOrder(BaseOrder):
         db_table = 'bgorder'
         ordering = ('-created',)
         verbose_name = 'Фоновый заказ'
-        verbose_name_plural = 'Фон'
+        verbose_name_plural = 'Фоновые заказы'

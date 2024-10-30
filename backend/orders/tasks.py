@@ -1,5 +1,4 @@
 from datetime import datetime as dt
-from django.core import serializers
 
 from celery import shared_task
 from celery_singleton import Singleton
@@ -112,21 +111,20 @@ def create_ad_order_task(orders_ids: list):
 
 
 @shared_task
-def cancel_ad_order_task(orders_json: dict):
+def cancel_ad_order_task(order_ids: list):
     """
     Отмена рекламного заказа.
 
-    0. Десериализуем пришедший JSON с заказами в объекты.
-    1. Тянем с закзов всю нужную для создания репликаций инфу.
-    2. Создаём репликации на отмену.
+    0. Фильтруем заказы по полученному списку.
+    1. Проходим по списку, берём нужную инфу.
+    2. Заполняем список репликаций на отмену.
     3. Меняем статус заказу.
-    4. Кол-во ошибок фиксируем и возвращаем, а также логгируем с причиной.
+    4. Создаём все репликации одной операцией, фиксируем количество.
     """
-    orders = list(serializers.deserialize('json', orders_json))
+    orders = AdOrder.objects.filter(pk__in=order_ids)
     task_list = []
 
     for order in orders:
-        order = order.object
         task_list.append(
             Task(
                 owner=order.owner,
@@ -189,21 +187,20 @@ def create_bg_order_task(orders_ids: list):
 
 
 @shared_task
-def cancel_bg_order_task(orders_json: dict):
+def cancel_bg_order_task(order_ids: list):
     """
     Отмена фонового заказа.
 
-    0. Десериализуем пришедший JSON с заказами в объекты.
-    1. Тянем с закзов всю нужную для создания репликаций инфу.
-    2. Создаём репликации на отмену.
-    3. Меняем статус заказу.
-    4. Кол-во ошибок фиксируем и возвращаем, а также логгируем с причиной.
+    0. Фильтруем заказы по полученному списку.
+    1. Проходим по списку, берём нужную инфу с каждого заказа.
+    2. Заполняем список репликаций на отмену.
+    3. Меняем статусы заказам.
+    4. Создаём все репликации одной операцией, фиксируем количество.
     """
-    orders = list(serializers.deserialize('json', orders_json))
+    orders = BgOrder.objects.filter(pk__in=order_ids)
     task_list = []
 
     for order in orders:
-        order = order.object
         # order_type -> cancel_{order_type}
         match order.order_type:
             case 0: task_type = 5
