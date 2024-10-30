@@ -48,6 +48,7 @@ from nomenclatures.tasks import (
     settings_task
 )
 from tasks.models import Task
+from tasks.serializers import TaskListSerializer
 
 
 class NomenclatureViewSet(viewsets.ModelViewSet):
@@ -305,11 +306,33 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         task = request.data['task']
         owner = str(request.user.id)
         match task:
-            case 'reboot': reboot_task.delay(pk, owner)
-            case 'update': update_task.delay(pk, owner)
+            case 'reboot':
+                if not nomenclature.tasks.filter(status=0, type=15).exists():
+                    reboot_task.delay(pk, owner)
+            case 'update':
+                if not nomenclature.tasks.filter(status=0, type=16).exists():
+                    update_task.delay(pk, owner)
             case 'custom':
                 parameters = request.data['parameters']
                 custom_task.delay(pk, parameters, owner)
             case 'settings':
                 settings = request.data['settings']
                 settings_task.delay(pk, settings, owner)
+
+    @action(detail=True, methods=['POST'], url_path='tasks')
+    def get_tasks(self, request, pk):
+        try:
+            nomenclature = get_object_or_404(Nomenclature, id=pk)
+        except ValidationError:
+            return Response(
+                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
+                status=HTTP_400_BAD_REQUEST
+            )
+        tasks = Task.objects.filter(client=pk)
+
+        page = self.paginate_queryset(tasks)
+        if page is not None:
+            serializer = TaskListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = TaskListSerializer(tasks, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
