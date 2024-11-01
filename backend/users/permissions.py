@@ -24,7 +24,7 @@ class SuperuserCUDAuthRetrieve(BasePermission):
 
 class AdminManagerCUDAuthRetrieve(BasePermission):
     """
-    Создать, изменить и удалить может сотрудник ТО или SU,
+    Создать, изменить и удалить может сотрудник ТО, менеджер или SU,
     просмотреть - любой авторизованный.
     """
 

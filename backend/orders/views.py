@@ -18,6 +18,7 @@ from orders.tasks import (
     create_bg_order_task,
     cancel_bg_order_task,
 )
+from users.permissions import AdminManagerCUDAuthRetrieve
 
 
 class NoDeleteViewSet(mixins.CreateModelMixin,
@@ -37,6 +38,7 @@ class AdOrderViewSet(NoDeleteViewSet):
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
+    permission_classes = [AdminManagerCUDAuthRetrieve]
 
     def perform_create(self, serializer):
         """
@@ -47,6 +49,7 @@ class AdOrderViewSet(NoDeleteViewSet):
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
+        serializer.is_valid(raise_exception=True)
         orders_list = serializer.save(owner=self.request.user)
         for orders in orders_list:
             orders_ids = [order.id for order in orders]
@@ -81,6 +84,7 @@ class BgOrderViewSet(NoDeleteViewSet):
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
+    permission_classes = [AdminManagerCUDAuthRetrieve]
 
     def perform_create(self, serializer):
         """
@@ -91,6 +95,7 @@ class BgOrderViewSet(NoDeleteViewSet):
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
+        serializer.is_valid(raise_exception=True)
         orders_list = serializer.save(owner=self.request.user)
         for orders in orders_list:
             orders_ids = [order.id for order in orders]

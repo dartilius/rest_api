@@ -1,4 +1,3 @@
-import json
 from datetime import time, datetime as dt
 from rest_framework import serializers
 
@@ -7,12 +6,7 @@ from orders.models import AdOrder, BgOrder
 
 
 class DateTimeTZRangeField(serializers.DictField):
-    """
-    Поле для обработки интервалов вещания.
-
-    Сделано на основе:
-    https://github.com/Hipo/drf-extra-fields/
-    """
+    """Поле для обработки интервалов вещания."""
 
     from psycopg.types.range import TimestamptzRange
 
@@ -33,8 +27,6 @@ class DateTimeTZRangeField(serializers.DictField):
         super().__init__(**kwargs)
 
     def to_internal_value(self, data):
-        data = json.loads(data)
-
         extra_content = list(set(data) - {'lower', 'upper', 'bounds', 'empty'})
         if extra_content:
             self.fail(
@@ -128,19 +120,33 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 f'в пределах {e_list[-1]}'
             )
 
-        def _validate_daily_times(start: int, end: int) -> dict:
-            """Валидация интервала времени ежедневного вещания."""
+        def _time_string_to_tuple(time_string: str):
             try:
-                start = time(start)
-                end = time(end)
+                return tuple(map(int, time_string.split(':')))
+            except (ValueError, AttributeError):
+                raise serializers.ValidationError(
+                    'Временя должно быть в формате ЧЧ(:ММ:СС)'
+                )
+
+        def _validate_daily_times(start: str, end: str) -> dict:
+            """Валидация интервала времени ежедневного вещания."""
+            start = _time_string_to_tuple(start)
+            end = _time_string_to_tuple(end)
+            try:
+                start_time = time(*start)
+                end_time = time(*end)
             except ValueError as e:
                 _translate_error(e)
-            if not time(0, 0, 0) <= start < end <= time(23, 59, 59):
+            if not time(0, 0, 0) <= start_time < end_time <= time(23, 59, 59):
                 raise serializers.ValidationError(
                     'Неправильно задан интервал времени ежедневного вещания'
                 )
-            return {"start_time": start,
-                    "end_time": end}
+            validated_times = dict()
+            if start != (0, 0, 1):
+                validated_times.update({'start_time': start})
+            if end != (23, 59, 58):
+                validated_times.update({'end_time': end})
+            return validated_times
 
         def _validate_times_in_hour(count: int) -> dict:
             """Валидация кол-ва выходов в час."""
@@ -150,7 +156,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
                     f'Такого кол-ва выходов в час ({count}) '
                     f'нет в списке допустимых: {possible_counts}'
                 )
-            return {"times_in_hour": count}
+            return {'times_in_hour': count}
 
         def _validate_weight(weight: int) -> dict:
             """Валидация приоритета файла."""
@@ -158,19 +164,20 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     'Приоритет файла должен быть в пределах от 0 до 100'
                 )
-            return {"weight": weight}
+            return {'weight': weight}
 
-        def _validate_timedelta(timedelta: int) -> dict:
+        def _validate_timedelta(timedelta: str) -> dict:
             """Валидация промежутка времени."""
+            timedelta = _time_string_to_tuple(timedelta)
             try:
-                timedelta = time(timedelta)
+                timedelta_time = time(*timedelta)
             except ValueError as e:
                 _translate_error(e)
-            if not time(0, 0, 59) < timedelta:
+            if not time(0, 0, 59) < timedelta_time:
                 raise serializers.ValidationError(
                     'Смещение по времени не может быть меньше 1 минуты'
                 )
-            return {"timedelta": timedelta}
+            return {'timedelta': timedelta}
 
         def _validate_trigger(event: str, active_ad: str) -> dict:
             """
@@ -192,12 +199,16 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     f'Такое поведение для текущей рекламы не предусмотрено'
                 )
-            return {"event": event,
-                    "active_ad": active_ad}
+            return {'event': event,
+                    'active_ad': active_ad}
 
-        brc_type: int = data.get('broadcast_type')
-        parameters: dict = data.pop('parameters')
-        clients: list = data.pop('clients')
+        try:
+            brc_type: int = data.get('broadcast_type')
+            parameters: dict = data.pop('parameters')
+        except KeyError as e:
+            raise serializers.ValidationError(
+                f'Не указан обязательный параметр: {e}'
+            )
         v_parameters = dict()
 
         try:
@@ -224,33 +235,31 @@ class AdOrderSerializer(serializers.ModelSerializer):
                             'Необходимо указать смещение по времени '
                             'для данного типа вещания'
                         )
-                    _timedelta = tuple(map(int, timedelta_val.split(':')))
-                    v_parameters.update(_validate_timedelta(*_timedelta))
+                    v_parameters.update(_validate_timedelta(timedelta_val))
                 case 3:
                     if start_time is None or end_time is None:
                         raise serializers.ValidationError(
                             'Необходимо указать время начала и окончания '
                             'для данного типа вещания'
                         )
-                    start = tuple(map(int, start_time.split(':')))
-                    end = tuple(map(int, end_time.split(':')))
-                    v_parameters.update(_validate_daily_times(*start, *end))
+                    v_parameters.update(_validate_daily_times(start_time,
+                                                              end_time))
                 case 4:
                     if end_time is None:
                         raise serializers.ValidationError(
                             'Необходимо указать время окончания '
                             'для данного типа вещания'
                         )
-                    end = tuple(map(int, end_time.split(':')))
-                    v_parameters.update(_validate_daily_times(0, *end))
+                    v_parameters.update(_validate_daily_times('00:00:01',
+                                                              end_time))
                 case 5:
                     if start_time is None:
                         raise serializers.ValidationError(
                             'Необходимо указать время начала '
                             'для данного типа вещания'
                         )
-                    start = tuple(map(int, start_time.split(':')))
-                    v_parameters.update(_validate_daily_times(*start, 0))
+                    v_parameters.update(_validate_daily_times(start_time,
+                                                              '23:59:58'))
                 case 6:
                     if event_val is None or ad_action is None:
                         raise serializers.ValidationError(
@@ -263,8 +272,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(e)
 
         validated_data = {**data,
-                          'parameters': v_parameters,
-                          'clients': clients}
+                          'parameters': v_parameters}
         return validated_data
 
     def create(self, validated_data):
@@ -292,12 +300,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 'name': obj.playlist.name,
                 'files_count': len([file for file in obj.playlist.files.all()])
             }
-            repr_['slides'] = [
-                {
-                    'id': slide.id,
-                    'file_id': slide.file_id
-                } for slide in obj.slides.all()
-            ] if obj.slides else None
+            repr_['slides'] = obj.slides if obj.slides else None
             repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
             return repr_
 
@@ -333,6 +336,7 @@ class AdOrderListSerializer(serializers.ModelSerializer):
         }
         repr_['playlist'] = {
             'id': value.playlist.id,
+            'name': value.playlist.name,
             'files_count': len([file for file in value.playlist.files.all()])
         }
         return repr_
@@ -363,6 +367,27 @@ class BgOrderSerializer(serializers.ModelSerializer):
             'created'
         )
         model = BgOrder
+
+    def validate(self, data):
+        """Валидация фонового заказа."""
+        from files.models import Playlist
+        from api.constants import Constants
+
+        empty_values = Constants.empty_values
+        order_type = data.get('order_type')
+        playlist_id = self.initial_data[0].get('playlist')
+
+        playlist_obj = Playlist.objects.get(id=playlist_id)
+        files = [file for file in playlist_obj.files.all()]
+        if files in empty_values:
+            raise serializers.ValidationError('Плейлист не содержит файлов')
+
+        for file in files:
+            if file.type != order_type:
+                raise serializers.ValidationError(
+                    f'Плейлист содержит файлы неправильного типа'
+                )
+        return data
 
     def create(self, validated_data):
         """Внесение клиентов из списка айди."""
@@ -426,6 +451,7 @@ class BgOrderListSerializer(serializers.ModelSerializer):
         }
         repr_['playlist'] = {
             'id': value.playlist.id,
+            'name': value.playlist.name,
             'files_count': len([file for file in value.playlist.files.all()])
         }
         return repr_

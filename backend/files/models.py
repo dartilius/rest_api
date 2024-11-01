@@ -5,11 +5,11 @@ from api import APIBaseObjectModel
 from files.file_info import GetFileInfo
 
 TYPES = {
-    0: 'ad',
-    1: 'music',
-    2: 'image',
-    3: 'video',
-    4: 'ticker'
+    0: 'music',
+    1: 'image',
+    2: 'video',
+    3: 'ticker',
+    4: 'ad'
 }
 
 
@@ -33,7 +33,7 @@ class Tag(models.Model):
 
 
 def media_path(instance, filename):
-    return f'{TYPES[instance.file_type]}/{filename}'
+    return f'{TYPES[instance.type]}/{filename}'
 
 
 class File(APIBaseObjectModel):
@@ -70,7 +70,7 @@ class File(APIBaseObjectModel):
         verbose_name='Размер',
         default=0
     )
-    file_type = models.PositiveSmallIntegerField(
+    type = models.PositiveSmallIntegerField(
         choices=TYPES,
         verbose_name='Тип'
     )
@@ -128,7 +128,7 @@ class File(APIBaseObjectModel):
         minio_client = Constants.get_minio_client()
         minio_client.remove_object(
             settings.MINIO_MEDIA_FILES_BUCKET,
-            f'{TYPES[self.file_type]}/{self.name}'
+            f'{TYPES[self.type]}/{self.name}'
         )
         super().delete(*args, **kwargs)
 
@@ -165,3 +165,11 @@ class Playlist(APIBaseObjectModel):
         ordering = ('-created',)
         verbose_name = 'Плейлист'
         verbose_name_plural = 'Плейлисты'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name'],
+                name='unique_playlist_name',
+                violation_error_message='Плейлист с таким названием '
+                                        'уже существует'
+            )
+        ]

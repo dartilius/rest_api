@@ -1,0 +1,7 @@
+ch_statistic/migrations
+docs/migrations
+files/migrations
+nomenclatures/migrations
+orders/migrations
+tasks/migrations
+users/migrations

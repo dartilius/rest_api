@@ -77,6 +77,54 @@ class TestFiles:
             f'{tags_url}.'
         )
 
+    def test_detail_user(self, user_client, file_1, playlist_1):
+        file_id = str(file_1.id)
+        file_url = self.file_detail_url.format(file_id=file_id)
+        playlist_id = str(playlist_1.id)
+        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
+        response = user_client.get(file_url)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Авторизованный пользователь не имеет доступ к странице '
+            f'{file_url}.'
+        )
+        response = user_client.get(playlist_url)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Авторизованный пользователь не имеет доступ к странице '
+            f'{playlist_url}.'
+        )
+
+    def test_detail_anon(self, anon_client, file_1, playlist_1):
+        file_id = str(file_1.id)
+        file_url = self.file_detail_url.format(file_id=file_id)
+        playlist_id = str(playlist_1.id)
+        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
+        response = anon_client.get(file_url)
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            'Неавторизованный пользователь имеет доступ к странице.'
+            f'{file_url}.'
+        )
+        response = anon_client.get(playlist_url)
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            'Неавторизованный пользователь имеет доступ к странице.'
+            f'{playlist_url}.'
+        )
+
+    def test_detail_admin(self, admin_client, file_1, playlist_1):
+        file_id = str(file_1.id)
+        file_url = self.file_detail_url.format(file_id=file_id)
+        playlist_id = str(playlist_1.id)
+        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
+        response = admin_client.get(file_url)
+        assert response.status_code == HTTPStatus.OK, (
+            'Пользователь-админ не имеет доступ к странице.'
+            f'{file_url}.'
+        )
+        response = admin_client.get(playlist_url)
+        assert response.status_code == HTTPStatus.OK, (
+            'Пользователь-админ не имеет доступ к странице.'
+            f'{playlist_url}.'
+        )
+
     def test_create_valid_file(self, user_client, user, tag_1, tag_2):
         file_count = File.objects.count()
         audio_source = 'data:test.mp3;base64,'
@@ -84,7 +132,7 @@ class TestFiles:
             audio_source += file.read()
         data = {
             'source': audio_source,
-            'file_type': 1,
+            'type': 1,
             'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
         }
         response = user_client.post(self.files_url, data=data, format='json')
@@ -116,7 +164,7 @@ class TestFiles:
         assert response_data.get('hash'), (
             'Не удалось вычислить хэш файла.'
         )
-        if response_data.get('file_type') not in (2, 5):
+        if response_data.get('type') not in (2, 5):
             assert response_data.get('length'), (
                 'Не удалось вычислить продолжительность медиафайла.'
             )
@@ -129,17 +177,17 @@ class TestFiles:
         invalid_data = [
             {
                 'source': 'data:test.mp3;base64,ololo',
-                'file_type': 1,
+                'type': 1,
                 'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
             },
             {
                 'source': audio_source,
-                'file_type': 6,
+                'type': 6,
                 'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
             },
             {
                 'source': audio_source,
-                'file_type': 1,
+                'type': 1,
                 'tags': [tag_1.name, tag_2.name]
             }
         ]
@@ -201,55 +249,3 @@ class TestFiles:
             assert pls_count != Playlist.objects.count(), (
                 f'Удалось создать плейлист с неправильными данными: {data}.'
             )
-
-    def test_detail_user(self, user_client, file_1, playlist):
-        file_id = str(file_1.id)
-        file_url = self.file_detail_url.format(file_id=file_id)
-        playlist_id = str(playlist.id)
-        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
-        response = user_client.get(file_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{file_url}.'
-        )
-        response = user_client.get(playlist_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{playlist_url}.'
-        )
-
-    def test_detail_anon(self, anon_client, file_1, playlist):
-        file_id = str(file_1.id)
-        file_url = self.file_detail_url.format(file_id=file_id)
-        playlist_id = str(playlist.id)
-        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
-        response = anon_client.get(file_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице.'
-            f'{file_url}.'
-        )
-        response = anon_client.get(playlist_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице.'
-            f'{playlist_url}.'
-        )
-
-    def test_detail_admin(self, admin_client, file_1, playlist):
-        file_id = str(file_1.id)
-        file_url = self.file_detail_url.format(file_id=file_id)
-        playlist_id = str(playlist.id)
-        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
-        response = admin_client.get(file_url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Пользователь-админ не имеет доступ к странице.'
-            f'{file_url}.'
-        )
-        response = admin_client.get(playlist_url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Пользователь-админ не имеет доступ к странице.'
-            f'{playlist_url}.'
-        )
-
-
-
-

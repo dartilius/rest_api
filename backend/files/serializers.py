@@ -73,7 +73,7 @@ class FileSourceSerializer(serializers.ModelSerializer):
     class Meta:
         fields = (
             'id',
-            'file_type',
+            'type',
             'source'
         )
         read_only_fields = (
@@ -94,7 +94,7 @@ class FileSerializer(serializers.ModelSerializer):
             'id',
             'length',
             'size',
-            'file_type',
+            'type',
             'source',
             'tags',
             'url'
@@ -118,7 +118,7 @@ class FileSerializer(serializers.ModelSerializer):
             'sha256': value.sha256hash,
             'concat_hash': value.hash
         }
-        repr_['file_type'] = TYPES[value.file_type]
+        repr_['file_type'] = TYPES[value.type]
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return repr_
 
@@ -151,14 +151,14 @@ class FileListSerializer(serializers.ModelSerializer):
             'name',
             'length',
             'size',
-            'file_type'
+            'type'
         )
         read_only_fields = fields
         model = File
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['file_type'] = TYPES[value.file_type]
+        repr_['file_type'] = TYPES[value.type]
         repr_['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
