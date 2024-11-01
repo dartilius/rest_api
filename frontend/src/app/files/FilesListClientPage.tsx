@@ -48,7 +48,7 @@ export default function FilesListClientPage() {
   const [hash, setHash] = useState<string>("");
   const [tags, setTags] = useState<string[] | undefined>(undefined);
   const debouncedName = useDebounce(inputValue, 500);
-  const debounceTags = useDebounce(tags, 500)
+  const debounceTags = useDebounce(tags, 2000)
   console.log(debouncedName)
   const { data, error, isError, isLoading, isSuccess } = useFilesQuery({
     page,
@@ -82,7 +82,7 @@ export default function FilesListClientPage() {
 
   return (
     <>
-      {data && (
+
         <div className={styles.container}>
           <div className={styles.sidebar}>
             <Search
@@ -136,7 +136,7 @@ export default function FilesListClientPage() {
               Создать
             </Button>
           </div>
-
+          {data && (
           <div style={{ width: 900 }}>
             <Table
               isHeaderSticky
@@ -191,8 +191,9 @@ export default function FilesListClientPage() {
               </TableBody>
             </Table>
           </div>
+
+        )}
         </div>
-      )}
       <FilesCreate open={openCreatingModal} close={() => setOpenCreatingModal(false)} />
     </>
   );

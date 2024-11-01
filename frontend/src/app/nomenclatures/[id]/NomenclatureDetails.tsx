@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@nextui-org/react";
-import { useEffect, useState } from "react";
+import {MouseEvent, useEffect, useMemo, useState} from "react";
 
 import DeletingModal from "../../../components/ui/DeletingModal";
 
@@ -24,21 +24,27 @@ import EditingModal from "./components/EditingModal";
 import styles from './NomenclatureDetails.module.scss'
 
 import {
-  DaySettings,
+  DaySettings, HwInfo,
   NomenclatureInterface,
 } from "@/src/types/interface/nomenclature.interface";
 import Loader from "@/src/components/ui/Loader";
 import { toastSuccess } from "@/src/utils/toast-success";
 import { toastError } from "@/src/utils/toast-error";
-import { useDeleteNomenclatureQuery } from "@/src/hooks/nomenclatures/useNomenclatureQuery";
+import {
+  useDeleteNomenclatureQuery,
+  useNomenclatureAdQuery,
+  useNomenclatureQuery
+} from "@/src/hooks/nomenclatures/useNomenclatureQuery";
 import useIdFromParams from "@/src/hooks/useIdFromParams";
 import CustomTextarea from "@/src/app/nomenclatures/[id]/components/CustomTextArea";
 import {convertStatus} from "@/src/types/types/checkStatus";
 import {convertZone, timezonesArray} from "@/src/types/types/timezone";
+import nomenclaturesService from "@/src/services/nomenclatures/nomenclatures.service";
+import {AxisOptions, Chart} from "react-charts";
 
 type Props = {
   id: string | undefined;
-  data: NomenclatureInterface | undefined;
+  // data: NomenclatureInterface | undefined;
 };
 
 const dayNames: Record<string, string> = {
@@ -51,32 +57,91 @@ const dayNames: Record<string, string> = {
   sun: "Воскресенье",
 };
 
-function parseStringData(data: any) {
-  return JSON.parse(data.replace(/'/g, '"'));
-}
+// type MyDatum = { date: Date, stars: number }
+//
+// function MyChart() {
+//   const data = [
+//     {
+//       label: 'React Charts',
+//       data: [
+//         {
+//           date: 50,
+//           stars: 234,
+//         },
+//       ],
+//     },
+//     {
+//       label: 'React Charts 2',
+//       data: [
+//         {
+//           date: 110,
+//           stars: 23,
+//         },
+//       ],
+//     },
+//     {
+//       label: 'React Charts 3',
+//       data: [
+//         {
+//           date: 1000,
+//           stars: 265,
+//         },
+//       ],
+//     },
+//   ]
+//
+//   const primaryAxis = useMemo(
+//       (): AxisOptions<MyDatum> => ({
+//         getValue: datum => datum.date,
+//       }),
+//       []
+//   )
+//
+//   const secondaryAxes = useMemo(
+//       (): AxisOptions<MyDatum>[] => [
+//         {
+//           getValue: datum => datum.stars,
+//         },
+//       ],
+//       []
+//   )
+//
+//   return (
+//       <Chart
+//           options={{
+//             data,
+//             primaryAxis,
+//             secondaryAxes,
+//
+//           }}
+//       />
+//   )
+// }
+
 
 export default function NomenclatureDetails(props: Props) {
-  const { data } = props;
+  // const { data } = props;
   const id = useIdFromParams();
-  const [edit, setEdit] = useState<boolean>(false)
-
+  const [edit, setEdit] = useState<boolean>(false);
   const [openEditingModal, setOpenEditingModal] = useState<boolean>(false);
   const [openDeletingModal, setOpenDeletingModal] = useState<boolean>(false);
-  const {
-    mutateAsync: deleteNomenclature,
-    isSuccess: isDeleteSuccess,
-    error: deleteError,
-    isError: isDeleteError,
-  } = useDeleteNomenclatureQuery();
+  const [fetchAdStats, setFetchAdStats] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
+
+  const { mutateAsync: deleteNomenclature, isSuccess: isDeleteSuccess, error: deleteError, isError: isDeleteError } = useDeleteNomenclatureQuery();
+
+  const {data} = useNomenclatureQuery(id)
 
   useEffect(() => {
     if (isDeleteSuccess) {
       toastSuccess("Номенклатура успешно удалена");
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         window.location.replace("/nomenclatures");
       }, 2500);
+      return () => clearTimeout(timeoutId);
     }
   }, [isDeleteSuccess]);
+
 
   const handleDeleteNomenclature = () => {
     deleteNomenclature(id);
@@ -90,55 +155,16 @@ export default function NomenclatureDetails(props: Props) {
     return <Loader />;
   }
 
-  const renderSettingsTable = (
-    settings: Record<string, DaySettings | undefined>,
-  ) => {
-    const sortedSettings = Object.entries(settings)
-      // .filter(([day, setting]) => setting !== undefined)
-      .sort(([dayA], [dayB]) => dayNames[dayA].localeCompare(dayNames[dayB]));
+  const hwInfo = data.hw_info
 
-    return (
-      <Table aria-label="Settings Table" width='auto'>
-        <TableHeader>
-          <TableColumn>День</TableColumn>
-          <TableColumn>Рабочее время</TableColumn>
-          <TableColumn>Уровень громкости</TableColumn>
-        </TableHeader>
-        <TableBody>
-          {sortedSettings.map(([day, setting]) => (
-            <TableRow key={day}>
-              <TableCell>{dayNames[day]}</TableCell>
-              <TableCell>{setting?.worktime.join(" - ")}</TableCell>
-              <TableCell>{setting?.default_volume.join(", ")}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  };
+  const {adStat} = useNomenclatureAdQuery(id)
+  console.log(adStat)
 
-  const handleCloseEditingModal = () => {
-    setOpenEditingModal(false);
-  };
-  const handleCloseDeletingModal = () => {
-    setOpenDeletingModal(false);
-  };
-
-  const interfaces = parseStringData(data.hw_info.interfaces);
-
-// Парсим audiodevices
-  const audiodevices = parseStringData(data.hw_info.audiodevices);
-
-// Парсим sd_card_data
-  const sd_card_data = parseStringData(data.hw_info.sd_card_data);
-
-// Выводим результаты
-  console.log('Interfaces:', interfaces);
-  console.log('Audio Devices:', audiodevices);
-  console.log('SD Card Data:', sd_card_data);
 
   return (
+      // <MyChart />
       <div className={styles.container}> {/*container*/}
+
         <div className={styles.container_upperBlock}> {/*block main and hw*/}
           <div className={styles.container_upperBlock_mainInfo}>
             <span className={styles.container_upperBlock_mainInfo_name}>{data.main_info.name}</span>
@@ -172,101 +198,106 @@ export default function NomenclatureDetails(props: Props) {
 
 
           </div>
-          <div className={styles.container_upperBlock_hwInfo}>
-            <div>
-              <strong>Model:</strong> {data.hw_info.model}
+
+          <div className={styles.container_lowerBlock_settingsBlock}>
+            {/*{renderSettingsTable(data.settings)}*/}
+            <div className={styles.container_lowerBlock_settingsBlock_start}>Время работы</div>
+            <div className={styles.container_lowerBlock_settingsBlock_volume}>Стандартная громкость</div>
+            <div className={styles.container_lowerBlock_settingsBlock_monday}>Понедельник</div>
+            <div
+                className={styles.container_lowerBlock_settingsBlock_monday_time}>{data.settings.mon?.worktime}</div>
+            <div
+                className={styles.container_lowerBlock_settingsBlock_monday_volume}>{data.settings.mon?.default_volume.join(', ')}</div>
+            <div className={styles.container_lowerBlock_settingsBlock_tuesday}>Вторник</div>
+            <div className={styles.container_lowerBlock_settingsBlock_tuesday_time}>
+              {data.settings.tue?.worktime}
             </div>
-            <div>
-              <strong>Revision:</strong> {data.hw_info.revision}
+            <div className={styles.container_lowerBlock_settingsBlock_tuesday_volume}>
+              {data.settings.tue?.default_volume.join(", ")}
             </div>
-            <div>
-              <strong>Interfaces:</strong>
-              <ul>
-                {interfaces.map((iface: any, index: any) => (
-                    <li key={index}>
-                      {iface.iface} - MAC: {iface.mac}, IP: {iface.ip || "N/A"}
-                    </li>
-                ))}
-              </ul>
+            <div className={styles.container_lowerBlock_settingsBlock_wednesday}>Среда</div>
+            <div className={styles.container_lowerBlock_settingsBlock_wednesday_time}>
+              {data.settings.wed?.worktime}
             </div>
-            <div>
-              <strong>Audio Devices:</strong>
-              <ul>
-                {audiodevices.map((device: any, index: any) => (
-                    <li key={index}>
-                      Card {device.card}: {device.name}
-                    </li>
-                ))}
-              </ul>
+            <div className={styles.container_lowerBlock_settingsBlock_wednesday_volume}>
+              {data.settings.wed?.default_volume.join(", ")}
             </div>
-            <div>
-              <strong>SD Card Data:</strong> {sd_card_data.name}, Manufacturer ID: {sd_card_data.manf_id}
+            <div className={styles.container_lowerBlock_settingsBlock_thusday}>Четверг</div>
+            <div className={styles.container_lowerBlock_settingsBlock_thusday_time}>
+              {data.settings.thu?.worktime}
+            </div>
+            <div className={styles.container_lowerBlock_settingsBlock_thusday_volume}>
+              {data.settings.thu?.default_volume.join(", ")}
+            </div>
+            <div className={styles.container_lowerBlock_settingsBlock_friday}>Пятница</div>
+            <div className={styles.container_lowerBlock_settingsBlock_friday_time}>
+              {data.settings.fri?.worktime}
+            </div>
+            <div className={styles.container_lowerBlock_settingsBlock_friday_volume}>
+              {data.settings.fri?.default_volume.join(", ")}
+            </div>
+            <div className={styles.container_lowerBlock_settingsBlock_saturday}>Суббота</div>
+            <div className={styles.container_lowerBlock_settingsBlock_saturday_time}>
+              {data.settings.sat?.worktime}
+            </div>
+            <div className={styles.container_lowerBlock_settingsBlock_saturday_volume}>
+              {data.settings.sat?.default_volume.join(", ")}
+            </div>
+            <div className={styles.container_lowerBlock_settingsBlock_sunday}>Воскресенье</div>
+            <div className={styles.container_lowerBlock_settingsBlock_sunday_time}>
+              {data.settings.sun?.worktime}
+            </div>
+            <div className={styles.container_lowerBlock_settingsBlock_sunday_volume}>
+              {data.settings.sun?.default_volume.join(", ")}
             </div>
           </div>
-
         </div>
 
-
-        <div className={styles.container_lowerBlock_settingsBlock}>
-          {/*{renderSettingsTable(data.settings)}*/}
-          <div className={styles.container_lowerBlock_settingsBlock_start}>Время работы</div>
-          <div className={styles.container_lowerBlock_settingsBlock_volume}>Стандартная громкость</div>
-          <div className={styles.container_lowerBlock_settingsBlock_monday}>Понедельник</div>
-          <div
-              className={styles.container_lowerBlock_settingsBlock_monday_time}>{data.settings.mon?.worktime.join(" - ")}</div>
-          <div
-              className={styles.container_lowerBlock_settingsBlock_monday_volume}>{data.settings.mon?.default_volume.join(", ")}</div>
-          <div className={styles.container_lowerBlock_settingsBlock_tuesday}>Вторник</div>
-          <div className={styles.container_lowerBlock_settingsBlock_tuesday_time}>
-            {data.settings.tue?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_tuesday_volume}>
-            {data.settings.tue?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_wednesday}>Среда</div>
-          <div className={styles.container_lowerBlock_settingsBlock_wednesday_time}>
-            {data.settings.wed?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_wednesday_volume}>
-            {data.settings.wed?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_thusday}>Четверг</div>
-          <div className={styles.container_lowerBlock_settingsBlock_thusday_time}>
-            {data.settings.thu?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_thusday_volume}>
-            {data.settings.thu?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_friday}>Пятница</div>
-          <div className={styles.container_lowerBlock_settingsBlock_friday_time}>
-            {data.settings.fri?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_friday_volume}>
-            {data.settings.fri?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_saturday}>Суббота</div>
-          <div className={styles.container_lowerBlock_settingsBlock_saturday_time}>
-            {data.settings.sat?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_saturday_volume}>
-            {data.settings.sat?.default_volume.join(", ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_sunday}>Воскресенье</div>
-          <div className={styles.container_lowerBlock_settingsBlock_sunday_time}>
-            {data.settings.sun?.worktime.join(" - ")}
-          </div>
-          <div className={styles.container_lowerBlock_settingsBlock_sunday_volume}>
-            {data.settings.sun?.default_volume.join(", ")}
-          </div>
-
-          <div className={styles.container_lowerBlock_settingsBlock_customTime}>Кастомное время</div>
-          <div className={styles.container_lowerBlock_settingsBlock_customVolume}>Кастомная громкость</div>
-
-        </div>
 
         {/*settings*/}
         <div className={styles.container_lowerBlock}>
-
+          <div className={styles.container_upperBlock_hwInfo}>
+            <h1 className={styles.container_upperBlock_mainInfo_name} style={{justifyContent: 'flex-start'}}>Информация о железе:</h1>
+            {data.hw_info ? (
+                <div>
+                  <div>
+                    <p><i>Модель</i>: {hwInfo.model}</p>
+                    <p><i>Ревизия</i>: {hwInfo.revision}</p>
+                    <p><i>Серийный номер</i>: {hwInfo.serial_number}</p>
+                  </div>
+                  <div>
+                    <h4>Аудио девайсы</h4>
+                    <ul>
+                      {hwInfo.audiodevices.map((device, index) => (
+                          <li key={index}>
+                            <i>Card {device.card}</i>: {device.name}
+                          </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p><strong>Настройки сети</strong></p>
+                    <ul>
+                      {hwInfo.interfaces.map((networkInterface, index) => (
+                          <li key={index}>
+                            <i>Interface</i>: {networkInterface.iface} <br/>
+                            <i>MAC</i>: {networkInterface.mac} <i>IP</i>: <span>{networkInterface.ip ? networkInterface.ip : 'N/A'}</span>
+                          </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4>SD карта</h4>
+                    <p><i>Manufacturer ID</i>: {hwInfo.sd_card_data.manf_id}</p>
+                    <p><i>SD Card Name</i>: {hwInfo.sd_card_data.name}</p>
+                  </div>
+                </div>
+            ) : (
+                <div>
+                  <p><strong>Проебалось куда-то</strong></p>
+                </div>
+            )}
+          </div>
 
           {/*<div className={styles.container_lowerBlock_daysBlock}><h1>statistic</h1></div>*/}
         </div>
