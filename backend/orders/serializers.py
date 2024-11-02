@@ -1,4 +1,3 @@
-import json
 from datetime import time, datetime as dt
 from rest_framework import serializers
 
@@ -33,8 +32,6 @@ class DateTimeTZRangeField(serializers.DictField):
         super().__init__(**kwargs)
 
     def to_internal_value(self, data):
-        data = json.loads(data)
-
         extra_content = list(set(data) - {'lower', 'upper', 'bounds', 'empty'})
         if extra_content:
             self.fail(
@@ -393,9 +390,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
             repr_['playlist'] = {
                 'id': obj.playlist.id,
                 'name': obj.playlist.name,
-                'files_count': len(
-                    [file for file in obj.playlist.files.all()]
-                )
+                'files_count': obj.playlist.files.count()
             }
             repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
             return repr_
