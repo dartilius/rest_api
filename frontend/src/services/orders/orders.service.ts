@@ -1,9 +1,8 @@
-import axios from "axios";
-
 import { API_URL } from "@/src/config/api.config";
 import {
   AdOrdersListResponse,
   BgOrdersListResponse,
+  IBgOrderCreate,
 } from "@/src/types/interface/orders.interface";
 import axiosInstance from "@/src/services/auth/auth.helper";
 
@@ -58,6 +57,7 @@ class OrdersService {
     const backgroundUrl = this.URL + "/bgorders/";
 
     return {
+
       gatAll(props: BgOrdersQueryParams) {
         const params = new URLSearchParams();
 
@@ -73,6 +73,11 @@ class OrdersService {
 
         return axiosInstance.get<BgOrdersListResponse>(urlWithParams);
       },
+
+      create(data: IBgOrderCreate[]) {
+        return axiosInstance.post(`${backgroundUrl}`, data)
+      }
+
     };
   }
 }

@@ -19,29 +19,13 @@ import Loader from "@/src/components/ui/Loader";
 import { limitPages } from "@/src/types/types/limitPages";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import ordersService from "@/src/services/orders/orders.service";
+import { useBgOrdersQuery } from "@/src/hooks/orders/useBgOrdersQuery";
 
 export default function BgOrders() {
-  const [data, setData] = useState<BgOrdersListResponse | undefined>(undefined);
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
+  const {data} = useBgOrdersQuery({page, limit})
   const pages = Math.ceil((data?.count || 0) / limit);
-
-  //TODO: Переписать на useQuery, как в номенклатурах
-  const fetchAdOrders = async (page: number, limit: number) => {
-    try {
-      const res = await ordersService.background().gatAll({ page, limit });
-
-      if (res) {
-        setData(res.data);
-      }
-    } catch (error) {
-      toastError(error);
-    }
-  };
-
-  useEffect(() => {
-    fetchAdOrders(page, limit);
-  }, [page, limit]);
 
   if (!data) {
     return <Loader />;
@@ -79,7 +63,7 @@ export default function BgOrders() {
               </TableCell>
               <TableCell>
                 <Chip color="default" variant="bordered">
-                  <Link href={`/clients/${order.client.id}`} target="_blank">
+                  <Link href={`/nomenclatures/${order.client.id}`} target="_blank">
                     {order.client.name}
                   </Link>
                 </Chip>
@@ -90,12 +74,12 @@ export default function BgOrders() {
                     href={`/playlists/${order.playlist.id}`}
                     target="_blank"
                   >
-                    {order.playlist.name}
+                    {order.playlist.id}
                   </Link>
                 </Chip>
               </TableCell>
               <TableCell>
-                {order.broadcastInterval.since}, {order.broadcastInterval.until}
+                {order.broadcastInterval?.since}, {order.broadcastInterval?.until}
               </TableCell>
             </TableRow>
           ))}

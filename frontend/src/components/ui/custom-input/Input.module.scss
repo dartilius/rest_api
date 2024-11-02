@@ -1,0 +1,34 @@
+
+.input_box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__label {
+    font-size: 17px;
+    line-height: 24px;
+    color: #999999;
+  }
+
+  &__input {
+    border-radius: 8px;
+    background-color: #F8F3FF;
+    font-size: 20px;
+    color: #A666FF;
+    max-width: 460px;
+    max-height: 64px;
+    line-height: 64px;
+    width: 100%;
+    padding-left: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    @media (width <= 460px) {
+      max-width: 236px;
+      max-height: 32px;
+      line-height: 32px;
+    }
+  }
+}
+
