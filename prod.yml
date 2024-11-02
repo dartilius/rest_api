@@ -1,10 +1,10 @@
 volumes:
-  rabbit_data:
+  rabbitdata:
     driver: local
     driver_opts:
       o: bind
       type: none
-      device: /file/rabbit_data
+      device: /file/rabbitdata
 
   pg_data:
     driver: local
@@ -179,7 +179,7 @@ services:
       timeout: 10s
       retries: 10
     volumes:
-      - rabbit_data:/var/lib/rabbitmq
+      - rabbitdata:/var/lib/rabbitmq
     ports:
       - 5672:5672
       - 15672:15672
