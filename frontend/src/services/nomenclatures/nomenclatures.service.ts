@@ -48,6 +48,8 @@ class NomenclaturesService {
     const queryString = params.toString();
     const urlWithParams = `${this.URL}?${queryString}`;
 
+    console.log(this.URL)
+
     return axiosInstance.get<NomenclatureListResponseInterface>(urlWithParams);
   }
 

@@ -1,5 +1,7 @@
-import {useQuery} from "@tanstack/react-query";
+import {useMutation, useQuery} from "@tanstack/react-query";
 import ordersService from "@/src/services/orders/orders.service";
+import {IBgOrderCreate} from "@/src/types/interface/orders.interface";
+import {toastSuccess} from "@/src/utils/toast-success";
 
 type Props = {
     page: number;
@@ -28,5 +30,12 @@ export const useBgOrdersQuery = (props: Props) => {
 };
 
 export const useBgOrderCreateQuery = () => {
-    const 
+    const mutation = useMutation({
+        mutationKey: ['createBgOrder'],
+        mutationFn: (data: IBgOrderCreate[]) => ordersService.background().create(data),
+        onSuccess: () => {
+            toastSuccess('Заказ создан')
+        }
+    })
+    return mutation;
 }

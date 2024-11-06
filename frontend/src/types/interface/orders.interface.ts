@@ -103,8 +103,12 @@ export type BgOrderResponse = {
 
 export interface IBgOrderCreate {
   name: string;
-  broadcast_interval: string;
+  broadcast_interval: {
+    lower: string;
+    upper: string;
+  };
   clients: string[];
   playlist: string;
   order_type: number;
+  description: string;
 }
