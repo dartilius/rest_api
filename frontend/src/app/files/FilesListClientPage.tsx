@@ -24,7 +24,7 @@ import { convertType, fileTypes } from "@/src/types/types/fileTypes";
 import { limitPages } from "@/src/types/types/limitPages";
 import { checkSize } from "@/src/types/types/checkSize";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
-import useFilesQuery from "@/src/hooks/files/useFilesQuery";
+import {useFilesQuery} from "@/src/hooks/files/useFilesQuery";
 import FilesCreate from "@/src/app/files/create/page";
 import {useDebounce} from "@/src/hooks/useDebounce";
 import {useTagsQuery} from "@/src/hooks/files/useFileQuery";
