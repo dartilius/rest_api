@@ -49,23 +49,25 @@ class FilesService {
   getAll(props: Pagination) {
     const params = new URLSearchParams();
 
-    if (props.page !== undefined) {
-      params.append("page", props.page.toString());
-    }
-    if (props.limit !== undefined) {
-      params.append("limit", props.limit.toString());
-    }
-    if (props.name !== undefined) {
-      params.append("name", props.name);
-    }
-    if (props.file_type !== undefined) {
-      params.append("file_type", props.file_type);
-    }
-    if (props.tags && props.tags.length > 0) {
-      params.append("tags", props.tags.toString());
-    }
-    if (props.hash !== undefined) {
-      params.append("hash", props.hash);
+    if (props) {
+      if (props.page !== undefined) {
+        params.append("page", props.page.toString());
+      }
+      if (props.limit !== undefined) {
+        params.append("limit", props.limit.toString());
+      }
+      if (props.name !== undefined) {
+        params.append("name", props.name);
+      }
+      if (props.file_type !== undefined) {
+        params.append("file_type", props.file_type);
+      }
+      if (props.tags && props.tags.length > 0) {
+        params.append("tags", props.tags.toString());
+      }
+      if (props.hash !== undefined) {
+        params.append("hash", props.hash);
+      }
     }
 
     const queryString = params.toString();

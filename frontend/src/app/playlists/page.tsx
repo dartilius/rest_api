@@ -11,8 +11,6 @@ import {
 } from "@nextui-org/table";
 import Link from "next/link";
 import { Button, Chip } from "@nextui-org/react";
-
-import CreatingModalPlaylists from "./components/modal/CreatingModalPlaylists";
 import Search from "@/src/components/Search";
 import { PaginationComponent } from "@/src/components/ui/PaginationComponent";
 import usePlaylistsQuery from "@/src/hooks/playlists/usePlaylistsQuery";
@@ -25,7 +23,6 @@ export default function Playlists() {
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
   const [name, setName] = useState<string | undefined>(undefined);
-  const [openCreatingModal, setOpenCreatingModal] = useState<boolean>(false);
   const debouncedName = useDebounce(name, 500);
   const { data, error, isError, isLoading, isSuccess } = usePlaylistsQuery({
     page,
@@ -50,7 +47,11 @@ export default function Playlists() {
   return (
     <div className={styles.container}>
       <div className={styles.container_left}>
-        <Button onClick={() => setOpenCreatingModal(true)} color='secondary'>Создать плейлист</Button>
+        <Button color='secondary'>
+          <Link href={'/playlists/create/'}>
+            Создать плейлист
+          </Link>
+        </Button>
         <Search
             label='Поиск'
             placeholder='Введите название'
@@ -93,10 +94,6 @@ export default function Playlists() {
             </TableBody>
           </Table>
         )}
-        <CreatingModalPlaylists
-            close={() => setOpenCreatingModal(false)}
-            open={openCreatingModal}
-        />
       </div>
 
     </div>

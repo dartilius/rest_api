@@ -83,7 +83,7 @@ export type BgOrderResponseDTO = {
 };
 
 export type BgOrderResponse = {
-  id: number;
+  id: string;
   name: string;
   status: number;
   broadcastInterval: {
@@ -95,7 +95,20 @@ export type BgOrderResponse = {
     name: string;
   };
   playlist: {
-    id: number;
-    name: string;
+    id: string;
+    files_count: number;
   };
 };
+
+
+export interface IBgOrderCreate {
+  name: string;
+  broadcast_interval: {
+    lower: string;
+    upper: string;
+  };
+  clients: string[];
+  playlist: string;
+  order_type: number;
+  description: string;
+}

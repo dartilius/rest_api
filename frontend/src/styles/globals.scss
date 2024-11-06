@@ -2,3 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 @import '../../node_modules/react-redux-toastr/src/styles/index.scss';
+
+input {
+  outline: none;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
