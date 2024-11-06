@@ -18,7 +18,7 @@ export const useDeleteUserQuery = () => {
   const router = useRouter()
   const mutation = useMutation({
     mutationKey: ["deletePlaylist"],
-    mutationFn: (id: number) => playlistsService.deleteById(id),
+    mutationFn: (id: string) => playlistsService.deleteById(id),
     onSuccess: () => {
       toastSuccess(`Плейлист успешно удален` )
       router.replace('/playlists')
@@ -34,12 +34,14 @@ export const useDeleteUserQuery = () => {
 
 export const useCreatePlaylistQuery = () => {
   const queryClient = useQueryClient();
+  const router = useRouter()
   const mutation = useMutation({
     mutationKey: ["createPlaylist"],
     mutationFn: (data: any) => playlistsService.create(data),
     onSuccess: () => {
       toastSuccess(`Плейлист успешно здан` )
       queryClient.invalidateQueries({ queryKey: ["playlistsList"] });
+      router.replace('/playlists')
     },
   });
 
@@ -47,7 +49,7 @@ export const useCreatePlaylistQuery = () => {
 };
 
 
-export const useUpdatePlaylistQuery = (id: number) => {
+export const useUpdatePlaylistQuery = (id: string) => {
   const queryClient = useQueryClient()
   const mutation = useMutation({
     mutationKey: ["updatePlaylist"],

@@ -95,7 +95,7 @@ function PlaylistPage() {
     // }, [type, currentTrack]);
 
     const handleDeletePlaylist = () => {
-        deletePlaylist.mutate(Number(id))
+        deletePlaylist.mutate(id)
     }
 
     const handleCloseDeletingModal = () => {

@@ -41,7 +41,7 @@ interface IPlaylistsListResults {
 }
 
 export interface IPlaylist {
-  id: number
+  id: string
   name: string
   description: string
   owner: string

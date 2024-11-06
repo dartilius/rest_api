@@ -44,7 +44,7 @@ class PlaylistsService {
     return data
   }
 
-  deleteById(id: number) {
+  deleteById(id: string) {
     return axiosInstance.delete(`${this.URL}${id}/`);
   }
 
@@ -52,7 +52,7 @@ class PlaylistsService {
     return axiosInstance.patch(`${this.URL}${id}/`, data);
   }
 
-  updateById(id: number, data: any) {
+  updateById(id: string, data: any) {
     return axiosInstance.put(`${this.URL}${id}/`, data);
   }
 

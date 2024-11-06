@@ -4,7 +4,7 @@ import {fileTypes} from "@/src/types/types/fileTypes";
 import {Input} from "@nextui-org/input";
 import {Button} from "@nextui-org/button";
 import {IPlaylistFiles} from "@/src/types/interface/playlists.interface";
-import useFilesQuery from "@/src/hooks/files/useFilesQuery";
+import { useFilesQuery } from "@/src/hooks/files/useFilesQuery";
 import Loader from "@/src/components/ui/Loader";
 import {ChangeEvent, useState} from "react";
 import {toastSuccess} from "@/src/utils/toast-success";
@@ -16,7 +16,7 @@ type Props = {
     namePlaylist: string | undefined;
     desc: string | undefined;
     filesPlaylist: IPlaylistFiles[] | undefined;
-    id: number | undefined;
+    id: string | undefined;
 };
 
 function EditingPlaylistModal(props: Props) {
@@ -75,7 +75,7 @@ function EditingPlaylistModal(props: Props) {
                                 defaultSelectedKeys={filesPlaylist?.map((file) => file.id) || []}
                                 onSelectionChange={(selectedKeys) => setFiles([...selectedKeys].map(String))} // Преобразуем ключи в строки
                             >
-                                {data.results.map((file) => (
+                                {data.results.map((file: any) => (
                                     <SelectItem
                                         key={file.id}
                                         value={file.id}
