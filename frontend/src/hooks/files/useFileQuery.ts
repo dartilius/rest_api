@@ -25,6 +25,7 @@ export const useCreateFileQuery = () => {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["filesList"] });
       toastSuccess(`Файл \`${data.name}\` успешно создан`);
+      
     },
     onError: (e: any) => {
       console.log(e)

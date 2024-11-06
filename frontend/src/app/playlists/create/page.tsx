@@ -16,7 +16,7 @@ const CreatelPlaylists = () => {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]); // Состояние для отслеживания выбранных файлов
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const debouncedSearchQuery = useDebounce(searchQuery, 1500);
 
   const fileQueryProps = useMemo(() => ({
     name: debouncedSearchQuery,
