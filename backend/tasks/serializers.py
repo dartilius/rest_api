@@ -34,7 +34,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = value.owner.get_full_name()
+        repr_['owner'] = value.owner.full_name
         repr_['client'] = {
             'id': str(value.client.id),
             'name': value.client.name
@@ -62,7 +62,7 @@ class TaskListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = value.owner.get_full_name()
+        repr_['owner'] = value.owner.full_name
         repr_['client'] = {
             'id': str(value.client.id),
             'name': value.client.name

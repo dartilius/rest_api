@@ -10,6 +10,14 @@ from tasks.models import Task
 from users.models import CustomUser
 
 
+def get_owner(owner_id):
+    return CustomUser.objects.get(pk=owner_id)
+
+
+def get_nomenclature(nomenclature_id):
+    return Nomenclature.objects.get(pk=nomenclature_id)
+
+
 @shared_task(base=Singleton)
 def update_nomenclature_status():
     """
@@ -106,7 +114,6 @@ def resend_orders_task(order_ids: list):
                 ]
             }
         }
-        # если реклама - рекламные параметры, иначе фоновые
         if isinstance(order, AdOrder):
             parameters.update({
                 'order_parameters': order.parameters,
@@ -133,16 +140,6 @@ def resend_orders_task(order_ids: list):
     return result
 
 
-def get_owner(owner_id):
-    owner = CustomUser.objects.get(pk=owner_id)
-    return owner
-
-
-def get_nomenclature(nomenclature_id):
-    nomenclature = Nomenclature.objects.get(pk=nomenclature_id)
-    return nomenclature
-
-
 @shared_task
 def reboot_task(nomenclature_id: str, owner_id: str):
     nomenclature = get_nomenclature(nomenclature_id)
@@ -152,7 +149,7 @@ def reboot_task(nomenclature_id: str, owner_id: str):
         client=nomenclature,
         type=15
     )
-    return f'Запрос на перезагрузку отправлен для {nomenclature.name}'
+    return f'Перезагрузка отправлена на {nomenclature.name}'
 
 
 @shared_task
@@ -164,7 +161,7 @@ def update_task(nomenclature_id: str, owner_id: str):
         client=nomenclature,
         type=16
     )
-    return f'Запрос на обновление отправлен для {nomenclature.name}'
+    return f'Обновление отправлено на {nomenclature.name}'
 
 
 @shared_task
@@ -177,7 +174,7 @@ def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
         type=16,
         parameters=parameters
     )
-    return f'Отправлена SH команда для {nomenclature.name}'
+    return f'SH команда отправлена на {nomenclature.name}'
 
 
 @shared_task
@@ -190,4 +187,4 @@ def settings_task(nomenclature_id: str, settings: dict, owner_id: str):
         type=16,
         parameters=settings
     )
-    return f'Настройки вещания отправлены для {nomenclature.name}'
+    return f'Настройки вещания отправлены на {nomenclature.name}'

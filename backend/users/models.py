@@ -45,11 +45,14 @@ class CustomUser(AbstractUser):
         max_length=32,
         verbose_name='Роль',
         null=True,
-        blank=True
+        blank=True,
+        default='ordinary'
     )
     phone_number = PhoneNumberField(
         unique=True,
-        verbose_name='Номер телефона'
+        verbose_name='Номер телефона',
+        null=True,
+        blank=True
     )
     email = models.EmailField(
         max_length=255,
@@ -76,7 +79,8 @@ class CustomUser(AbstractUser):
         """Проверяем, что пользователь админ."""
         return self.role == 'admin'
 
-    def get_full_name(self):
+    @property
+    def full_name(self):
         return {
             'full_name': f'{self.last_name} {self.first_name}'
         }
@@ -92,4 +96,4 @@ class CustomUser(AbstractUser):
         verbose_name_plural = 'Пользователи'
 
     def __str__(self):
-        return f'{self.last_name} {self.first_name}'
+        return self.full_name

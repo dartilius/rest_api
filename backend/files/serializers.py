@@ -112,13 +112,13 @@ class FileSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_['name'] = value.name
-        repr_['owner'] = value.owner.get_full_name()
+        repr_['owner'] = value.owner.full_name
         repr_['hash'] = {
             'md5': value.md5hash,
             'sha256': value.sha256hash,
             'concat_hash': value.hash
         }
-        repr_['file_type'] = TYPES[value.type]
+        repr_['type'] = TYPES[value.type]
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return repr_
 
@@ -158,7 +158,7 @@ class FileListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['file_type'] = TYPES[value.type]
+        repr_['type'] = TYPES[value.type]
         repr_['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
@@ -193,7 +193,8 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = value.owner.get_full_name()
+        repr_['owner'] = value.owner.full_name
+        repr_['files_count'] = value.files.count()
         repr_['files'] = [
             {'id': file.id,
              'name': file.name,
@@ -217,7 +218,7 @@ class PlaylistListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = value.owner.get_full_name()
-        repr_['files_count'] = len(value.files.all())
+        repr_['owner'] = value.owner.full_name
+        repr_['files_count'] = value.files.count()
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return repr_

@@ -290,7 +290,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
         """Десериализация с поддержкой списка объектов."""
         def _serialize_order(obj):
             repr_ = super(self.__class__, self).to_representation(obj)
-            repr_['owner'] = obj.owner.get_full_name()
+            repr_['owner'] = obj.owner.full_name
             repr_['client'] = {
                 'id': obj.client.id,
                 'name': obj.client.name
@@ -298,7 +298,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
             repr_['playlist'] = {
                 'id': obj.playlist.id,
                 'name': obj.playlist.name,
-                'files_count': len([file for file in obj.playlist.files.all()])
+                'files_count': obj.playlist.files.count()
             }
             repr_['slides'] = obj.slides if obj.slides else None
             repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
@@ -337,7 +337,7 @@ class AdOrderListSerializer(serializers.ModelSerializer):
         repr_['playlist'] = {
             'id': value.playlist.id,
             'name': value.playlist.name,
-            'files_count': len([file for file in value.playlist.files.all()])
+            'files_count': value.playlist.files.count()
         }
         return repr_
 
@@ -378,7 +378,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
         playlist_id = self.initial_data[0].get('playlist')
 
         playlist_obj = Playlist.objects.get(id=playlist_id)
-        files = [file for file in playlist_obj.files.all()]
+        files = playlist_obj.files.all()
         if files in empty_values:
             raise serializers.ValidationError('Плейлист не содержит файлов')
 
@@ -404,7 +404,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
         """Десериализация с поддержкой списка объектов."""
         def _serialize_order(obj):
             repr_ = super(self.__class__, self).to_representation(obj)
-            repr_['owner'] = obj.owner.get_full_name()
+            repr_['owner'] = obj.owner.full_name
             repr_['client'] = {
                 'id': obj.client.id,
                 'name': obj.client.name
@@ -412,9 +412,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
             repr_['playlist'] = {
                 'id': obj.playlist.id,
                 'name': obj.playlist.name,
-                'files_count': len(
-                    [file for file in obj.playlist.files.all()]
-                )
+                'files_count': obj.playlist.files.count()
             }
             repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
             return repr_
@@ -452,6 +450,6 @@ class BgOrderListSerializer(serializers.ModelSerializer):
         repr_['playlist'] = {
             'id': value.playlist.id,
             'name': value.playlist.name,
-            'files_count': len([file for file in value.playlist.files.all()])
+            'files_count': value.playlist.files.count()
         }
         return repr_

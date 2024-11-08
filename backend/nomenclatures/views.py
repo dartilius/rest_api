@@ -81,8 +81,9 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.is_active = False
 
-    @action(detail=True, methods=['GET'])
-    def status_history(self, request, pk):
+    @staticmethod
+    def get_nomenclature_or_404(pk):
+        """Запрашиваем номенклатуру из базы или возвращаем 400."""
         try:
             nomenclature = get_object_or_404(Nomenclature, id=pk)
         except ValidationError:
@@ -90,6 +91,11 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
                 status=HTTP_400_BAD_REQUEST
             )
+        return nomenclature
+
+    @action(detail=True, methods=['GET'])
+    def status_history(self, request, pk):
+        nomenclature = self.get_nomenclature_or_404(pk)
         history = nomenclature.history.all()
         serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
@@ -97,14 +103,9 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST'], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
         """Отдача задач для клиентов и обработка присылаемых данных."""
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        nomenclature = self.get_nomenclature_or_404(pk)
         nom_update = False
+
         if 'version' in request.data:
             nomenclature.version = request.data['version']
             nom_update = True
@@ -159,13 +160,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='ad_stat')
     def get_ad_stat(self, request, pk):
         """Отображение статистики рекламы конкретной номенклатуры."""
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        self.get_nomenclature_or_404(pk)
         date = request.data['date']
         statistics = ADStat.objects.filter(
             client=pk, played__contains=date
@@ -176,13 +171,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='music_stat')
     def get_music_stat(self, request, pk):
         """Отображение статистики музыки конкретной номенклатуры."""
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        self.get_nomenclature_or_404(pk)
         statistics = MusicStat.objects.filter(client=pk)
         page = self.paginate_queryset(statistics)
         if page is not None:
@@ -194,13 +183,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'],url_path='video_stat')
     def get_video_stat(self, request, pk):
         """Отображение статистики видео конкретной номенклатуры."""
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        self.get_nomenclature_or_404(pk)
         statistics = VideoStat.objects.filter(client=pk)
         page = self.paginate_queryset(statistics)
         if page is not None:
@@ -213,13 +196,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='image_stat')
     def get_image_stat(self, request, pk):
         """Отображение статистики картинок конкретной номенклатуры."""
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        self.get_nomenclature_or_404(pk)
         statistics = ImageStat.objects.filter(client=pk)
         page = self.paginate_queryset(statistics)
         if page is not None:
@@ -231,13 +208,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='ticker_stat')
     def get_ticker_stat(self, request, pk):
         """Отображение статистики бегущих строк конкретной номенклатуры."""
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        self.get_nomenclature_or_404(pk)
         statistics = TickerStat.objects.filter(client=pk)
 
         page = self.paginate_queryset(statistics)
@@ -246,6 +217,18 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(
+        detail=False,
+        methods=['GET'],
+        url_path='get_uuid_by_id',
+        permission_classes=[AllowAny]
+    )
+    def get_id(self, request):
+        nomenclature = Nomenclature.objects.get(
+            description=request.data['description']
+        )
+        return Response({"id": nomenclature.pk})
 
     @action(detail=True, methods=['POST'])
     def resend_orders(self, request, pk):
@@ -261,13 +244,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         2. В ответ отдаём сообщение со списком заказов, которые будут
             переотправленны и которые переотправить нельзя.
         """
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        nomenclature = self.get_nomenclature_or_404(pk)
         empty_values = Constants.empty_values
         orders = chain(
             nomenclature.adorders.filter(status__in=[0, 1]),
@@ -297,15 +274,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
          - Настройки вещания
             settings = {'mon' = {'default_volume': [50, 50, 50, 50], ...}
         """
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        nomenclature = self.get_nomenclature_or_404(pk)
         task = request.data['task']
         owner = str(request.user.id)
+
         match task:
             case 'reboot':
                 if not nomenclature.tasks.filter(status=0, type=15).exists():
@@ -323,13 +295,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST'], url_path='tasks')
     def get_tasks(self, request, pk):
         """Запрос списка репликаций номенклатуры."""
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
+        self.get_nomenclature_or_404(pk)
         tasks = Task.objects.filter(client=pk)
 
         page = self.paginate_queryset(tasks)
