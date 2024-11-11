@@ -56,14 +56,15 @@ class AdOrderAdmin(admin.ModelAdmin):
             if order.status in [2, 3, 4]:
                 self.message_user(
                     request,
-                    f'Среди выбранных заказов есть такие, которые отменить нельзя',
+                    f'Среди выбранных заказов есть такие, '
+                    f'которые отменить нельзя',
                     messages.ERROR
                 )
                 queryset = None
         try:
             updated = queryset.update(status=3)
             order_ids = [order.id for order in queryset]
-            cancel_bg_order_task.delay(order_ids)
+            cancel_ad_order_task.delay(order_ids)
             self.message_user(
                 request,
                 ngettext(
@@ -139,7 +140,8 @@ class BgOrderAdmin(admin.ModelAdmin):
             if order.status in [2, 3, 4]:
                 self.message_user(
                     request,
-                    f'Среди выбранных заказов есть такие, которые отменить нельзя',
+                    f'Среди выбранных заказов есть такие, '
+                    f'которые отменить нельзя',
                     messages.ERROR
                 )
                 queryset = None
