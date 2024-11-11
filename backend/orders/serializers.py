@@ -6,7 +6,14 @@ from orders.models import AdOrder, BgOrder
 
 
 class DateTimeTZRangeField(serializers.DictField):
-    """Поле для обработки интервалов вещания."""
+    """
+    Поле для обработки интервалов вещания.
+
+    1. Проверяем, что в полученных данных нет лишних ключей.
+    2. Проверяем, что обязательные ключи (начало, конец) переданы.
+    3. Проверяем, что начало не позже конца.
+    4. Если всё ок - возвращаем как есть.
+    """
 
     from psycopg.types.range import TimestamptzRange
 
@@ -28,12 +35,14 @@ class DateTimeTZRangeField(serializers.DictField):
 
     def to_internal_value(self, data):
         extra_content = list(set(data) - {'lower', 'upper', 'bounds', 'empty'})
+        # 1
         if extra_content:
             self.fail(
                 'too_much_content', extra=', '.join(map(str, extra_content))
             )
 
         validated_dict = {}
+        # 2
         for key in ('lower', 'upper'):
             if key not in data:
                 bound = 'начала' if key == 'lower' else 'окончания'
@@ -41,13 +50,14 @@ class DateTimeTZRangeField(serializers.DictField):
             validated_dict[key] = self.child.run_validation(data[key])
 
         lower, upper = validated_dict.get('lower'), validated_dict.get('upper')
+        # 3
         if lower > upper or upper < dt.now():
             self.fail('bound_ordering')
 
         for key in ('bounds', 'empty'):
             if key in data:
                 validated_dict[key] = data[key]
-
+        # 4
         return self.range_type(**validated_dict)
 
     def to_representation(self, value):
@@ -212,6 +222,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
         v_parameters = dict()
 
         try:
+            # 1
             times_in_hour = parameters.get('times_in_hour')
             weight_val = parameters.get('weight') or 50
             event_val = parameters.get('event')
@@ -219,55 +230,65 @@ class AdOrderSerializer(serializers.ModelSerializer):
             start_time = parameters.get('daily_start_time')
             end_time = parameters.get('daily_end_time')
             timedelta_val = parameters.get('timedelta')
-
+            # 2
             if times_in_hour is None:
                 raise serializers.ValidationError(
                     f'Не указан обязательный параметр: кол-во выходов в час'
                 )
-
+            # 4
             v_parameters.update(_validate_times_in_hour(int(times_in_hour)))
             v_parameters.update(_validate_weight(int(weight_val)))
-
+            # 3
             match brc_type:
+                # 3.1
                 case 1 | 2:
                     if timedelta_val is None:
                         raise serializers.ValidationError(
                             'Необходимо указать смещение по времени '
                             'для данного типа вещания'
                         )
+                    # 4
                     v_parameters.update(_validate_timedelta(timedelta_val))
+                # 3.2
                 case 3:
                     if start_time is None or end_time is None:
                         raise serializers.ValidationError(
                             'Необходимо указать время начала и окончания '
                             'для данного типа вещания'
                         )
+                    # 4
                     v_parameters.update(_validate_daily_times(start_time,
                                                               end_time))
+                # 3.2
                 case 4:
                     if end_time is None:
                         raise serializers.ValidationError(
                             'Необходимо указать время окончания '
                             'для данного типа вещания'
                         )
+                    # 4
                     v_parameters.update(_validate_daily_times('00:00:01',
                                                               end_time))
+                # 3.2
                 case 5:
                     if start_time is None:
                         raise serializers.ValidationError(
                             'Необходимо указать время начала '
                             'для данного типа вещания'
                         )
+                    # 4
                     v_parameters.update(_validate_daily_times(start_time,
                                                               '23:59:58'))
+                # 3.3
                 case 6:
                     if event_val is None or ad_action is None:
                         raise serializers.ValidationError(
                             'Необходимо указать триггер запуска и поведение '
                             'текущей рекламы для данного типа вещания'
                         )
+                    # 4
                     v_parameters.update(_validate_trigger(event_val, ad_action))
-
+        # 5
         except Exception as e:
             raise serializers.ValidationError(e)
 
@@ -369,24 +390,35 @@ class BgOrderSerializer(serializers.ModelSerializer):
         model = BgOrder
 
     def validate(self, data):
-        """Валидация фонового заказа."""
+        """
+        Валидация фонового заказа.
+
+        0. Получаем тип заказа и плейлист из пришедших данных.
+        1. Находим плейлист в базе и проверяем:
+        1.1. что плейлист не пуст,
+        1.2. что тип файлов в плейлисте соответствует типу заказа.
+        2. Если всё ок, возвращаем данные как есть.
+        """
         from files.models import Playlist
         from api.constants import Constants
 
         empty_values = Constants.empty_values
+        # 0
         order_type = data.get('order_type')
         playlist_id = self.initial_data[0].get('playlist')
-
+        # 1
         playlist_obj = Playlist.objects.get(id=playlist_id)
         files = playlist_obj.files.all()
+        # 1.1
         if files in empty_values:
             raise serializers.ValidationError('Плейлист не содержит файлов')
-
+        # 1.2
         for file in files:
             if file.type != order_type:
                 raise serializers.ValidationError(
                     f'Плейлист содержит файлы неправильного типа'
                 )
+        # 2
         return data
 
     def create(self, validated_data):

@@ -44,8 +44,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         """
         Валидация настроек.
 
-        Проверяется наличие обязательных ключей worktime и default_volume,
-        корректность значений этих ключей и опциональных значений custom_volume
+        Проверяется:
+        1. Наличие обязательных ключей worktime и default_volume
+        2. Корректность значений этих ключей
+        3. При наличии опциональных значений custom_volume - всё то же самое,
+            а также они дополнительно преверяются на пересечение
         """
 
         def _validate_time(interval: str) -> None:
@@ -94,6 +97,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     )
 
         for day, settings in value.items():
+            # 1
             try:
                 req_keys = {
                     'worktime': settings['worktime'],
@@ -101,8 +105,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 }
             except KeyError as k:
                 raise serializers.ValidationError(f'{k} не передан')
+            # 2
             _validate_time(req_keys['worktime'])
             _validate_volume(req_keys['default_volume'])
+            # 3
             if 'custom_volume' in settings:
                 for interval, volume in settings['custom_volume'].items():
                     _validate_time(interval)

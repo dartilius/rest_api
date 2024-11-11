@@ -26,11 +26,13 @@ def update_order_status():
     adorders_ended = []
     bgorders_ended = []
     count = 0
+    ON_AIR = 1
+    COMPLETED = 2
 
     for order in waiting_adorders:
         order_start = order.broadcast_interval.lower
         if order_start <= dt.now():
-            order.status = 1
+            order.status = ON_AIR
             adorders_started.append(order)
     count += len(adorders_started)
     AdOrder.objects.bulk_update(adorders_started, fields=['status'])
@@ -38,7 +40,7 @@ def update_order_status():
     for order in ending_adorders:
         order_end = order.broadcast_interval.upper
         if order_end <= dt.now():
-            order.status = 2
+            order.status = COMPLETED
             adorders_ended.append(order)
     count += len(adorders_ended)
     AdOrder.objects.bulk_update(adorders_ended, fields=['status'])
@@ -46,7 +48,7 @@ def update_order_status():
     for order in waiting_bgorders:
         order_start = order.broadcast_interval.lower
         if order_start <= dt.now():
-            order.status = 1
+            order.status = ON_AIR
             bgorders_started.append(order)
     count += len(bgorders_started)
     BgOrder.objects.bulk_update(bgorders_started, fields=['status'])
@@ -54,7 +56,7 @@ def update_order_status():
     for order in ending_bgorders:
         order_end = order.broadcast_interval.upper
         if order_end <= dt.now():
-            order.status = 2
+            order.status = COMPLETED
             bgorders_ended.append(order)
     count += len(bgorders_ended)
     BgOrder.objects.bulk_update(bgorders_ended, fields=['status'])
@@ -72,9 +74,10 @@ def create_ad_order_task(orders_ids: list):
     2. Заполняем список репликаций на отмену, берём нужную инфу с заказа.
     3. Создаём все репликации одной операцией, фиксируем количество.
     """
+    task_list = []
+    AD = 4
     # 0
     orders = AdOrder.objects.filter(pk__in=orders_ids)
-    task_list = []
     # 1
     for order in orders:
         # 2
@@ -82,7 +85,7 @@ def create_ad_order_task(orders_ids: list):
             Task(
                 owner=order.owner,
                 client=order.client,
-                type=4,
+                type=AD,
                 parameters={
                     'order_id': str(order.id),
                     'order_parameters': order.parameters,
@@ -119,9 +122,11 @@ def cancel_ad_order_task(order_ids: list):
     3. Меняем статус заказу.
     4. Создаём все репликации одной операцией, фиксируем количество.
     """
+    task_list = []
+    CANCEL = 3
+    CANCEL_AD = 9
     # 0
     orders = AdOrder.objects.filter(pk__in=order_ids)
-    task_list = []
     # 1
     for order in orders:
         # 2
@@ -129,12 +134,12 @@ def cancel_ad_order_task(order_ids: list):
             Task(
                 owner=order.owner,
                 client=order.client,
-                type=9,
+                type=CANCEL_AD,
                 parameters={'order_id': str(order.id)}
             )
         )
         # 3
-        order.status = 3
+        order.status = CANCEL
         order.save()
     # 4
     Task.objects.bulk_create(task_list)
@@ -198,17 +203,15 @@ def cancel_bg_order_task(order_ids: list):
     4. Меняем статус заказу.
     5. Создаём все репликации одной операцией, фиксируем количество.
     """
+    from api.constants import Constants
+    task_list = []
+    CANCEL = 3
     # 0
     orders = BgOrder.objects.filter(pk__in=order_ids)
-    task_list = []
     # 1
     for order in orders:
         # 2
-        match order.order_type:
-            case 0: task_type = 5
-            case 1: task_type = 6
-            case 2: task_type = 7
-            case 3: task_type = 8
+        task_type = Constants.get_task_type(order.order_type)
         # 3
         task_list.append(
             Task(
@@ -219,7 +222,7 @@ def cancel_bg_order_task(order_ids: list):
             )
         )
         # 4
-        order.status = 3
+        order.status = CANCEL
         order.save()
     # 5
     Task.objects.bulk_create(task_list)

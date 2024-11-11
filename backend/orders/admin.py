@@ -52,7 +52,9 @@ class AdOrderAdmin(admin.ModelAdmin):
         2. Собираются айди заказов и отправляются в целери
             для создания репликаций.
         """
+        # 0
         for order in queryset:
+            # 1.1
             if order.status in [2, 3, 4]:
                 self.message_user(
                     request,
@@ -62,7 +64,9 @@ class AdOrderAdmin(admin.ModelAdmin):
                 )
                 queryset = None
         try:
+            # 1.2
             updated = queryset.update(status=3)
+            # 2
             order_ids = [order.id for order in queryset]
             cancel_ad_order_task.delay(order_ids)
             self.message_user(
@@ -136,7 +140,9 @@ class BgOrderAdmin(admin.ModelAdmin):
         2. Собираются айди заказов и отправляются в целери
             для создания репликаций.
         """
+        # 0
         for order in queryset:
+            # 1.1
             if order.status in [2, 3, 4]:
                 self.message_user(
                     request,
@@ -146,7 +152,9 @@ class BgOrderAdmin(admin.ModelAdmin):
                 )
                 queryset = None
         try:
+            # 1.2
             updated = queryset.update(status=3)
+            # 2
             order_ids = [order.id for order in queryset]
             cancel_bg_order_task.delay(order_ids)
             self.message_user(

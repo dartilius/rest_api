@@ -3,6 +3,27 @@ class Constants:
 
     empty_values = ('', [], (), {}, None)
 
+
+    @staticmethod
+    def get_task_type(order_type: int):
+        """Возвращает соответствующий заказу тип репликации."""
+        ORDER_MUSIC = 0
+        ORDER_IMAGE = 1
+        ORDER_VIDEO = 2
+        ORDER_TICKER = 3
+        TASK_MUSIC = 5
+        TASK_IMAGE = 6
+        TASK_VIDEO = 7
+        TASK_TICKER = 8
+        order_types_to_task_types = {
+            ORDER_MUSIC: TASK_MUSIC,
+            ORDER_IMAGE: TASK_IMAGE,
+            ORDER_VIDEO: TASK_VIDEO,
+            ORDER_TICKER: TASK_TICKER
+        }
+        return order_types_to_task_types[order_type]
+
+
     @staticmethod
     def get_minio_client(external=False):
         """Авторизует запрос для обращений к облаку."""

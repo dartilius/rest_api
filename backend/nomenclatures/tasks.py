@@ -27,17 +27,20 @@ def update_nomenclature_status():
     statuses = NomenclatureAvailability.objects.all()
     statuses_to_update = []
     status_histories_to_create = []
+    ONLINE = 0
+    OFFLINE_5_MIN = 1
+    OFFLINE_1_HOUR = 2
 
     for status in statuses:
         now_time = datetime.now()
-        new_status = 0
+        new_status = ONLINE
         current_status = status.status
         last_answer = status.last_answer_date
-        if current_status == 0:
+        if current_status == ONLINE:
             if now_time - last_answer > timedelta(hours=1):
-                new_status = 2
+                new_status = OFFLINE_1_HOUR
             elif now_time - last_answer > timedelta(minutes=5):
-                new_status = 1
+                new_status = OFFLINE_5_MIN
             if new_status != current_status:
                 status.status = new_status
                 statuses_to_update.append(status)
@@ -48,12 +51,12 @@ def update_nomenclature_status():
                     )
                 )
 
-        if current_status == 1:
-            new_status = 1
+        if current_status == OFFLINE_5_MIN:
+            new_status = OFFLINE_5_MIN
             if now_time - last_answer > timedelta(hours=1):
-                new_status = 2
+                new_status = OFFLINE_1_HOUR
             elif now_time - last_answer < timedelta(minutes=5):
-                new_status = 0
+                new_status = ONLINE
             if new_status != current_status:
                 status.status = new_status
                 statuses_to_update.append(status)
@@ -64,9 +67,9 @@ def update_nomenclature_status():
                     )
                 )
 
-        if current_status == 2:
+        if current_status == OFFLINE_1_HOUR:
             if now_time - last_answer < timedelta(minutes=5):
-                status.status = 0
+                status.status = ONLINE
                 statuses_to_update.append(status)
                 status_histories_to_create.append(
                     StatusHistory(
@@ -86,19 +89,20 @@ def resend_orders_task(order_ids: list):
     """
     Переотправка рекламного заказа.
 
-    0. Десериализуем полченные заказы, наполняем ими список.
+    0. Фильтруем заказы по пришедшему списку айди, собираем в список.
     1. Проходим по списку заказов. Заполняем параметры репликации,
         в зависимости от типа заказа.
     2. Формируем список репликаций для создания.
-    3. Создаём все репликации одной операцией.
-    4. Возвращаем ответ со списком созданных репликаций.
+    3. Создаём все репликации одной операцией, фиксируем их количество.
     """
+    task_list = []
+    AD = 4
+    # 0
     orders = chain(
         AdOrder.objects.filter(id__in=order_ids),
         BgOrder.objects.filter(id__in=order_ids)
     )
-    task_list = []
-
+    # 1
     for order in orders:
         parameters = {
             'order_id': str(order.id),
@@ -122,11 +126,11 @@ def resend_orders_task(order_ids: list):
             parameters['playlist']['slides'] = (
                 order.slides if order.slides else None
             )
-            task_type = 4
+            task_type = AD
         else:
             parameters.update({'type': order.order_type})
             task_type = order.order_type
-
+        # 2
         task_list.append(
             Task(
                 owner=order.owner,
@@ -135,6 +139,7 @@ def resend_orders_task(order_ids: list):
                 parameters=parameters
             )
         )
+    # 3
     Task.objects.bulk_create(task_list)
     result = f'Переотправленно заказов: {len(task_list)}.'
     return result
@@ -171,7 +176,7 @@ def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
     Task.objects.create(
         owner=owner,
         client=nomenclature,
-        type=16,
+        type=17,
         parameters=parameters
     )
     return f'SH команда отправлена на {nomenclature.name}'
@@ -184,7 +189,7 @@ def settings_task(nomenclature_id: str, settings: dict, owner_id: str):
     Task.objects.create(
         owner=owner,
         client=nomenclature,
-        type=16,
+        type=18,
         parameters=settings
     )
     return f'Настройки вещания отправлены на {nomenclature.name}'
