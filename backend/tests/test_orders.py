@@ -18,57 +18,24 @@ class TestOrders:
     bg_list_url = '/api/bgorders/'
     bg_detail_url = '/api/bgorders/{bgorder}/'
 
-    def test_avail_user(self, user_client):
-        response = user_client.get(self.ad_list_url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Авторизованный пользователь не имеет доступ к странице '
-            'рекламных заказов.'
-        )
-        response = user_client.get(self.bg_list_url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Авторизованный пользователь не имеет доступ к странице '
-            'фоновых заказов.'
-        )
-
-    def test_avail_anon(self, anon_client):
-        response = anon_client.get(self.ad_list_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице '
-            'рекламных заказов.'
-        )
-        response = anon_client.get(self.bg_list_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице '
-            'фоновых заказов.'
-        )
-
-    def test_detail_user(self, user_client, adorder, bgorder):
-        adorder_id = str(adorder.id)
-        response = user_client.get(self.ad_detail_url.format(adorder=adorder_id))
-        assert response.status_code == HTTPStatus.OK, (
-            'Авторизованный пользователь не имеет доступ к странице '
-            'расшифровки рекламного заказа.'
-        )
-        bgorder_id = str(bgorder.id)
-        response = user_client.get(self.bg_detail_url.format(bgorder=bgorder_id))
-        assert response.status_code == HTTPStatus.OK, (
-            'Авторизованный пользователь не имеет доступ к странице '
-            'расшифровки фонового заказа.'
-        )
-
-    def test_detail_anon(self, anon_client, adorder, bgorder):
-        adorder_id = str(adorder.id)
-        response = anon_client.get(self.ad_detail_url.format(adorder=adorder_id))
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице '
-            'расшифровки рекламного заказа.'
-        )
-        bgorder_id = str(bgorder.id)
-        response = anon_client.get(self.bg_detail_url.format(bgorder=bgorder_id))
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице '
-            'расшифровки фонового заказа.'
-        )
+    def test_availability(self, user_client, anon_client, adorder, bgorder):
+        urls = [
+            self.ad_list_url,
+            self.bg_list_url,
+            self.ad_detail_url.format(adorder=str(adorder.id)),
+            self.bg_detail_url.format(bgorder=str(bgorder.id)),
+        ]
+        for url in urls:
+            response = user_client.get(url)
+            assert response.status_code == HTTPStatus.OK, (
+                f'Авторизованный пользователь не имеет доступ к странице '
+                f'{url}.'
+            )
+            response = anon_client.get(url)
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                f'Не авторизованный пользователь имеет доступ к странице '
+                f'{url}.'
+            )
 
     def test_create_valid_adorder(
             self,
@@ -145,7 +112,11 @@ class TestOrders:
             }],
         ]
         for data in valid_data:
-            response = user_client.post(self.ad_list_url, data=data, format='json')
+            response = user_client.post(
+                self.ad_list_url,
+                data=data,
+                format='json'
+            )
             assert response.status_code == HTTPStatus.CREATED, (
                 f'Код статуса в ответе != 201 для данных: {data}.'
             )
@@ -168,18 +139,25 @@ class TestOrders:
                 end_time = list(map(int, end_time.split(':')))
                 check_params.update({'end_time': end_time})
             check_params.update({'weight': 50})
-            assert response_data[0][0]['owner'] == user.get_full_name(), (
+            assert response_data[0][0]['owner'] == user.full_name, (
                 'Создатель заказа не встал в соответствующее поле.'
             )
-            assert response_data[0][0]['client']['id'] == data[0]['clients'][0], (
+            assert (
+                response_data[0][0]['client']['id'] == data[0]['clients'][0]
+            ), (
                 'Целевая рабочая станция созданного заказа отличается от '
                 'таковой в отправленных данных.'
             )
-            assert response_data[0][0]['playlist']['id'] == data[0]['playlist'], (
+            assert (
+                response_data[0][0]['playlist']['id'] == data[0]['playlist']
+            ), (
                 'Плейлист созданного заказа отличается от указанного '
                 'в отправленных данных.'
             )
-            assert response_data[0][0]['broadcast_type'] == data[0]['broadcast_type'], (
+            assert (
+                response_data[0][0]['broadcast_type']
+                == data[0]['broadcast_type']
+            ), (
                 'Режим вещания заказа отличается от указанного '
                 'в отправленных данных.'
             )
@@ -486,7 +464,11 @@ class TestOrders:
             }],
         ]
         for data in invalid_data:
-            response = user_client.post(self.ad_list_url, data=data, format='json')
+            response = user_client.post(
+                self.ad_list_url,
+                data=data,
+                format='json'
+            )
             assert response.status_code == HTTPStatus.BAD_REQUEST, (
                 f'Код статуса в ответе != 400. для данных: {data}'
             )
@@ -539,7 +521,11 @@ class TestOrders:
             }]
         ]
         for data in valid_data:
-            response = user_client.post(self.bg_list_url, data=data, format='json')
+            response = user_client.post(
+                self.bg_list_url,
+                data=data,
+                format='json'
+            )
             assert response.status_code == HTTPStatus.CREATED, (
                 'Код статуса в ответе != 201.'
             )
@@ -548,20 +534,24 @@ class TestOrders:
                 f'Не удалось создать рекламный заказ.'
             )
             response_data = response.json()
-            assert response_data[0][0]['owner'] == user.get_full_name(), (
+            assert response_data[0][0]['owner'] == user.full_name, (
                 'Создатель заказа не встал в соответствующее поле.'
             )
-            assert response_data[0][0]['client']['id'] == data[0]['clients'][0], (
+            assert (
+                response_data[0][0]['client']['id'] == data[0]['clients'][0]
+            ), (
                 'Целевая рабочая станция созданного заказа отличается от '
                 'таковой в отправленных данных.'
             )
-            assert response_data[0][0]['playlist']['id'] == data[0]['playlist'], (
+            assert (
+                response_data[0][0]['playlist']['id'] == data[0]['playlist']
+            ), (
                 'Плейлист созданного заказа отличается от указанного '
                 'в отправленных данных.'
             )
-            assert response_data[0][0]['order_type'] == data[0]['order_type'], (
-                'Тип заказа отличается от указанного в отправленных данных.'
-            )
+            assert (
+                response_data[0][0]['order_type'] == data[0]['order_type']
+            ), 'Тип заказа отличается от указанного в отправленных данных.'
 
     def test_create_invalid_bgorder(
             self,
@@ -617,7 +607,11 @@ class TestOrders:
             }],
         ]
         for data in invalid_data:
-            response = user_client.post(self.bg_list_url, data=data, format='json')
+            response = user_client.post(
+                self.bg_list_url,
+                data=data,
+                format='json'
+            )
             assert response.status_code == HTTPStatus.BAD_REQUEST, (
                 'Код статуса в ответе != 400.'
             )

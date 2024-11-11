@@ -117,7 +117,7 @@ def file_4(user_client, user):
 @pytest.fixture
 def playlist_1(user, file_1):
     pls_obj = Playlist.objects.create(
-        name='test',
+        name='playlist_1',
         owner=user
     )
     pls_obj.files.set([file_1.id])
@@ -127,7 +127,7 @@ def playlist_1(user, file_1):
 @pytest.fixture
 def playlist_2(user, file_2):
     pls_obj = Playlist.objects.create(
-        name='test',
+        name='playlist_2',
         owner=user
     )
     pls_obj.files.set([file_2.id])
@@ -137,7 +137,7 @@ def playlist_2(user, file_2):
 @pytest.fixture
 def playlist_3(user, file_3):
     pls_obj = Playlist.objects.create(
-        name='test',
+        name='playlist_3',
         owner=user
     )
     pls_obj.files.set([file_3.id])
@@ -147,7 +147,7 @@ def playlist_3(user, file_3):
 @pytest.fixture
 def playlist_4(user, file_4):
     pls_obj = Playlist.objects.create(
-        name='test',
+        name='playlist_4',
         owner=user
     )
     pls_obj.files.set([file_4.id])

@@ -1,4 +1,3 @@
-from crypt import methods
 from datetime import datetime as dt
 from itertools import chain
 

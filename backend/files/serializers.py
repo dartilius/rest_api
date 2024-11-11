@@ -113,11 +113,7 @@ class FileSerializer(serializers.ModelSerializer):
         repr_ = super().to_representation(value)
         repr_['name'] = value.name
         repr_['owner'] = value.owner.full_name
-        repr_['hash'] = {
-            'md5': value.md5hash,
-            'sha256': value.sha256hash,
-            'concat_hash': value.hash
-        }
+        repr_['hash'] = value.hash
         repr_['type'] = TYPES[value.type]
         repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
         return repr_

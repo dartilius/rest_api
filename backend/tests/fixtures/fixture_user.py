@@ -18,8 +18,9 @@ def admin_user():
     from django.contrib.auth.backends import UserModel
 
     user_data = {
-        "email": "admin@example.com",
-        "password": "password"
+        'email': 'admin@example.com',
+        'password': 'password',
+        'phone_number': '+78005553636'
     }
     user = UserModel._default_manager.create_superuser(**user_data)
     return user

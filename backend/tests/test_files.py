@@ -17,157 +17,108 @@ class TestFiles:
     playlist_detail_url = '/api/playlists/{playlist_id}/'
     tag_detail_url = '/api/tags/{tag_id}/'
 
-    def test_avail_user(self, user_client):
-        files_url = self.files_url
-        playlists_url = self.playlists_url
-        tags_url = self.tags_url
-        response = user_client.get(files_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{files_url}.'
-        )
-        response = user_client.get(playlists_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{playlists_url}.'
-        )
-        response = user_client.get(tags_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{tags_url}.'
-        )
-
-    def test_avail_anon(self, anon_client):
-        files_url = self.files_url
-        playlists_url = self.playlists_url
-        tags_url = self.tags_url
-        response = anon_client.get(files_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            f'Не авторизованный пользователь имеет доступ к странице '
-            f'{files_url}.'
-        )
-        response = anon_client.get(playlists_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            f'Не авторизованный пользователь имеет доступ к странице '
-            f'{playlists_url}.'
-        )
-        response = anon_client.get(tags_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            f'Не авторизованный пользователь имеет доступ к странице '
-            f'{tags_url}.'
-        )
-
-    def test_avail_admin(self, admin_client):
-        files_url = self.files_url
-        playlists_url = self.playlists_url
-        tags_url = self.tags_url
-        response = admin_client.get(files_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{files_url}.'
-        )
-        response = admin_client.get(playlists_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{playlists_url}.'
-        )
-        response = admin_client.get(tags_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{tags_url}.'
-        )
-
-    def test_detail_user(self, user_client, file_1, playlist_1):
-        file_id = str(file_1.id)
-        file_url = self.file_detail_url.format(file_id=file_id)
-        playlist_id = str(playlist_1.id)
-        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
-        response = user_client.get(file_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{file_url}.'
-        )
-        response = user_client.get(playlist_url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не имеет доступ к странице '
-            f'{playlist_url}.'
-        )
-
-    def test_detail_anon(self, anon_client, file_1, playlist_1):
-        file_id = str(file_1.id)
-        file_url = self.file_detail_url.format(file_id=file_id)
-        playlist_id = str(playlist_1.id)
-        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
-        response = anon_client.get(file_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице.'
-            f'{file_url}.'
-        )
-        response = anon_client.get(playlist_url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице.'
-            f'{playlist_url}.'
-        )
-
-    def test_detail_admin(self, admin_client, file_1, playlist_1):
-        file_id = str(file_1.id)
-        file_url = self.file_detail_url.format(file_id=file_id)
-        playlist_id = str(playlist_1.id)
-        playlist_url = self.playlist_detail_url.format(playlist_id=playlist_id)
-        response = admin_client.get(file_url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Пользователь-админ не имеет доступ к странице.'
-            f'{file_url}.'
-        )
-        response = admin_client.get(playlist_url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Пользователь-админ не имеет доступ к странице.'
-            f'{playlist_url}.'
-        )
+    def test_availability(
+        self,
+        user_client,
+        anon_client,
+        file_1,
+        playlist_1
+    ):
+        urls = [
+            self.files_url,
+            self.playlists_url,
+            self.tags_url,
+            self.file_detail_url.format(file_id=str(file_1.id)),
+            self.playlist_detail_url.format(playlist_id=str(playlist_1.id))
+        ]
+        for url in urls:
+            response = user_client.get(url)
+            assert response.status_code == HTTPStatus.OK, (
+                f'Авторизованный пользователь не имеет доступ к странице '
+                f'{url}.'
+            )
+            response = anon_client.get(url)
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                f'Не авторизованный пользователь имеет доступ к странице '
+                f'{url}.'
+            )
 
     def test_create_valid_file(self, user_client, user, tag_1, tag_2):
+        from files.models import TYPES
         file_count = File.objects.count()
         audio_source = 'data:test.mp3;base64,'
         with open('/app/tests/fixtures/test_audio.txt', 'r') as file:
             audio_source += file.read()
-        data = {
-            'source': audio_source,
-            'type': 1,
-            'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
-        }
-        response = user_client.post(self.files_url, data=data, format='json')
-        assert response.status_code == HTTPStatus.CREATED, (
-            'Код статуса в ответе != 201.'
-        )
-        file_count += 1
-        assert file_count == File.objects.count(), (
-            'Не удалось создать файл.'
-        )
-        response_data = response.json()
-        assert response_data['owner'] == user.get_full_name(), (
-            'Владелец файла не встал в соответствующее поле.'
-        )
-        assert {
-           tag['name'] for tag in response_data['tags']
-        } == {tag_1.name, tag_2.name}, (
-            'Тэги файла отличаются от отправленных.'
-        )
-        assert response_data.get('name'), (
-            'Файлу не присвоилось имя из отправленных данных.'
-        )
-        assert response_data.get('url'), (
-            'Не сформировалась ссылка на файл в минио.'
-        )
-        assert response_data.get('size'), (
-            'Не удалось вычислить размер файла.'
-        )
-        assert response_data.get('hash'), (
-            'Не удалось вычислить хэш файла.'
-        )
-        if response_data.get('type') not in (2, 5):
-            assert response_data.get('length'), (
-                'Не удалось вычислить продолжительность медиафайла.'
+        image_source = 'data:test.jpg;base64,'
+        with open('/app/tests/fixtures/test_image.txt', 'r') as file:
+            image_source += file.read()
+        video_source = 'data:test.mp4;base64,'
+        with open('/app/tests/fixtures/test_video.txt', 'r') as file:
+            video_source += file.read()
+        ticker_source = 'data:test.txt;base64,'
+        with open('/app/tests/fixtures/test_ticker.txt', 'r') as file:
+            ticker_source += file.read()
+        valid_data = [
+            {
+                'source': audio_source,
+                'type': 0,
+                'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
+            },
+            {
+                'source': image_source,
+                'type': 1,
+                'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
+            },
+            {
+                'source': video_source,
+                'type': 2,
+                'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
+            },
+            {
+                'source': ticker_source,
+                'type': 3,
+                'tags': [{'name': tag_1.name}, {'name': tag_2.name}]
+            }
+        ]
+        for data in valid_data:
+            response = user_client.post(
+                self.files_url,
+                data=data,
+                format='json'
             )
+            assert response.status_code == HTTPStatus.CREATED, (
+                'Код статуса в ответе != 201.'
+            )
+            file_count += 1
+            assert file_count == File.objects.count(), (
+                'Не удалось создать файл.'
+            )
+            response_data = response.json()
+            assert response_data['owner'] == user.full_name, (
+                'Владелец файла не встал в соответствующее поле.'
+            )
+            assert {
+               tag['name'] for tag in response_data['tags']
+            } == {tag_1.name, tag_2.name}, (
+                'Тэги файла отличаются от отправленных.'
+            )
+            assert response_data['type'] == TYPES[data['type']]
+            assert response_data.get('name'), (
+                'Файлу не присвоилось имя из отправленных данных.'
+            )
+            assert response_data.get('url'), (
+                'Не сформировалась ссылка на файл в минио.'
+            )
+            assert response_data.get('size'), (
+                'Не удалось вычислить размер файла.'
+            )
+            assert response_data.get('hash'), (
+                'Не удалось вычислить хэш файла.'
+            )
+            if response_data.get('type') not in ('image', 'ticker'):
+                assert response_data.get('length'), (
+                    'Не удалось вычислить продолжительность медиафайла.'
+                )
 
     def test_create_invalid_file(self, user_client, tag_1, tag_2):
         file_count = File.objects.count()
@@ -192,7 +143,11 @@ class TestFiles:
             }
         ]
         for data in invalid_data:
-            response = user_client.post(self.files_url, data=data, format='json')
+            response = user_client.post(
+                self.files_url,
+                data=data,
+                format='json'
+            )
             assert response.status_code == HTTPStatus.BAD_REQUEST, (
                 'Код статуса в ответе != 400.'
             )
@@ -208,7 +163,11 @@ class TestFiles:
             'name': 'test',
             'files': [file_id]
         }
-        response = user_client.post(self.playlists_url, data=data, format='json')
+        response = user_client.post(
+            self.playlists_url,
+            data=data,
+            format='json'
+        )
         assert response.status_code == HTTPStatus.CREATED, (
             'Код статуса в ответе != 201.'
         )
@@ -217,7 +176,7 @@ class TestFiles:
             'Не удалось создать плейлист.'
         )
         response_data = response.json()
-        assert response_data['owner'] == user.get_full_name(), (
+        assert response_data['owner'] == user.full_name, (
             'Владелец плейлиста не встал в соответствующее поле.'
         )
         assert response_data['name'] == data['name'], (
@@ -241,7 +200,11 @@ class TestFiles:
             }
         ]
         for data in invalid_data:
-            response = user_client.post(self.playlists_url, data=data, format='json')
+            response = user_client.post(
+                self.playlists_url,
+                data=data,
+                format='json'
+            )
             assert response.status_code == HTTPStatus.BAD_REQUEST, (
                 f'Код статуса в ответе != 400\n{data}.'
             )

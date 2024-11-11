@@ -57,9 +57,8 @@ class AdOrderViewSet(NoDeleteViewSet):
         # 2
         for orders in orders_list:
             orders_ids.append(
-                [
-                    order.id for order in orders
-                ] if isinstance(orders, list) else orders.id
+                [str(order.id) for order in orders]
+                if len(orders) > 1 else str(orders[0].id)
             )
         # 3
         create_ad_order_task.delay(orders_ids)
@@ -112,9 +111,8 @@ class BgOrderViewSet(NoDeleteViewSet):
         # 2
         for orders in orders_list:
             orders_ids.append(
-                [
-                    order.id for order in orders
-                ] if isinstance(orders, list) else orders.id
+                [str(order.id) for order in orders]
+                if len(orders) > 1 else str(orders[0].id)
             )
         # 3
         create_bg_order_task.delay(orders_ids)

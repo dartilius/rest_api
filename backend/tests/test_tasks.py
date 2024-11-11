@@ -10,31 +10,22 @@ class TestTasks:
     url = '/api/tasks/'
     task_url = '/api/tasks/{task_id}/'
 
-    def test_avail_user(self, user_client):
-        response = user_client.get(self.url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Авторизованный пользователь не имеет доступ к странице.'
-        )
-
-    def test_avail_anon(self, anon_client):
-        response = anon_client.get(self.url)
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице.'
-        )
-
-    def test_task_detail_user(self, user_client, task):
-        task_id = str(task.id)
-        response = user_client.get(self.task_url.format(task_id=task_id))
-        assert response.status_code == HTTPStatus.OK, (
-            'Авторизованный пользователь не имеет доступ к странице.'
-        )
-
-    def test_task_detail_anon(self, anon_client, task):
-        task_id = str(task.id)
-        response = anon_client.get(self.task_url.format(task_id=task_id))
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Неавторизованный пользователь имеет доступ к странице.'
-        )
+    def test_availability(self, user_client, anon_client, task):
+        urls = [
+            self.url,
+            self.task_url.format(task_id=str(task.id)),
+        ]
+        for url in urls:
+            response = user_client.get(url)
+            assert response.status_code == HTTPStatus.OK, (
+                f'Авторизованный пользователь не имеет доступ к странице '
+                f'{url}.'
+            )
+            response = anon_client.get(url)
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                f'Не авторизованный пользователь имеет доступ к странице '
+                f'{url}.'
+            )
 
     def test_create_valid_task(self, user_client, user, nomenclature):
         task_count = Task.objects.count()
@@ -52,7 +43,7 @@ class TestTasks:
             'Не удалось создать репликацию.'
         )
         response_data = response.json()
-        assert response_data['owner'] == user.get_full_name(), (
+        assert response_data['owner'] == user.full_name, (
             'Создатель репликации не встал в соответствующее поле.'
         )
         assert response_data['client']['id'] == data['client'], (

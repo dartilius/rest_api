@@ -117,10 +117,10 @@ class TestUsers:
     def test_create_user_no_email(self, admin_client):
         user_count = CustomUser.objects.count()
         data = {
-            "password": "test",
-            "phone_number": "+78005559999",
-            "first_name": "test",
-            "last_name": "user"
+            'password': 'test',
+            'phone_number': '+78005559999',
+            'first_name': 'test',
+            'last_name': 'user'
         }
         response = admin_client.post(self.url, data=data, format='json')
         assert response.status_code == HTTPStatus.BAD_REQUEST, (
@@ -134,11 +134,11 @@ class TestUsers:
     def test_create_user_invalid_phone_number_1(self, admin_client):
         user_count = CustomUser.objects.count()
         data = {
-            "email": "test@test.com",
-            "password": "test",
-            "phone_number": "99999999999",
-            "first_name": "test",
-            "last_name": "user"
+            'email': 'test@test.com',
+            'password': 'test',
+            'phone_number': '99999999999',
+            'first_name': 'test',
+            'last_name': 'user'
         }
         response = admin_client.post(self.url, data=data, format='json')
         assert response.status_code == HTTPStatus.BAD_REQUEST, (
@@ -152,11 +152,11 @@ class TestUsers:
     def test_create_user_invalid_phone_number_2(self, admin_client):
         user_count = CustomUser.objects.count()
         data = {
-            "email": "test@test.com",
-            "password": "test",
-            "phone_number": "test",
-            "first_name": "test",
-            "last_name": "user"
+            'email': 'test@test.com',
+            'password': 'test',
+            'phone_number': 'test',
+            'first_name': 'test',
+            'last_name': 'user'
         }
         response = admin_client.post(self.url, data=data, format='json')
         assert response.status_code == HTTPStatus.BAD_REQUEST, (
@@ -167,13 +167,14 @@ class TestUsers:
             'Удалось создать пользователя с неправильным номером телефона.'
         )
 
+    @pytest.mark.skip(reason='Сделали поле необязательным, возможно уберём')
     def test_create_user_no_phone_number(self, admin_client):
         user_count = CustomUser.objects.count()
         data = {
-            "email": "test@test.com",
-            "password": "test",
-            "first_name": "test",
-            "last_name": "user"
+            'email': 'test@test.com',
+            'password': 'test',
+            'first_name': 'test',
+            'last_name': 'user'
         }
         response = admin_client.post(self.url, data=data, format='json')
         assert response.status_code == HTTPStatus.BAD_REQUEST, (
@@ -187,10 +188,10 @@ class TestUsers:
     def test_create_user_no_first_name(self, admin_client):
         user_count = CustomUser.objects.count()
         data = {
-            "email": "test@test.com",
-            "phone_number": "+78005559999",
-            "password": "test",
-            "last_name": "user"
+            'email': 'test@test.com',
+            'phone_number': '+78005559999',
+            'password': 'test',
+            'last_name': 'user'
         }
         response = admin_client.post(self.url, data=data, format='json')
         assert response.status_code == HTTPStatus.BAD_REQUEST, (
@@ -204,10 +205,10 @@ class TestUsers:
     def test_create_user_no_last_name(self, admin_client):
         user_count = CustomUser.objects.count()
         data = {
-            "email": "test@test.com",
-            "phone_number": "+78005559999",
-            "password": "test",
-            "first_name": "test"
+            'email': 'test@test.com',
+            'phone_number': '+78005559999',
+            'password': 'test',
+            'first_name': 'test'
         }
         response = admin_client.post(self.url, data=data, format='json')
         assert response.status_code == HTTPStatus.BAD_REQUEST, (

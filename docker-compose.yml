@@ -94,7 +94,7 @@ services:
         condition: service_healthy
     command: celery -A rmc_rest_api worker
     deploy:
-      replicas: 8
+      replicas: 2
 
   beat:
     build: ./backend
