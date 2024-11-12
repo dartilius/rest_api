@@ -92,6 +92,28 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
         return nomenclature
 
+    @action(detail=False, methods=['GET'], url_path='versions')
+    def get_versions(self, request):
+        versions = Nomenclature.objects.order_by().values_list(
+            'version', flat=True
+        ).distinct()
+        return Response(
+            {'versions': versions},
+            status=HTTP_200_OK
+        )
+
+    @action(
+        detail=False,
+        methods=['GET'],
+        url_path='get_uuid_by_id',
+        permission_classes=[AllowAny]
+    )
+    def get_id(self, request):
+        nomenclature = Nomenclature.objects.get(
+            description=request.data['description']
+        )
+        return Response({"id": nomenclature.pk})
+
     @action(detail=True, methods=['GET'])
     def status_history(self, request, pk):
         nomenclature = self.get_nomenclature_or_404(pk)
@@ -145,16 +167,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
              'parameters': task.parameters}
             for task in pending_tasks]}
         return Response(tasks, status=HTTP_200_OK)
-
-    @action(detail=False, methods=['GET'], url_path='versions')
-    def get_versions(self, request):
-        versions = Nomenclature.objects.order_by().values_list(
-            'version', flat=True
-        ).distinct()
-        return Response(
-            {'versions': versions},
-            status=HTTP_200_OK
-        )
 
     @action(detail=True, methods=['GET'], url_path='ad_stat')
     def get_ad_stat(self, request, pk):
@@ -216,18 +228,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
-
-    @action(
-        detail=False,
-        methods=['GET'],
-        url_path='get_uuid_by_id',
-        permission_classes=[AllowAny]
-    )
-    def get_id(self, request):
-        nomenclature = Nomenclature.objects.get(
-            description=request.data['description']
-        )
-        return Response({"id": nomenclature.pk})
 
     @action(detail=True, methods=['POST'])
     def resend_orders(self, request, pk):
