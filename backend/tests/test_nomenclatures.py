@@ -98,7 +98,8 @@ class TestNomenclatures:
             )
 
     def test_create_valid_nomenclature_admin(self, admin_client, admin_user):
-        from random import randint
+        from random import randint, choices
+        from string import ascii_letters, digits
         nomenclature_count = Nomenclature.objects.count()
         from nomenclatures.models import TIMEZONES
         settings = {
@@ -126,16 +127,15 @@ class TestNomenclatures:
                     f'{begin_time}-{end_time}': [randint(0, 100)] * 4
                 }
             })
+        chars = ascii_letters + digits
         valid_data = [
             {
-                'name': 'Test Nomenclature',
-                'owner': admin_user,
+                'name': ''.join(choices(chars, k=10)),
                 'timezone': 'Etc/GMT-7',
                 'settings': settings
             },
             {
-                'name': 'Test Nomenclature',
-                'owner': admin_user,
+                'name': ''.join(choices(chars, k=10)),
                 'timezone': 'Etc/GMT-7',
                 'settings': custom_settings
             }
@@ -146,21 +146,25 @@ class TestNomenclatures:
                 data=data,
                 format='json'
             )
-            response_data = response.json()
             assert response.status_code == HTTPStatus.CREATED, (
-                f'Код статуса в ответе != 201. Данные:\n{response_data}'
+                f'Код статуса в ответе != 201. Данные:\n{data}\nОтвет:{response.data}'
             )
             nomenclature_count += 1
             assert nomenclature_count == Nomenclature.objects.count(), (
                 'Не удалось создать номенклатуру.'
             )
-            assert response_data['owner'] == admin_user.full_name, (
+            response_data = response.json()
+            assert response_data['main_info']['owner'] == admin_user.full_name, (
                 'Создатель номенклатуры не встал в соответствующее поле.'
             )
-            assert response_data['timezone'] == TIMEZONES[data['timezone']], (
+            assert response_data['main_info']['timezone'] == TIMEZONES[data['timezone']], (
                 'Часовой пояс отличаются от отправленных данных.'
             )
-            assert response_data['settings'] == data['settings'], (
+            check_settings = data['settings']
+            for day in check_settings:
+                if 'custom_volume' not in check_settings[day]:
+                    check_settings[day]['custom_volume'] = {}
+            assert response_data['settings'] == check_settings, (
                 'Настройки вещания отличаются от отправленных данных.'
             )
 
@@ -169,7 +173,8 @@ class TestNomenclatures:
         manager_client,
         manager_user
     ):
-        from random import randint
+        from random import randint, choices
+        from string import ascii_letters, digits
         nomenclature_count = Nomenclature.objects.count()
         from nomenclatures.models import TIMEZONES
         settings = {
@@ -197,16 +202,15 @@ class TestNomenclatures:
                     f'{begin_time}-{end_time}': [randint(0, 100)] * 4
                 }
             })
+        chars = ascii_letters + digits
         valid_data = [
             {
-                'name': 'Test Nomenclature',
-                'owner': manager_user,
+                'name': ''.join(choices(chars, k=10)),
                 'timezone': 'Etc/GMT-7',
                 'settings': settings
             },
             {
-                'name': 'Test Nomenclature',
-                'owner': manager_user,
+                'name': ''.join(choices(chars, k=10)),
                 'timezone': 'Etc/GMT-7',
                 'settings': custom_settings
             }
@@ -217,25 +221,29 @@ class TestNomenclatures:
                 data=data,
                 format='json'
             )
-            response_data = response.json()
             assert response.status_code == HTTPStatus.CREATED, (
-                f'Код статуса в ответе != 201. Данные:\n{response_data}'
+                f'Код статуса в ответе != 201. Данные:\n{data}\nОтвет:{response.data}'
             )
             nomenclature_count += 1
             assert nomenclature_count == Nomenclature.objects.count(), (
                 'Не удалось создать номенклатуру.'
             )
-            assert response_data['owner'] == manager_user.full_name, (
+            response_data = response.json()
+            assert response_data['main_info']['owner'] == manager_user.full_name, (
                 'Создатель номенклатуры не встал в соответствующее поле.'
             )
-            assert response_data['timezone'] == TIMEZONES[data['timezone']], (
+            assert response_data['main_info']['timezone'] == TIMEZONES[data['timezone']], (
                 'Часовой пояс отличаются от отправленных данных.'
             )
-            assert response_data['settings'] == data['settings'], (
+            check_settings = data['settings']
+            for day in check_settings:
+                if 'custom_volume' not in check_settings[day]:
+                    check_settings[day]['custom_volume'] = {}
+            assert response_data['settings'] == check_settings, (
                 'Настройки вещания отличаются от отправленных данных.'
             )
 
-    def test_create_valid_nomenclature_anon(self, anon_client, user):
+    def test_create_valid_nomenclature_anon(self, anon_client):
         nomenclature_count = Nomenclature.objects.count()
         settings = {
             'fri': {'worktime': '09:00:00-20:00:00',
@@ -255,7 +263,6 @@ class TestNomenclatures:
         }
         data = {
             'name': 'Test Nomenclature',
-            'owner': user,
             'timezone': 'Etc/GMT-7',
             'settings': settings
         }
@@ -272,7 +279,7 @@ class TestNomenclatures:
             'Удалось создать номенклатуру без авторизации.'
         )
 
-    def test_create_valid_nomenclature_user(self, user_client, user):
+    def test_create_valid_nomenclature_user(self, user_client):
         nomenclature_count = Nomenclature.objects.count()
         settings = {
             'fri': {'worktime': '09:00:00-20:00:00',
@@ -292,7 +299,6 @@ class TestNomenclatures:
         }
         data = {
             'name': 'Test Nomenclature',
-            'owner': user,
             'timezone': 'Etc/GMT-7',
             'settings': settings
         }
@@ -309,7 +315,7 @@ class TestNomenclatures:
             'Удалось создать номенклатуру без должных прав.'
         )
 
-    def test_create_invalid_nomenclature(self, admin_client, admin_user):
+    def test_create_invalid_nomenclature(self, admin_client):
         from random import randint
         nomenclature_count = Nomenclature.objects.count()
         valid_settings = {
@@ -626,7 +632,7 @@ class TestNomenclatures:
             },
             {
                 'custom_volume': {
-                    ['09:00:00-12:00:00']: [50] * 4,
+                    12: [50] * 4,
                 }
             },
             {
@@ -656,25 +662,16 @@ class TestNomenclatures:
         invalid_data = [
             {
                 'name': None,
-                'owner': admin_user,
                 'timezone': 'Etc/GMT-7',
                 'settings': valid_settings
             },
             {
                 'name': 'Test Nomenclature',
-                'owner': None,
-                'timezone': 'Etc/GMT-7',
-                'settings': valid_settings
-            },
-            {
-                'name': 'Test Nomenclature',
-                'owner': admin_user,
                 'timezone': None,
                 'settings': valid_settings
             },
             {
                 'name': 'Test Nomenclature',
-                'owner': admin_user,
                 'timezone': 'Etc/GMT-7',
                 'settings': None
             }
@@ -682,7 +679,6 @@ class TestNomenclatures:
         invalid_data += [
             {
                 'name': 'Test Nomenclature',
-                'owner': admin_user,
                 'timezone': 'Etc/GMT-7',
                 'settings': settings
             } for settings in invalid_settings
@@ -690,7 +686,6 @@ class TestNomenclatures:
         invalid_data += [
             {
                 'name': 'Test Nomenclature',
-                'owner': admin_user,
                 'timezone': 'Etc/GMT-7',
                 'settings': settings
             } for settings in invalid_custom_settings

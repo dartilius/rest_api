@@ -50,9 +50,28 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         3. При наличии опциональных значений custom_volume - всё то же самое,
             а также они дополнительно преверяются на пересечение
         """
+        def _translate_error(err):
+            """Это нужно для перевода стандартной ошибки time"""
+            time_val = str()
+            e_list = str(err).split()
+            match e_list[0]:
+                case 'second':
+                    time_val = 'секунд'
+                case 'minute':
+                    time_val = 'минут'
+                case 'hour':
+                    time_val = 'часов'
+            raise serializers.ValidationError(
+                f'Количество {time_val} должно быть '
+                f'в пределах {e_list[-1]}'
+            )
 
         def _validate_time(interval: str) -> None:
             """Валидация промежутков времени."""
+            if not isinstance(interval, str):
+                raise serializers.ValidationError(
+                    'Интервал времени имеет не правильный формат!'
+                )
             split_interval = interval.split('-')
             if len(split_interval) != 2:
                 raise serializers.ValidationError(
@@ -60,7 +79,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
             start = list(map(int, split_interval[0].split(':')))
             end = list(map(int, split_interval[1].split(':')))
-            if not time(0, 0, 0) <= time(*start) < time(*end) <= time(23, 59, 59):
+            try:
+                start_time = time(*start)
+                end_time = time(*end)
+            except ValueError as e:
+                if 'must be' in str(e):
+                    _translate_error(e)
+                else:
+                    raise e
+            if not time(0, 0, 0) <= start_time < end_time <= time(23, 59, 59):
                 raise serializers.ValidationError(
                     'Время начала не может быть больше времени окончания '
                     'и должно быть в промежутке 00:00:00 - 23:59:59'
@@ -103,8 +130,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     'worktime': settings['worktime'],
                     'default_volume': tuple(settings['default_volume'])
                 }
-            except KeyError as k:
-                raise serializers.ValidationError(f'{k} не передан')
+            except KeyError as ke:
+                raise serializers.ValidationError(f'{ke} не передан')
+            except TypeError:
+                raise serializers.ValidationError(
+                    'Список значений громкости имеет не правильный формат'
+                )
             # 2
             _validate_time(req_keys['worktime'])
             _validate_volume(req_keys['default_volume'])
