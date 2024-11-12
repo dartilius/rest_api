@@ -160,10 +160,6 @@ class Playlist(APIBaseObjectModel):
         verbose_name='Файлы'
     )
 
-    @property
-    def files_count(self):
-        return self.files.all().count()
-
     class Meta:
         db_table = 'playlist'
         ordering = ('-created',)

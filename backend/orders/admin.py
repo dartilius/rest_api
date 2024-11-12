@@ -1,6 +1,7 @@
 from django.contrib import admin, messages
 from django.utils.translation import ngettext
 
+from api.constants import Constants
 from orders.models import AdOrder, BgOrder, ORDER_TYPES
 from orders.tasks import cancel_ad_order_task, cancel_bg_order_task
 
@@ -45,28 +46,26 @@ class AdOrderAdmin(admin.ModelAdmin):
         """
         Отмена заказов.
 
-        0. Выбранные заказы проверяются на возможность отмены.
-        1.1. Если какой-либо из выбранных заказов отменить нельзя,
+        1. Если среди выбранных заказов есть такие, которые отменить нельзя, то
             очищаем queryset и выдаём сообщение об ошибке.
-        1.2. Если всё ок, выбранным заказам выставляемся статус Отменён.
-        2. Собираются айди заказов и отправляются в целери
+        2. Если всё ок, выбранным заказам выставляемся статус Отменён.
+        3. Собираются айди заказов и отправляются в целери
             для создания репликаций.
         """
-        # 0
-        for order in queryset:
-            # 1.1
-            if order.status in [2, 3, 4]:
-                self.message_user(
-                    request,
-                    f'Среди выбранных заказов есть такие, '
-                    f'которые отменить нельзя',
-                    messages.ERROR
-                )
-                queryset = None
+        empty_values = Constants.empty_values
+        # 1
+        if queryset.filter(status__in=[2, 3, 4]) not in empty_values:
+            self.message_user(
+                request,
+                f'Среди выбранных заказов есть такие, '
+                f'которые отменить нельзя',
+                messages.ERROR
+            )
+            queryset = None
         try:
-            # 1.2
-            updated = queryset.update(status=3)
             # 2
+            updated = queryset.update(status=3)
+            # 3
             order_ids = [order.id for order in queryset]
             cancel_ad_order_task.delay(order_ids)
             self.message_user(
@@ -133,28 +132,26 @@ class BgOrderAdmin(admin.ModelAdmin):
         """
         Отмена заказов.
 
-        0. Выбранные заказы проверяются на возможность отмены.
-        1.1. Если какой-либо из выбранных заказов отменить нельзя,
+        1. Если среди выбранных заказов есть такие, которые отменить нельзя, то
             очищаем queryset и выдаём сообщение об ошибке.
-        1.2. Если всё ок, выбранным заказам выставляемся статус Отменён.
-        2. Собираются айди заказов и отправляются в целери
+        2. Если всё ок, выбранным заказам выставляемся статус Отменён.
+        3. Собираются айди заказов и отправляются в целери
             для создания репликаций.
         """
-        # 0
-        for order in queryset:
-            # 1.1
-            if order.status in [2, 3, 4]:
-                self.message_user(
-                    request,
-                    f'Среди выбранных заказов есть такие, '
-                    f'которые отменить нельзя',
-                    messages.ERROR
-                )
-                queryset = None
+        empty_values = Constants.empty_values
+        # 1
+        if queryset.filter(status__in=[2, 3, 4]) not in empty_values:
+            self.message_user(
+                request,
+                f'Среди выбранных заказов есть такие, '
+                f'которые отменить нельзя',
+                messages.ERROR
+            )
+            queryset = None
         try:
-            # 1.2
-            updated = queryset.update(status=3)
             # 2
+            updated = queryset.update(status=3)
+            # 3
             order_ids = [order.id for order in queryset]
             cancel_bg_order_task.delay(order_ids)
             self.message_user(
