@@ -1,7 +1,6 @@
 from django.contrib import admin, messages
 from django.utils.translation import ngettext
 
-from api.constants import Constants
 from orders.models import AdOrder, BgOrder, ORDER_TYPES
 from orders.tasks import cancel_ad_order_task, cancel_bg_order_task
 
@@ -52,9 +51,8 @@ class AdOrderAdmin(admin.ModelAdmin):
         3. Собираются айди заказов и отправляются в целери
             для создания репликаций.
         """
-        empty_values = Constants.empty_values
         # 1
-        if queryset.filter(status__in=[2, 3, 4]) not in empty_values:
+        if queryset.filter(status__in=[2, 3, 4]).exists():
             self.message_user(
                 request,
                 f'Среди выбранных заказов есть такие, '
@@ -138,9 +136,8 @@ class BgOrderAdmin(admin.ModelAdmin):
         3. Собираются айди заказов и отправляются в целери
             для создания репликаций.
         """
-        empty_values = Constants.empty_values
         # 1
-        if queryset.filter(status__in=[2, 3, 4]) not in empty_values:
+        if queryset.filter(status__in=[2, 3, 4]).exists():
             self.message_user(
                 request,
                 f'Среди выбранных заказов есть такие, '
