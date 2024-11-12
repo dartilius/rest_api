@@ -49,6 +49,7 @@ from nomenclatures.tasks import (
 )
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
+from users.permissions import OnlySuperuserDAdminManagerCUAuthRetrieve
 
 
 class NomenclatureViewSet(viewsets.ModelViewSet):
@@ -59,7 +60,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     ).select_related('owner', 'availability')
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
-    # permission_classes = [AuthAndOnlySuperUserDelete, ]
+    permission_classes = [OnlySuperuserDAdminManagerCUAuthRetrieve]
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

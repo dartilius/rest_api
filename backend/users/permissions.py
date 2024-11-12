@@ -1,8 +1,9 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 MUTATE_METHODS = ('PUT', 'PATCH')
-UNSAFE_METHODS = (*MUTATE_METHODS, 'DELETE')
-CREATE_RETRIEVE_METHODS = (*SAFE_METHODS, 'POST')
+MUTATE_DELETE_METHODS = (*MUTATE_METHODS, 'DELETE')
+SAFE_CREATE_METHODS = (*SAFE_METHODS, 'POST')
+NO_DELETE_METHODS = (*MUTATE_DELETE_METHODS, *SAFE_CREATE_METHODS)
 
 error_message = 'Недостаточно прав' + ' %(class)s'
 
@@ -42,6 +43,45 @@ class AdminManagerCUDAuthRetrieve(BasePermission):
                 request.user.is_superuser)
 
 
+class OnlySuperuserDAdminManagerCUAuthRetrieve(BasePermission):
+    """
+    Удалить может только SU.
+
+    Создать, изменить - сотрудник ТО или менеджер,
+    просмотреть - любой авторизованный.
+    """
+
+    message = error_message
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in NO_DELETE_METHODS:
+            return True
+
+        return request.user.is_superuser
+
+
+class OnlySuperuserDeleteAdminManagerCRU(BasePermission):
+    """Удалить может только SU, всё остальное - только сотрудники."""
+
+    message = error_message
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (
+            request.user.is_admin or
+            request.user.is_manager or
+            request.user.is_superuser
+        )
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in NO_DELETE_METHODS:
+            return True
+
+        return request.user.is_superuser
+
+
 class SuperuserDeleteAdminCRU(BasePermission):
     """
     Удалить может только SU.
@@ -59,7 +99,7 @@ class SuperuserDeleteAdminCRU(BasePermission):
         if request.method == 'DELETE':
             return request.user.is_superuser
 
-        if request.method in CREATE_RETRIEVE_METHODS:
+        if request.method in SAFE_CREATE_METHODS:
             return True
 
         return request.method in MUTATE_METHODS and (
@@ -84,7 +124,7 @@ class SuperuserDeleteOwnerCRU(BasePermission):
         if request.method == 'DELETE':
             return request.user.is_superuser
 
-        return request.method in CREATE_RETRIEVE_METHODS or (
+        return request.method in SAFE_CREATE_METHODS or (
             request.method in MUTATE_METHODS and (
                 obj.owner == request.user or request.user.is_superuser
             )
@@ -103,10 +143,10 @@ class OwnerAndSuperuserCRUD(BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        if request.method in CREATE_RETRIEVE_METHODS:
+        if request.method in SAFE_CREATE_METHODS:
             return True
 
-        return request.method in UNSAFE_METHODS and (
+        return request.method in MUTATE_DELETE_METHODS and (
             obj.owner == request.user or request.user.is_superuser
         )
 
@@ -123,9 +163,49 @@ class AdminAndSuperuserCRUD(BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        if request.method in CREATE_RETRIEVE_METHODS:
+        if request.method in SAFE_CREATE_METHODS:
             return True
 
-        return request.method in UNSAFE_METHODS and (
+        return request.method in MUTATE_DELETE_METHODS and (
+            request.user.is_admin or request.user.is_superuser
+        )
+
+
+class OnlySuperuserUDAdminManagerCR(BasePermission):
+    """
+    Изменить или удалить может только SU,
+    создать и просмотреть - только сотрудник.
+    """
+
+    message = error_message
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_CREATE_METHODS:
+            return True
+
+        return request.method in MUTATE_DELETE_METHODS and (
+            request.user.is_admin or request.user.is_superuser
+        )
+
+
+class OnlySuperuserUDAdminManagerCAuthR(BasePermission):
+    """
+    Изменить или удалить может только SU,
+    создать - только сотрудник, а посмотреть любой авторизованный.
+    """
+
+    message = error_message
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_CREATE_METHODS:
+            return True
+
+        return request.method in MUTATE_DELETE_METHODS and (
             request.user.is_admin or request.user.is_superuser
         )

@@ -38,16 +38,51 @@ class TestNomenclatures:
             response = user_client.get(
                 url.format(nomenclature_id=str(nomenclature.id))
             )
-            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            assert response.status_code == HTTPStatus.OK, (
                 f'Авторизованный пользователь не имеет доступ к странице '
+                f'{url}.'
+            )
+
+    def test_availability_staff(
+        self,
+        admin_client,
+        manager_client,
+        nomenclature
+    ):
+        for url in self.no_detail_url_list:
+            response = admin_client.get(url)
+            assert response.status_code == HTTPStatus.OK, (
+                f'Сотрудник ТО не имеет доступ к странице '
+                f'{url}.'
+            )
+        for url in self.detail_url_list:
+            response = admin_client.get(
+                url.format(nomenclature_id=str(nomenclature.id))
+            )
+            assert response.status_code == HTTPStatus.OK, (
+                f'Сотрудник ТО не имеет доступ к странице '
+                f'{url}.'
+            )
+        for url in self.no_detail_url_list:
+            response = manager_client.get(url)
+            assert response.status_code == HTTPStatus.OK, (
+                f'Менеджер не имеет доступ к странице '
+                f'{url}.'
+            )
+        for url in self.detail_url_list:
+            response = manager_client.get(
+                url.format(nomenclature_id=str(nomenclature.id))
+            )
+            assert response.status_code == HTTPStatus.OK, (
+                f'Менеджер не имеет доступ к странице '
                 f'{url}.'
             )
 
     def test_availability_anon(self, anon_client, nomenclature):
         for url in self.no_detail_url_list:
             response = anon_client.get(url)
-            assert response.status_code == HTTPStatus.OK, (
-                f'Не вторизованный пользователь имеет доступ к странице '
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                f'Не авторизованный пользователь имеет доступ к странице '
                 f'{url}.'
             )
         nomenclature_id = str(nomenclature.id)
@@ -62,8 +97,10 @@ class TestNomenclatures:
                 f'{url}.'
             )
 
-    def test_create_valid_nomenclature(self, user_client, user):
+    def test_create_valid_nomenclature_admin(self, admin_client, admin_user):
+        from random import randint
         nomenclature_count = Nomenclature.objects.count()
+        from nomenclatures.models import TIMEZONES
         settings = {
             'fri': {'worktime': '09:00:00-20:00:00',
                     'default_volume': [50, 50, 50, 50]},
@@ -82,13 +119,177 @@ class TestNomenclatures:
         }
         custom_settings = copy.deepcopy(settings)
         for day in custom_settings:
+            begin_time = f'{randint(9, 14)}:00:00'
+            end_time = f'{randint(15, 20)}:00:00'
             custom_settings[day].update({
                 'custom_volume': {
-                    '09:00:00-11:00:00': [40, 40, 40, 40],
-                    '17:00:00-20:00:00': [70, 70, 70, 70]
+                    f'{begin_time}-{end_time}': [randint(0, 100)] * 4
                 }
             })
+        valid_data = [
+            {
+                'name': 'Test Nomenclature',
+                'owner': admin_user,
+                'timezone': 'Etc/GMT-7',
+                'settings': settings
+            },
+            {
+                'name': 'Test Nomenclature',
+                'owner': admin_user,
+                'timezone': 'Etc/GMT-7',
+                'settings': custom_settings
+            }
+        ]
+        for data in valid_data:
+            response = admin_client.post(
+                self.no_detail_url_list[0],
+                data=data,
+                format='json'
+            )
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.CREATED, (
+                f'Код статуса в ответе != 201. Данные:\n{response_data}'
+            )
+            nomenclature_count += 1
+            assert nomenclature_count == Nomenclature.objects.count(), (
+                'Не удалось создать номенклатуру.'
+            )
+            assert response_data['owner'] == admin_user.full_name, (
+                'Создатель номенклатуры не встал в соответствующее поле.'
+            )
+            assert response_data['timezone'] == TIMEZONES[data['timezone']], (
+                'Часовой пояс отличаются от отправленных данных.'
+            )
+            assert response_data['settings'] == data['settings'], (
+                'Настройки вещания отличаются от отправленных данных.'
+            )
 
+    def test_create_valid_nomenclature_manager(
+        self,
+        manager_client,
+        manager_user
+    ):
+        from random import randint
+        nomenclature_count = Nomenclature.objects.count()
+        from nomenclatures.models import TIMEZONES
+        settings = {
+            'fri': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'mon': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'sat': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'sun': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'thu': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'tue': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'wed': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]}
+        }
+        custom_settings = copy.deepcopy(settings)
+        for day in custom_settings:
+            begin_time = f'{randint(9, 14)}:00:00'
+            end_time = f'{randint(15, 20)}:00:00'
+            custom_settings[day].update({
+                'custom_volume': {
+                    f'{begin_time}-{end_time}': [randint(0, 100)] * 4
+                }
+            })
+        valid_data = [
+            {
+                'name': 'Test Nomenclature',
+                'owner': manager_user,
+                'timezone': 'Etc/GMT-7',
+                'settings': settings
+            },
+            {
+                'name': 'Test Nomenclature',
+                'owner': manager_user,
+                'timezone': 'Etc/GMT-7',
+                'settings': custom_settings
+            }
+        ]
+        for data in valid_data:
+            response = manager_client.post(
+                self.no_detail_url_list[0],
+                data=data,
+                format='json'
+            )
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.CREATED, (
+                f'Код статуса в ответе != 201. Данные:\n{response_data}'
+            )
+            nomenclature_count += 1
+            assert nomenclature_count == Nomenclature.objects.count(), (
+                'Не удалось создать номенклатуру.'
+            )
+            assert response_data['owner'] == manager_user.full_name, (
+                'Создатель номенклатуры не встал в соответствующее поле.'
+            )
+            assert response_data['timezone'] == TIMEZONES[data['timezone']], (
+                'Часовой пояс отличаются от отправленных данных.'
+            )
+            assert response_data['settings'] == data['settings'], (
+                'Настройки вещания отличаются от отправленных данных.'
+            )
+
+    def test_create_valid_nomenclature_anon(self, anon_client, user):
+        nomenclature_count = Nomenclature.objects.count()
+        settings = {
+            'fri': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'mon': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'sat': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'sun': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'thu': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'tue': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'wed': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]}
+        }
+        data = {
+            'name': 'Test Nomenclature',
+            'owner': user,
+            'timezone': 'Etc/GMT-7',
+            'settings': settings
+        }
+        response = anon_client.post(
+            self.no_detail_url_list[0],
+            data=data,
+            format='json'
+        )
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            'Код статуса в ответе != 401.'
+        )
+        nomenclature_count += 1
+        assert nomenclature_count != Nomenclature.objects.count(), (
+            'Удалось создать номенклатуру без авторизации.'
+        )
+
+    def test_create_valid_nomenclature_user(self, user_client, user):
+        nomenclature_count = Nomenclature.objects.count()
+        settings = {
+            'fri': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'mon': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'sat': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'sun': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'thu': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'tue': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'wed': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]}
+        }
         data = {
             'name': 'Test Nomenclature',
             'owner': user,
@@ -100,92 +301,410 @@ class TestNomenclatures:
             data=data,
             format='json'
         )
-        assert response.status_code == HTTPStatus.CREATED, (
-            'Код статуса в ответе != 201.'
-        )
-        nomenclature_count += 1
-        assert nomenclature_count == Nomenclature.objects.count(), (
-            'Не удалось создать репликацию.'
-        )
-        response_data = response.json()
-        assert response_data['owner'] == user.full_name, (
-            'Создатель репликации не встал в соответствующее поле.'
-        )
-        assert response_data['client']['id'] == data['client'], (
-            'Целевая рабочая станция созданной репликации отличается от '
-            'таковой в отправленных данных.'
-        )
-        assert response_data['parameters'] == data['parameters'], (
-            'Параметры репликации отличаются от отправленных данных.'
-        )
-
-    def test_create_invalid_task(self, user_client, nomenclature):
-        task_count = Task.objects.count()
-        invalid_data = {
-            'client': nomenclature.name,
-            'parameters': 'test'
-        }
-        response = user_client.post(self.url, data=invalid_data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        task_count += 1
-        assert task_count != Task.objects.count(), (
-            f'Удалось создать репликацию с неправильными данными.'
-        )
-
-    def test_create_task_anon(self, client, nomenclature):
-        task_count = Task.objects.count()
-        parameters = 'test'
-        data = {
-            'client': str(nomenclature.id),
-            'parameters': parameters
-        }
-        response = client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Код статуса в ответе != 401.'
-        )
-        task_count += 1
-        assert task_count != Task.objects.count(), (
-            'Удалось создать репликацию без авторизации.'
-        )
-
-    def test_delete_task_user(self, user_client, task):
-        task_count = Task.objects.count()
-        task_id = str(task.id)
-        response = user_client.delete(self.task_url.format(task_id=task_id))
         assert response.status_code == HTTPStatus.FORBIDDEN, (
             'Код статуса в ответе != 403.'
         )
-        task_count -= 1
-        assert task_count != Task.objects.count(), (
-            'Удалось удалить репликацию без должных прав.'
+        nomenclature_count += 1
+        assert nomenclature_count != Nomenclature.objects.count(), (
+            'Удалось создать номенклатуру без должных прав.'
         )
 
-    def test_delete_task_anon(self, anon_client, task):
-        task_count = Task.objects.count()
-        task_id = str(task.id)
-        response = anon_client.delete(self.task_url.format(task_id=task_id))
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Код статуса в ответе != 401.'
-        )
-        task_count -= 1
-        assert task_count != Task.objects.count(), (
-            'Удалось удалить репликацию без авторизации.'
-        )
-
-    @pytest.mark.xfail(
-        reason='Работает в админ панели, но не через view, пока хз как починить'
-    )
-    def test_delete_task_admin(self, admin_client, task):
-        task_count = Task.objects.count()
-        assert task_count == 1
-        task_id = str(task.id)
-        response = admin_client.delete(self.task_url.format(task_id=task_id))
-        assert response.status_code == HTTPStatus.NO_CONTENT, (
-            'Код статуса в ответе != 204.'
-        )
-        task_count -= 1
-        assert task_count != Task.objects.count(), (
-            'Пользователь-админ не может удалить репликацию.'
-        )
+    def test_create_invalid_nomenclature(self, admin_client, admin_user):
+        from random import randint
+        nomenclature_count = Nomenclature.objects.count()
+        valid_settings = {
+            'fri': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'mon': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'sat': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'sun': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'thu': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'tue': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]},
+            'wed': {'worktime': '09:00:00-20:00:00',
+                    'default_volume': [50, 50, 50, 50]}
+        }
+        custom_settings = copy.deepcopy(valid_settings)
+        for day in custom_settings:
+            begin_time = f'{randint(9, 14)}:00:00'
+            end_time = f'{randint(15, 20)}:00:00'
+            custom_settings[day].update({
+                'custom_volume': {
+                    f'{begin_time}-{end_time}': [randint(0, 100)] * 4
+                }
+            })
+        invalid_settings = [
+            {
+                'fri': {'default_volume': [50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+                },
+            {
+                'fri': {'worktime': None,
+                        'default_volume': [50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '00:00:00-24:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '20:00:00-09:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': ['09:00:00-20:00:00'],
+                        'default_volume': [50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-09:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00'},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': None},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 150]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': '50, 50, 50, 50'},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50],
+                        'invalid_key': 'invalid_val'},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'xxx': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]}
+            },
+            {
+                'fri': {},
+                'mon': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sat': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'sun': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'thu': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'tue': {'worktime': '09:00:00-20:00:00',
+                        'default_volume': [50, 50, 50, 50]},
+                'wed': {'worktime': '09:00:00-20:00:00'}
+            }
+        ]
+        invalid_custom_settings = [
+            {
+                'custom_volume': {
+                    '12:00:00-09:00:00': [50] * 4
+                }
+            },
+            {
+                'custom_volume': {
+                    '20:00:00-24:00:00': [50] * 4
+                }
+            },
+            {
+                'custom_volume': {
+                    '09:00:00-12:00:00': [50] * 4,
+                    '10:00:00-14:00:00': [50] * 4
+                }
+            },
+            {
+                'custom_volume': {
+                    '09:00:00-12:00:00': [150] * 4,
+                }
+            },
+            {
+                'custom_volume': {
+                    '09:00:00-12:00:00': [50] * 3,
+                }
+            },
+            {
+                'custom_volume': {
+                    '09:00:00-12:00:00': [50] * 5,
+                }
+            },
+            {
+                'custom_volume': {
+                    ['09:00:00-12:00:00']: [50] * 4,
+                }
+            },
+            {
+                'custom_volume': {
+                    '09:00:00-12:00:00': '[50] * 4',
+                }
+            },
+            {
+                'custom_volume': {
+                    '09:00:00-09:00:00': [50] * 4,
+                }
+            },
+            {
+                'custom_volume': {
+                    'invalid_key': [50] * 4,
+                }
+            },
+            {
+                'invalid_key': {
+                    '09:00:00-12:00:00': [50] * 4,
+                }
+            },
+            {
+                'custom_volume': {}
+            }
+        ]
+        invalid_data = [
+            {
+                'name': None,
+                'owner': admin_user,
+                'timezone': 'Etc/GMT-7',
+                'settings': valid_settings
+            },
+            {
+                'name': 'Test Nomenclature',
+                'owner': None,
+                'timezone': 'Etc/GMT-7',
+                'settings': valid_settings
+            },
+            {
+                'name': 'Test Nomenclature',
+                'owner': admin_user,
+                'timezone': None,
+                'settings': valid_settings
+            },
+            {
+                'name': 'Test Nomenclature',
+                'owner': admin_user,
+                'timezone': 'Etc/GMT-7',
+                'settings': None
+            }
+        ]
+        invalid_data += [
+            {
+                'name': 'Test Nomenclature',
+                'owner': admin_user,
+                'timezone': 'Etc/GMT-7',
+                'settings': settings
+            } for settings in invalid_settings
+        ]
+        invalid_data += [
+            {
+                'name': 'Test Nomenclature',
+                'owner': admin_user,
+                'timezone': 'Etc/GMT-7',
+                'settings': settings
+            } for settings in invalid_custom_settings
+        ]
+        for data in invalid_data:
+            response = admin_client.post(
+                self.no_detail_url_list[0],
+                data=invalid_data,
+                format='json'
+            )
+            assert response.status_code == HTTPStatus.BAD_REQUEST, (
+                f'Код статуса в ответе != 400. Данные:\n{data}'
+            )
+            nomenclature_count += 1
+            assert nomenclature_count != Nomenclature.objects.count(), (
+                f'Удалось создать репликацию с неправильными данными.'
+            )
