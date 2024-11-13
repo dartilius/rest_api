@@ -2,8 +2,6 @@
 
 set -e
 
-bash ./scripts/workers.sh ${CELERY_WORKERS}
-
 if ${DEBUG}; then
   exec gunicorn --bind 0:8000 --workers 4 --timeout 90 rmc_rest_api.wsgi
 else

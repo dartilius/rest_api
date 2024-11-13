@@ -73,7 +73,6 @@ services:
       retries: 5
     ports:
       - 8000:8000
-    command: gunicorn --bind 0:8000 --workers 8 --threads 2 --timeout 90 rmc_rest_api.wsgi
     depends_on:
       files:
         condition: service_healthy
