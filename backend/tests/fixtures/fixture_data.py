@@ -1,13 +1,14 @@
 import pytest
-
-from files.models import File, Playlist, Tag
-from nomenclatures.models import Nomenclature
-from orders.models import AdOrder, BgOrder
-from tasks.models import Task
+from datetime import datetime as dt, timedelta as td
+from uuid import uuid4
+from hashlib import md5, sha256
+from random import choices, randint
+from string import ascii_letters, digits
 
 
 @pytest.fixture
 def nomenclature(user):
+    from nomenclatures.models import Nomenclature
     settings = {
         'fri': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]},
         'mon': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]},
@@ -26,7 +27,18 @@ def nomenclature(user):
 
 
 @pytest.fixture
+def status_history(nomenclature):
+    from nomenclatures.models import StatusHistory
+    return StatusHistory.objects.create(
+        client=nomenclature,
+        change_time=dt.now(),
+        status=0
+    )
+
+
+@pytest.fixture
 def task(user, nomenclature):
+    from tasks.models import Task
     return Task.objects.create(
         client=nomenclature,
         owner=user,
@@ -37,6 +49,7 @@ def task(user, nomenclature):
 
 @pytest.fixture
 def tag_1():
+    from files.models import Tag
     return Tag.objects.create(
         name='test'
     )
@@ -44,6 +57,7 @@ def tag_1():
 
 @pytest.fixture
 def tag_2():
+    from files.models import Tag
     return Tag.objects.create(
         name='ololo'
     )
@@ -51,6 +65,7 @@ def tag_2():
 
 @pytest.fixture
 def file_1(user_client, user, tag_1, tag_2):
+    from files.models import File
     with open('/app/tests/fixtures/test_audio.txt', 'r') as file:
         audio_source = file.read()
     file_contents = 'data:test.mp3;base64,'
@@ -68,6 +83,7 @@ def file_1(user_client, user, tag_1, tag_2):
 
 @pytest.fixture
 def file_2(user_client, user):
+    from files.models import File
     with open('/app/tests/fixtures/test_image.txt', 'r') as file:
         image_source = file.read()
     file_contents = 'data:test.jpg;base64,'
@@ -84,6 +100,7 @@ def file_2(user_client, user):
 
 @pytest.fixture
 def file_3(user_client, user):
+    from files.models import File
     with open('/app/tests/fixtures/test_video.txt', 'r') as file:
         video_source = file.read()
     file_contents = 'data:test.mp4;base64,'
@@ -100,6 +117,7 @@ def file_3(user_client, user):
 
 @pytest.fixture
 def file_4(user_client, user):
+    from files.models import File
     with open('/app/tests/fixtures/test_ticker.txt', 'r') as file:
         ticker_source = file.read()
     file_contents = 'data:test.txt;base64,'
@@ -116,6 +134,7 @@ def file_4(user_client, user):
 
 @pytest.fixture
 def playlist_1(user, file_1):
+    from files.models import Playlist
     pls_obj = Playlist.objects.create(
         name='playlist_1',
         owner=user
@@ -126,6 +145,7 @@ def playlist_1(user, file_1):
 
 @pytest.fixture
 def playlist_2(user, file_2):
+    from files.models import Playlist
     pls_obj = Playlist.objects.create(
         name='playlist_2',
         owner=user
@@ -136,6 +156,7 @@ def playlist_2(user, file_2):
 
 @pytest.fixture
 def playlist_3(user, file_3):
+    from files.models import Playlist
     pls_obj = Playlist.objects.create(
         name='playlist_3',
         owner=user
@@ -146,6 +167,7 @@ def playlist_3(user, file_3):
 
 @pytest.fixture
 def playlist_4(user, file_4):
+    from files.models import Playlist
     pls_obj = Playlist.objects.create(
         name='playlist_4',
         owner=user
@@ -156,7 +178,7 @@ def playlist_4(user, file_4):
 
 @pytest.fixture
 def adorder(user, file_1, playlist_1, nomenclature):
-    from datetime import datetime as dt, timedelta as td
+    from orders.models import AdOrder
     today = f'{dt.today().date()} 09:00:00'
     tomorrow = f'{dt.today().date() + td(days=1)} 20:00:00'
     return AdOrder.objects.create(
@@ -170,7 +192,7 @@ def adorder(user, file_1, playlist_1, nomenclature):
 
 @pytest.fixture
 def adorder_slides(user, file_1, file_2, playlist_1, nomenclature):
-    from datetime import datetime as dt, timedelta as td
+    from orders.models import AdOrder
     today = f'{dt.today().date()} 09:00:00'
     tomorrow = f'{dt.today().date() + td(days=1)} 20:00:00'
     return AdOrder.objects.create(
@@ -185,7 +207,7 @@ def adorder_slides(user, file_1, file_2, playlist_1, nomenclature):
 
 @pytest.fixture
 def bgorder(user, file_1, playlist_1, nomenclature):
-    from datetime import datetime as dt, timedelta as td
+    from orders.models import BgOrder
     today = f'{dt.today().date()} 09:00:00'
     tomorrow = f'{dt.today().date() + td(days=1)} 20:00:00'
     return BgOrder.objects.create(
@@ -196,3 +218,95 @@ def bgorder(user, file_1, playlist_1, nomenclature):
         client=nomenclature,
         playlist=playlist_1,
     )
+
+
+@pytest.fixture
+def ad_stat():
+    from ch_statistic.models import ADStat
+    chars = ascii_letters + digits
+    string_1 = ''.join(choices(chars, k=10)).encode()
+    string_2 = ''.join(choices(chars, k=10)).encode()
+    md5_string = md5(string_1)
+    sha256_string = sha256(string_2)
+    length = randint(5, 30)
+    return ADStat.objects.create(
+        created=f'{dt.today().date()} 12:00:{length + 1}',
+        played=f'{dt.today().date()} 12:00:00',
+        file=f'{md5_string}{sha256_string}',
+        client=str(uuid4()),
+        length=length,
+        ad_block=randint(0, 12)
+    )
+
+
+@pytest.fixture
+def music_stat():
+    from ch_statistic.models import MusicStat
+    chars = ascii_letters + digits
+    string_1 = ''.join(choices(chars, k=10)).encode()
+    string_2 = ''.join(choices(chars, k=10)).encode()
+    md5_string = md5(string_1)
+    sha256_string = sha256(string_2)
+    length = randint(5, 30)
+    return MusicStat.objects.create(
+        created=f'{dt.today().date()} 12:00:{length + 1}',
+        played=f'{dt.today().date()} 12:00:00',
+        file=f'{md5_string}{sha256_string}',
+        client=str(uuid4()),
+        length=length
+    )
+
+
+@pytest.fixture
+def image_stat():
+    from ch_statistic.models import ImageStat
+    chars = ascii_letters + digits
+    string_1 = ''.join(choices(chars, k=10)).encode()
+    string_2 = ''.join(choices(chars, k=10)).encode()
+    md5_string = md5(string_1)
+    sha256_string = sha256(string_2)
+    length = randint(5, 30)
+    return ImageStat.objects.create(
+        created=f'{dt.today().date()} 12:00:{length + 1}',
+        played=f'{dt.today().date()} 12:00:00',
+        file=f'{md5_string}{sha256_string}',
+        client=str(uuid4()),
+        length=length
+    )
+
+
+@pytest.fixture
+def video_stat():
+    from ch_statistic.models import VideoStat
+    chars = ascii_letters + digits
+    string_1 = ''.join(choices(chars, k=10)).encode()
+    string_2 = ''.join(choices(chars, k=10)).encode()
+    md5_string = md5(string_1)
+    sha256_string = sha256(string_2)
+    length = randint(5, 30)
+    return VideoStat.objects.create(
+        created=f'{dt.today().date()} 12:00:{length + 1}',
+        played=f'{dt.today().date()} 12:00:00',
+        file=f'{md5_string}{sha256_string}',
+        client=str(uuid4()),
+        length=length
+    )
+
+
+@pytest.fixture
+def ticker_stat():
+    from ch_statistic.models import TickerStat
+    chars = ascii_letters + digits
+    string_1 = ''.join(choices(chars, k=10)).encode()
+    string_2 = ''.join(choices(chars, k=10)).encode()
+    md5_string = md5(string_1)
+    sha256_string = sha256(string_2)
+    length = randint(5, 30)
+    return TickerStat.objects.create(
+        created=f'{dt.today().date()} 12:00:{length + 1}',
+        played=f'{dt.today().date()} 12:00:00',
+        file=f'{md5_string}{sha256_string}',
+        client=str(uuid4()),
+        length=length
+    )
+

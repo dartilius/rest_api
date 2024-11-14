@@ -80,6 +80,11 @@ class CustomUser(AbstractUser):
         return self.role == 'admin'
 
     @property
+    def is_ordinary(self):
+        """Проверяем, что это обычный пользователь."""
+        return self.role == 'ordinary'
+
+    @property
     def full_name(self):
         return {
             'full_name': f'{self.last_name} {self.first_name}'

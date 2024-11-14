@@ -16,7 +16,7 @@ class Stat(models.ClickhouseModel):
         verbose_name='Идентификатор файла'
     )
     client = models.StringField(
-        max_length=288,
+        max_length=36,
         verbose_name='Идентификатор номенклатуры'
     )
     length = models.UInt16Field(
