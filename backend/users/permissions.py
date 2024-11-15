@@ -2,8 +2,7 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 MUTATE_METHODS = ('PUT', 'PATCH')
 MUTATE_DELETE_METHODS = (*MUTATE_METHODS, 'DELETE')
-SAFE_CREATE_METHODS = (*SAFE_METHODS, 'POST')
-NO_DELETE_METHODS = (*MUTATE_METHODS, *SAFE_CREATE_METHODS)
+NO_DELETE_METHODS = (*MUTATE_METHODS, *SAFE_METHODS)
 
 error_message = 'Недостаточно прав' + ' %(class)s.__doc__'
 
@@ -17,7 +16,7 @@ class SuperuserCUDAuthRetrieve(BasePermission):
     message = error_message
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated
+        return request.user.is_authenticated and request.user.is_superuser
 
     def has_object_permission(self, request, view, obj):
         return request.method in SAFE_METHODS or request.user.is_superuser
@@ -32,15 +31,16 @@ class AdminManagerCUDAuthRetrieve(BasePermission):
     message = error_message
 
     def has_permission(self, request, view):
+        if request.method == 'POST':
+            return not request.user.is_ordinary
+
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
             return True
 
-        return (request.user.is_admin or
-                request.user.is_manager or
-                request.user.is_superuser)
+        return not request.user.is_ordinary
 
 
 class OnlySuperuserDAdminManagerCUAuthRetrieve(BasePermission):
@@ -54,20 +54,19 @@ class OnlySuperuserDAdminManagerCUAuthRetrieve(BasePermission):
     message = error_message
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated
+        if request.method in SAFE_METHODS:
+            return request.user.is_authenticated
+
+        return not request.user.is_ordinary
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
-            return True
+            return request.user.is_authenticated
 
-        if request.method in NO_DELETE_METHODS and (
-            request.user.is_admin or
-            request.user.is_manager or
-            request.user.is_superuser
-        ):
-            return True
+        if request.method == 'DELETE':
+            return request.user.is_superuser
 
-        return request.user.is_superuser
+        return not request.user.is_ordinary
 
 
 class OnlySuperuserDeleteAdminManagerCRU(BasePermission):
@@ -80,7 +79,7 @@ class OnlySuperuserDeleteAdminManagerCRU(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if request.method in NO_DELETE_METHODS:
-            return True
+            return not request.user.is_ordinary
 
         return request.user.is_superuser
 
@@ -99,7 +98,7 @@ class SuperuserDeleteAdminCRU(BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_CREATE_METHODS:
+        if request.method in SAFE_METHODS:
             return True
 
         if request.method in MUTATE_METHODS:
@@ -122,7 +121,7 @@ class SuperuserDeleteOwnerCRU(BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_CREATE_METHODS or (
+        if request.method in SAFE_METHODS or (
             request.method in MUTATE_METHODS and (
                 obj.owner == request.user or request.user.is_superuser
             )
@@ -144,7 +143,7 @@ class OwnerAndSuperuserCRUD(BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_CREATE_METHODS:
+        if request.method in SAFE_METHODS:
             return True
 
         return request.method in MUTATE_DELETE_METHODS and (
@@ -164,7 +163,7 @@ class AdminAndSuperuserCRUD(BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_CREATE_METHODS:
+        if request.method in SAFE_METHODS:
             return True
 
         return request.method in MUTATE_DELETE_METHODS and (
@@ -181,15 +180,13 @@ class OnlySuperuserUDAdminManagerCR(BasePermission):
     message = error_message
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated
+        return request.user.is_authenticated and not request.user.is_ordinary
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_CREATE_METHODS:
-            return True
+        if request.method in MUTATE_DELETE_METHODS:
+            return request.user.is_superuser
 
-        return request.method in MUTATE_DELETE_METHODS and (
-            request.user.is_admin or request.user.is_superuser
-        )
+        return request.method in SAFE_METHODS and not request.user.is_ordinary
 
 
 class OnlySuperuserUDAdminManagerCAuthR(BasePermission):
@@ -201,12 +198,14 @@ class OnlySuperuserUDAdminManagerCAuthR(BasePermission):
     message = error_message
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated
+        if request.method in SAFE_METHODS:
+            return request.user.is_authenticated
+
+        return request.user.is_authenticated and not request.user.is_ordinary
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_CREATE_METHODS:
+        if request.method in SAFE_METHODS:
             return True
 
-        return request.method in MUTATE_DELETE_METHODS and (
-            request.user.is_admin or request.user.is_superuser
-        )
+        if request.method in MUTATE_DELETE_METHODS:
+            return request.user.is_superuser

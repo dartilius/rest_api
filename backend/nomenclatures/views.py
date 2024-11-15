@@ -173,7 +173,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def get_ad_stat(self, request, pk):
         """Отображение статистики рекламы конкретной номенклатуры."""
         self.get_nomenclature_or_404(pk)
-        date = request.data['date']
+        date = request.query_params.get('date')
         statistics = ADStat.objects.filter(
             client=pk, played__contains=date
         ).order_by('played')
@@ -192,7 +192,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureMusicStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(detail=True, methods=['GET'],url_path='video_stat')
+    @action(detail=True, methods=['GET'], url_path='video_stat')
     def get_video_stat(self, request, pk):
         """Отображение статистики видео конкретной номенклатуры."""
         self.get_nomenclature_or_404(pk)

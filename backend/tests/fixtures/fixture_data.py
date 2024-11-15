@@ -1,6 +1,5 @@
 import pytest
 from datetime import datetime as dt, timedelta as td
-from uuid import uuid4
 from hashlib import md5, sha256
 from random import choices, randint
 from string import ascii_letters, digits
@@ -221,92 +220,92 @@ def bgorder(user, file_1, playlist_1, nomenclature):
 
 
 @pytest.fixture
-def ad_stat():
+def ad_stat(nomenclature, file_1):
     from ch_statistic.models import ADStat
     chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10)).encode()
-    string_2 = ''.join(choices(chars, k=10)).encode()
-    md5_string = md5(string_1)
-    sha256_string = sha256(string_2)
+    string_1 = ''.join(choices(chars, k=10))
+    string_2 = ''.join(choices(chars, k=10))
+    md5_string = md5(string_1.encode())
+    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return ADStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
         played=f'{dt.today().date()} 12:00:00',
-        file=f'{md5_string}{sha256_string}',
-        client=str(uuid4()),
+        file=str(file_1.id),
+        client=str(nomenclature.id),
         length=length,
         ad_block=randint(0, 12)
     )
 
 
 @pytest.fixture
-def music_stat():
+def music_stat(nomenclature, file_1):
     from ch_statistic.models import MusicStat
     chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10)).encode()
-    string_2 = ''.join(choices(chars, k=10)).encode()
-    md5_string = md5(string_1)
-    sha256_string = sha256(string_2)
+    string_1 = ''.join(choices(chars, k=10))
+    string_2 = ''.join(choices(chars, k=10))
+    md5_string = md5(string_1.encode())
+    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return MusicStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
         played=f'{dt.today().date()} 12:00:00',
-        file=f'{md5_string}{sha256_string}',
-        client=str(uuid4()),
+        file=str(file_1.id),
+        client=str(nomenclature.id),
         length=length
     )
 
 
 @pytest.fixture
-def image_stat():
+def image_stat(nomenclature, file_2):
     from ch_statistic.models import ImageStat
     chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10)).encode()
-    string_2 = ''.join(choices(chars, k=10)).encode()
-    md5_string = md5(string_1)
-    sha256_string = sha256(string_2)
+    string_1 = ''.join(choices(chars, k=10))
+    string_2 = ''.join(choices(chars, k=10))
+    md5_string = md5(string_1.encode())
+    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return ImageStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
         played=f'{dt.today().date()} 12:00:00',
-        file=f'{md5_string}{sha256_string}',
-        client=str(uuid4()),
+        file=str(file_2.id),
+        client=str(nomenclature.id),
         length=length
     )
 
 
 @pytest.fixture
-def video_stat():
+def video_stat(nomenclature, file_3):
     from ch_statistic.models import VideoStat
     chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10)).encode()
-    string_2 = ''.join(choices(chars, k=10)).encode()
-    md5_string = md5(string_1)
-    sha256_string = sha256(string_2)
+    string_1 = ''.join(choices(chars, k=10))
+    string_2 = ''.join(choices(chars, k=10))
+    md5_string = md5(string_1.encode())
+    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return VideoStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
         played=f'{dt.today().date()} 12:00:00',
-        file=f'{md5_string}{sha256_string}',
-        client=str(uuid4()),
+        file=str(file_3.id),
+        client=str(nomenclature.id),
         length=length
     )
 
 
 @pytest.fixture
-def ticker_stat():
+def ticker_stat(nomenclature, file_4):
     from ch_statistic.models import TickerStat
     chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10)).encode()
-    string_2 = ''.join(choices(chars, k=10)).encode()
-    md5_string = md5(string_1)
-    sha256_string = sha256(string_2)
+    string_1 = ''.join(choices(chars, k=10))
+    string_2 = ''.join(choices(chars, k=10))
+    md5_string = md5(string_1.encode())
+    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return TickerStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
         played=f'{dt.today().date()} 12:00:00',
-        file=f'{md5_string}{sha256_string}',
-        client=str(uuid4()),
+        file=str(file_4.id),
+        client=str(nomenclature.id),
         length=length
     )
 

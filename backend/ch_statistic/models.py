@@ -12,7 +12,7 @@ class Stat(models.ClickhouseModel):
         verbose_name='Когда было проиграно'
     )
     file = models.StringField(
-        max_length=288,
+        max_length=36,
         verbose_name='Идентификатор файла'
     )
     client = models.StringField(

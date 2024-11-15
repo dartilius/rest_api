@@ -44,8 +44,6 @@ class CustomUser(AbstractUser):
         choices=ROLES,
         max_length=32,
         verbose_name='Роль',
-        null=True,
-        blank=True,
         default='ordinary'
     )
     phone_number = PhoneNumberField(
