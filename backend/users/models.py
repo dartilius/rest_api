@@ -21,7 +21,7 @@ class CustomUser(AbstractUser):
     objects = CustomUserManager()
 
     email_validator = EmailValidator(
-        message='Такая почта уже занята, либо введены запрещённые символы. '
+        message='Емэйл уже занят, либо введён некорректно. '
                 'Разрешены только буквы, цифры и @/./+/-/_ символы, '
                 'а почта должна иметь такой вид: адрес@домен'
     )

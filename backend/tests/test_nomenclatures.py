@@ -788,7 +788,7 @@ class TestNomenclatureStatistic:
 class TestPendingTasks:
 
     pending_tasks_url = '/api/nomenclatures/{nomenclature_id}/pending_tasks/'
-    
+
     def test_create_nomenclature_availability_with_pending_tasks(
         self,
         client,

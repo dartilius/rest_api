@@ -1,16 +1,26 @@
 import pytest
 from http import HTTPStatus
-from dotenv import load_dotenv
 
 from users.models import CustomUser
-
-load_dotenv()
 
 
 @pytest.mark.django_db
 class TestUsers:
 
     url = '/api/users/'
+
+    def check_request_with_invalid_data(self):
+        ...
+
+    def test_avail_staff(self, admin_client, manager_client):
+        response = admin_client.get(self.url)
+        assert response.status_code == HTTPStatus.OK, (
+            'Сотрудник ТО не имеет доступ к странице.'
+        )
+        response = manager_client.get(self.url)
+        assert response.status_code == HTTPStatus.OK, (
+            'Менеджер не имеет доступ к странице.'
+        )
 
     def test_avail_user(self, user_client):
         response = user_client.get(self.url)
@@ -24,200 +34,141 @@ class TestUsers:
             'Неавторизованный пользователь имеет доступ к странице.'
         )
 
-    def test_avail_admin(self, admin_client):
-        response = admin_client.get(self.url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Пользователь-админ не имеет доступ к странице.'
-        )
+    def test_create_valid_user(self, superuser_client):
+        user_count = CustomUser.objects.count()
+        valid_data = [
+            {
+                'email': 'test@test.com',
+                'password': 'test',
+                'phone_number': '+78005559999',
+                'first_name': 'test',
+                'last_name': 'user'
+            },
+            {
+                'email': 'test1@test.com',
+                'password': 'test',
+                'phone_number': '+78005559998',
+                'first_name': 'test',
+                'last_name': 'user',
+                'middle_name': 'django'
+            }
+        ]
+        expected_fields = [
+            'id',
+            'role',
+            'email',
+            'phone_number',
+            'first_name',
+            'last_name',
+            'created'
+        ]
 
-    def test_create_user_valid_data(self, admin_client):
+        for data in valid_data:
+            response = superuser_client.post(self.url, data=data, format='json')
+            assert response.status_code == HTTPStatus.CREATED, (
+                'Код статуса в ответе != 201.'
+            )
+            user_count += 1
+            assert user_count == CustomUser.objects.count(), (
+                'Не удалось создать нового пользователя.'
+            )
+            response_data = response.json()
+            for field in expected_fields:
+                assert field in response_data, f'Ответ не содержит поле {field}'
+            data.pop('password')
+            for field in data:
+                assert response_data[field] == data[field], (
+                    f'{field} в ответе отличается от отправленного.'
+                )
+
+    @pytest.mark.parametrize(
+        'clients',
+        [user_client, anon_client, admin_client, manager_client]
+    )
+    def test_create_valid_user_no_permission(
+            self,
+            clients
+    ):
         user_count = CustomUser.objects.count()
         data = {
-            'email': 'test@test.com',
-            'password': 'test',
-            'phone_number': '+78005559999',
-            'first_name': 'test',
-            'last_name': 'user'
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.CREATED, (
-            'Код статуса в ответе != 201.'
-        )
-        user_count += 1
-        assert user_count == CustomUser.objects.count(), (
-            'Не удалось создать нового пользователя.'
-        )
-        test_data = response.json()
-        assert test_data['email'] == data['email'], (
-            'Email нового пользователя отличается от отправленного.'
-        )
-        assert test_data['phone_number'] == data['phone_number'], (
-            'Номер телефона нового пользователя отличается от отправленного.'
-        )
-        assert test_data['first_name'] == data['first_name'], (
-            'Имя нового пользователя отличается от отправленного.'
-        )
-        assert test_data['last_name'] == data['last_name'], (
-            'Фамилия нового пользователя отличается от отправленного.'
-        )
+                'email': 'test@test.com',
+                'password': 'test',
+                'phone_number': '+78005559999',
+                'first_name': 'test',
+                'last_name': 'user'
+            }
+        for client in clients:
+            response = client.post(self.url, data=data, format='json')
+            assert response.status_code == HTTPStatus.CREATED, (
+                'Код статуса в ответе != 201.'
+            )
+            user_count += 1
+            assert user_count == CustomUser.objects.count(), (
+                'Не удалось создать нового пользователя.'
+            )
+            response_data = response.json()
+            for field in expected_fields:
+                assert field in response_data, f'Ответ не содержит поле {field}'
+            data.pop('password')
+            for field in data:
+                assert response_data[field] == data[field], (
+                    f'{field} в ответе отличается от отправленного.'
+                )
 
-    def test_create_user_valid_data_middle_name(self, admin_client):
+    def test_create_invalid_user(self, superuser_client):
         user_count = CustomUser.objects.count()
-        data = {
-            'email': 'test1@test.com',
-            'password': 'test',
-            'phone_number': '+78005559998',
-            'first_name': 'test',
-            'last_name': 'user',
-            'middle_name': 'django'
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.CREATED, (
-            'Код статуса в ответе != 201.'
-        )
-        user_count += 1
-        assert user_count == CustomUser.objects.count(), (
-            'Не удалось создать нового пользователя.'
-        )
-        test_data = response.json()
-        assert test_data['email'] == data['email'], (
-            'Email нового пользователя отличается от отправленного.'
-        )
-        assert test_data['phone_number'] == data['phone_number'], (
-            'Номер телефона нового пользователя отличается от отправленного.'
-        )
-        assert test_data['first_name'] == data['first_name'], (
-            'Имя нового пользователя отличается от отправленного.'
-        )
-        assert test_data['last_name'] == data['last_name'], (
-            'Фамилия нового пользователя отличается от отправленного.'
-        )
-        assert test_data['middle_name'] == data['middle_name'], (
-            'Отчество нового пользователя отличается от отправленного.'
-        )
+        invalid_data = [
+            {
+                "email": "test.test.com",
+                "password": "test",
+                "phone_number": "+78005559999",
+                "first_name": "test",
+                "last_name": "user"
+            },
+            {
+                'password': 'test',
+                'phone_number': '+78005559999',
+                'first_name': 'test',
+                'last_name': 'user'
+            },
+            {
+                'email': 'test@test.com',
+                'password': 'test',
+                'phone_number': '99999999999',
+                'first_name': 'test',
+                'last_name': 'user'
+            },
+            {
+                'email': 'test@test.com',
+                'password': 'test',
+                'phone_number': 'test',
+                'first_name': 'test',
+                'last_name': 'user'
+            },
+            {
+                'email': 'test@test.com',
+                'phone_number': '+78005559999',
+                'password': 'test',
+                'last_name': 'user'
+            },
+            {
+                'email': 'test@test.com',
+                'phone_number': '+78005559999',
+                'password': 'test',
+                'first_name': 'test'
+            },
 
-    def test_create_user_invalid_email(self, admin_client):
-        user_count = CustomUser.objects.count()
-        data = {
-            "email": "test.test.com",
-            "password": "test",
-            "phone_number": "+78005559999",
-            "first_name": "test",
-            "last_name": "user"
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        user_count += 1
-        assert user_count > CustomUser.objects.count(), (
-            'Удалось создать пользователя с неправильным email.'
-        )
-
-    def test_create_user_no_email(self, admin_client):
-        user_count = CustomUser.objects.count()
-        data = {
-            'password': 'test',
-            'phone_number': '+78005559999',
-            'first_name': 'test',
-            'last_name': 'user'
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        user_count += 1
-        assert user_count > CustomUser.objects.count(), (
-            'Удалось создать пользователя без email.'
-        )
-
-    def test_create_user_invalid_phone_number_1(self, admin_client):
-        user_count = CustomUser.objects.count()
-        data = {
-            'email': 'test@test.com',
-            'password': 'test',
-            'phone_number': '99999999999',
-            'first_name': 'test',
-            'last_name': 'user'
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        user_count += 1
-        assert user_count > CustomUser.objects.count(), (
-            'Удалось создать пользователя с неправильным номером телефона.'
-        )
-
-    def test_create_user_invalid_phone_number_2(self, admin_client):
-        user_count = CustomUser.objects.count()
-        data = {
-            'email': 'test@test.com',
-            'password': 'test',
-            'phone_number': 'test',
-            'first_name': 'test',
-            'last_name': 'user'
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        user_count += 1
-        assert user_count > CustomUser.objects.count(), (
-            'Удалось создать пользователя с неправильным номером телефона.'
-        )
-
-    @pytest.mark.skip(reason='Сделали поле необязательным, возможно уберём')
-    def test_create_user_no_phone_number(self, admin_client):
-        user_count = CustomUser.objects.count()
-        data = {
-            'email': 'test@test.com',
-            'password': 'test',
-            'first_name': 'test',
-            'last_name': 'user'
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        user_count += 1
-        assert user_count > CustomUser.objects.count(), (
-            'Удалось создать пользователя без номера телефона.'
-        )
-
-    def test_create_user_no_first_name(self, admin_client):
-        user_count = CustomUser.objects.count()
-        data = {
-            'email': 'test@test.com',
-            'phone_number': '+78005559999',
-            'password': 'test',
-            'last_name': 'user'
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        user_count += 1
-        assert user_count > CustomUser.objects.count(), (
-            'Удалось создать пользователя без имени.'
-        )
-
-    def test_create_user_no_last_name(self, admin_client):
-        user_count = CustomUser.objects.count()
-        data = {
-            'email': 'test@test.com',
-            'phone_number': '+78005559999',
-            'password': 'test',
-            'first_name': 'test'
-        }
-        response = admin_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.BAD_REQUEST, (
-            'Код статуса в ответе != 400.'
-        )
-        user_count += 1
-        assert user_count > CustomUser.objects.count(), (
-            'Удалось создать пользователя без фамилии.'
-        )
+        ]
+        for data in invalid_data:
+            response = superuser_client.post(self.url, data=data, format='json')
+            assert response.status_code == HTTPStatus.BAD_REQUEST, (
+                f'Код статуса в ответе != 400.\n'
+                f'Данные:\n{data}\nОтвет:{response.data}'
+            )
+            user_count += 1
+            assert user_count > CustomUser.objects.count(), (
+                'Удалось создать пользователя с неправильными данными.'
+            )
 
 
 @pytest.mark.django_db(transaction=True)
