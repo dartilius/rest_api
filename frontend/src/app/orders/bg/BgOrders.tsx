@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@nextui-org/table";
 import { Pagination } from "@nextui-org/pagination";
-import { Chip, Select, SelectItem } from "@nextui-org/react";
+import {Button, Chip, Select, SelectItem} from "@nextui-org/react";
 import Link from "next/link";
 
 import { BgOrdersListResponse } from "@/src/types/interface/orders.interface";
@@ -33,6 +33,9 @@ export default function BgOrders() {
 
   return (
     <div>
+      <Link href={'/orders/create/'}>
+        <Button color='secondary'>Создать</Button>
+      </Link>
       <Table
         isHeaderSticky
         bottomContent={

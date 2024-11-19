@@ -2,10 +2,11 @@
 
 import { ChangeEvent, useState } from 'react';
 import { Input, ButtonForward, ButtonBack } from '@/src/components/ui';
-import { DateRangePicker, RangeValue } from "@nextui-org/react";
+import {DateRangePicker, RangeValue, Select, SelectItem} from "@nextui-org/react";
 import { DateValue, parseDate } from "@internationalized/date";
 import {useBgOrderCreateQuery} from "@/src/hooks/orders/useBgOrdersQuery";
 import {IBgOrderCreate} from "@/src/types/interface/orders.interface";
+import useNomenclaturesQuery from "@/src/hooks/nomenclatures/useNomenclaturesQuery";
 
 function CreateOrders() {
     const { mutate: createBgOrder } = useBgOrderCreateQuery();
@@ -29,8 +30,13 @@ function CreateOrders() {
         }));
     };
 
+    const { data: nomenclaturesList } = useNomenclaturesQuery({
+        page: 1,
+        limit: 25
+    })
+
     const handleNextStep = () => {
-        if (currentStep < 2) setCurrentStep((prevStep) => prevStep + 1);
+        if (currentStep < 3) setCurrentStep((prevStep) => prevStep + 1);
     };
 
     const handlePreviousStep = () => {
@@ -89,6 +95,10 @@ function CreateOrders() {
         createBgOrder([orderData]);
     };
 
+    if (!nomenclaturesList) {
+        return <></>
+    }
+
     return (
         <div>
             {currentStep === 1 && (
@@ -113,6 +123,17 @@ function CreateOrders() {
                     </div>
                     <ButtonForward onClick={handleNextStep} />
                 </div>
+            )}
+            {currentStep === 3 && (
+                <Select>
+                    {
+                        nomenclaturesList.results.map((nomenclature) => (
+                            <SelectItem key={nomenclature.id}>
+                                {nomenclature.name}
+                            </SelectItem>
+                        ))
+                    }
+                </Select>
             )}
             {currentStep === 2 && (
                 <div className="w-full max-w-xl flex flex-col gap-4">
