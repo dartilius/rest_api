@@ -59,6 +59,10 @@ class BaseOrder(APIBaseObjectModel):
         verbose_name='Плейлист',
         on_delete=models.DO_NOTHING
     )
+    parameters = models.JSONField(
+        verbose_name='Параметры заказа',
+        default=dict
+    )
 
     class Meta:
         abstract = True
@@ -79,10 +83,6 @@ class AdOrder(BaseOrder):
         choices=BROADCAST_TYPES,
         verbose_name='Тип вещания',
         default=0
-    )
-    parameters = models.JSONField(
-        verbose_name='Параметры заказа',
-        default=dict
     )
 
     class Meta:

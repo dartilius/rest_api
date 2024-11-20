@@ -49,7 +49,7 @@ from nomenclatures.tasks import (
 )
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
-from users.permissions import OnlySuperuserDAdminManagerCUAuthRetrieve
+from users.permissions import SuperuserDStaffCUAuthRetrieve
 
 
 class NomenclatureViewSet(viewsets.ModelViewSet):
@@ -60,7 +60,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     ).select_related('owner', 'availability')
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
-    permission_classes = [OnlySuperuserDAdminManagerCUAuthRetrieve]
+    permission_classes = [SuperuserDStaffCUAuthRetrieve]
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -80,6 +80,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         instance.is_active = False
+        instance.save()
 
     @staticmethod
     def get_nomenclature_or_404(pk):

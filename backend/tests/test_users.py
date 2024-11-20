@@ -8,9 +8,7 @@ from users.models import CustomUser
 class TestUsers:
 
     url = '/api/users/'
-
-    def check_request_with_invalid_data(self):
-        ...
+    detail_url = '/api/users/{user_id}/'
 
     def test_avail_staff(self, admin_client, manager_client):
         response = admin_client.get(self.url)
@@ -81,14 +79,15 @@ class TestUsers:
                     f'{field} в ответе отличается от отправленного.'
                 )
 
-    @pytest.mark.parametrize(
-        'clients',
-        [user_client, anon_client, admin_client, manager_client]
-    )
     def test_create_valid_user_no_permission(
             self,
-            clients
+            user_client,
+            admin_client,
+            manager_client
     ):
+        clients = {user_client: 'user',
+                   admin_client: 'admin',
+                   manager_client: 'manager'}
         user_count = CustomUser.objects.count()
         data = {
                 'email': 'test@test.com',
@@ -99,21 +98,31 @@ class TestUsers:
             }
         for client in clients:
             response = client.post(self.url, data=data, format='json')
-            assert response.status_code == HTTPStatus.CREATED, (
-                'Код статуса в ответе != 201.'
+            assert response.status_code == HTTPStatus.FORBIDDEN, (
+                f'Код статуса в ответе != 403.'
             )
             user_count += 1
-            assert user_count == CustomUser.objects.count(), (
-                'Не удалось создать нового пользователя.'
+            assert user_count != CustomUser.objects.count(), (
+                f'Удалось создать нового пользователя. Права: {clients[client]}'
             )
-            response_data = response.json()
-            for field in expected_fields:
-                assert field in response_data, f'Ответ не содержит поле {field}'
-            data.pop('password')
-            for field in data:
-                assert response_data[field] == data[field], (
-                    f'{field} в ответе отличается от отправленного.'
-                )
+
+    def test_create_valid_user_anon(self, anon_client):
+        user_count = CustomUser.objects.count()
+        data = {
+                'email': 'test@test.com',
+                'password': 'test',
+                'phone_number': '+78005559999',
+                'first_name': 'test',
+                'last_name': 'user'
+            }
+        response = anon_client.post(self.url, data=data, format='json')
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            f'Код статуса в ответе != 401.'
+        )
+        user_count += 1
+        assert user_count != CustomUser.objects.count(), (
+            'Удалось создать нового пользователя без авторизации.'
+        )
 
     def test_create_invalid_user(self, superuser_client):
         user_count = CustomUser.objects.count()
@@ -168,6 +177,145 @@ class TestUsers:
             user_count += 1
             assert user_count > CustomUser.objects.count(), (
                 'Удалось создать пользователя с неправильными данными.'
+            )
+
+    def test_delete_user_superuser(self, user, superuser_client):
+        url = self.detail_url.format(user_id=str(user.id))
+        response = superuser_client.delete(url)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.'
+        )
+        user_obj = CustomUser.objects.get(id=user.id)
+        assert user_obj.is_active is False, (
+            f'Статус актуальности пользователя не изменился.\nОтвет:{response.json()}'
+        )
+
+    def test_delete_user_not_superuser(
+        self,
+        user,
+        admin_client,
+        manager_client,
+        user_client
+    ):
+        clients = {admin_client: 'admin',
+                   manager_client: 'manager',
+                   user_client: 'ordinary'}
+        url = self.detail_url.format(user_id=str(user.id))
+        for client in clients:
+            response = client.delete(url)
+            assert response.status_code == HTTPStatus.FORBIDDEN, (
+                f'Код статуса в ответе != 403.'
+            )
+            user_obj = CustomUser.objects.get(id=user.id)
+            assert user_obj.is_active is True, (
+                f'Удалось изменить статус актуальности пользователя. Права: {clients[client]}'
+            )
+
+    def test_delete_user_anon(
+        self,
+        user,
+        anon_client
+    ):
+        url = self.detail_url.format(user_id=str(user.id))
+        response = anon_client.delete(url)
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            f'Код статуса в ответе != 401.'
+        )
+        user_obj = CustomUser.objects.get(id=user.id)
+        assert user_obj.is_active is True, (
+            f'Удалось изменить статус актуальности пользователя без авторизации.'
+        )
+
+    def test_update_user_superuser(self, user, superuser_client):
+        data = {
+            'email': 'new_email@test.com',
+            'phone_number': '+78005557777',
+            'first_name': 'new_first_name',
+            'last_name': 'new_last_name',
+            'middle_name': 'new_middle_name',
+        }
+        url = self.detail_url.format(user_id=str(user.id))
+        response = superuser_client.put(url, data=data, format='json')
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+        )
+        updated_keys = [*data.keys()]
+        for key in updated_keys:
+            assert response_data[key] == data[key], (
+                'Поле, которое было отправлено, не обновилось.'
+                f'\nДанные: {data[key]}'
+                f'\nОтвет: {response_data[key]}'
+            )
+
+    def test_partial_update_user_superuser(self, user, superuser_client):
+        update_data = [
+            {'email': 'new_email@test.com'},
+            {'phone_number': '+78005557777'},
+            {'first_name': 'new_first_name'},
+            {'last_name': 'new_last_name'},
+            {'middle_name': 'new_middle_name'},
+        ]
+        url = self.detail_url.format(user_id=str(user.id))
+        for data in update_data:
+            response = superuser_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+            )
+            updated_key = ''.join(data.keys())
+            assert response_data[updated_key] == data[updated_key], (
+                'Поле, которое было отправлено, не обновилось.'
+                f'\nДанные: {data[updated_key]}'
+                f'\nОтвет: {response_data[updated_key]}'
+            )
+
+    def test_update_user_no_permission(
+        self,
+        user,
+        admin_client,
+        manager_client,
+        user_client
+    ):
+        data = {
+            'email': 'new_email@test.com',
+            'phone_number': '+78005557777',
+            'first_name': 'new_first_name',
+            'last_name': 'new_last_name',
+            'middle_name': 'new_middle_name',
+        }
+        clients = [admin_client, manager_client, user_client]
+        url = self.detail_url.format(user_id=str(user.id))
+        for client in clients:
+            response = client.patch(url, data=data)
+            assert response.status_code == HTTPStatus.FORBIDDEN, (
+                f'Код статуса в ответе != 403.'
+            )
+            user_obj = CustomUser.objects.get(id=str(user.id))
+            updated_keys = [*data.keys()]
+            for key in updated_keys:
+                assert getattr(user_obj, key) != data[key], (
+                    f'Данные пользователя обновились без должных прав: {key}'
+                )
+
+    def test_update_user_anon(self, user, anon_client):
+        data = {
+            'email': 'new_email@test.com',
+            'phone_number': '+78005557777',
+            'first_name': 'new_first_name',
+            'last_name': 'new_last_name',
+            'middle_name': 'new_middle_name',
+        }
+        url = self.detail_url.format(user_id=str(user.id))
+        response = anon_client.patch(url, data=data)
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            f'Код статуса в ответе != 401.'
+        )
+        user_obj = CustomUser.objects.get(id=str(user.id))
+        updated_keys = [*data.keys()]
+        for key in updated_keys:
+            assert getattr(user_obj, key) != data[key], (
+                f'Данные пользователя обновились без авторизации: {key}'
             )
 
 

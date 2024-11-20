@@ -27,6 +27,22 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         user.set_password(self.request.data['password'])
         user.save()
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = self.perform_destroy(instance)
+        return Response(data=data, status=400 if data else 204)
+
+    def perform_destroy(self, instance):
+        if instance.is_active is True:
+            instance.is_active = False
+            instance.save()
+            return None
+        else:
+            return (
+                'Пользователь уже помечен как "неактуальный". '
+                'Удалить его можно только через админ-панель.'
+            )
+
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
             serializer = CustomUserListSerializer

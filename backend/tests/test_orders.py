@@ -3,7 +3,7 @@ import pytest
 from datetime import datetime as dt, timedelta as td
 from django.shortcuts import get_object_or_404
 from http import HTTPStatus
-from itertools import chain
+from itertools import chain, product
 from uuid import UUID
 
 from nomenclatures.models import Nomenclature
@@ -18,65 +18,52 @@ class TestOrders:
     bg_list_url = '/api/bgorders/'
     bg_detail_url = '/api/bgorders/{bgorder}/'
 
-    def test_availability(self, user_client, anon_client, adorder, bgorder):
-        urls = [
-            self.ad_list_url,
-            self.bg_list_url,
-            self.ad_detail_url.format(adorder=str(adorder.id)),
-            self.bg_detail_url.format(bgorder=str(bgorder.id)),
-        ]
-        for url in urls:
-            response = user_client.get(url)
-            assert response.status_code == HTTPStatus.OK, (
-                f'Авторизованный пользователь не имеет доступ к странице '
-                f'{url}.'
-            )
-            response = anon_client.get(url)
-            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-                f'Не авторизованный пользователь имеет доступ к странице '
-                f'{url}.'
-            )
+    @staticmethod
+    def get_today_date() -> str:
+        return f'{dt.today().date()} 09:00:00'
 
-    def test_create_valid_adorder(
-            self,
-            user_client,
-            user,
-            nomenclature,
-            playlist_1
-    ):
-        today = f'{dt.today().date()} 09:00:00'
-        tomorrow = f'{dt.today().date() + td(days=1)} 20:00:00'
-        adorder_count = AdOrder.objects.count()
+    @staticmethod
+    def get_tomorrow_date() -> str:
+        return f'{dt.today().date() + td(days=1)} 20:00:00'
+
+    @staticmethod
+    def get_new_tomorrow_date() -> str:
+        return f'{dt.today().date() + td(days=2)} 20:00:00'
+
+    @staticmethod
+    def get_valid_adorder_data(nomenclature_id, playlist_id) -> list:
+        today = TestOrders.get_today_date()
+        tomorrow = TestOrders.get_tomorrow_date()
         valid_data = [
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 1,
                 'parameters': {'times_in_hour': 4, 'timedelta': '01:00:00'}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 2,
                 'parameters': {'times_in_hour': 4, 'timedelta': '01:00:00'}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 3,
                 'parameters': {'times_in_hour': 4,
                                'daily_start_time': '12:00:00',
@@ -85,8 +72,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 4,
                 'parameters': {'times_in_hour': 4,
                                'daily_end_time': '12:00:00'}
@@ -94,8 +81,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 5,
                 'parameters': {'times_in_hour': 4,
                                'daily_start_time': '18:00:00'}
@@ -103,16 +90,185 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 6,
                 'parameters': {'times_in_hour': 4,
                                'event': 'click',
                                'active_ad': 'stop'}
             }],
         ]
+        return valid_data
+
+    @staticmethod
+    def get_valid_bgorder_data(
+            nomenclature,
+            playlist_1,
+            playlist_2,
+            playlist_3,
+            playlist_4
+    ) -> list:
+        today = TestOrders.get_today_date()
+        tomorrow = TestOrders.get_tomorrow_date()
+        nomenclature_id = str(nomenclature.id)
+        playlist_1_id = str(playlist_1.id)
+        playlist_2_id = str(playlist_2.id)
+        playlist_3_id = str(playlist_3.id)
+        playlist_4_id = str(playlist_4.id)
+        valid_data = [
+            [{
+                'name': 'test',
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'clients': [nomenclature_id],
+                'playlist': playlist_1_id,
+                'order_type': 0
+            }],
+            [{
+                'name': 'test',
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'clients': [nomenclature_id],
+                'playlist': playlist_2_id,
+                'order_type': 1
+            }],
+            [{
+                'name': 'test',
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'clients': [nomenclature_id],
+                'playlist': playlist_3_id,
+                'order_type': 2
+            }],
+            [{
+                'name': 'test',
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'clients': [nomenclature_id],
+                'playlist': playlist_4_id,
+                'order_type': 3
+            }]
+        ]
+        return valid_data
+
+    @staticmethod
+    def check_valid_update_response(data, response, updated_key):
+        special_keys = ('playlist', 'slides', 'clients')
+        message = f'Поле {updated_key} не обновилось.'
+        if updated_key not in special_keys:
+            assert response[updated_key] == data[updated_key], message
+        else:
+            match updated_key:
+                case 'playlist':
+                    assert response['playlist']['id'] == data['playlist'], message
+                case 'slides':
+                    assert response['slides'].keys() == data['slides'].keys(), message
+                case 'clients':
+                    assert response['client']['id'] == data['clients'][0], message
+
+    @staticmethod
+    def check_invalid_update_response(data, response, updated_key):
+        special_keys = ('playlist', 'slides', 'clients')
+        message = f'Поле {updated_key} обновилось.'
+        if updated_key not in special_keys:
+            assert response[updated_key] != data[updated_key], message
+        else:
+            match updated_key:
+                case 'playlist':
+                    assert response['playlist']['id'] != data['playlist'], message
+                case 'slides':
+                    assert response['slides'].keys() != data['slides'].keys(), message
+                case 'clients':
+                    assert response['client']['id'] != data['clients'][0], message
+
+    @staticmethod
+    def get_valid_update_adorder_data(
+        nomenclature_id,
+        playlist_id,
+        file_1_id,
+        file_2_id
+    ) -> list:
+        today = TestOrders.get_today_date()
+        new_end = TestOrders.get_new_tomorrow_date()
+        valid_data = [
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_id,
+                'slides': {file_1_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_id
+            }
+        ]
+        return valid_data
+
+    @staticmethod
+    def get_valid_partial_update_adorder_data(
+        playlist_id,
+        file_1_id,
+        file_2_id
+    ) -> list:
+        today = TestOrders.get_today_date()
+        new_end = TestOrders.get_new_tomorrow_date()
+        valid_data = [
+            {'name': 'new_name'},
+            {'description': 'description'},
+            {'broadcast_interval': {'lower': today, 'upper': new_end}},
+            {'playlist': playlist_id},
+            {'slides': {file_1_id: [file_2_id]}}
+        ]
+        return valid_data
+
+    def test_availability_auth(
+        self,
+        admin_client,
+        manager_client,
+        superuser_client,
+        user_client,
+        adorder,
+        bgorder
+    ):
+        urls = [
+            self.ad_list_url,
+            self.bg_list_url,
+            self.ad_detail_url.format(adorder=str(adorder.id)),
+            self.bg_detail_url.format(bgorder=str(bgorder.id)),
+        ]
+        clients = [admin_client, manager_client, superuser_client, user_client]
+        for combo in product(clients, urls):
+            response = combo[0].get(combo[1])
+            assert response.status_code == HTTPStatus.OK, (
+                f'Пользователь {combo[0]} не имеет доступ к странице {combo[1]}.'
+            )
+
+    def test_availability_anon(self, anon_client, adorder, bgorder):
+        urls = [
+            self.ad_list_url,
+            self.bg_list_url,
+            self.ad_detail_url.format(adorder=str(adorder.id)),
+            self.bg_detail_url.format(bgorder=str(bgorder.id)),
+        ]
+        for url in urls:
+            response = anon_client.get(url)
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                f'Не авторизованный пользователь имеет доступ к странице {url}.'
+            )
+
+    def test_create_valid_adorder_admin(
+        self,
+        admin_client,
+        admin_user,
+        nomenclature,
+        playlist_1
+    ):
+        adorder_count = AdOrder.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        playlist_id = str(playlist_1.id)
+        valid_data = self.get_valid_adorder_data(nomenclature_id, playlist_id)
         for data in valid_data:
-            response = user_client.post(
+            response = admin_client.post(
                 self.ad_list_url,
                 data=data,
                 format='json'
@@ -139,7 +295,7 @@ class TestOrders:
                 end_time = list(map(int, end_time.split(':')))
                 check_params.update({'end_time': end_time})
             check_params.update({'weight': 50})
-            assert response_data[0][0]['owner'] == user.full_name, (
+            assert response_data[0][0]['owner'] == admin_user.full_name, (
                 'Создатель заказа не встал в соответствующее поле.'
             )
             assert (
@@ -166,44 +322,161 @@ class TestOrders:
             )
             check_params.clear()
 
-    def test_create_invalid_adorder(
-            self,
-            user_client,
-            nomenclature,
-            playlist_1
+    def test_create_valid_adorder_manager(
+        self,
+        manager_client,
+        manager_user,
+        nomenclature,
+        playlist_1
     ):
-        today = f'{dt.today().date()} 09:00:00'
-        tomorrow = f'{dt.today().date() + td(days=1)} 20:00:00'
         adorder_count = AdOrder.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        playlist_id = str(playlist_1.id)
+        valid_data = self.get_valid_adorder_data(nomenclature_id, playlist_id)
+        for data in valid_data:
+            response = manager_client.post(
+                self.ad_list_url,
+                data=data,
+                format='json'
+            )
+            assert response.status_code == HTTPStatus.CREATED, (
+                f'Код статуса в ответе != 201 для данных: {data}.'
+            )
+            adorder_count += 1
+            assert adorder_count == AdOrder.objects.count(), (
+                f'Не удалось создать рекламный заказ.'
+            )
+            response_data = response.json()
+            check_params = data[0]['parameters']
+            if 'timedelta' in check_params:
+                timedelta = check_params['timedelta']
+                timedelta = list(map(int, timedelta.split(':')))
+                check_params.update({'timedelta': timedelta})
+            if 'daily_start_time' in check_params:
+                start_time = check_params.pop('daily_start_time')
+                start_time = list(map(int, start_time.split(':')))
+                check_params.update({'start_time': start_time})
+            if 'daily_end_time' in check_params:
+                end_time = check_params.pop('daily_end_time')
+                end_time = list(map(int, end_time.split(':')))
+                check_params.update({'end_time': end_time})
+            check_params.update({'weight': 50})
+            assert response_data[0][0]['owner'] == manager_user.full_name, (
+                'Создатель заказа не встал в соответствующее поле.'
+            )
+            assert (
+                response_data[0][0]['client']['id'] == data[0]['clients'][0]
+            ), (
+                'Целевая рабочая станция созданного заказа отличается от '
+                'таковой в отправленных данных.'
+            )
+            assert (
+                response_data[0][0]['playlist']['id'] == data[0]['playlist']
+            ), (
+                'Плейлист созданного заказа отличается от указанного '
+                'в отправленных данных.'
+            )
+            assert (
+                response_data[0][0]['broadcast_type']
+                == data[0]['broadcast_type']
+            ), (
+                'Режим вещания заказа отличается от указанного '
+                'в отправленных данных.'
+            )
+            assert response_data[0][0]['parameters'] == check_params, (
+                'Параметры заказа отличаются от отправленных данных.'
+            )
+            check_params.clear()
+
+    def test_create_valid_adorder_user(
+        self,
+        user_client,
+        nomenclature,
+        playlist_1
+    ):
+
+        adorder_count = AdOrder.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        playlist_id = str(playlist_1.id)
+        valid_data = self.get_valid_adorder_data(nomenclature_id, playlist_id)
+        for data in valid_data:
+            response = user_client.post(
+                self.ad_list_url,
+                data=data,
+                format='json'
+            )
+            assert response.status_code == HTTPStatus.FORBIDDEN, (
+                f'Код статуса в ответе != 403.'
+            )
+            adorder_count += 1
+            assert adorder_count != AdOrder.objects.count(), (
+                f'Удалось создать рекламный заказ без должных прав.'
+            )
+
+    def test_create_valid_adorder_anon(
+        self,
+        anon_client,
+        nomenclature,
+        playlist_1
+    ):
+        adorder_count = AdOrder.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        playlist_id = str(playlist_1.id)
+        valid_data = self.get_valid_adorder_data(nomenclature_id, playlist_id)
+        for data in valid_data:
+            response = anon_client.post(
+                self.ad_list_url,
+                data=data,
+                format='json'
+            )
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                f'Код статуса в ответе != 401.'
+            )
+            adorder_count += 1
+            assert adorder_count != AdOrder.objects.count(), (
+                f'Удалось создать рекламный заказ без авторизации.'
+            )
+
+    def test_create_invalid_adorder(
+        self,
+        admin_client,
+        nomenclature,
+        playlist_1
+    ):
+        adorder_count = AdOrder.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        playlist_id = str(playlist_1.id)
+        today = TestOrders.get_today_date()
+        tomorrow = TestOrders.get_tomorrow_date()
         invalid_data = [
             [{
                 'name': None,
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': tomorrow, 'upper': today},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'client': 'nomenclature.id',
-                'playlist': str(playlist_1.id),
+                'clients': 'nomenclature.id',
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
+                'clients': [nomenclature_id],
                 'playlist': 'playlist.id',
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 4}
@@ -211,124 +484,124 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 7,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 5}
             }],
             [{
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
-                'client': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
-                'broadcast_type': 0,
-                'parameters': {'times_in_hour': 4}
-            }],
-            [{
-                'name': 'test',
-                'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'broadcast_type': 0,
+                'parameters': {'times_in_hour': 4}
+            }],
+            [{
+                'name': 'test',
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 0,
                 'parameters': {'times_in_hour': 4, 'weight': 111}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 1,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 1,
                 'parameters': {'times_in_hour': 4, 'timedelta': 1}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 2,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 2,
                 'parameters': {'times_in_hour': 4, 'timedelta': 1}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 3,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 3,
                 'parameters': {'times_in_hour': 4, 'daily_start_time': 1}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 3,
                 'parameters': {'times_in_hour': 4, 'daily_end_time': 1}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 3,
                 'parameters': {'times_in_hour': 4,
                                'daily_start_time': '01:00:00',
@@ -337,8 +610,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 3,
                 'parameters': {'times_in_hour': 4,
                                'daily_start_time': 1,
@@ -347,8 +620,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 3,
                 'parameters': {'times_in_hour': 4,
                                'daily_start_time': '09:00:00',
@@ -357,8 +630,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 3,
                 'parameters': {'times_in_hour': 4,
                                'daily_start_time': '09:00:00',
@@ -367,16 +640,16 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 4,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 4,
                 'parameters': {'times_in_hour': 4,
                                'daily_start_time': 1}
@@ -384,8 +657,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 4,
                 'parameters': {'times_in_hour': 4,
                                'daily_start_time': '24:00:00'}
@@ -393,16 +666,16 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 5,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 5,
                 'parameters': {'times_in_hour': 4,
                                'daily_end_time': 1}
@@ -410,8 +683,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 5,
                 'parameters': {'times_in_hour': 4,
                                'daily_end_time': '24:00:00'}
@@ -419,16 +692,16 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 6,
                 'parameters': {'times_in_hour': 4}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 6,
                 'parameters': {'times_in_hour': 4,
                                'event': 'click'}
@@ -436,8 +709,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 6,
                 'parameters': {'times_in_hour': 4,
                                'active_ad': 'skip'}
@@ -445,8 +718,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 6,
                 'parameters': {'times_in_hour': 4,
                                'event': 'invalid_event',
@@ -455,8 +728,8 @@ class TestOrders:
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'broadcast_type': 6,
                 'parameters': {'times_in_hour': 4,
                                'event': 'click',
@@ -464,77 +737,52 @@ class TestOrders:
             }],
         ]
         for data in invalid_data:
-            response = user_client.post(
+            response = admin_client.post(
                 self.ad_list_url,
                 data=data,
                 format='json'
             )
             assert response.status_code == HTTPStatus.BAD_REQUEST, (
-                f'Код статуса в ответе != 400. для данных: {data}'
+                f'Код статуса в ответе != 400: {data}.'
             )
             adorder_count += 1
             assert adorder_count != AdOrder.objects.count(), (
-                f'Удалось создать неправильный рекламный заказ: {data}.'
+                f'Удалось создать неправильный рекламный заказ.'
             )
 
-    def test_create_valid_bgorder(
-            self,
-            user_client,
-            user,
+    def test_create_valid_bgorder_admin(
+        self,
+        admin_client,
+        admin_user,
+        nomenclature,
+        playlist_1,
+        playlist_2,
+        playlist_3,
+        playlist_4
+    ):
+        bgorder_count = BgOrder.objects.count()
+        valid_data = self.get_valid_bgorder_data(
             nomenclature,
             playlist_1,
             playlist_2,
             playlist_3,
             playlist_4
-    ):
-        today = f'{dt.today().date()} 09:00:00'
-        tomorrow = f'{dt.today().date() + td(days=1)} 20:00:00'
-        bgorder_count = BgOrder.objects.count()
-        valid_data = [
-            [{
-                'name': 'test',
-                'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
-                'order_type': 0
-            }],
-            [{
-                'name': 'test',
-                'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_2.id),
-                'order_type': 1
-            }],
-            [{
-                'name': 'test',
-                'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_3.id),
-                'order_type': 2
-            }],
-            [{
-                'name': 'test',
-                'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_4.id),
-                'order_type': 3
-            }]
-        ]
+        )
         for data in valid_data:
-            response = user_client.post(
+            response = admin_client.post(
                 self.bg_list_url,
                 data=data,
                 format='json'
             )
+            response_data = response.json()
             assert response.status_code == HTTPStatus.CREATED, (
-                'Код статуса в ответе != 201.'
+                f'Код статуса в ответе != 201.\nДанные: {data}\nОтвет:{response_data}'
             )
             bgorder_count += 1
             assert bgorder_count == BgOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            response_data = response.json()
-            assert response_data[0][0]['owner'] == user.full_name, (
+            assert response_data[0][0]['owner'] == admin_user.full_name, (
                 'Создатель заказа не встал в соответствующее поле.'
             )
             assert (
@@ -553,72 +801,430 @@ class TestOrders:
                 response_data[0][0]['order_type'] == data[0]['order_type']
             ), 'Тип заказа отличается от указанного в отправленных данных.'
 
-    def test_create_invalid_bgorder(
-            self,
-            user_client,
-            nomenclature,
-            playlist_1
+    def test_create_valid_bgorder_manager(
+        self,
+        manager_client,
+        manager_user,
+        nomenclature,
+        playlist_1,
+        playlist_2,
+        playlist_3,
+        playlist_4
     ):
-        today = f'{dt.today().date()} 09:00:00'
-        tomorrow = f'{dt.today().date() + td(days=1)} 20:00:00'
         bgorder_count = BgOrder.objects.count()
+        valid_data = self.get_valid_bgorder_data(
+            nomenclature,
+            playlist_1,
+            playlist_2,
+            playlist_3,
+            playlist_4
+        )
+        for data in valid_data:
+            response = manager_client.post(
+                self.bg_list_url,
+                data=data,
+                format='json'
+            )
+            assert response.status_code == HTTPStatus.CREATED, (
+                'Код статуса в ответе != 201.'
+            )
+            bgorder_count += 1
+            assert bgorder_count == BgOrder.objects.count(), (
+                f'Не удалось создать рекламный заказ.'
+            )
+            response_data = response.json()
+            assert response_data[0][0]['owner'] == manager_user.full_name, (
+                'Создатель заказа не встал в соответствующее поле.'
+            )
+            assert (
+                response_data[0][0]['client']['id'] == data[0]['clients'][0]
+            ), (
+                'Целевая рабочая станция созданного заказа отличается от '
+                'таковой в отправленных данных.'
+            )
+            assert (
+                response_data[0][0]['playlist']['id'] == data[0]['playlist']
+            ), (
+                'Плейлист созданного заказа отличается от указанного '
+                'в отправленных данных.'
+            )
+            assert (
+                response_data[0][0]['order_type'] == data[0]['order_type']
+            ), 'Тип заказа отличается от указанного в отправленных данных.'
+
+    def test_create_valid_bgorder_user(
+        self,
+        user_client,
+        nomenclature,
+        playlist_1,
+        playlist_2,
+        playlist_3,
+        playlist_4
+    ):
+        bgorder_count = BgOrder.objects.count()
+        valid_data = self.get_valid_bgorder_data(
+            nomenclature,
+            playlist_1,
+            playlist_2,
+            playlist_3,
+            playlist_4
+        )
+        for data in valid_data:
+            response = user_client.post(
+                self.bg_list_url,
+                data=data,
+                format='json'
+            )
+            assert response.status_code == HTTPStatus.FORBIDDEN, (
+                'Код статуса в ответе != 403.'
+            )
+            bgorder_count += 1
+            assert bgorder_count != BgOrder.objects.count(), (
+                f'Удалось создать рекламный заказ без должных прав.'
+            )
+
+    def test_create_valid_bgorder_anon(
+        self,
+        anon_client,
+        nomenclature,
+        playlist_1,
+        playlist_2,
+        playlist_3,
+        playlist_4
+    ):
+        bgorder_count = BgOrder.objects.count()
+        valid_data = self.get_valid_bgorder_data(
+            nomenclature,
+            playlist_1,
+            playlist_2,
+            playlist_3,
+            playlist_4
+            )
+        for data in valid_data:
+            response = anon_client.post(
+                self.bg_list_url,
+                data=data,
+                format='json'
+            )
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                'Код статуса в ответе != 401.'
+            )
+            bgorder_count += 1
+            assert bgorder_count != BgOrder.objects.count(), (
+                f'Удалось создать рекламный заказ без авторизации.'
+            )
+
+    def test_create_invalid_bgorder(
+        self,
+        admin_client,
+        nomenclature,
+        playlist_1
+    ):
+        bgorder_count = BgOrder.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        playlist_id = str(playlist_1.id)
+        today = TestOrders.get_today_date()
+        tomorrow = TestOrders.get_tomorrow_date()
         invalid_data = [
             [{
                 'name': None,
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'order_type': 0
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': None,
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'order_type': 0
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'client': None,
-                'playlist': str(playlist_1.id),
+                'clients': None,
+                'playlist': playlist_id,
                 'order_type': 0
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
+                'clients': [nomenclature_id],
                 'playlist': None,
                 'order_type': 0
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'order_type': None
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': tomorrow, 'upper': today},
-                'clients': [str(nomenclature.id)],
-                'playlist': str(playlist_1.id),
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
                 'order_type': 0
             }],
+            [{
+                'name': 'test',
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'clients': [nomenclature_id],
+                'playlist': playlist_id,
+                'order_type': 1
+            }]
         ]
         for data in invalid_data:
-            response = user_client.post(
+            response = admin_client.post(
                 self.bg_list_url,
                 data=data,
                 format='json'
             )
             assert response.status_code == HTTPStatus.BAD_REQUEST, (
-                'Код статуса в ответе != 400.'
+                f'Код статуса в ответе != 400: {data}.'
             )
             bgorder_count += 1
             assert bgorder_count != BgOrder.objects.count(), (
-                f'Удалось создать неправильный рекламный заказ: {data}.'
+                'Удалось создать неправильный рекламный заказ.'
             )
+
+    def test_valid_update_adorder_admin(
+        self,
+        admin_client,
+        adorder_slides,
+        nomenclature,
+        playlist_5,
+        file_2,
+        file_3
+    ):
+        nomenclature_id = str(nomenclature.id)
+        playlist_5_id = str(playlist_5.id)
+        file_2_id = str(file_2.id)
+        file_3_id = str(file_3.id)
+        valid_data = TestOrders.get_valid_update_adorder_data(
+            nomenclature_id,
+            playlist_5_id,
+            file_2_id,
+            file_3_id
+        )
+        adorder_id = str(adorder_slides.id)
+        for data in valid_data:
+            url = self.ad_detail_url.format(adorder=adorder_id)
+            response = admin_client.put(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Код статуса в ответе != 200.\nОтвет:{response_data}'
+            )
+            updated_keys = [*data.keys()]
+            for updated_key in updated_keys:
+                self.check_valid_update_response(data, response_data, updated_key)
+
+    def test_valid_partial_update_adorder_admin(
+        self,
+        admin_client,
+        adorder_slides,
+        nomenclature_1,
+        playlist_5,
+        file_2,
+        file_3
+    ):
+        playlist_5_id = str(playlist_5.id)
+        file_2_id = str(file_2.id)
+        file_3_id = str(file_3.id)
+        update_data = TestOrders.get_valid_partial_update_adorder_data(
+            playlist_5_id,
+            file_2_id,
+            file_3_id
+        )
+        adorder_id = str(adorder_slides.id)
+        url = self.ad_detail_url.format(adorder=adorder_id)
+        for data in update_data:
+            response = admin_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Код статуса в ответе != 200.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+            updated_key = ''.join(data.keys())
+            self.check_valid_update_response(data, response_data, updated_key)
+
+    def test_invalid_update_adorder(
+        self,
+        admin_client,
+        adorder_slides,
+        nomenclature,
+        nomenclature_1,
+        playlist_1,
+        playlist_2,
+        file_2,
+        file_3,
+        file_4
+    ):
+        today = TestOrders.get_today_date()
+        new_end = TestOrders.get_new_tomorrow_date()
+        nomenclature_id = str(nomenclature.id)
+        nomenclature_1_id = str(nomenclature_1.id)
+        playlist_1_id = str(playlist_1.id)
+        playlist_2_id = str(playlist_2.id)
+        file_2_id = str(file_2.id)
+        file_3_id = str(file_3.id)
+        file_4_id = str(file_4.id)
+        invalid_data = [
+            {
+                'name': 33,
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 33,
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': ['str(nomenclature.id)'],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': 'today', 'upper': 'new_end'},
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': 'str(playlist_1.id)',
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_1_id,
+                'slides': '{str(file_3.id): [str(file_2.id)]}'
+            },
+            {
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_1_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'upper': today, 'lower': new_end},
+                'playlist': playlist_1_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_2_id,
+                'slides': {file_3_id: [file_2_id]}
+            },
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': new_end},
+                'playlist': playlist_1_id,
+                'slides': {file_4_id: [file_2_id]}
+            }
+        ]
+        for data in invalid_data:
+            url = self.ad_detail_url.format(adorder=str(adorder_slides.id))
+            response = admin_client.put(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.BAD_REQUEST, (
+                f'Код статуса в ответе != 400.'
+                f'\nДанные:{data} \nОтвет:{response_data}'
+            )
+            updated_keys = [*data.keys()]
+            for updated_key in updated_keys:
+                self.check_invalid_update_response(data, response_data, updated_key)
+
+    def test_invalid_partial_update_adorder_admin(
+            self,
+            admin_client,
+            adorder_slides,
+            nomenclature_1,
+            playlist_5,
+            file_2,
+            file_3,
+            file_4
+    ):
+        update_data = [
+            {'name': 33},
+            {'name': None},
+            {'description': 33},
+            {'description': None},
+            {'broadcast_interval': {'lower': 'today', 'upper': 'new_end'}},
+            {'broadcast_interval': None},
+            {'playlist': 'str(playlist_5.id)'},
+            {'playlist': None},
+            {'slides': '{str(file_3.id): [str(file_2.id)]}'},
+            {'slides': {str(file_4.id): [str(file_2.id)]}}
+        ]
+        url = self.ad_detail_url.format(adorder=str(adorder_slides.id))
+        for data in update_data:
+            response = admin_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.BAD_REQUEST, (
+                f'Код статуса в ответе != 400.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+            updated_key = ''.join(data.keys())
+            self.check_invalid_update_response(data, response_data, updated_key)
 
     def test_chain_and_id(self, nomenclature, adorder, bgorder):
         nom = get_object_or_404(Nomenclature, id=str(nomenclature.id))

@@ -18,7 +18,7 @@ from orders.tasks import (
     create_bg_order_task,
     cancel_bg_order_task,
 )
-from users.permissions import AdminManagerCUDAuthRetrieve
+from users.permissions import StaffCUDAuthRetrieve
 
 
 class NoDeleteViewSet(mixins.CreateModelMixin,
@@ -38,7 +38,7 @@ class AdOrderViewSet(NoDeleteViewSet):
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
-    permission_classes = [AdminManagerCUDAuthRetrieve]
+    permission_classes = [StaffCUDAuthRetrieve]
 
     def perform_create(self, serializer):
         """
@@ -62,6 +62,32 @@ class AdOrderViewSet(NoDeleteViewSet):
             )
         # 3
         create_ad_order_task.delay(orders_ids)
+
+    def perform_update(self, serializer):
+        """Можно изменить только название, описание, плейлист и слайды."""
+        not_updatable_keys = (
+            'id',
+            'owner',
+            'clients',
+            'broadcast_interval',
+            'broadcast_type',
+            'parameters',
+            'status',
+            'created'
+        )
+        for key in not_updatable_keys:
+            try:
+                init_key = getattr(serializer.instance, key)
+                update_key = getattr(serializer.initial_data, key)
+            except AttributeError:
+                continue
+            if init_key != update_key:
+                return Response(
+                    data='Изменить можно только название, описание, '
+                         'плейлист и слайды.',
+                    status=400
+                )
+        super().perform_update(serializer)
 
     @action(detail=True, methods=['DELETE'])
     def cancel(self, request, pk):
@@ -92,7 +118,7 @@ class BgOrderViewSet(NoDeleteViewSet):
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
-    permission_classes = [AdminManagerCUDAuthRetrieve]
+    permission_classes = [StaffCUDAuthRetrieve]
 
     def perform_create(self, serializer):
         """
@@ -118,9 +144,28 @@ class BgOrderViewSet(NoDeleteViewSet):
         create_bg_order_task.delay(orders_ids)
 
     def perform_update(self, serializer):
-        """Запрет на обновление типа заказа."""
-        if 'order_type' in serializer.data:
-            return Response(data='Нельзя менять тип заказа.', status=400)
+        """Можно изменить только название, описание и плейлист."""
+        not_updatable_keys = (
+            'id',
+            'owner',
+            'clients',
+            'order_type',
+            'broadcast_interval',
+            'status',
+            'created'
+        )
+        for key in not_updatable_keys:
+            try:
+                init_key = getattr(serializer.instance, key)
+                update_key = getattr(serializer.initial_data, key)
+            except KeyError:
+                continue
+            if init_key != update_key:
+                return Response(
+                    data='Изменить можно только название, описание '
+                         'и плейлист.',
+                    status=400
+                )
         super().perform_update(serializer)
 
     @action(detail=True, methods=['DELETE'])

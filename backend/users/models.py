@@ -1,4 +1,5 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import PermissionsMixin
 from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
@@ -8,14 +9,16 @@ from api.custom_user import CustomUserManager
 ROLES = {
     'admin': 'Сотрудник ТО',
     'manager': 'Менеджер',
-    'ordinary': 'Пользователь'
+    'ordinary': 'Пользователь',
+    'superuser': 'Суперпользователь'
 }
 
 
-class CustomUser(AbstractUser):
+class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Пользователи."""
 
-    USERNAME_FIELD = 'email'
+    EMAIL_FIELD = 'email'
+    USERNAME_FIELD = EMAIL_FIELD
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
@@ -62,6 +65,11 @@ class CustomUser(AbstractUser):
         verbose_name='Актуальность пользователя',
         default=True
     )
+    is_staff = models.BooleanField(
+        verbose_name='Пользователь админ-панели',
+        help_text='Влияет на возможность зайти в админ-панель django',
+        default=False
+    )
     created = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Дата создания'
@@ -81,6 +89,11 @@ class CustomUser(AbstractUser):
     def is_ordinary(self):
         """Проверяем, что это обычный пользователь."""
         return self.role == 'ordinary'
+
+    @property
+    def is_super_user(self):
+        """Проверяем, что это superuser."""
+        return self.role == 'superuser'
 
     @property
     def full_name(self):

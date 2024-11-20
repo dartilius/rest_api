@@ -26,6 +26,26 @@ def nomenclature(user):
 
 
 @pytest.fixture
+def nomenclature_1(user):
+    from nomenclatures.models import Nomenclature
+    settings = {
+        'fri': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]},
+        'mon': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]},
+        'sat': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]},
+        'sun': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]},
+        'thu': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]},
+        'tue': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]},
+        'wed': {'worktime': '09:00:00-20:00:00', 'default_volume': [50, 50, 50, 50]}
+    }
+    return Nomenclature.objects.create(
+        name='Test Nomenclature 2',
+        owner=user,
+        timezone='Etc/GMT-7',
+        settings=settings
+    )
+
+
+@pytest.fixture
 def status_history(nomenclature):
     from nomenclatures.models import StatusHistory
     return StatusHistory.objects.create(
@@ -176,6 +196,17 @@ def playlist_4(user, file_4):
 
 
 @pytest.fixture
+def playlist_5(user, file_1, file_3):
+    from files.models import Playlist
+    pls_obj = Playlist.objects.create(
+        name='playlist_5',
+        owner=user
+    )
+    pls_obj.files.set([file_1.id, file_3.id])
+    return pls_obj
+
+
+@pytest.fixture
 def adorder(user, file_1, playlist_1, nomenclature):
     from orders.models import AdOrder
     today = f'{dt.today().date()} 09:00:00'
@@ -190,7 +221,7 @@ def adorder(user, file_1, playlist_1, nomenclature):
 
 
 @pytest.fixture
-def adorder_slides(user, file_1, file_2, playlist_1, nomenclature):
+def adorder_slides(user, file_1, file_2, playlist_5, nomenclature):
     from orders.models import AdOrder
     today = f'{dt.today().date()} 09:00:00'
     tomorrow = f'{dt.today().date() + td(days=1)} 20:00:00'
@@ -199,7 +230,7 @@ def adorder_slides(user, file_1, file_2, playlist_1, nomenclature):
         owner=user,
         broadcast_interval=f"({today}, {tomorrow}]",
         client=nomenclature,
-        playlist=playlist_1,
+        playlist=playlist_5,
         slides={str(file_1.id): [str(file_2.id)]}
     )
 

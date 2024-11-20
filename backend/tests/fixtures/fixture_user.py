@@ -17,7 +17,6 @@ def super_user():
 def user(django_user_model):
     return django_user_model.objects.create_user(
         email='user@test.com',
-        username='user@test.com',
         phone_number='+78005553636',
         password='test',
         first_name='user',
@@ -30,7 +29,6 @@ def user(django_user_model):
 def admin_user(django_user_model):
     return django_user_model.objects.create_user(
         email='admin@test.com',
-        username='admin@test.com',
         phone_number='+78005553737',
         password='test',
         first_name='admin',
@@ -43,7 +41,6 @@ def admin_user(django_user_model):
 def manager_user(django_user_model):
     return django_user_model.objects.create_user(
         email='manager@test.com',
-        username='manager@test.com',
         phone_number='+78005553838',
         password='test',
         first_name='manager',

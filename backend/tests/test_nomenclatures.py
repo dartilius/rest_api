@@ -670,39 +670,6 @@ class TestNomenclatureStatistic:
         '/api/nomenclatures/{nomenclature_id}/ticker_stat/'
     ]
 
-    def test_get_statistics_user(
-        self,
-        user_client,
-        nomenclature,
-        ad_stat,
-        music_stat,
-        image_stat,
-        video_stat,
-        ticker_stat
-    ):
-        nomenclature_id = str(nomenclature.id)
-        date = self.dt.today().date()
-        url = self.ad_stat_url.format(nomenclature_id=nomenclature_id, date=date)
-        response = user_client.get(url, follow=True)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Авторизованный пользователь не может запросить статистику рекламы.'
-        )
-        response_data = response.json()
-        for key in ('ad_block', 'file', 'length'):
-            assert key in response_data[0], f'В ответе нет обязательного ключа {key}'
-        for url in self.bg_stat_url_list:
-            response = user_client.get(
-                url.format(nomenclature_id=nomenclature_id),
-                follow=True
-            )
-            assert response.status_code == HTTPStatus.OK, (
-                f'Авторизованный пользователь не может запросить статистику {url.split("/")[-1]}.'
-            )
-            response_data = response.json()
-            assert 'results' in response_data, f'В ответе нет обязательного ключа "results"'
-            for key in ('played', 'file', 'length'):
-                assert key in response_data['results'][0], f'В ответе нет обязательного ключа {key}'
-
     def test_get_statistics_staff(
         self,
         admin_client,
@@ -751,6 +718,39 @@ class TestNomenclatureStatistic:
             )
             assert response.status_code == HTTPStatus.OK, (
                 f'Менеджер не может запросить статистику {url.split("/")[-1]}.'
+            )
+            response_data = response.json()
+            assert 'results' in response_data, f'В ответе нет обязательного ключа "results"'
+            for key in ('played', 'file', 'length'):
+                assert key in response_data['results'][0], f'В ответе нет обязательного ключа {key}'
+
+    def test_get_statistics_user(
+        self,
+        user_client,
+        nomenclature,
+        ad_stat,
+        music_stat,
+        image_stat,
+        video_stat,
+        ticker_stat
+    ):
+        nomenclature_id = str(nomenclature.id)
+        date = self.dt.today().date()
+        url = self.ad_stat_url.format(nomenclature_id=nomenclature_id, date=date)
+        response = user_client.get(url, follow=True)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Авторизованный пользователь не может запросить статистику рекламы.'
+        )
+        response_data = response.json()
+        for key in ('ad_block', 'file', 'length'):
+            assert key in response_data[0], f'В ответе нет обязательного ключа {key}'
+        for url in self.bg_stat_url_list:
+            response = user_client.get(
+                url.format(nomenclature_id=nomenclature_id),
+                follow=True
+            )
+            assert response.status_code == HTTPStatus.OK, (
+                f'Авторизованный пользователь не может запросить статистику {url.split("/")[-1]}.'
             )
             response_data = response.json()
             assert 'results' in response_data, f'В ответе нет обязательного ключа "results"'
