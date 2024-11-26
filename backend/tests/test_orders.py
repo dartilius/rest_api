@@ -15,8 +15,11 @@ class TestOrders:
 
     ad_list_url = '/api/adorders/'
     ad_detail_url = '/api/adorders/{adorder}/'
+    ad_cancel_url = '/api/adorders/{adorder}/cancel/'
     bg_list_url = '/api/bgorders/'
     bg_detail_url = '/api/bgorders/{bgorder}/'
+    bg_cancel_url = '/api/bgorders/{bgorder}/cancel/'
+
 
     @staticmethod
     def get_today_date() -> str:
@@ -121,105 +124,71 @@ class TestOrders:
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
                 'clients': [nomenclature_id],
                 'playlist': playlist_1_id,
-                'order_type': 0
+                'order_type': 0,
+                'parameters': {'test': 'test'}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
                 'clients': [nomenclature_id],
                 'playlist': playlist_2_id,
-                'order_type': 1
+                'order_type': 1,
+                'parameters': {'test': 'test'}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
                 'clients': [nomenclature_id],
                 'playlist': playlist_3_id,
-                'order_type': 2
+                'order_type': 2,
+                'parameters': {'test': 'test'}
             }],
             [{
                 'name': 'test',
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
                 'clients': [nomenclature_id],
                 'playlist': playlist_4_id,
-                'order_type': 3
+                'order_type': 3,
+                'parameters': {'test': 'test'}
             }]
         ]
         return valid_data
 
     @staticmethod
-    def check_valid_update_response(data, response, updated_key):
-        special_keys = ('playlist', 'slides', 'clients')
-        message = f'Поле {updated_key} не обновилось.'
-        if updated_key not in special_keys:
-            assert response[updated_key] == data[updated_key], message
-        else:
-            match updated_key:
-                case 'playlist':
-                    assert response['playlist']['id'] == data['playlist'], message
-                case 'slides':
-                    assert response['slides'].keys() == data['slides'].keys(), message
-                case 'clients':
-                    assert response['client']['id'] == data['clients'][0], message
-
-    @staticmethod
-    def check_invalid_update_response(data, response, updated_key):
-        special_keys = ('playlist', 'slides', 'clients')
-        message = f'Поле {updated_key} обновилось.'
-        if updated_key not in special_keys:
-            assert response[updated_key] != data[updated_key], message
-        else:
-            match updated_key:
-                case 'playlist':
-                    assert response['playlist']['id'] != data['playlist'], message
-                case 'slides':
-                    assert response['slides'].keys() != data['slides'].keys(), message
-                case 'clients':
-                    assert response['client']['id'] != data['clients'][0], message
-
-    @staticmethod
-    def get_valid_update_adorder_data(
-        nomenclature_id,
-        playlist_id,
-        file_1_id,
-        file_2_id
-    ) -> list:
-        today = TestOrders.get_today_date()
-        new_end = TestOrders.get_new_tomorrow_date()
-        valid_data = [
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_id,
-                'slides': {file_1_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_id
-            }
-        ]
-        return valid_data
-
-    @staticmethod
     def get_valid_partial_update_adorder_data(
-        playlist_id,
-        file_1_id,
-        file_2_id
+            playlist_id,
+            file_1_id,
+            file_2_id
     ) -> list:
-        today = TestOrders.get_today_date()
-        new_end = TestOrders.get_new_tomorrow_date()
         valid_data = [
             {'name': 'new_name'},
             {'description': 'description'},
-            {'broadcast_interval': {'lower': today, 'upper': new_end}},
             {'playlist': playlist_id},
             {'slides': {file_1_id: [file_2_id]}}
         ]
         return valid_data
+
+    @staticmethod
+    def get_valid_partial_update_bgorder_data(playlist_id) -> list:
+        valid_data = [
+            {'name': 'new_name'},
+            {'description': 'description'},
+            {'playlist': playlist_id}
+        ]
+        return valid_data
+
+    @staticmethod
+    def check_valid_update_response(data, response, updated_key):
+        message = f'Поле {updated_key} не обновилось.\nОтвет: {response}'
+        normal_keys = ('name', 'description')
+        if updated_key in normal_keys:
+            assert response[updated_key] == data[updated_key], message
+        match updated_key:
+            case 'playlist':
+                assert response['playlist']['id'] == data['playlist'], message
+            case 'slides':
+                assert response['slides'].keys() == data['slides'].keys(), message
+            case _: pass
 
     def test_availability_auth(
         self,
@@ -990,37 +959,6 @@ class TestOrders:
                 'Удалось создать неправильный рекламный заказ.'
             )
 
-    def test_valid_update_adorder_admin(
-        self,
-        admin_client,
-        adorder_slides,
-        nomenclature,
-        playlist_5,
-        file_2,
-        file_3
-    ):
-        nomenclature_id = str(nomenclature.id)
-        playlist_5_id = str(playlist_5.id)
-        file_2_id = str(file_2.id)
-        file_3_id = str(file_3.id)
-        valid_data = TestOrders.get_valid_update_adorder_data(
-            nomenclature_id,
-            playlist_5_id,
-            file_2_id,
-            file_3_id
-        )
-        adorder_id = str(adorder_slides.id)
-        for data in valid_data:
-            url = self.ad_detail_url.format(adorder=adorder_id)
-            response = admin_client.put(url, data=data, format='json')
-            response_data = response.json()
-            assert response.status_code == HTTPStatus.OK, (
-                f'Код статуса в ответе != 200.\nОтвет:{response_data}'
-            )
-            updated_keys = [*data.keys()]
-            for updated_key in updated_keys:
-                self.check_valid_update_response(data, response_data, updated_key)
-
     def test_valid_partial_update_adorder_admin(
         self,
         admin_client,
@@ -1031,12 +969,12 @@ class TestOrders:
         file_3
     ):
         playlist_5_id = str(playlist_5.id)
-        file_2_id = str(file_2.id)
-        file_3_id = str(file_3.id)
+        track_id = str(file_3.id)
+        slide_id = str(file_2.id)
         update_data = TestOrders.get_valid_partial_update_adorder_data(
             playlist_5_id,
-            file_2_id,
-            file_3_id
+            track_id,
+            slide_id
         )
         adorder_id = str(adorder_slides.id)
         url = self.ad_detail_url.format(adorder=adorder_id)
@@ -1050,181 +988,346 @@ class TestOrders:
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
 
-    def test_invalid_update_adorder(
+    def test_valid_partial_update_adorder_manager(
+        self,
+        manager_client,
+        adorder_slides,
+        nomenclature_1,
+        playlist_5,
+        file_2,
+        file_3
+    ):
+        playlist_5_id = str(playlist_5.id)
+        track_id = str(file_3.id)
+        slide_id = str(file_2.id)
+        update_data = TestOrders.get_valid_partial_update_adorder_data(
+            playlist_5_id,
+            track_id,
+            slide_id
+        )
+        adorder_id = str(adorder_slides.id)
+        url = self.ad_detail_url.format(adorder=adorder_id)
+        for data in update_data:
+            response = manager_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Код статуса в ответе != 200.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+            updated_key = ''.join(data.keys())
+            self.check_valid_update_response(data, response_data, updated_key)
+
+    def test_valid_partial_update_adorder_user(
+        self,
+        user_client,
+        adorder_slides,
+        nomenclature_1,
+        playlist_5,
+        file_2,
+        file_3
+    ):
+        playlist_5_id = str(playlist_5.id)
+        track_id = str(file_3.id)
+        slide_id = str(file_2.id)
+        update_data = TestOrders.get_valid_partial_update_adorder_data(
+            playlist_5_id,
+            track_id,
+            slide_id
+        )
+        adorder_id = str(adorder_slides.id)
+        url = self.ad_detail_url.format(adorder=adorder_id)
+        for data in update_data:
+            response = user_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.FORBIDDEN, (
+                f'Код статуса в ответе != 403.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+
+    def test_valid_partial_update_adorder_anon(
+        self,
+        anon_client,
+        adorder_slides,
+        nomenclature_1,
+        playlist_5,
+        file_2,
+        file_3
+    ):
+        playlist_5_id = str(playlist_5.id)
+        track_id = str(file_3.id)
+        slide_id = str(file_2.id)
+        update_data = TestOrders.get_valid_partial_update_adorder_data(
+            playlist_5_id,
+            track_id,
+            slide_id
+        )
+        adorder_id = str(adorder_slides.id)
+        url = self.ad_detail_url.format(adorder=adorder_id)
+        for data in update_data:
+            response = anon_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                f'Код статуса в ответе != 401.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+
+    def test_invalid_partial_update_adorder(
         self,
         admin_client,
+        user,
         adorder_slides,
-        nomenclature,
         nomenclature_1,
-        playlist_1,
-        playlist_2,
+        playlist_5,
         file_2,
         file_3,
         file_4
     ):
         today = TestOrders.get_today_date()
         new_end = TestOrders.get_new_tomorrow_date()
-        nomenclature_id = str(nomenclature.id)
-        nomenclature_1_id = str(nomenclature_1.id)
-        playlist_1_id = str(playlist_1.id)
-        playlist_2_id = str(playlist_2.id)
-        file_2_id = str(file_2.id)
-        file_3_id = str(file_3.id)
-        file_4_id = str(file_4.id)
+        nomenclature_id = str(nomenclature_1.id)
+        user_id = str(user.id)
         invalid_data = [
-            {
-                'name': 33,
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 33,
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': ['str(nomenclature.id)'],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': 'today', 'upper': 'new_end'},
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': 'str(playlist_1.id)',
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_1_id,
-                'slides': '{str(file_3.id): [str(file_2.id)]}'
-            },
-            {
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_1_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'upper': today, 'lower': new_end},
-                'playlist': playlist_1_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_2_id,
-                'slides': {file_3_id: [file_2_id]}
-            },
-            {
-                'name': 'new_name',
-                'description': 'description',
-                'clients': [nomenclature_id],
-                'broadcast_interval': {'lower': today, 'upper': new_end},
-                'playlist': playlist_1_id,
-                'slides': {file_4_id: [file_2_id]}
-            }
-        ]
-        for data in invalid_data:
-            url = self.ad_detail_url.format(adorder=str(adorder_slides.id))
-            response = admin_client.put(url, data=data, format='json')
-            response_data = response.json()
-            assert response.status_code == HTTPStatus.BAD_REQUEST, (
-                f'Код статуса в ответе != 400.'
-                f'\nДанные:{data} \nОтвет:{response_data}'
-            )
-            updated_keys = [*data.keys()]
-            for updated_key in updated_keys:
-                self.check_invalid_update_response(data, response_data, updated_key)
-
-    def test_invalid_partial_update_adorder_admin(
-            self,
-            admin_client,
-            adorder_slides,
-            nomenclature_1,
-            playlist_5,
-            file_2,
-            file_3,
-            file_4
-    ):
-        update_data = [
-            {'name': 33},
             {'name': None},
-            {'description': 33},
-            {'description': None},
+            {'clients': [nomenclature_id]},
+            {'clients': None},
+            {'owner': user_id},
+            {'owner': None},
+            {'broadcast_interval': {'lower': today, 'upper': new_end}},
             {'broadcast_interval': {'lower': 'today', 'upper': 'new_end'}},
             {'broadcast_interval': None},
+            {'broadcast_type': 1},
+            {'broadcast_type': None},
+            {'parameters': {}},
+            {'parameters': None},
+            {'status': 4},
+            {'status': 5},
+            {'status': None},
             {'playlist': 'str(playlist_5.id)'},
             {'playlist': None},
             {'slides': '{str(file_3.id): [str(file_2.id)]}'},
             {'slides': {str(file_4.id): [str(file_2.id)]}}
         ]
         url = self.ad_detail_url.format(adorder=str(adorder_slides.id))
-        for data in update_data:
+        for data in invalid_data:
             response = admin_client.patch(url, data=data, format='json')
             response_data = response.json()
             assert response.status_code == HTTPStatus.BAD_REQUEST, (
                 f'Код статуса в ответе != 400.'
                 f'\nДанные:{data}\nОтвет:{response_data}'
             )
+
+    def test_update_adorder(
+        self,
+        admin_client,
+        adorder_slides,
+        nomenclature,
+        playlist_5,
+        file_2,
+        file_3
+    ):
+        today = TestOrders.get_today_date()
+        tomorrow = TestOrders.get_tomorrow_date()
+        nomenclature_id = str(nomenclature.id)
+        playlist_id = str(playlist_5.id)
+        track_id = str(file_3.id)
+        slide_id = str(file_2.id)
+        valid_data = [
+            {
+                'name': 'new_name',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'playlist': playlist_id,
+                'slides': {track_id: [slide_id]}
+            },
+            {
+                'name': 'new_name',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'playlist': playlist_id
+            }
+        ]
+        adorder_id = str(adorder_slides.id)
+        for data in valid_data:
+            url = self.ad_detail_url.format(adorder=adorder_id)
+            response = admin_client.put(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED, (
+                f'Код статуса в ответе != 405.\nОтвет:{response_data}'
+            )
+
+    def test_valid_partial_update_bgorder_admin(
+        self,
+        admin_client,
+        bgorder,
+        playlist_6
+    ):
+        playlist_id = str(playlist_6.id)
+        update_data = TestOrders.get_valid_partial_update_bgorder_data(playlist_id)
+        bgorder_id = str(bgorder.id)
+        url = self.bg_detail_url.format(bgorder=bgorder_id)
+        for data in update_data:
+            response = admin_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Код статуса в ответе != 200.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
             updated_key = ''.join(data.keys())
-            self.check_invalid_update_response(data, response_data, updated_key)
+            self.check_valid_update_response(data, response_data, updated_key)
+
+    def test_valid_partial_update_bgorder_manager(
+        self,
+        manager_client,
+        bgorder,
+        playlist_6
+    ):
+        playlist_id = str(playlist_6.id)
+        update_data = TestOrders.get_valid_partial_update_bgorder_data(playlist_id)
+        bgorder_id = str(bgorder.id)
+        url = self.bg_detail_url.format(bgorder=bgorder_id)
+        for data in update_data:
+            response = manager_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Код статуса в ответе != 200.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+            updated_key = ''.join(data.keys())
+            self.check_valid_update_response(data, response_data, updated_key)
+
+    def test_valid_partial_update_bgorder_user(
+        self,
+        user_client,
+        bgorder,
+        playlist_6
+    ):
+        playlist_id = str(playlist_6.id)
+        update_data = TestOrders.get_valid_partial_update_bgorder_data(playlist_id)
+        bgorder_id = str(bgorder.id)
+        url = self.bg_detail_url.format(bgorder=bgorder_id)
+        for data in update_data:
+            response = user_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.FORBIDDEN, (
+                f'Код статуса в ответе != 403.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+
+    def test_valid_partial_update_bgorder_anon(
+        self,
+        anon_client,
+        bgorder,
+        playlist_6
+    ):
+        playlist_id = str(playlist_6.id)
+        update_data = TestOrders.get_valid_partial_update_bgorder_data(playlist_id)
+        bgorder_id = str(bgorder.id)
+        url = self.bg_detail_url.format(bgorder=bgorder_id)
+        for data in update_data:
+            response = anon_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                f'Код статуса в ответе != 401.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+
+    def test_invalid_partial_update_bgorder(
+        self,
+        admin_client,
+        user,
+        bgorder,
+        nomenclature_1,
+        playlist_6
+    ):
+        today = TestOrders.get_today_date()
+        new_end = TestOrders.get_new_tomorrow_date()
+        nomenclature_id = str(nomenclature_1.id)
+        user_id = str(user.id)
+        invalid_data = [
+            {'name': None},
+            {'clients': [nomenclature_id]},
+            {'clients': None},
+            {'owner': user_id},
+            {'owner': None},
+            {'broadcast_interval': {'lower': today, 'upper': new_end}},
+            {'broadcast_interval': {'lower': 'today', 'upper': 'new_end'}},
+            {'broadcast_interval': None},
+            {'order_type': 1},
+            {'order_type': None},
+            {'parameters': {}},
+            {'parameters': None},
+            {'status': 4},
+            {'status': 5},
+            {'status': None},
+            {'playlist': 'str(playlist_5.id)'},
+            {'playlist': None}
+        ]
+        bgorder_id = str(bgorder.id)
+        url = self.bg_detail_url.format(bgorder=bgorder_id)
+        for data in invalid_data:
+            response = admin_client.patch(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.BAD_REQUEST, (
+                f'Код статуса в ответе != 400.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+
+    def test_update_bgorder(
+        self,
+        admin_client,
+        bgorder,
+        nomenclature,
+        playlist_1
+    ):
+        today = TestOrders.get_today_date()
+        tomorrow = TestOrders.get_tomorrow_date()
+        nomenclature_id = str(nomenclature.id)
+        playlist_id = str(playlist_1.id)
+        valid_data = [
+            {
+                'name': 'new_name',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'order_type': 0,
+                'playlist': playlist_id
+            },
+            {
+                'name': 'test',
+                'description': 'description',
+                'clients': [nomenclature_id],
+                'broadcast_interval': {'lower': today, 'upper': tomorrow},
+                'order_type': 0,
+                'playlist': playlist_id
+            }
+        ]
+        bgorder_id = str(bgorder.id)
+        url = self.bg_detail_url.format(bgorder=bgorder_id)
+        for data in valid_data:
+            response = admin_client.put(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED, (
+                f'Код статуса в ответе != 405.'
+                f'\nДанные:{data}\nОтвет:{response_data}'
+            )
+
+    @pytest.mark.xfail(reason='Нужно придумать как тестировать таски celery')
+    def test_cancel_adorder_admin(
+        self,
+        admin_client,
+        adorder,
+        celery_app,
+        celery_worker
+    ):
+
+        adorder_id = str(adorder.id)
+        url = self.ad_cancel_url.format(adorder=adorder_id)
+        response = admin_client.delete(url)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
+        )
+        order_obj = AdOrder.objects.get(id=adorder_id)
+        assert order_obj.status == 3, 'Статус заказа не Отменён.'
 
     def test_chain_and_id(self, nomenclature, adorder, bgorder):
         nom = get_object_or_404(Nomenclature, id=str(nomenclature.id))

@@ -2,7 +2,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import (
+    HTTP_200_OK,
+    HTTP_400_BAD_REQUEST,
+    HTTP_405_METHOD_NOT_ALLOWED
+)
 
 from orders.filters import AdOrderFilter, BgOrderFilter
 from orders.serializers import (
@@ -63,36 +67,51 @@ class AdOrderViewSet(NoDeleteViewSet):
         # 3
         create_ad_order_task.delay(orders_ids)
 
-    def perform_update(self, serializer):
-        """Можно изменить только название, описание, плейлист и слайды."""
+    def update(self, request, *args, **kwargs):
+        """
+        Можно изменить только название, описание, плейлист и слайды,
+        а также разрешено только частичное обновление (метод PATCH).
+        """
+        error_message = (
+            'Изменить можно только название, описание, '
+            'плейлист и слайды. Лишний ключ: {key}.'
+        )
         not_updatable_keys = (
             'id',
-            'owner',
             'clients',
+            'owner',
             'broadcast_interval',
             'broadcast_type',
             'parameters',
             'status',
             'created'
         )
-        for key in not_updatable_keys:
-            try:
-                init_key = getattr(serializer.instance, key)
-                update_key = getattr(serializer.initial_data, key)
-            except AttributeError:
-                continue
-            if init_key != update_key:
-                return Response(
-                    data='Изменить можно только название, описание, '
-                         'плейлист и слайды.',
-                    status=400
-                )
-        super().perform_update(serializer)
+        partial = kwargs.pop('partial', False)
+        if not partial:
+            return Response(data='Метод "PUT" запрещён, '
+                                 'используйте метод "PATCH".',
+                            status=HTTP_405_METHOD_NOT_ALLOWED)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial
+        )
+        initial_data = serializer.initial_data
+        for key in initial_data:
+            if key in not_updatable_keys:
+                error = error_message.format(key=key)
+                return Response(data=error, status=HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+        return Response(serializer.data)
 
     @action(detail=True, methods=['DELETE'])
     def cancel(self, request, pk):
         """Отмена заказа."""
-        cancel_ad_order_task.delay([str(pk)])
+        cancel_ad_order_task.delay(str(pk))
         result_text = f'Запрос на отмену заказа принят.'
         return Response(data=result_text, status=HTTP_200_OK)
 
@@ -143,35 +162,51 @@ class BgOrderViewSet(NoDeleteViewSet):
         # 3
         create_bg_order_task.delay(orders_ids)
 
-    def perform_update(self, serializer):
-        """Можно изменить только название, описание и плейлист."""
+    def update(self, request, *args, **kwargs):
+        """
+        Можно изменить только название, описание и плейлист,
+        а также разрешено только частичное обновление (метод PATCH).
+        """
+        error_message = (
+            'Изменить можно только название, описание и '
+            'плейлист. Лишний ключ: {key}.'
+        )
         not_updatable_keys = (
             'id',
-            'owner',
             'clients',
-            'order_type',
+            'owner',
             'broadcast_interval',
+            'order_type',
+            'parameters',
             'status',
             'created'
         )
-        for key in not_updatable_keys:
-            try:
-                init_key = getattr(serializer.instance, key)
-                update_key = getattr(serializer.initial_data, key)
-            except KeyError:
-                continue
-            if init_key != update_key:
-                return Response(
-                    data='Изменить можно только название, описание '
-                         'и плейлист.',
-                    status=400
-                )
-        super().perform_update(serializer)
+        partial = kwargs.pop('partial', False)
+        if not partial:
+            return Response(data='Метод "PUT" запрещён, '
+                                 'используйте метод "PATCH".',
+                            status=HTTP_405_METHOD_NOT_ALLOWED)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial
+        )
+        serializer.is_valid(raise_exception=True)
+        initial_data = serializer.initial_data
+        for key in initial_data:
+            if key in not_updatable_keys:
+                error = error_message.format(key=key)
+                return Response(data=error, status=HTTP_400_BAD_REQUEST)
+        self.perform_update(serializer)
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+        return Response(serializer.data)
 
     @action(detail=True, methods=['DELETE'])
     def cancel(self, request, pk):
         """Отмена заказа."""
-        cancel_bg_order_task.delay([str(pk)])
+        cancel_bg_order_task.delay(str(pk))
         result_text = f'Запрос на отмену заказа принят.'
         return Response(data=result_text, status=HTTP_200_OK)
 

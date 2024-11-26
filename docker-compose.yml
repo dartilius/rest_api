@@ -64,8 +64,6 @@ services:
     build: ./backend
     container_name: backend
     env_file: .env
-    volumes:
-      - ./scripts/backend:/app/scripts
     healthcheck:
       test: curl --fail ${BACKEND_HC} || exit 1
       interval: 10s
@@ -86,8 +84,6 @@ services:
   worker:
     build: ./backend
     env_file: .env
-    volumes:
-      - ./scripts/backend:/app/scripts
     depends_on:
       backend:
         condition: service_healthy
@@ -99,8 +95,6 @@ services:
     build: ./backend
     container_name: celery_beat
     env_file: .env
-    volumes:
-      - ./scripts/backend:/app/scripts
     depends_on:
       backend:
         condition: service_healthy

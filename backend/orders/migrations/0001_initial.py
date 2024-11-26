@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
                 ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
                 ('broadcast_interval', django.contrib.postgres.fields.ranges.DateTimeRangeField(verbose_name='Интервал работы заказа')),
                 ('status', models.PositiveSmallIntegerField(choices=[(0, 'Ожидает эфира'), (1, 'В эфире'), (2, 'Завершён'), (3, 'Отменён'), (4, 'Ошибка')], default=0, verbose_name='Статус')),
-                ('parameters', models.JSONField(default=dict, verbose_name='Параметры заказа')),
+                ('parameters', models.JSONField(verbose_name='Параметры заказа')),
                 ('slides', models.JSONField(blank=True, null=True, verbose_name='Слайды')),
                 ('broadcast_type', models.PositiveSmallIntegerField(choices=[(0, 'По времени работы точки'), (1, 'Начало работы + смещение по времени'), (2, 'Конец работы - смещение по времени'), (3, 'Конкретные часы'), (4, 'С открытия до фиксированного часа'), (5, 'С фиксированного часа до закрытия'), (6, 'Старт по событию')], default=0, verbose_name='Тип вещания')),
                 ('client', models.ForeignKey(on_delete=django.db.models.deletion.DO_NOTHING, related_name='%(class)ss', to='nomenclatures.nomenclature', verbose_name='Рабочая станция')),

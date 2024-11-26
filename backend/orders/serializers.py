@@ -53,7 +53,11 @@ class DateTimeTZRangeField(serializers.DictField):
 
         lower, upper = validated_dict.get('lower'), validated_dict.get('upper')
         # 3
-        if lower > upper or upper < dt.now():
+        if (
+            lower > upper or
+            (lower < upper < dt.now()) or
+            (lower == upper < dt.now().date())
+        ):
             self.fail('bound_ordering')
 
         for key in ('bounds', 'empty'):
@@ -102,20 +106,14 @@ class AdOrderSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """
         Валидация заказа.
-        В зависимости от типа вещания валидируются соответствующие параметры.
 
-        1. Если в пришедших данных есть параметры, то полностью вытаскиваем их.
-            Все неуказанные параметры будут None, кроме приоритета,
-            который по-умолчанию 50.
-        2. Обязательно должно быть указано кол-во выходов в час.
-        3. Для типов вещания...
-        3.1 ...со смещением по времени, оно должно быть задано.
-        3.2 ...с любыми фиксированными часами вещания, они должны быть заданы.
-        3.3 ...с триггером, должен быть задан запускающий триггер и вариант
-            поведения для текущей рекламы.
-        4. Каждая настройка отдельно валидируется в соответствующей функции.
-        5. Если в заказе указаны слайды, проверяем, что указанные среди слайдов
-            файлы действительно есть в плейлисте заказа.
+        1. Запрашиваем тип заказа и JSON со слайдами из пришедших данных.
+        2. Если были указанны параметры или идёт создание заказа, то тянем
+            параметры из пришедших данных и валидируем. Причём параметры мы
+            изымаем (.pop()) из данных, чтобы отбор прошли только необходимые
+            для указанного типа заказа.
+        3. Валидируем слайды, если они были указаны.
+        4. Если данные проходят валидацию, возвращаем их.
         """
 
         def _translate_error(err):
@@ -134,18 +132,27 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 f'в пределах {e_list[-1]}'
             )
 
-        def _time_string_to_tuple(time_string: str):
+        def _time_string_to_tuple(time_string: str, brc_type: int) -> tuple:
+            """Переводим строку времени в кортеж."""
+            missing = {1: 'смещение по времени',
+                       2: 'смещение по времени',
+                       3: 'время начала и окончания',
+                       4: 'время окончания',
+                       5: 'время начала'}
             try:
                 return tuple(map(int, time_string.split(':')))
-            except (ValueError, AttributeError):
+            except ValueError:
                 raise serializers.ValidationError(
                     'Временя должно быть в формате ЧЧ(:ММ:СС)'
                 )
+            except AttributeError:
+                raise serializers.ValidationError(
+                    f'Необходимо указать {missing[brc_type]} '
+                    'для данного типа вещания'
+                )
 
-        def _validate_daily_times(start: str, end: str) -> dict:
+        def _validate_daily_times(start: tuple, end: tuple) -> dict:
             """Валидация интервала времени ежедневного вещания."""
-            start = _time_string_to_tuple(start)
-            end = _time_string_to_tuple(end)
             try:
                 start_time = time(*start)
                 end_time = time(*end)
@@ -180,9 +187,8 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 )
             return {'weight': weight}
 
-        def _validate_timedelta(timedelta: str) -> dict:
+        def _validate_timedelta(timedelta: tuple) -> dict:
             """Валидация промежутка времени."""
-            timedelta = _time_string_to_tuple(timedelta)
             try:
                 timedelta_time = time(*timedelta)
             except ValueError as e:
@@ -202,32 +208,72 @@ class AdOrderSerializer(serializers.ModelSerializer):
             possible_active_ad_actions : list
                 список допустимых действий, которые применяются
                 к текущей рекламе, при срабатывании триггера
+
+            1. Проверяем, все ли ключи переданы.
+            2. Если чего-то не хватает, возвращаем ошибку, с указанием
+                чего не хватает.
+            3. Проверяем есть ли триггер/поведение в списке допустимых.
+            4. Возвращаем словарь если всё ОК.
             """
             possible_events = ['click', 'door_open', 'blablabla']
             possible_active_ad_actions = ['skip', 'stop', 'wait_until_end']
+            test = 0
+            keys = {event: 1, active_ad: 2}
+            missing = {1: 'триггер запуска',
+                       2: 'поведение текущей рекламы',
+                       3: 'триггер запуска и поведение текущей рекламы'}
+            # 1
+            for key in keys:
+                test += keys[key] if not key else 0
+            if test:
+                # 2
+                raise serializers.ValidationError(
+                    f'Необходимо указать {missing[test]} для '
+                    'данного типа вещания.'
+                )
+            # 3
             if event not in possible_events:
                 raise serializers.ValidationError(
                     f'Триггера нет в списке допустимых'
                 )
+            # 3
             if active_ad not in possible_active_ad_actions:
                 raise serializers.ValidationError(
                     f'Такое поведение для текущей рекламы не предусмотрено'
                 )
+            # 4
             return {'event': event,
                     'active_ad': active_ad}
 
         def validate_slides(slides: dict, update: bool) -> None:
-            """Валидация слайдов."""
+            """
+            Валидация слайдов.
+
+            1. Запрашиваем айди плейлиста:
+            1.1 Если происходит обновление существующего заказа,
+                то тянем айди из поля объекта.
+            1.1 Если происходит создание заказа, то из отправленных данных.
+            2. Получаем объект плейлиста и список айди его файлов.
+            3. Собираем список из указанных в слайдах роликов.
+            4. Сравниваем списки. Если есть лишние ролики выбрасываем ошибку
+                с указанием названий этих лишних роликов.
+            """
             empty_values = Constants.empty_values
+            # 1.1
             if update:
                 playlist_id = str(self.instance.playlist.id)
+            # 1.2
             else:
                 playlist_id = self.initial_data[0].get('playlist')
+            # 2
             playlist_obj = Playlist.objects.get(id=playlist_id)
             playlist_file_ids = playlist_obj.files.values_list('id', flat=True)
             playlist_file_ids = list(map(str, playlist_file_ids))
+            # 3
+            slide_files = [*slides.keys()]
             bad_files = []
-            for file in slides:
+            # 4
+            for file in slide_files:
                 if file not in playlist_file_ids:
                     bad_files.append(File.objects.get(id=file).name)
             if bad_files not in empty_values:
@@ -237,8 +283,23 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 )
 
         def validate_parameters(parameters: dict, brc_type: int) -> dict:
-            """Валидация параметров заказа в зависимости от его типа."""
+            """
+            В зависимости от типа вещания валидируются соответствующие параметры.
+
+            1. Все неуказанные параметры будут None, кроме приоритета,
+                который по-умолчанию 50.
+            2. Обязательно должно быть указано кол-во выходов в час.
+            3. Для типов вещания...
+            3.1 ...со смещением по времени, оно должно быть задано.
+            3.2 ...с любыми фиксированными часами вещания, они должны быть заданы.
+            3.3 ...с триггером, должен быть задан запускающий триггер и вариант
+                поведения для текущей рекламы.
+            4. Каждая настройка отдельно валидируется в соответствующей функции.
+            5. Если в заказе указаны слайды, проверяем, что указанные среди слайдов
+                файлы действительно есть в плейлисте заказа.
+            """
             v_parameters = dict()
+            # 1
             times_in_hour = parameters.get('times_in_hour')
             weight_val = parameters.get('weight', 50)
             event_val = parameters.get('event')
@@ -261,60 +322,32 @@ class AdOrderSerializer(serializers.ModelSerializer):
             match brc_type:
                 # 3.1
                 case 1 | 2:
-                    if not timedelta_val:
-                        raise serializers.ValidationError(
-                            'Необходимо указать смещение по времени '
-                            'для данного типа вещания'
-                        )
+                    timedelta_val = _time_string_to_tuple(timedelta_val, brc_type)
                     # 4
                     v_parameters.update(_validate_timedelta(timedelta_val))
                 # 3.2
-                case 3:
-                    if not start_time or not end_time:
-                        raise serializers.ValidationError(
-                            'Необходимо указать время начала и окончания '
-                            'для данного типа вещания'
-                        )
+                case 3 | 4 | 5:
+                    start_time = _time_string_to_tuple(start_time, brc_type) if (
+                            brc_type in (3, 5)
+                    ) else (0, 0, 1)
+                    end_time = _time_string_to_tuple(end_time, brc_type) if (
+                            brc_type in (3, 4)
+                    ) else (23, 59, 58)
                     # 4
                     v_parameters.update(_validate_daily_times(start_time,
                                                               end_time))
-                # 3.2
-                case 4:
-                    if not end_time:
-                        raise serializers.ValidationError(
-                            'Необходимо указать время окончания '
-                            'для данного типа вещания'
-                        )
-                    # 4
-                    v_parameters.update(_validate_daily_times('00:00:01',
-                                                              end_time))
-                # 3.2
-                case 5:
-                    if not start_time:
-                        raise serializers.ValidationError(
-                            'Необходимо указать время начала '
-                            'для данного типа вещания'
-                        )
-                    # 4
-                    v_parameters.update(_validate_daily_times(start_time,
-                                                              '23:59:58'))
                 # 3.3
                 case 6:
-                    if not event_val or not ad_action:
-                        raise serializers.ValidationError(
-                            'Необходимо указать триггер запуска и '
-                            'поведение текущей рекламы для '
-                            'данного типа вещания'
-                        )
                     # 4
                     v_parameters.update(_validate_trigger(event_val,
                                                           ad_action))
             return {'parameters': v_parameters}
 
+        # 1
         brc_type: int = data.get('broadcast_type')
         slides_json: dict = data.get('slides')
         validated_data = dict()
-        # 1
+        # 2
         if 'parameters' in data or not self.instance:
             try:
                 params: dict = data.pop('parameters')
@@ -323,12 +356,15 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     'Не переданы параметры заказа.'
                 )
-
-
-        # 5
+        # 3
         if slides_json:
+            if not isinstance(slides_json, dict):
+                raise serializers.ValidationError(
+                    'Слайды переданы неправильным форматом: '
+                    f'{type(slides_json)}. Ожидался json-словарь.'
+                )
             validate_slides(slides_json, bool(self.instance))
-
+        # 4
         validated_data.update({**data})
         return validated_data
 
@@ -429,27 +465,35 @@ class BgOrderSerializer(serializers.ModelSerializer):
         """
         Валидация фонового заказа.
 
-        0. Получаем тип заказа и плейлист из пришедших данных.
-        1. Находим плейлист в базе и проверяем:
-        1.1. что плейлист не пуст,
+        1. Если заказ уже существует, берём тип и плейлист прямо с него.
+        1.1. Если
         1.2. что тип файлов в плейлисте соответствует типу заказа.
         2. Если всё ок, возвращаем данные как есть.
         """
         empty_values = Constants.empty_values
-        # 0
-        order_type = data.get('order_type')
-        playlist_id = self.initial_data[0].get('playlist')
+        # 1
+        if self.instance:
+            playlist_id = str(self.instance.playlist.id)
+            order_type = self.instance.order_type
+        else:
+            # 1.1
+            try:
+                playlist_id = self.initial_data[0].get('playlist')
+                order_type = self.initial_data[0].get('order_type')
+            # 1.2
+            except KeyError:
+                playlist_id = self.initial_data.get('playlist')
+                order_type = self.initial_data.get('order_type')
         # 1
         playlist_obj = Playlist.objects.get(id=playlist_id)
         files = playlist_obj.files.all()
         # 1.1
         if files in empty_values:
             raise serializers.ValidationError('Плейлист не содержит файлов')
-        # 1.2
         for file in files:
             if file.type != order_type:
                 raise serializers.ValidationError(
-                    f'Плейлист содержит файлы неправильного типа'
+                    f'Плейлист содержит файлы неправильного типа {file.type} != {order_type}'
                 )
         # 2
         return data

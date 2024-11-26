@@ -5,7 +5,7 @@ class Constants:
 
 
     @staticmethod
-    def get_task_type(order_type: int):
+    def get_cancel_task_type(order_type: int):
         """Возвращает соответствующий заказу тип репликации."""
         ORDER_MUSIC = 0
         ORDER_IMAGE = 1

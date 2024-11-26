@@ -112,38 +112,31 @@ def create_ad_order_task(orders_ids: list):
 
 
 @shared_task
-def cancel_ad_order_task(order_ids: list):
+def cancel_ad_order_task(order_id: str):
     """
     Отмена рекламного заказа.
 
-    0. Фильтруем заказы по полученному списку.
-    1. Проходим по получившемуся списку.
-    2. Заполняем список репликаций на отмену, берём нужную инфу с заказа.
-    3. Меняем статус заказу.
-    4. Создаём все репликации одной операцией, фиксируем количество.
+    0. Получаем объект заказа по его айди.
+    1. Создаём репликацию отмены используя информацию из заказа.
+    2. Меняем статус заказа на Отменён.
+    3. В ответ отдаём айди отменённого заказа.
     """
-    task_list = []
     CANCEL = 3
     CANCEL_AD = 9
     # 0
-    orders = AdOrder.objects.filter(pk__in=order_ids)
+    order = AdOrder.objects.get(id=order_id)
     # 1
-    for order in orders:
-        # 2
-        task_list.append(
-            Task(
-                owner=order.owner,
-                client=order.client,
-                type=CANCEL_AD,
-                parameters={'order_id': str(order.id)}
-            )
-        )
-        # 3
-        order.status = CANCEL
-        order.save()
-    # 4
-    Task.objects.bulk_create(task_list)
-    result = f'Отменено заказов: {len(task_list)}.'
+    Task.objects.create(
+        owner=order.owner,
+        client=order.client,
+        type=CANCEL_AD,
+        parameters={'order_id': order_id}
+    )
+    # 2
+    order.status = CANCEL
+    order.save()
+    # 3
+    result = f'Отменён заказ: {order_id}.'
     return result
 
 
@@ -192,39 +185,32 @@ def create_bg_order_task(orders_ids: list):
 
 
 @shared_task
-def cancel_bg_order_task(order_ids: list):
+def cancel_bg_order_task(order_id: str):
     """
     Отмена фонового заказа.
 
-    0. Фильтруем заказы по полученному списку.
-    1. Проходим по получившемуся списку.
-    2. Подставляем правильный тип репликации, в зависимости от типа заказа.
-    3. Заполняем список репликаций на отмену, берём нужную инфу с заказа.
-    4. Меняем статус заказу.
-    5. Создаём все репликации одной операцией, фиксируем количество.
+    0. Получаем объект заказа по его айди.
+    1. Получаем нужный тип репликации соответственно типу заказа.
+    2. Создаём репликацию на отмену.
+    3. Меняем статус заказа на Отменён.
+    4. В ответ отдаём айди отменённого заказа.
     """
     from api.constants import Constants
-    task_list = []
     CANCEL = 3
     # 0
-    orders = BgOrder.objects.filter(pk__in=order_ids)
+    order = BgOrder.objects.get(id=order_id)
     # 1
-    for order in orders:
-        # 2
-        task_type = Constants.get_task_type(order.order_type)
-        # 3
-        task_list.append(
-            Task(
-                owner=order.owner,
-                client=order.client,
-                type=task_type,
-                parameters={'order_id': str(order.id)}
-            )
-        )
-        # 4
-        order.status = CANCEL
-        order.save()
-    # 5
-    Task.objects.bulk_create(task_list)
-    result = f'Отменено заказов: {len(task_list)}.'
+    task_type = Constants.get_cancel_task_type(order.order_type)
+    # 2
+    Task.objects.bulk_create(
+        owner=order.owner,
+        client=order.client,
+        type=task_type,
+        parameters={'order_id': order_id}
+    )
+    # 3
+    order.status = CANCEL
+    order.save()
+    # 4
+    result = f'Отменено заказов: {order_id}.'
     return result

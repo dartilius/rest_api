@@ -60,8 +60,7 @@ class BaseOrder(APIBaseObjectModel):
         on_delete=models.DO_NOTHING
     )
     parameters = models.JSONField(
-        verbose_name='Параметры заказа',
-        default=dict
+        verbose_name='Параметры заказа'
     )
 
     class Meta:
@@ -84,6 +83,9 @@ class AdOrder(BaseOrder):
         verbose_name='Тип вещания',
         default=0
     )
+    parameters = models.JSONField(
+        verbose_name='Параметры заказа'
+    )
 
     class Meta:
         db_table = 'adorder'
@@ -98,6 +100,10 @@ class BgOrder(BaseOrder):
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
         verbose_name='Тип фона'
+    )
+    parameters = models.JSONField(
+        verbose_name='Параметры заказа',
+        default=dict
     )
 
     class Meta:

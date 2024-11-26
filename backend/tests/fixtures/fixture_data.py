@@ -1,8 +1,6 @@
 import pytest
 from datetime import datetime as dt, timedelta as td
-from hashlib import md5, sha256
-from random import choices, randint
-from string import ascii_letters, digits
+from random import randint
 
 
 @pytest.fixture
@@ -152,6 +150,23 @@ def file_4(user_client, user):
 
 
 @pytest.fixture
+def file_5(user_client, user):
+    from files.models import File
+    with open('/app/tests/fixtures/test_audio_1.txt', 'r') as file:
+        source = file.read()
+    file_contents = 'data:test_1.mp3;base64,'
+    file_contents += source
+    data = {
+        'source': file_contents,
+        'type': 0
+    }
+    response = user_client.post('/api/files/', data=data, format='json')
+    response_data = response.json()
+    file_obj = File.objects.get(id=response_data['id'])
+    return file_obj
+
+
+@pytest.fixture
 def playlist_1(user, file_1):
     from files.models import Playlist
     pls_obj = Playlist.objects.create(
@@ -207,6 +222,17 @@ def playlist_5(user, file_1, file_3):
 
 
 @pytest.fixture
+def playlist_6(user, file_5):
+    from files.models import Playlist
+    pls_obj = Playlist.objects.create(
+        name='playlist_6',
+        owner=user
+    )
+    pls_obj.files.set([file_5.id])
+    return pls_obj
+
+
+@pytest.fixture
 def adorder(user, file_1, playlist_1, nomenclature):
     from orders.models import AdOrder
     today = f'{dt.today().date()} 09:00:00'
@@ -217,6 +243,7 @@ def adorder(user, file_1, playlist_1, nomenclature):
         broadcast_interval=f"({today}, {tomorrow}]",
         client=nomenclature,
         playlist=playlist_1,
+        parameters={'times_in_hour': 4}
     )
 
 
@@ -231,7 +258,8 @@ def adorder_slides(user, file_1, file_2, playlist_5, nomenclature):
         broadcast_interval=f"({today}, {tomorrow}]",
         client=nomenclature,
         playlist=playlist_5,
-        slides={str(file_1.id): [str(file_2.id)]}
+        slides={str(file_1.id): [str(file_2.id)]},
+        parameters={'times_in_hour': 4}
     )
 
 
@@ -246,18 +274,13 @@ def bgorder(user, file_1, playlist_1, nomenclature):
         broadcast_interval=f"({today}, {tomorrow}]",
         order_type=0,
         client=nomenclature,
-        playlist=playlist_1,
+        playlist=playlist_1
     )
 
 
 @pytest.fixture
 def ad_stat(nomenclature, file_1):
     from ch_statistic.models import ADStat
-    chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10))
-    string_2 = ''.join(choices(chars, k=10))
-    md5_string = md5(string_1.encode())
-    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return ADStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
@@ -272,11 +295,6 @@ def ad_stat(nomenclature, file_1):
 @pytest.fixture
 def music_stat(nomenclature, file_1):
     from ch_statistic.models import MusicStat
-    chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10))
-    string_2 = ''.join(choices(chars, k=10))
-    md5_string = md5(string_1.encode())
-    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return MusicStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
@@ -290,11 +308,6 @@ def music_stat(nomenclature, file_1):
 @pytest.fixture
 def image_stat(nomenclature, file_2):
     from ch_statistic.models import ImageStat
-    chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10))
-    string_2 = ''.join(choices(chars, k=10))
-    md5_string = md5(string_1.encode())
-    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return ImageStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
@@ -308,11 +321,6 @@ def image_stat(nomenclature, file_2):
 @pytest.fixture
 def video_stat(nomenclature, file_3):
     from ch_statistic.models import VideoStat
-    chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10))
-    string_2 = ''.join(choices(chars, k=10))
-    md5_string = md5(string_1.encode())
-    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return VideoStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
@@ -326,11 +334,6 @@ def video_stat(nomenclature, file_3):
 @pytest.fixture
 def ticker_stat(nomenclature, file_4):
     from ch_statistic.models import TickerStat
-    chars = ascii_letters + digits
-    string_1 = ''.join(choices(chars, k=10))
-    string_2 = ''.join(choices(chars, k=10))
-    md5_string = md5(string_1.encode())
-    sha256_string = sha256(string_2.encode())
     length = randint(5, 30)
     return TickerStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
@@ -339,4 +342,3 @@ def ticker_stat(nomenclature, file_4):
         client=str(nomenclature.id),
         length=length
     )
-
