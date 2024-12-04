@@ -1,14 +1,16 @@
 'use client'
 
-import { ChangeEvent, useState } from 'react';
+import { ChangeEvent, useCallback, useRef, useState } from 'react';
 import { Input, ButtonForward, ButtonBack } from '@/src/components/ui';
-import {DateRangePicker, RangeValue, Select, SelectItem} from "@nextui-org/react";
+import {DateRangePicker, MenuItem, MenuItemProps, RangeValue, Select, SelectItem} from "@nextui-org/react";
 import { DateValue, parseDate } from "@internationalized/date";
 import {useBgOrderCreateQuery} from "@/src/hooks/orders/useBgOrdersQuery";
 import {IBgOrderCreate} from "@/src/types/interface/orders.interface";
-import useNomenclaturesQuery from "@/src/hooks/nomenclatures/useNomenclaturesQuery";
+import useNomenclaturesQuery from '@/src/hooks/nomenclatures/useNomenclaturesQuery';
 
 function CreateOrders() {
+    const observer = useRef<IntersectionObserver | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
     const { mutate: createBgOrder } = useBgOrderCreateQuery();
     const [inputValues, setInputValues] = useState({
         name: '',
@@ -30,8 +32,8 @@ function CreateOrders() {
         }));
     };
 
-    const { data: nomenclaturesList } = useNomenclaturesQuery({
-        page: 1,
+    const { data: nomenclaturesList, refetch } = useNomenclaturesQuery({
+        page:  currentPage,
         limit: 25
     })
 
@@ -95,6 +97,13 @@ function CreateOrders() {
         createBgOrder([orderData]);
     };
 
+    const handlePageChange = (newPage: number) => {
+        if (newPage > 0 && newPage !== currentPage) {
+            setCurrentPage(newPage);
+            refetch(); // Вызов перезапроса данных
+        }
+    };
+
     if (!nomenclaturesList) {
         return <></>
     }
@@ -124,18 +133,30 @@ function CreateOrders() {
                     <ButtonForward onClick={handleNextStep} />
                 </div>
             )}
+           {currentStep === 2 && (
+               <div>
+                   <Select
+                       label="Выберите номенклатуру"
+                       placeholder="Выберите"
+                       inputMode='search'
+                   >
+                       {nomenclaturesList.results.map((item, index) => {
+                           return (
+                               <SelectItem value={item.id} key={item.id}>
+                                   {item.name}
+                               </SelectItem>
+                           );
+                       })}
+                   </Select>
+                   <ButtonForward onClick={() => handlePageChange(currentPage + 1)}>Next</ButtonForward>
+                   <ButtonBack onClick={() => handlePageChange(currentPage - 1)}>Prev</ButtonBack>
+               </div>
+           )}
+
+
+
+
             {currentStep === 3 && (
-                <Select>
-                    {
-                        nomenclaturesList.results.map((nomenclature) => (
-                            <SelectItem key={nomenclature.id}>
-                                {nomenclature.name}
-                            </SelectItem>
-                        ))
-                    }
-                </Select>
-            )}
-            {currentStep === 2 && (
                 <div className="w-full max-w-xl flex flex-col gap-4">
                     <DateRangePicker
                         label="Период трансляции"

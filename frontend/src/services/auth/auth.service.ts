@@ -1,47 +1,24 @@
-//TODO: Переписать на классы
-
-import axios, { AxiosResponse } from "axios";
-
-import { removeTokensStorage, saveTokensStorage } from "./auth.helper";
-
-import { ITokens } from "@/src/types/interface/user.interface";
 import { AUTH_URL } from "@/src/config/api.config";
+import { IAuthInput, ITokens } from "@/src/types/interface/user.interface";
+import axios from "axios";
 
-export const AuthService = {
-  async login(
-    email: string,
-    password: string,
-  ): Promise<AxiosResponse<ITokens>> {
-    const response = await axios.post<ITokens>(
-      `${AUTH_URL}/jwt/create/`,
-      {
-        email,
-        password,
-      },
-      {
-        headers: {
-          Allow: "POST, OPTIONS",
-          "Content-Type": "application/json",
-          Vary: "Accept",
-        },
-      },
-    );
+class AuthService {
+  private URL = `${AUTH_URL}`;
 
-    if (response.data.access) {
-      saveTokensStorage(response.data);
-    }
+  login = ({ email, password }: IAuthInput) =>
+    axios.post<ITokens>(`${this.URL}jwt/create/`, { email, password });
 
-    return response;
-  },
+  logout = () => axios.post(`${this.URL}logout/`);
 
-  logout() {
-    removeTokensStorage();
-    localStorage.clear();
-  },
+  refreshTokenCreate = (refreshToken: string) =>
+    axios.post<ITokens["access"]>(`${this.URL}jwt/refresh/`, {
+      refreshToken,
+    });
 
-  async isAuthenticated(req: any): Promise<boolean> {
-    const token = req.cookies["accessToken"]; // получение токена из кук
+  verifyToken(accessToken: string) {
+    const res = axios.post(`${this.URL}jwt/verify/`, { token: accessToken });
+    return res;
+  }
+}
 
-    return !!token;
-  },
-};
+export default new AuthService();

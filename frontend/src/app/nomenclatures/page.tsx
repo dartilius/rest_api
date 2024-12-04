@@ -5,6 +5,7 @@ import NomenclaturesList from "./NomenclaturesListClientPage";
 import Loader from "@/src/components/ui/Loader";
 import { toastError } from "@/src/utils/toast-error";
 import useNomenclaturesQuery from "@/src/hooks/nomenclatures/useNomenclaturesQuery";
+import ProtectedRoute from "@/src/components/ProtectedComponent";
 
 export default function Page() {
   const page = 1;
@@ -18,9 +19,10 @@ export default function Page() {
     return <>{toastError(error?.message)}</>;
   }
 
-  if (isSuccess) {
-    return <NomenclaturesList />;
-  }
+  return (
+    <ProtectedRoute>
+      <NomenclaturesList />
+    </ProtectedRoute>
+  )
 
-  return <></>;
 }

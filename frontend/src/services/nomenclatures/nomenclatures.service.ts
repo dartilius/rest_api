@@ -7,7 +7,7 @@ import { API_URL } from "@/src/config/api.config";
 import axiosInstance, {getTokenStorage} from "@/src/services/auth/auth.helper";
 
 interface Pagination {
-  page?: number;
+  page: number;
   limit?: number;
   search?: string;
   id?: string;

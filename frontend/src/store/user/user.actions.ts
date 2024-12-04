@@ -3,9 +3,10 @@ import { toastr } from "react-redux-toastr";
 
 import { IAuthResponse, IEmailPassword, ITokens } from "./user.interface";
 
-import { AuthService } from "@/src/services/auth/auth.service";
 import { IAuthInput } from "@/src/types/interface/user.interface";
 import { toastError } from "@/src/utils/toast-error";
+import authService from "@/src/services/auth/auth.service";
+import { useAuth } from "@/src/providers/auth/AuthContext";
 
 // export const register = createAsyncThunk<IAuthResponse, IEmailPassword>(
 //   "auth/register",
@@ -28,7 +29,7 @@ export const login = createAsyncThunk<IAuthResponse, IEmailPassword>(
   "login/",
   async ({ email, password }, thunkAPI) => {
     try {
-      const response = await AuthService.login(email, password);
+      const response = await authService.login({ email, password });
 
       // Предположим, что response.data имеет тип ITokens и нам нужно добавить user.
       const data: ITokens = response.data;
@@ -47,11 +48,11 @@ export const login = createAsyncThunk<IAuthResponse, IEmailPassword>(
 
       return thunkAPI.rejectWithValue(error);
     }
-  },
+  }
 );
 
 export const logout = createAsyncThunk("/logout", async () => {
-  await AuthService.logout();
+  await authService.logout();
 });
 
 // export const checkAuth = createAsyncThunk<IAuthResponse>(

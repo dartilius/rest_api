@@ -14,7 +14,7 @@ type Props = {
 const useNomenclaturesQuery = (props: Props) => {
     const { page, limit, search, status, versions, timezone } = props;
 
-    const { data, isLoading, error, isError, isSuccess } = useQuery({
+    const { data, isLoading, error, isError, isSuccess, refetch } = useQuery({
         queryKey: ['nomenclaturesList', page, limit, search, status, versions, timezone],
         queryFn: () =>
             nomenclaturesService.getAll({
@@ -28,7 +28,7 @@ const useNomenclaturesQuery = (props: Props) => {
         select: ({ data }) => data,
     });
 
-    return { data, isLoading, error, isError, isSuccess };
+    return { data, isLoading, error, isError, isSuccess, refetch };
 };
 
 export default useNomenclaturesQuery;

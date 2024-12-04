@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReduxToastrProvider from "../providers/ReduxToast";
 
 import { store } from "@/src/store/store";
+import { AuthProvider } from "../providers/auth/AuthProvider";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -29,13 +30,15 @@ export function Providers({ children, themeProps }: ProvidersProps) {
   const router = useRouter();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ReduxProvider store={store}>
-        <NextUIProvider navigate={router.push}>
-          <ReduxToastrProvider />
-          <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
-        </NextUIProvider>
-      </ReduxProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <ReduxProvider store={store}>
+          <NextUIProvider navigate={router.push}>
+            <ReduxToastrProvider />
+            <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
+          </NextUIProvider>
+        </ReduxProvider>
+      </QueryClientProvider>
+    </AuthProvider>
   );
 }

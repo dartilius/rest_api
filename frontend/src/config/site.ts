@@ -65,7 +65,7 @@ export const siteConfig = {
     },
     {
       label: "Выйти",
-      href: "/login",
+      href: "/logout",
       index: 10,
     },
   ],
