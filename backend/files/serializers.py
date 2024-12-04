@@ -8,12 +8,7 @@ from files.models import File, Playlist, Tag, TYPES
 
 
 class Base64FileField(serializers.FileField):
-    """
-    Поле для получения и декодирования base64 строки в файл.
-
-    Сделано на основе:
-    https://github.com/Hipo/drf-extra-fields/
-    """
+    """Поле для получения и декодирования base64 строки в файл."""
 
     default_error_messages = {
         'invalid_file': 'Файл невозможно декодировать, либо он повреждён.',
@@ -102,12 +97,13 @@ class FileSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'id',
             'length',
-            'size'
+            'size',
+            'url'
         )
         model = File
 
     def get_url(self, instance):
-        return instance.get_url()
+        return instance.url
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
@@ -115,7 +111,7 @@ class FileSerializer(serializers.ModelSerializer):
         repr_['owner'] = value.owner.full_name
         repr_['hash'] = value.hash
         repr_['type'] = TYPES[value.type]
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
 
     def create(self, validated_data):
@@ -126,15 +122,6 @@ class FileSerializer(serializers.ModelSerializer):
             instance.tags.set(tag_ids)
         except KeyError:
             instance = File.objects.create(**validated_data)
-        return instance
-
-    def update(self, instance, validated_data):
-        if 'tags' in validated_data:
-            tags = validated_data.pop('tags')
-            tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
-            instance.tags.set(tag_ids)
-        super(self.__class__, self).update(instance, validated_data)
-        instance.save()
         return instance
 
 
@@ -187,6 +174,21 @@ class PlaylistSerializer(serializers.ModelSerializer):
         )
         model = Playlist
 
+    def validate(self, data):
+        """Проверяем, что все файлы в плейлисте одного типа."""
+        playlist_files_type = set()
+        if 'files' in self.initial_data:
+            files_ids: list = self.initial_data.get('files')
+            files = File.objects.filter(id__in=files_ids)
+            for file in files:
+                playlist_files_type.add(TYPES[file.type])
+            if len(playlist_files_type) > 1:
+                raise serializers.ValidationError(
+                    'Плейлист не должен содержать файлы разных типов: '
+                    f'{playlist_files_type}'
+                )
+        return data
+
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_['owner'] = value.owner.full_name
@@ -194,9 +196,9 @@ class PlaylistSerializer(serializers.ModelSerializer):
         repr_['files'] = [
             {'id': file.id,
              'name': file.name,
-             'url': file.get_url()} for file in value.files.all()
+             'url': file.url} for file in value.files.all()
         ]
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
 
 
@@ -216,5 +218,5 @@ class PlaylistListSerializer(serializers.ModelSerializer):
         repr_ = super().to_representation(value)
         repr_['owner'] = value.owner.full_name
         repr_['files_count'] = value.files.count()
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_

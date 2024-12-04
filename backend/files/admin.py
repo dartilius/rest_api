@@ -10,7 +10,7 @@ class FileAdmin(admin.ModelAdmin):
     @admin.display(description='Продолжительность')
     def full_length(self, obj):
         try:
-            return obj.length.strftime('%H:%M:%S')
+            return f'{obj.length:%H:%M:%S}'
         except AttributeError:
             return obj.length
 

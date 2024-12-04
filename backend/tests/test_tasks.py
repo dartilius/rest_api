@@ -123,6 +123,20 @@ class TestTasks:
             f'Удалось создать репликацию с неправильными данными.'
         )
 
+    def test_update_task(self, admin_client, task, nomenclature_1):
+        update_data = [
+            {'client': str(nomenclature_1.id)},
+            {'parameters': None},
+            {'type': 16},
+            {'status': 4}
+        ]
+        url = self.task_url.format(task_id=str(task.id))
+        for data in update_data:
+            response = admin_client.patch(url, data=data, format='json')
+            assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED, (
+                f'Код статуса в ответе != 405.Ответ: {response.json()}'
+            )
+
     def test_cancel_task_staff(
         self,
         admin_client,

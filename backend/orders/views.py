@@ -2,12 +2,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_405_METHOD_NOT_ALLOWED
-)
+from rest_framework.status import HTTP_200_OK
 
+from api.constants import restricted_update
 from orders.filters import AdOrderFilter, BgOrderFilter
 from orders.serializers import (
     AdOrderSerializer,
@@ -30,7 +27,7 @@ class NoDeleteViewSet(mixins.CreateModelMixin,
                       mixins.UpdateModelMixin,
                       mixins.ListModelMixin,
                       viewsets.GenericViewSet):
-    """Вьюсет без предустановленного метода DELETE."""
+    """Вьюсет без поддержки метода DELETE."""
     pass
 
 
@@ -68,45 +65,20 @@ class AdOrderViewSet(NoDeleteViewSet):
         create_ad_order_task.delay(orders_ids)
 
     def update(self, request, *args, **kwargs):
-        """
-        Можно изменить только название, описание, плейлист и слайды,
-        а также разрешено только частичное обновление (метод PATCH).
-        """
         error_message = (
             'Изменить можно только название, описание, '
-            'плейлист и слайды. Лишний ключ: {key}.'
+            'плейлист и слайды. Лишние ключи: {keys}.'
         )
-        not_updatable_keys = (
-            'id',
-            'clients',
-            'owner',
-            'broadcast_interval',
-            'broadcast_type',
-            'parameters',
-            'status',
-            'created'
+        updatable_fields = (
+            'name',
+            'description',
+            'playlist',
+            'slides'
         )
-        partial = kwargs.pop('partial', False)
-        if not partial:
-            return Response(data='Метод "PUT" запрещён, '
-                                 'используйте метод "PATCH".',
-                            status=HTTP_405_METHOD_NOT_ALLOWED)
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance,
-            data=request.data,
-            partial=partial
-        )
-        initial_data = serializer.initial_data
-        for key in initial_data:
-            if key in not_updatable_keys:
-                error = error_message.format(key=key)
-                return Response(data=error, status=HTTP_400_BAD_REQUEST)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        if getattr(instance, '_prefetched_objects_cache', None):
-            instance._prefetched_objects_cache = {}
-        return Response(serializer.data)
+        kwargs.update(updatable_fields=updatable_fields,
+                      error_message=error_message)
+        response = restricted_update(self, request, *args, **kwargs)
+        return response
 
     @action(detail=True, methods=['DELETE'])
     def cancel(self, request, pk):
@@ -163,45 +135,19 @@ class BgOrderViewSet(NoDeleteViewSet):
         create_bg_order_task.delay(orders_ids)
 
     def update(self, request, *args, **kwargs):
-        """
-        Можно изменить только название, описание и плейлист,
-        а также разрешено только частичное обновление (метод PATCH).
-        """
         error_message = (
             'Изменить можно только название, описание и '
-            'плейлист. Лишний ключ: {key}.'
+            'плейлист. Лишние ключи: {keys}.'
         )
-        not_updatable_keys = (
-            'id',
-            'clients',
-            'owner',
-            'broadcast_interval',
-            'order_type',
-            'parameters',
-            'status',
-            'created'
+        updatable_fields = (
+            'name',
+            'description',
+            'playlist'
         )
-        partial = kwargs.pop('partial', False)
-        if not partial:
-            return Response(data='Метод "PUT" запрещён, '
-                                 'используйте метод "PATCH".',
-                            status=HTTP_405_METHOD_NOT_ALLOWED)
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance,
-            data=request.data,
-            partial=partial
-        )
-        serializer.is_valid(raise_exception=True)
-        initial_data = serializer.initial_data
-        for key in initial_data:
-            if key in not_updatable_keys:
-                error = error_message.format(key=key)
-                return Response(data=error, status=HTTP_400_BAD_REQUEST)
-        self.perform_update(serializer)
-        if getattr(instance, '_prefetched_objects_cache', None):
-            instance._prefetched_objects_cache = {}
-        return Response(serializer.data)
+        kwargs.update(updatable_fields=updatable_fields,
+                      error_message=error_message)
+        response = restricted_update(self, request, *args, **kwargs)
+        return response
 
     @action(detail=True, methods=['DELETE'])
     def cancel(self, request, pk):

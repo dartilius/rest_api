@@ -39,8 +39,8 @@ class TaskSerializer(serializers.ModelSerializer):
             'id': str(value.client.id),
             'name': value.client.name
         }
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        repr_['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
+        repr_['updated'] = f'{value.updated:%Y-%m-%d %H:%M:%S}'
         return repr_
 
 
@@ -67,6 +67,6 @@ class TaskListSerializer(serializers.ModelSerializer):
             'id': str(value.client.id),
             'name': value.client.name
         }
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        repr_['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
+        repr_['updated'] = f'{value.updated:%Y-%m-%d %H:%M:%S}'
         return repr_

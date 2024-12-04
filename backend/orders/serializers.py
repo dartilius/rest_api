@@ -67,8 +67,8 @@ class DateTimeTZRangeField(serializers.DictField):
         return self.range_type(**validated_dict)
 
     def to_representation(self, value):
-        lower = value.lower.strftime('%Y-%m-%d %H:%M:%S')
-        upper = value.upper.strftime('%Y-%m-%d %H:%M:%S')
+        lower = f'{value.lower:%Y-%m-%d %H:%M:%S}'
+        upper = f'{value.upper:%Y-%m-%d %H:%M:%S}'
         return {
             'lower': self.child.to_representation(lower),
             'upper': self.child.to_representation(upper)
@@ -345,7 +345,6 @@ class AdOrderSerializer(serializers.ModelSerializer):
 
         # 1
         brc_type: int = data.get('broadcast_type')
-        slides_json: dict = data.get('slides')
         validated_data = dict()
         # 2
         if 'parameters' in data or not self.instance:
@@ -357,7 +356,8 @@ class AdOrderSerializer(serializers.ModelSerializer):
                     'Не переданы параметры заказа.'
                 )
         # 3
-        if slides_json:
+        if 'slides' in self.initial_data:
+            slides_json: dict = self.initial_data.get('slides')
             if not isinstance(slides_json, dict):
                 raise serializers.ValidationError(
                     'Слайды переданы неправильным форматом: '
@@ -394,7 +394,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 'files_count': obj.playlist.files.count()
             }
             repr_['slides'] = obj.slides if obj.slides else None
-            repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
+            repr_['created'] = f'{obj.created:%Y-%m-%d %H:%M:%S}'
             return repr_
 
         if isinstance(value, list):
@@ -465,36 +465,49 @@ class BgOrderSerializer(serializers.ModelSerializer):
         """
         Валидация фонового заказа.
 
-        1. Если заказ уже существует, берём тип и плейлист прямо с него.
-        1.1. Если
-        1.2. что тип файлов в плейлисте соответствует типу заказа.
-        2. Если всё ок, возвращаем данные как есть.
+        1. Если происходит обновление существующего заказа, то:
+        1.1 Проверяем, обновился ли плейлист. Если да, то берём
+            айди плейлиста из входящих данных, а тип заказа с самого заказа
+            и валидируем плейлист.
+        1.2 Если же происходит создание заказа, то получаем всё из
+            входящих данных и валидируем плейлист.
+        2. Возвращаем валидированные данные.
         """
-        empty_values = Constants.empty_values
+        def _validate_playlist(playlist_id: str, order_type: int):
+            """
+            Валидация плейлиста.
+
+            1. Находим и получаем объект плейлиста, а также его файлы.
+            2. Если файлов в плейлисте нет, выбрасываем ошибку.
+            3. Проходим по файлам и сверяем их тип с типом заказа.
+            4. При несоответствии выбрасываем ошибку.
+            """
+            empty_values = Constants.empty_values
+            # 1
+            playlist_obj = Playlist.objects.get(id=playlist_id)
+            files = playlist_obj.files.all()
+            # 2
+            if files in empty_values:
+                raise serializers.ValidationError('Плейлист не содержит файлов')
+            # 3
+            for file in files:
+                if file.type != order_type:
+                    # 4
+                    raise serializers.ValidationError(
+                        f'Плейлист содержит файлы неправильного типа {file.type} != {order_type}'
+                    )
         # 1
         if self.instance:
-            playlist_id = str(self.instance.playlist.id)
-            order_type = self.instance.order_type
-        else:
             # 1.1
-            try:
-                playlist_id = self.initial_data[0].get('playlist')
-                order_type = self.initial_data[0].get('order_type')
-            # 1.2
-            except KeyError:
+            if 'playlist' in self.initial_data:
                 playlist_id = self.initial_data.get('playlist')
-                order_type = self.initial_data.get('order_type')
-        # 1
-        playlist_obj = Playlist.objects.get(id=playlist_id)
-        files = playlist_obj.files.all()
-        # 1.1
-        if files in empty_values:
-            raise serializers.ValidationError('Плейлист не содержит файлов')
-        for file in files:
-            if file.type != order_type:
-                raise serializers.ValidationError(
-                    f'Плейлист содержит файлы неправильного типа {file.type} != {order_type}'
-                )
+                order_type = self.instance.order_type
+                _validate_playlist(playlist_id, order_type)
+        # 1.2
+        else:
+            playlist_id = self.initial_data[0].get('playlist')
+            order_type = self.initial_data[0].get('order_type')
+            _validate_playlist(playlist_id, order_type)
         # 2
         return data
 
@@ -523,7 +536,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
                 'name': obj.playlist.name,
                 'files_count': obj.playlist.files.count()
             }
-            repr_['created'] = obj.created.strftime('%Y-%m-%d %H:%M:%S')
+            repr_['created'] = f'{obj.created:%Y-%m-%d %H:%M:%S}'
             return repr_
 
         if isinstance(value, list):

@@ -3,6 +3,7 @@ from datetime import datetime as dt
 from celery import shared_task
 from celery_singleton import Singleton
 
+from api.constants import get_bg_task_type
 from api.logger import setup_logger
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
@@ -112,6 +113,49 @@ def create_ad_order_task(orders_ids: list):
 
 
 @shared_task
+def update_ad_order_task(
+    order_list: list[str],
+    files: list[dict[str, str]] | list[str],
+    action_type
+):
+    """
+    Обновление активного заказа.
+
+    В зависимости от действия (удаление или добавление файлов в плейлист)
+    отдаётся список словарей, содержащий айдишки и хэши новых файлов,
+    либо список с айдишками файлов, которые нужно убрать.
+
+    0. Фильтруем заказы по айди.
+    1. Собираем список репликаций, подставляем информацию из заказа,
+        тип действия и список файлов.
+    2. Создаём все репликации одним действием.
+    3. В ответ отдаём количество созданных репликаций.
+    """
+    # 0
+    orders = AdOrder.objects.filter(id__in=order_list)
+    UPDATE_AD = 14
+    task_list = []
+    # 1
+    for order in orders:
+        task_list.append(
+            Task(
+                owner=order.owner,
+                client=order.client,
+                type=UPDATE_AD,
+                parameters={
+                    'order_id': str(order.id),
+                    'update_type': action_type,
+                    'files': files
+                }
+            )
+        )
+    # 2
+    Task.objects.bulk_create(task_list)
+    # 3
+    return f'Обновлено заказов: {len(task_list)}'
+
+
+@shared_task
 def cancel_ad_order_task(order_id: str):
     """
     Отмена рекламного заказа.
@@ -136,8 +180,7 @@ def cancel_ad_order_task(order_id: str):
     order.status = CANCEL
     order.save()
     # 3
-    result = f'Отменён заказ: {order_id}.'
-    return result
+    return f'Отменён заказ: {order_id}.'
 
 
 @shared_task
@@ -185,6 +228,52 @@ def create_bg_order_task(orders_ids: list):
 
 
 @shared_task
+def update_bg_order_task(
+    order_list: list[str],
+    files: list[dict[str, str]] | list[str],
+    action_type
+):
+    """
+    Обновление активного заказа.
+
+    В зависимости от действия (удаление или добавление файлов в плейлист)
+    отдаётся список словарей, содержащий айдишки и хэши новых файлов,
+    либо список с айдишками файлов, которые нужно убрать.
+
+    0. Фильтруем заказы по айди.
+    1. Подбираем тип репликации по типу первого заказа, т.к все заказы в списке
+        будут одного типа.
+    2. Собираем список репликаций, подставляем информацию из заказа,
+        тип действия и список файлов.
+    3. Создаём все репликации одним действием.
+    4. В ответ отдаём количество созданных репликаций.
+    """
+    # 0
+    orders = BgOrder.objects.filter(id__in=order_list)
+    # 1
+    task_type = get_bg_task_type(orders[0].order_type, action='update')
+    task_list = []
+    # 2
+    for order in orders:
+        task_list.append(
+            Task(
+                owner=order.owner,
+                client=order.client,
+                type=task_type,
+                parameters={
+                    'order_id': str(order.id),
+                    'update_type': action_type,
+                    'files': files
+                }
+            )
+        )
+    # 3
+    Task.objects.bulk_create(task_list)
+    # 4
+    return f'Репликаций создано: {len(task_list)}'
+
+
+@shared_task
 def cancel_bg_order_task(order_id: str):
     """
     Отмена фонового заказа.
@@ -195,12 +284,11 @@ def cancel_bg_order_task(order_id: str):
     3. Меняем статус заказа на Отменён.
     4. В ответ отдаём айди отменённого заказа.
     """
-    from api.constants import Constants
     CANCEL = 3
     # 0
     order = BgOrder.objects.get(id=order_id)
     # 1
-    task_type = Constants.get_cancel_task_type(order.order_type)
+    task_type = get_bg_task_type(order.order_type, action='cancel')
     # 2
     Task.objects.bulk_create(
         owner=order.owner,

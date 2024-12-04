@@ -1,7 +1,9 @@
 from django.db import models
 from django_minio_backend import MinioBackend
+from rest_framework.exceptions import ValidationError
 
 from api import APIBaseObjectModel
+from api.constants import get_minio_client
 from files.file_info import GetFileInfo
 
 TYPES = {
@@ -111,8 +113,20 @@ class File(APIBaseObjectModel):
         Хэш суммы, размер и продолжительность вычисляются в отдельной функции.
         Суммированный хэш получается сложением md5 и sha256 хешей.
         """
+        from api.constants import get_list_of_file_types
+        types = get_list_of_file_types()
+        file_type = TYPES[self.type]
+        allowed_types: set = types[file_type]
         file = self.source.file
         self.name = file.name.split('/')[-1]
+        extension = self.name.split('.')[-1]
+        if extension not in allowed_types:
+            self.delete()
+            raise ValidationError(
+                'Выбранный тип файла не соответствует его формату.\n'
+                f'Для типа {file_type} допустимы следующие форматы:'
+                f'{allowed_types}'
+            )
         self.md5hash = GetFileInfo.get_md5(file)
         self.sha256hash = GetFileInfo.get_sha256(file)
         self.hash = f'{self.md5hash}{self.sha256hash}'
@@ -122,21 +136,20 @@ class File(APIBaseObjectModel):
 
     def delete(self, *args, **kwargs):
         """При удалении файла с базы удаляем его также и в Минио."""
-        from api.constants import Constants
         from django.conf import settings
 
-        minio_client = Constants.get_minio_client()
+        minio_client = get_minio_client()
         minio_client.remove_object(
             settings.MINIO_MEDIA_FILES_BUCKET,
             f'{TYPES[self.type]}/{self.name}'
         )
         super().delete(*args, **kwargs)
 
-    def get_url(self):
-        from api.constants import Constants
+    @property
+    def url(self):
+        """Ссылка для скачивания файла."""
         from datetime import timedelta as td
-
-        client = Constants.get_minio_client(external=True)
+        client = get_minio_client(external=True)
         url = client.get_presigned_url(
             'GET',
             'local-media',

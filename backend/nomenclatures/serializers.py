@@ -155,9 +155,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj):
         try:
-            return obj.availability.last_answer_date.strftime(
-                '%Y-%m-%d %H:%M:%S'
-            )
+            return f'{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}'
         except AttributeError:
             return 'Не выходила в сеть'
 
@@ -171,7 +169,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             'status': self.get_status(obj),
             'last_answer': self.get_last_answer(obj),
             'version': obj.version,
-            'created': obj.created.strftime('%Y-%m-%d %H:%M:%S')
+            'created': f'{obj.created:%Y-%m-%d %H:%M:%S}'
         }
         # чтобы поля не дублировались
         for field in repr_['main_info']:
@@ -213,9 +211,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj):
         try:
-            return obj.availability.last_answer_date.strftime(
-                '%Y-%m-%d %H:%M:%S'
-            )
+            return f'{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}'
         except AttributeError:
             return 'Не выходила в сеть'
 
@@ -238,5 +234,5 @@ class StatusHistorySerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['change_time'] = value.change_time.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['change_time'] = f'{value.change_time:%Y-%m-%d %H:%M:%S}'
         return repr_

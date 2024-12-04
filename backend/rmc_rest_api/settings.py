@@ -128,6 +128,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
     'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
     'PAGE_SIZE': 25,
 }
@@ -169,18 +172,14 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG
 CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
-    REST_FRAMEWORK.update({
-        'DEFAULT_PERMISSION_CLASSES': (
-            'rest_framework.permissions.IsAuthenticated',
-        )})
 
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': td(
-        days=30 #int(os.environ.get("ACCESS_TOKEN_LIFETIME_DAYS"))
+        days=int(os.environ.get("ACCESS_TOKEN_LIFETIME_DAYS"))
     ),
     'REFRESH_TOKEN_LIFETIME': td(
-        days=60 #int(os.environ.get("REFRESH_TOKEN_LIFETIME_DAYS"))
+        days=int(os.environ.get("REFRESH_TOKEN_LIFETIME_DAYS"))
     ),
     'AUTH_HEADER_TYPES': ('access_token',),
     'BLACKLIST_AFTER_ROTATION': True,

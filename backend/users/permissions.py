@@ -4,7 +4,7 @@ MUTATE_METHODS = ('PUT', 'PATCH')
 MUTATE_DELETE_METHODS = (*MUTATE_METHODS, 'DELETE')
 NO_DELETE_METHODS = (*MUTATE_METHODS, *SAFE_METHODS)
 
-error_message = 'Недостаточно прав' + ' %(class)s.__doc__'
+error_message = 'Недостаточно прав.' + ' %(class)s.__doc__'
 
 
 class SuperuserCUDAuthRetrieve(BasePermission):
@@ -39,7 +39,7 @@ class OnlyStaffCRUD(BasePermission):
 
 class StaffCUDAuthRetrieve(BasePermission):
     """
-    Создать, изменить и удалить может только любой сотрудник,
+    Создать, изменить и удалить может любой сотрудник,
     просмотреть - любой авторизованный.
     """
 
@@ -152,9 +152,9 @@ class SuperuserDeleteOwnerCRU(BasePermission):
         return request.user.is_superuser
 
 
-class OwnerAndSuperuserCRUD(BasePermission):
+class OwnerAndStaffCRUD(BasePermission):
     """
-    Изменить или удалить может только владелец или SU,
+    Изменить или удалить может только владелец или сотрудник,
     создать и просмотреть - любой авторизованный.
     """
 
@@ -165,10 +165,10 @@ class OwnerAndSuperuserCRUD(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
-            return True
+            return request.user.is_authenticated
 
         return request.method in MUTATE_DELETE_METHODS and (
-            obj.owner == request.user or request.user.is_superuser
+            obj.owner == request.user or not request.user.is_ordinary
         )
 
 

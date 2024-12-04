@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from rest_framework.response import Response
 
 from tasks.filters import TaskFilter
@@ -8,8 +8,21 @@ from tasks.models import Task, STATUSES
 from users.permissions import OnlyStaffCRUD
 
 
-class TaskViewSet(viewsets.ModelViewSet):
-    """Работа с репликациями."""
+class TaskViewSet(
+    viewsets.GenericViewSet,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin
+):
+    """
+    Работа с репликациями.
+
+    Репликацию можно только создать и просмотреть.
+    При отправке запроса на удаление репликация отменяется, если
+    её статус 'Ожидает обработки', иначе будет ошибка.
+    Также репликацию нельзя изменить.
+    """
 
     queryset = Task.objects.all().select_related('owner', 'client')
     filter_backends = [DjangoFilterBackend]

@@ -1,12 +1,9 @@
 import pytest
 
 from datetime import datetime as dt, timedelta as td
-from django.shortcuts import get_object_or_404
 from http import HTTPStatus
-from itertools import chain, product
-from uuid import UUID
+from itertools import product
 
-from nomenclatures.models import Nomenclature
 from orders.models import AdOrder, BgOrder
 
 
@@ -19,7 +16,6 @@ class TestOrders:
     bg_list_url = '/api/bgorders/'
     bg_detail_url = '/api/bgorders/{bgorder}/'
     bg_cancel_url = '/api/bgorders/{bgorder}/cancel/'
-
 
     @staticmethod
     def get_today_date() -> str:
@@ -155,6 +151,71 @@ class TestOrders:
         return valid_data
 
     @staticmethod
+    def check_valid_create_adorder_response(data, user, response) -> None:
+        check_params = data[0]['parameters']
+        if 'timedelta' in check_params:
+            timedelta = check_params['timedelta']
+            timedelta = list(map(int, timedelta.split(':')))
+            check_params.update({'timedelta': timedelta})
+        if 'daily_start_time' in check_params:
+            start_time = check_params.pop('daily_start_time')
+            start_time = list(map(int, start_time.split(':')))
+            check_params.update({'start_time': start_time})
+        if 'daily_end_time' in check_params:
+            end_time = check_params.pop('daily_end_time')
+            end_time = list(map(int, end_time.split(':')))
+            check_params.update({'end_time': end_time})
+        check_params.update({'weight': 50})
+        assert response[0][0]['owner'] == user.full_name, (
+            'Создатель заказа не встал в соответствующее поле.'
+        )
+        assert (
+                response[0][0]['client']['id'] == data[0]['clients'][0]
+        ), (
+            'Целевая рабочая станция созданного заказа отличается от '
+            'таковой в отправленных данных.'
+        )
+        assert (
+                response[0][0]['playlist']['id'] == data[0]['playlist']
+        ), (
+            'Плейлист созданного заказа отличается от указанного '
+            'в отправленных данных.'
+        )
+        assert (
+                response[0][0]['broadcast_type']
+                == data[0]['broadcast_type']
+        ), (
+            'Режим вещания заказа отличается от указанного '
+            'в отправленных данных.'
+        )
+        assert response[0][0]['parameters'] == check_params, (
+            'Параметры заказа отличаются от отправленных данных.'
+        )
+        check_params.clear()
+
+    @staticmethod
+    def check_valid_create_bgorder_response(data, user, response) -> None:
+
+        assert response[0][0]['owner'] == user.full_name, (
+            'Создатель заказа не встал в соответствующее поле.'
+        )
+        assert (
+                response[0][0]['client']['id'] == data[0]['clients'][0]
+        ), (
+            'Целевая рабочая станция созданного заказа отличается от '
+            'таковой в отправленных данных.'
+        )
+        assert (
+                response[0][0]['playlist']['id'] == data[0]['playlist']
+        ), (
+            'Плейлист созданного заказа отличается от указанного '
+            'в отправленных данных.'
+        )
+        assert (
+                response[0][0]['order_type'] == data[0]['order_type']
+        ), 'Тип заказа отличается от указанного в отправленных данных.'
+
+    @staticmethod
     def get_valid_partial_update_adorder_data(
             playlist_id,
             file_1_id,
@@ -189,6 +250,19 @@ class TestOrders:
             case 'slides':
                 assert response['slides'].keys() == data['slides'].keys(), message
             case _: pass
+
+    def test_chain_list_or_instance(self, playlist_1, adorder, bgorder):
+        from itertools import chain
+        from django.core.exceptions import ValidationError
+        pls_list = [playlist_1]
+        try:
+            orders_list = chain(AdOrder.objects.filter(playlist=pls_list),
+                                BgOrder.objects.filter(playlist=pls_list))
+        except ValidationError:
+            orders_list = chain(AdOrder.objects.filter(playlist__in=pls_list),
+                                BgOrder.objects.filter(playlist__in=pls_list))
+        list_chain = len(list(orders_list))
+        assert list_chain == 2, f'{list_chain}'
 
     def test_availability_auth(
         self,
@@ -232,64 +306,25 @@ class TestOrders:
         nomenclature,
         playlist_1
     ):
-        adorder_count = AdOrder.objects.count()
         nomenclature_id = str(nomenclature.id)
         playlist_id = str(playlist_1.id)
         valid_data = self.get_valid_adorder_data(nomenclature_id, playlist_id)
         for data in valid_data:
+            adorder_count = AdOrder.objects.count()
             response = admin_client.post(
                 self.ad_list_url,
                 data=data,
                 format='json'
             )
+            response_data = response.json()
             assert response.status_code == HTTPStatus.CREATED, (
-                f'Код статуса в ответе != 201 для данных: {data}.'
+                f'Код статуса в ответе != 201.\nДанные: {data}\nОтвет: {response_data}.'
             )
             adorder_count += 1
             assert adorder_count == AdOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            response_data = response.json()
-            check_params = data[0]['parameters']
-            if 'timedelta' in check_params:
-                timedelta = check_params['timedelta']
-                timedelta = list(map(int, timedelta.split(':')))
-                check_params.update({'timedelta': timedelta})
-            if 'daily_start_time' in check_params:
-                start_time = check_params.pop('daily_start_time')
-                start_time = list(map(int, start_time.split(':')))
-                check_params.update({'start_time': start_time})
-            if 'daily_end_time' in check_params:
-                end_time = check_params.pop('daily_end_time')
-                end_time = list(map(int, end_time.split(':')))
-                check_params.update({'end_time': end_time})
-            check_params.update({'weight': 50})
-            assert response_data[0][0]['owner'] == admin_user.full_name, (
-                'Создатель заказа не встал в соответствующее поле.'
-            )
-            assert (
-                response_data[0][0]['client']['id'] == data[0]['clients'][0]
-            ), (
-                'Целевая рабочая станция созданного заказа отличается от '
-                'таковой в отправленных данных.'
-            )
-            assert (
-                response_data[0][0]['playlist']['id'] == data[0]['playlist']
-            ), (
-                'Плейлист созданного заказа отличается от указанного '
-                'в отправленных данных.'
-            )
-            assert (
-                response_data[0][0]['broadcast_type']
-                == data[0]['broadcast_type']
-            ), (
-                'Режим вещания заказа отличается от указанного '
-                'в отправленных данных.'
-            )
-            assert response_data[0][0]['parameters'] == check_params, (
-                'Параметры заказа отличаются от отправленных данных.'
-            )
-            check_params.clear()
+            self.check_valid_create_adorder_response(data, admin_user, response_data)
 
     def test_create_valid_adorder_manager(
         self,
@@ -298,64 +333,25 @@ class TestOrders:
         nomenclature,
         playlist_1
     ):
-        adorder_count = AdOrder.objects.count()
         nomenclature_id = str(nomenclature.id)
         playlist_id = str(playlist_1.id)
         valid_data = self.get_valid_adorder_data(nomenclature_id, playlist_id)
         for data in valid_data:
+            adorder_count = AdOrder.objects.count()
             response = manager_client.post(
                 self.ad_list_url,
                 data=data,
                 format='json'
             )
+            response_data = response.json()
             assert response.status_code == HTTPStatus.CREATED, (
-                f'Код статуса в ответе != 201 для данных: {data}.'
+                f'Код статуса в ответе != 201.\nДанные: {data}\nОтвет: {response_data}.'
             )
             adorder_count += 1
             assert adorder_count == AdOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            response_data = response.json()
-            check_params = data[0]['parameters']
-            if 'timedelta' in check_params:
-                timedelta = check_params['timedelta']
-                timedelta = list(map(int, timedelta.split(':')))
-                check_params.update({'timedelta': timedelta})
-            if 'daily_start_time' in check_params:
-                start_time = check_params.pop('daily_start_time')
-                start_time = list(map(int, start_time.split(':')))
-                check_params.update({'start_time': start_time})
-            if 'daily_end_time' in check_params:
-                end_time = check_params.pop('daily_end_time')
-                end_time = list(map(int, end_time.split(':')))
-                check_params.update({'end_time': end_time})
-            check_params.update({'weight': 50})
-            assert response_data[0][0]['owner'] == manager_user.full_name, (
-                'Создатель заказа не встал в соответствующее поле.'
-            )
-            assert (
-                response_data[0][0]['client']['id'] == data[0]['clients'][0]
-            ), (
-                'Целевая рабочая станция созданного заказа отличается от '
-                'таковой в отправленных данных.'
-            )
-            assert (
-                response_data[0][0]['playlist']['id'] == data[0]['playlist']
-            ), (
-                'Плейлист созданного заказа отличается от указанного '
-                'в отправленных данных.'
-            )
-            assert (
-                response_data[0][0]['broadcast_type']
-                == data[0]['broadcast_type']
-            ), (
-                'Режим вещания заказа отличается от указанного '
-                'в отправленных данных.'
-            )
-            assert response_data[0][0]['parameters'] == check_params, (
-                'Параметры заказа отличаются от отправленных данных.'
-            )
-            check_params.clear()
+            self.check_valid_create_adorder_response(data, manager_user, response_data)
 
     def test_create_valid_adorder_user(
         self,
@@ -729,7 +725,6 @@ class TestOrders:
         playlist_3,
         playlist_4
     ):
-        bgorder_count = BgOrder.objects.count()
         valid_data = self.get_valid_bgorder_data(
             nomenclature,
             playlist_1,
@@ -738,6 +733,7 @@ class TestOrders:
             playlist_4
         )
         for data in valid_data:
+            bgorder_count = BgOrder.objects.count()
             response = admin_client.post(
                 self.bg_list_url,
                 data=data,
@@ -751,24 +747,7 @@ class TestOrders:
             assert bgorder_count == BgOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            assert response_data[0][0]['owner'] == admin_user.full_name, (
-                'Создатель заказа не встал в соответствующее поле.'
-            )
-            assert (
-                response_data[0][0]['client']['id'] == data[0]['clients'][0]
-            ), (
-                'Целевая рабочая станция созданного заказа отличается от '
-                'таковой в отправленных данных.'
-            )
-            assert (
-                response_data[0][0]['playlist']['id'] == data[0]['playlist']
-            ), (
-                'Плейлист созданного заказа отличается от указанного '
-                'в отправленных данных.'
-            )
-            assert (
-                response_data[0][0]['order_type'] == data[0]['order_type']
-            ), 'Тип заказа отличается от указанного в отправленных данных.'
+            self.check_valid_create_bgorder_response(data, admin_user, response_data)
 
     def test_create_valid_bgorder_manager(
         self,
@@ -780,7 +759,6 @@ class TestOrders:
         playlist_3,
         playlist_4
     ):
-        bgorder_count = BgOrder.objects.count()
         valid_data = self.get_valid_bgorder_data(
             nomenclature,
             playlist_1,
@@ -789,37 +767,21 @@ class TestOrders:
             playlist_4
         )
         for data in valid_data:
+            bgorder_count = BgOrder.objects.count()
             response = manager_client.post(
                 self.bg_list_url,
                 data=data,
                 format='json'
             )
+            response_data = response.json()
             assert response.status_code == HTTPStatus.CREATED, (
-                'Код статуса в ответе != 201.'
+                f'Код статуса в ответе != 201.\nДанные: {data}\nОтвет:{response_data}'
             )
             bgorder_count += 1
             assert bgorder_count == BgOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            response_data = response.json()
-            assert response_data[0][0]['owner'] == manager_user.full_name, (
-                'Создатель заказа не встал в соответствующее поле.'
-            )
-            assert (
-                response_data[0][0]['client']['id'] == data[0]['clients'][0]
-            ), (
-                'Целевая рабочая станция созданного заказа отличается от '
-                'таковой в отправленных данных.'
-            )
-            assert (
-                response_data[0][0]['playlist']['id'] == data[0]['playlist']
-            ), (
-                'Плейлист созданного заказа отличается от указанного '
-                'в отправленных данных.'
-            )
-            assert (
-                response_data[0][0]['order_type'] == data[0]['order_type']
-            ), 'Тип заказа отличается от указанного в отправленных данных.'
+            self.check_valid_create_bgorder_response(data, manager_user, response_data)
 
     def test_create_valid_bgorder_user(
         self,
@@ -966,10 +928,10 @@ class TestOrders:
         nomenclature_1,
         playlist_5,
         file_2,
-        file_3
+        file_5
     ):
         playlist_5_id = str(playlist_5.id)
-        track_id = str(file_3.id)
+        track_id = str(file_5.id)
         slide_id = str(file_2.id)
         update_data = TestOrders.get_valid_partial_update_adorder_data(
             playlist_5_id,
@@ -983,7 +945,7 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
                 f'Код статуса в ответе != 200.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
@@ -995,10 +957,10 @@ class TestOrders:
         nomenclature_1,
         playlist_5,
         file_2,
-        file_3
+        file_5
     ):
         playlist_5_id = str(playlist_5.id)
-        track_id = str(file_3.id)
+        track_id = str(file_5.id)
         slide_id = str(file_2.id)
         update_data = TestOrders.get_valid_partial_update_adorder_data(
             playlist_5_id,
@@ -1012,7 +974,7 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
                 f'Код статуса в ответе != 200.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
@@ -1024,10 +986,10 @@ class TestOrders:
         nomenclature_1,
         playlist_5,
         file_2,
-        file_3
+        file_5
     ):
         playlist_5_id = str(playlist_5.id)
-        track_id = str(file_3.id)
+        track_id = str(file_5.id)
         slide_id = str(file_2.id)
         update_data = TestOrders.get_valid_partial_update_adorder_data(
             playlist_5_id,
@@ -1041,7 +1003,7 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.FORBIDDEN, (
                 f'Код статуса в ответе != 403.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
 
     def test_valid_partial_update_adorder_anon(
@@ -1051,10 +1013,10 @@ class TestOrders:
         nomenclature_1,
         playlist_5,
         file_2,
-        file_3
+        file_5
     ):
         playlist_5_id = str(playlist_5.id)
-        track_id = str(file_3.id)
+        track_id = str(file_5.id)
         slide_id = str(file_2.id)
         update_data = TestOrders.get_valid_partial_update_adorder_data(
             playlist_5_id,
@@ -1068,7 +1030,7 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.UNAUTHORIZED, (
                 f'Код статуса в ответе != 401.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
 
     def test_invalid_partial_update_adorder(
@@ -1171,7 +1133,7 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
                 f'Код статуса в ответе != 200.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
@@ -1191,7 +1153,7 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
                 f'Код статуса в ответе != 200.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
@@ -1211,7 +1173,7 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.FORBIDDEN, (
                 f'Код статуса в ответе != 403.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
 
     def test_valid_partial_update_bgorder_anon(
@@ -1229,7 +1191,7 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.UNAUTHORIZED, (
                 f'Код статуса в ответе != 401.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
 
     def test_invalid_partial_update_bgorder(
@@ -1308,20 +1270,22 @@ class TestOrders:
             response_data = response.json()
             assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED, (
                 f'Код статуса в ответе != 405.'
-                f'\nДанные:{data}\nОтвет:{response_data}'
+                f'\nДанные:{data}.\nОтвет:{response_data}'
             )
 
-    @pytest.mark.xfail(reason='Нужно придумать как тестировать таски celery')
+
+@pytest.mark.skip(
+    reason='Запросы работают. Нужно придумать как тестировать таски celery'
+)
+class TestCeleryTasks:
+
     def test_cancel_adorder_admin(
         self,
         admin_client,
-        adorder,
-        celery_app,
-        celery_worker
+        adorder
     ):
-
         adorder_id = str(adorder.id)
-        url = self.ad_cancel_url.format(adorder=adorder_id)
+        url = TestOrders.ad_cancel_url.format(adorder=adorder_id)
         response = admin_client.delete(url)
         assert response.status_code == HTTPStatus.OK, (
             f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
@@ -1329,12 +1293,92 @@ class TestOrders:
         order_obj = AdOrder.objects.get(id=adorder_id)
         assert order_obj.status == 3, 'Статус заказа не Отменён.'
 
-    def test_chain_and_id(self, nomenclature, adorder, bgorder):
-        nom = get_object_or_404(Nomenclature, id=str(nomenclature.id))
-        orders_list = chain(
-            nom.adorders.filter(status__in=[0, 1]),
-            nom.bgorders.filter(status__in=[0, 1])
+    def test_cancel_adorder_manager(
+        self,
+        manager_client,
+        adorder
+    ):
+        adorder_id = str(adorder.id)
+        url = TestOrders.ad_cancel_url.format(adorder=adorder_id)
+        response = manager_client.delete(url)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
+        )
+        order_obj = AdOrder.objects.get(id=adorder_id)
+        assert order_obj.status == 3, 'Статус заказа не Отменён.'
+
+    def test_cancel_adorder_user(
+        self,
+        user_client,
+        adorder
+    ):
+        adorder_id = str(adorder.id)
+        url = TestOrders.ad_cancel_url.format(adorder=adorder_id)
+        response = user_client.delete(url)
+        assert response.status_code == HTTPStatus.FORBIDDEN, (
+            f'Код статуса в ответе != 403.\nОтвет:{response.json()}.'
         )
 
-        for order in orders_list:
-            assert isinstance(order.id, UUID)
+    def test_cancel_adorder_anon(
+        self,
+        anon_client,
+        adorder
+    ):
+        adorder_id = str(adorder.id)
+        url = TestOrders.ad_cancel_url.format(adorder=adorder_id)
+        response = anon_client.delete(url)
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            f'Код статуса в ответе != 401.\nОтвет:{response.json()}.'
+        )
+
+    def test_cancel_bgorder_admin(
+        self,
+        admin_client,
+        bgorder
+    ):
+        bgorder_id = str(bgorder.id)
+        url = TestOrders.bg_cancel_url.format(bgorder=bgorder_id)
+        response = admin_client.delete(url)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
+        )
+        order_obj = BgOrder.objects.get(id=bgorder_id)
+        assert order_obj.status == 3, 'Статус заказа не Отменён.'
+
+    def test_cancel_bgorder_manager(
+        self,
+        manager_client,
+        bgorder
+    ):
+        bgorder_id = str(bgorder.id)
+        url = TestOrders.bg_cancel_url.format(bgorder=bgorder_id)
+        response = manager_client.delete(url)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
+        )
+        order_obj = BgOrder.objects.get(id=bgorder_id)
+        assert order_obj.status == 3, 'Статус заказа не Отменён.'
+
+    def test_cancel_bgorder_user(
+        self,
+        user_client,
+        bgorder
+    ):
+        bgorder_id = str(bgorder.id)
+        url = TestOrders.bg_cancel_url.format(bgorder=bgorder_id)
+        response = user_client.delete(url)
+        assert response.status_code == HTTPStatus.FORBIDDEN, (
+            f'Код статуса в ответе != 403.\nОтвет:{response.json()}.'
+        )
+
+    def test_cancel_bgorder_anon(
+        self,
+        anon_client,
+        bgorder
+    ):
+        bgorder_id = str(bgorder.id)
+        url = TestOrders.bg_cancel_url.format(bgorder=bgorder_id)
+        response = anon_client.delete(url)
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            f'Код статуса в ответе != 401.\nОтвет:{response.json()}.'
+        )

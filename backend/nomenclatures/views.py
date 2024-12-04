@@ -1,8 +1,6 @@
 from datetime import datetime as dt
 from itertools import chain
 
-from django.core.exceptions import ValidationError
-from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -10,11 +8,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
-    HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST
+    HTTP_201_CREATED
 )
 
-from api.constants import Constants
+from api.constants import Constants, get_instance_or_404
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -82,18 +79,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         instance.is_active = False
         instance.save()
 
-    @staticmethod
-    def get_nomenclature_or_404(pk):
-        """Запрашиваем номенклатуру из базы или возвращаем 400."""
-        try:
-            nomenclature = get_object_or_404(Nomenclature, id=pk)
-        except ValidationError:
-            return Response(
-                {'detail': f'Значение "{pk}" не является верным UUID-ом.'},
-                status=HTTP_400_BAD_REQUEST
-            )
-        return nomenclature
-
     @action(detail=False, methods=['GET'], url_path='versions')
     def get_versions(self, request):
         versions = Nomenclature.objects.order_by().values_list(
@@ -118,7 +103,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['GET'])
     def status_history(self, request, pk):
-        nomenclature = self.get_nomenclature_or_404(pk)
+        nomenclature = get_instance_or_404(Nomenclature, pk)
         history = nomenclature.history.all()
         serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
@@ -126,7 +111,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST'], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
         """Отдача задач для клиентов и обработка присылаемых данных."""
-        nomenclature = self.get_nomenclature_or_404(pk)
+        nomenclature = get_instance_or_404(Nomenclature, pk)
         nom_update = False
 
         if 'version' in request.data:
@@ -173,7 +158,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='ad_stat')
     def get_ad_stat(self, request, pk):
         """Отображение статистики рекламы конкретной номенклатуры."""
-        self.get_nomenclature_or_404(pk)
+        get_instance_or_404(Nomenclature, pk)
         date = request.query_params.get('date')
         statistics = ADStat.objects.filter(
             client=pk, played__contains=date
@@ -184,7 +169,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='music_stat')
     def get_music_stat(self, request, pk):
         """Отображение статистики музыки конкретной номенклатуры."""
-        self.get_nomenclature_or_404(pk)
+        get_instance_or_404(Nomenclature, pk)
         statistics = MusicStat.objects.filter(client=pk)
         page = self.paginate_queryset(statistics)
         if page is not None:
@@ -196,7 +181,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='video_stat')
     def get_video_stat(self, request, pk):
         """Отображение статистики видео конкретной номенклатуры."""
-        self.get_nomenclature_or_404(pk)
+        get_instance_or_404(Nomenclature, pk)
         statistics = VideoStat.objects.filter(client=pk)
         page = self.paginate_queryset(statistics)
         if page is not None:
@@ -209,7 +194,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='image_stat')
     def get_image_stat(self, request, pk):
         """Отображение статистики картинок конкретной номенклатуры."""
-        self.get_nomenclature_or_404(pk)
+        get_instance_or_404(Nomenclature, pk)
         statistics = ImageStat.objects.filter(client=pk)
         page = self.paginate_queryset(statistics)
         if page is not None:
@@ -221,9 +206,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'], url_path='ticker_stat')
     def get_ticker_stat(self, request, pk):
         """Отображение статистики бегущих строк конкретной номенклатуры."""
-        self.get_nomenclature_or_404(pk)
+        get_instance_or_404(Nomenclature, pk)
         statistics = TickerStat.objects.filter(client=pk)
-
         page = self.paginate_queryset(statistics)
         if page is not None:
             serializer = NomenclatureTickerStatSerializer(page, many=True)
@@ -245,7 +229,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         2. В ответ отдаём сообщение со списком заказов, которые будут
             переотправленны и которые переотправить нельзя.
         """
-        nomenclature = self.get_nomenclature_or_404(pk)
+        nomenclature = get_instance_or_404(Nomenclature, pk)
         empty_values = Constants.empty_values
         orders = chain(
             nomenclature.adorders.filter(status__in=[0, 1]),
@@ -275,7 +259,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
          - Настройки вещания
             settings = {'mon' = {'default_volume': [50, 50, 50, 50], ...}
         """
-        nomenclature = self.get_nomenclature_or_404(pk)
+        nomenclature = get_instance_or_404(Nomenclature, pk)
         task = request.data['task']
         owner = str(request.user.id)
 
@@ -296,7 +280,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST'], url_path='tasks')
     def get_tasks(self, request, pk):
         """Запрос списка репликаций номенклатуры."""
-        self.get_nomenclature_or_404(pk)
+        get_instance_or_404(Nomenclature, pk)
         tasks = Task.objects.filter(client=pk)
 
         page = self.paginate_queryset(tasks)
