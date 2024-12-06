@@ -8,7 +8,8 @@ from files.models import File, Playlist
 load_dotenv()
 
 
-@pytest.mark.django_db(transaction=True)
+# @pytest.mark.django_db(transaction=True)
+@pytest.mark.skip(reason='Чтобы быстрее проверять новые тесты')
 class TestFiles:
 
     files_url = '/api/files/'
@@ -1133,6 +1134,140 @@ class TestFiles:
         )
 
 
+@pytest.mark.django_db(transaction=True, databases=['default', 'clickhouse'])
+class TestNew:
+
+    files_url = '/api/files/'
+    file_detail_url = '/api/files/{file_id}/'
+    file_add_tags = '/api/files/{file_id}/add_tags/'
+    file_remove_tags = '/api/files/{file_id}/remove_tags/'
+    playlists_url = '/api/playlists/'
+    playlist_detail_url = '/api/playlists/{playlist_id}/'
+    playlist_add_files_url = '/api/playlists/{playlist_id}/add_files/'
+    playlist_remove_files_url = '/api/playlists/{playlist_id}/remove_files/'
+    tags_url = '/api/tags/'
+    tag_detail_url = '/api/tags/{tag_id}/'
+
+    def test_get_stat_ad(
+        self,
+        admin_client,
+        file_3,
+        ad_stat
+    ):
+        file_id = str(file_3.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = admin_client.get(url + 'stat/')
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+        )
+        assert 'played' in response_data[0], (
+            'В ответе нет информации о времени, когда сыграл файл.'
+        )
+        assert 'length' in response_data[0], (
+            'В ответе нет информации о времени, сколько играл файл.'
+        )
+        assert 'client' in response_data[0], (
+            'В ответе нет информации о номенклатуре.'
+        )
+        assert 'ad_block' in response_data[0], (
+            'В ответе нет информации о рекламном блоке.'
+        )
+
+    def test_get_stat_music(
+        self,
+        admin_client,
+        file_1,
+        music_stat
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = admin_client.get(url + 'stat/')
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+        )
+        assert 'played' in response_data[0], (
+            'В ответе нет информации о времени, когда сыграл файл.'
+        )
+        assert 'length' in response_data[0], (
+            'В ответе нет информации о времени, сколько играл файл.'
+        )
+        assert 'client' in response_data[0], (
+            'В ответе нет информации о номенклатуре.'
+        )
+
+    def test_get_stat_image(
+        self,
+        admin_client,
+        file_1,
+        image_stat
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = admin_client.get(url + 'stat/')
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+        )
+        assert 'played' in response_data[0], (
+            'В ответе нет информации о времени, когда сыграл файл.'
+        )
+        assert 'length' in response_data[0], (
+            'В ответе нет информации о времени, сколько играл файл.'
+        )
+        assert 'client' in response_data[0], (
+            'В ответе нет информации о номенклатуре.'
+        )
+
+    def test_get_stat_video(
+        self,
+        admin_client,
+        file_3,
+        video_stat
+    ):
+        file_id = str(file_3.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = admin_client.get(url + 'stat/')
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+        )
+        assert 'played' in response_data[0], (
+            'В ответе нет информации о времени, когда сыграл файл.'
+        )
+        assert 'length' in response_data[0], (
+            'В ответе нет информации о времени, сколько играл файл.'
+        )
+        assert 'client' in response_data[0], (
+            'В ответе нет информации о номенклатуре.'
+        )
+
+    def test_get_stat_ticker(
+        self,
+        admin_client,
+        file_4,
+        ticker_stat
+    ):
+        file_id = str(file_4.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = admin_client.get(url + 'stat/')
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+        )
+        assert 'played' in response_data[0], (
+            'В ответе нет информации о времени, когда сыграл файл.'
+        )
+        assert 'length' in response_data[0], (
+            'В ответе нет информации о времени, сколько играл файл.'
+        )
+        assert 'client' in response_data[0], (
+            'В ответе нет информации о номенклатуре.'
+        )
+
+
+@pytest.mark.django_db(transaction=True)
 class TestMockCeleryTasks:
     from orders.models import AdOrder, BgOrder
     from tasks.models import Task

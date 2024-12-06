@@ -265,12 +265,12 @@ def bgorder(user, file_1, playlist_1, nomenclature) -> BgOrder:
 
 
 @pytest.fixture
-def ad_stat(nomenclature, file_1) -> ADStat:
+def ad_stat(nomenclature, file_3) -> ADStat:
     length = randint(5, 30)
     return ADStat.objects.create(
         created=f'{dt.today().date()} 12:00:{length + 1}',
         played=f'{dt.today().date()} 12:00:00',
-        file=str(file_1.id),
+        file=str(file_3.id),
         client=str(nomenclature.id),
         length=length,
         ad_block=randint(0, 12)

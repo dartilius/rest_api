@@ -186,26 +186,26 @@ class FileViewSet(NoUpdateViewSet):
     def get_stat(self, request, pk):
         """Отображение статистики файла."""
         file = get_instance_or_404(File, pk)
-        match file.file_type:
+        match file.type:
             case 0:
-                statistics = ADStat.objects.filter(file=pk)
-                data = FileAdStatSerializer(statistics, many=True).data
-            case 1:
                 statistics = MusicStat.objects.filter(file=pk)
                 data = FileMusicStatSerializer(statistics, many=True).data
-            case 2:
+            case 1:
                 statistics = ImageStat.objects.filter(file=pk)
                 data = FileImageStatSerializer(statistics, many=True).data
-            case 3:
+            case 2:
                 statistics_bg = VideoStat.objects.filter(file=pk)
                 statistics_ad = ADStat.objects.filter(file=pk)
                 data_bg = FileVideoStatSerializer(statistics_bg,
                                                   many=True).data
                 data_ad = FileAdStatSerializer(statistics_ad, many=True).data
                 data = data_ad + data_bg
-            case 4:
+            case 3:
                 statistics = TickerStat.objects.filter(file=pk)
                 data = FileTickerStatSerializer(statistics, file=True).data
+            case 4:
+                statistics = ADStat.objects.filter(file=pk)
+                data = FileAdStatSerializer(statistics, many=True).data
             case _:
                 data = []
 
