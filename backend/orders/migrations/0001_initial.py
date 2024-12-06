@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', api.base_objects.UUIDPKField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, verbose_name='Уникальный идентификатор')),
                 ('name', models.CharField(max_length=255, verbose_name='Название')),
-                ('is_active', models.BooleanField(default=True)),
+                ('is_active', models.BooleanField(default=True, verbose_name='Актуальность')),
                 ('created', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
                 ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
                 ('broadcast_interval', django.contrib.postgres.fields.ranges.DateTimeRangeField(verbose_name='Интервал работы заказа')),
@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', api.base_objects.UUIDPKField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, verbose_name='Уникальный идентификатор')),
                 ('name', models.CharField(max_length=255, verbose_name='Название')),
-                ('is_active', models.BooleanField(default=True)),
+                ('is_active', models.BooleanField(default=True, verbose_name='Актуальность')),
                 ('created', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
                 ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
                 ('broadcast_interval', django.contrib.postgres.fields.ranges.DateTimeRangeField(verbose_name='Интервал работы заказа')),

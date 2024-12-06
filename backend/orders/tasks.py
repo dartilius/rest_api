@@ -178,7 +178,7 @@ def cancel_ad_order_task(order_id: str):
     )
     # 2
     order.status = CANCEL
-    order.save()
+    order.save(update_fields=['status'])
     # 3
     return f'Отменён заказ: {order_id}.'
 
@@ -211,6 +211,14 @@ def create_bg_order_task(orders_ids: list):
                                           f'{order.broadcast_interval.upper}',
                     'playlist': {
                         'id': str(order.playlist.id),
+                        # TODO протестировать разницу по времени выполнения
+                        # 100+ заказов в текущем исполнении и в таком:
+                        # 'files': list(
+                        #     map(lambda f: {'id': str(f.id), 'hash': f.hash},
+                        #         order.playlist.files.all())
+                        # )
+                        # сейчас каждый файл плейлиста индивидуально приводится к типу,
+                        # а во втором варианте файлы обрабатываются сразу скопом
                         'files': [
                             {
                                 'id': str(file.id),
@@ -298,7 +306,7 @@ def cancel_bg_order_task(order_id: str):
     )
     # 3
     order.status = CANCEL
-    order.save()
+    order.save(update_fields=['status'])
     # 4
     result = f'Отменено заказов: {order_id}.'
     return result

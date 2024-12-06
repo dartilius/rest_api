@@ -106,7 +106,7 @@ def get_instance_or_404(model: Type[ModelType],
 
 
 def get_instance_list_or_404(model: Type[ModelType],
-                             pk_list: list[str]) -> tuple[ModelType, set | None]:
+                             pk_list: list[str]) -> list[ModelType]:
     """
     Возвращаем список объектов модели {model} с pk из списка {pk_list},
     если такие существуют. Если не нашлось ни одного объекта,
@@ -127,7 +127,6 @@ def get_instance_list_or_404(model: Type[ModelType],
     if bad_pks:
         raise ValidationError(f'Значения {bad_pks} не являются верным UUID-ом.')
     instance_list = get_list_or_404(model, id__in=pk_list)
-
     return instance_list
 
 
@@ -140,6 +139,7 @@ def restricted_update(viewset, request, *args, **kwargs):
     Отличия от стандартного метода update():
     1. Проверяем, что получен запрос именно на частичное обновление.
     2. Проверяем, что в запросе есть только ключи из списка updatable_fields.
+    2.1 Иначе возвращаем ошибку с сообщением error_message
     """
     from rest_framework.response import Response
     from rest_framework.status import (
@@ -161,12 +161,9 @@ def restricted_update(viewset, request, *args, **kwargs):
         data=request.data,
         partial=partial
     )
-    bad_keys = set()
     initial_data = serializer.initial_data
     # 2
-    for key in initial_data:
-        if key not in updatable_fields:
-            bad_keys.add(key)
+    bad_keys = {key for key in initial_data if key not in updatable_fields}
     if bad_keys:
         return Response(
             data=error_message.format(keys=bad_keys),
@@ -177,3 +174,29 @@ def restricted_update(viewset, request, *args, **kwargs):
     if getattr(instance, '_prefetched_objects_cache', None):
         instance._prefetched_objects_cache = {}
     return Response(serializer.data)
+
+
+def filter_by_owner_name(queryset, name, value):
+    """
+    Специальный метод для фильтрации по имени и фамилии создателя.
+
+    Поддерживает поиск по фамилии и имени, указанным
+    вместе в любом порядке либо отдельно по фамилии или имени.
+    При не совпадении или указании более двух аргументов
+    ничего не возвращает.
+    """
+    from django.db.models import Q
+    if len(value.split()) == 2:
+        first_name, last_name = value.split()
+        return queryset.filter(
+            (Q(owner__last_name__icontains=last_name) &
+             Q(owner__first_name__icontains=first_name)) |
+            (Q(owner__last_name__icontains=first_name) &
+             Q(owner__first_name__icontains=last_name))
+        )
+    elif len(value.split()) == 1:
+        return queryset.filter(
+            Q(owner__last_name__icontains=value) |
+            Q(owner__first_name__icontains=value)
+        )
+

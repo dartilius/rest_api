@@ -152,7 +152,10 @@ class APIBaseObjectModel(Model):
         max_length=255,
         verbose_name='Название'
     )
-    is_active = BooleanField(default=True)
+    is_active = BooleanField(
+        default=True,
+        verbose_name='Актуальность'
+    )
     created = DateTimeField(
         auto_now_add=True,
         verbose_name='Дата создания'

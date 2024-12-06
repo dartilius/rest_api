@@ -35,7 +35,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         if instance.is_active is True:
             instance.is_active = False
-            instance.save()
+            instance.save(update_fields=['is_active'])
             return None
         else:
             return (

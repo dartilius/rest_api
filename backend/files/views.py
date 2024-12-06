@@ -50,7 +50,6 @@ class NoUpdateViewSet(
     mixins.DestroyModelMixin
 ):
     """Вьюсет без поддержки методов PUT и PATCH."""
-    pass
 
 
 class TagViewSet(NoUpdateViewSet):
@@ -89,60 +88,39 @@ class FileViewSet(NoUpdateViewSet):
 
         return serializer(*args, **kwargs)
 
-    @staticmethod
-    def check_for_active_playlists(file: File) -> bool:
-        """
-        Проверяем указан ли удаляемый файл в каком-либо активном плейлисте.
-
-        1. Фильтруем плейлисты на наличие файла.
-        2. Если есть плейлист(ы) с данным файлом:
-        2.1 Проверяем, есть ли активные заказы с данным(и) плейлистом(ами).
-        2.2 Если есть такие заказы, удаляем файл и обновляем заказы, возвращаем
-            True, для оповещения.
-        2.3 Иначе просто удаляем файл из всех плейлистов, возвращаем False.
-        3. Если плейлистов с данным файлом не нашлось, просто возвращаем False.
-        """
-        file_id = str(file.id)
-        # 1
-        playlists = list(Playlist.files.filter(file_id=file_id))
-        # 2
-        if playlists:
-            # 2.1
-            active_orders = PlaylistViewSet.check_for_orders(playlists)
-            # 2.2
-            if active_orders:
-                PlaylistViewSet.perform_remove_files(playlists, [file])
-                return True
-            # 2.3
-            else:
-                for playlist in playlists:
-                    playlist.files.remove(file)
-                    playlist.save()
-                return False
-        # 3
-        else:
-            return False
-
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    def destroy(self, request, *args, **kwargs):
-        """Добавлено сообщение об обновлении заказов, если оно произошло."""
-        instance = self.get_object()
-        data = self.perform_destroy(instance)
-        return Response(
-            data=data if data else None,
-            status=HTTPStatus.NO_CONTENT
-        )
-
     def perform_destroy(self, instance):
-        """Возвращаем сообщение, если были обновлены заказы."""
-        in_active_playlists = self.check_for_active_playlists(instance)
+        """
+        Мягкое удаление.
+
+        1. Проверяем, находится ли файл в каких-либо плейлистах.
+        2. Если такие плейлисты нашлись, вызываем метод, чтобы почистить их
+            и обновить активные заказы, в которых данные плейлисты указаны.
+        3. Меняем статус актуальности файла.
+        """
+        file_id = str(instance.id)
+        # 1
+        playlists = list(Playlist.objects.filter(files__id=file_id))
+        # 2
+        if playlists:
+            PlaylistViewSet.perform_remove_files(playlists, [file_id])
         instance.is_active = False
-        instance.save()
-        return (
-            'Файл был удалён, а также обновлены заказы, в которых он играл.'
-        ) if in_active_playlists else None
+        instance.save(update_fields=['is_active'])
+
+    @staticmethod
+    def _validate_tag_data(tag_data: list[str]) -> None:
+        """
+        Проверка валидности полученных данных.
+
+        1. Теги должны приходить списком.
+        2. Теги должны быть в строчном формате
+        """
+        if not isinstance(tag_data, list):
+            raise ValidationError('Теги должны приходить списком')
+        if not all(isinstance(tag, str) for tag in tag_data):
+            raise ValidationError('Теги должны быть в строчном формате')
 
     @action(
         detail=True,
@@ -150,22 +128,27 @@ class FileViewSet(NoUpdateViewSet):
         permission_classes=[StaffCUDAuthRetrieve]
     )
     def add_tags(self, request, pk):
-        """Присвоить тэги файлу."""
-        file = get_instance_or_404(File, pk)
-        new_tags = request.data['tags']
-        if not isinstance(new_tags[0], str):
-            raise ValidationError(
-                'Теги файла должны приходить списком, а получено: '
-                f'{type(new_tags)}'
-            )
-        new_tags = set(new_tags)
-        file_tags = file.tags.all()
-        file_tags_names = set(tag.name for tag in file_tags)
+        """
+        Присвоить тэги файлу.
 
-        good_tags = new_tags | file_tags_names
-        tag_ids = [Tag.objects.get_or_create(name=tag)[0] for tag in good_tags]
-        file.tags.set(tag_ids)
-        file.save()
+        0. Проверяем, что объект запроса существует.
+        1. Проверяем валидность полученных даных.
+        2. Получаем из базы, либо создаём каждый полученный тэг.
+        3. Присваиваем тэги файлу.
+        """
+        # 0
+        file = get_instance_or_404(File, pk)
+        new_tags: list[str] = request.data['tags']
+        # 1
+        self._validate_tag_data(new_tags)
+        # 2
+        new_tags_ids = [
+            Tag.objects.get_or_create(name=tag)[0].id
+            for tag
+            in new_tags
+        ]
+        # 3
+        file.tags.add(*new_tags_ids)
         return Response(data='Тэги успешно присвоены файлу.')
 
     @action(
@@ -174,26 +157,30 @@ class FileViewSet(NoUpdateViewSet):
         permission_classes=[StaffCUDAuthRetrieve]
     )
     def remove_tags(self, request, pk):
-        """Убрать тэги файла."""
-        file = get_instance_or_404(File, pk)
-        remove_tags = request.data['tags']
-        if not isinstance(remove_tags, list):
-            raise ValidationError(
-                'Теги файла должны приходить списком, а получено: '
-                f'{type(remove_tags)}'
-            )
-        remove_tags = set(remove_tags)
-        file_tags = file.tags.all()
-        file_tags_names = set(tag.name for tag in file_tags)
+        """
+        Убрать тэги файла.
 
-        good_tags = file_tags_names - remove_tags
-        if good_tags:
-            tag_ids = [Tag.objects.get(name=tag) for tag in good_tags]
-            file.tags.set(tag_ids)
-        else:
-            file.tags.clear()
-        file.save()
-        return Response(data='Тэги успешно присвоены файлу.')
+        0. Проверяем, что объект запроса существует.
+        1. Проверяем валидность полученных даных.
+        2. Получаем айди тэгов для отвязки их от файла. Если какой-либо
+            из тэгов не будет найден в базе - он будет проигнорирован.
+        3. Убираем теги по полученным айдишкам.
+        """
+        from django.shortcuts import get_list_or_404
+        # 0
+        file = get_instance_or_404(File, pk)
+        remove_tags: list[str] = request.data['tags']
+        # 1
+        self._validate_tag_data(remove_tags)
+        # 2
+        remove_tags_ids = [
+            tag.id
+            for tag
+            in get_list_or_404(Tag, name__in=remove_tags)
+        ]
+        # 3
+        file.tags.remove(*remove_tags_ids)
+        return Response(data='Тэги успешно отвязаны от файла.')
 
     @action(detail=True, methods=['GET'], url_path='stat')
     def get_stat(self, request, pk):
@@ -252,7 +239,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
     @staticmethod
-    def check_for_orders(pls_obj: Playlist | list[Playlist]) -> chain | None:
+    def check_for_orders(pls_obj: Playlist | list[Playlist]) -> list | None:
         """
         Проверяем, указан ли плейлист в каком-либо активном заказе.
 
@@ -270,24 +257,24 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         except DjangoValidationError:
             orders = chain(AdOrder.objects.filter(playlist__in=pls_obj),
                            BgOrder.objects.filter(playlist__in=pls_obj))
+        orders = list(orders)
         # 2
         try:
-            next(orders)
+            test = orders[0]
+            del test
         # 2.1
-        except StopIteration:
+        except IndexError:
             return None
         # 2.2
         else:
             return orders
 
     @staticmethod
-    def perform_remove_files(
-        playlists: Playlist | list[Playlist],
-        files: list[File]
-    ) -> None:
+    def perform_remove_files(playlists: Playlist | list[Playlist],
+                             files: list[str]) -> None:
         """
-        Удаляем файлы из одного или из списка плейлистов и обновляем
-        связанные заказы.
+        Удаляем файлы из плейлиста или из списка плейлистов и обновляем
+        связанные с ним(и) заказы.
 
         1. Если пришёл один плейлист, убираем файл(ы) из него.
         2. Иначе делаем то же самое с каждым плейлистом из списка.
@@ -306,11 +293,11 @@ class PlaylistViewSet(viewsets.ModelViewSet):
             5. Если заказы нашлись, обновляем их списком актуальных файлов.
             """
             # 1
-            playlist_files = [
-                str(file_id)
+            playlist_files = list(map(str, [
+                file_id
                 for file_id
                 in playlist.files.values_list('id', flat=True)
-            ]
+            ]))
             # 2
             actual_file_list = copy.deepcopy(file_list)
             for file in file_list:
@@ -325,10 +312,9 @@ class PlaylistViewSet(viewsets.ModelViewSet):
             orders = PlaylistViewSet.check_for_orders(playlists)
             # 5
             if orders:
-                file_id_list = [str(file.id) for file in actual_file_list]
                 PlaylistViewSet.perform_update_orders(
                     orders,
-                    file_id_list,
+                    actual_file_list,
                     action_type='remove_files'
                 )
         # 1
@@ -340,7 +326,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                 _remove_files_and_update_orders(playlist, files)
 
     @staticmethod
-    def perform_update_orders(order_list, files, action_type):
+    def perform_update_orders(order_list: list, files: list, action_type: str):
         """
         Обновление актуальных заказов.
 
@@ -351,7 +337,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         bg_orders = []
         # 1
         for order in order_list:
-            if isinstance(order.model, AdOrder):
+            if isinstance(order, AdOrder):
                 ad_orders.append(str(order.id))
             else:
                 bg_orders.append(str(order.id))
@@ -362,32 +348,27 @@ class PlaylistViewSet(viewsets.ModelViewSet):
             update_bg_order_task(bg_orders, files, action_type)
 
     @staticmethod
-    def _validate_request_data_format(files: list) -> None:
+    def _validate_request_data_format(files: list[str]) -> None:
         """
         Проверка формата полученных данных.
 
-        1. Файлы должны быть переданы списком.
-        2. Каждый файл должен быть валидным UUID.
+        1. Файлы должны быть переданы списком айди.
+        2. Каждый айди должен быть строкой.
+        3. Каждый айди должен быть валидным UUID.
         """
         # 1
         if not isinstance(files, list):
-            raise ValidationError(
-                'Файлы должны приходить списком, было получено: '
-                f'{type(files)}'
-            )
+            raise ValidationError('Файлы должны приходить списком')
         # 2
-        for file in files:
-            if not isinstance(file, str):
-                raise ValidationError(
-                    'Айди фалов должен быть в формате строки, было получено: '
-                    f'{type(files)}'
-                )
-            try:
-                UUID(file)
-            except ValueError:
-                raise ValidationError(
-                    f'Значение {file} не является верным UUID-ом.'
-                )
+        if not all(isinstance(file, str) for file in files):
+            raise ValidationError('Айди файла должен быть в формате строки')
+        # 3
+        try:
+            all([UUID(file) for file in files])
+        except ValueError as e:
+            raise ValidationError(
+                f'Значение {e} не является верным UUID-ом.'
+            )
 
     def update(self, request, *args, **kwargs):
         error_message = (
@@ -406,6 +387,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         return response
 
     def perform_destroy(self, instance):
+        """Запрет на удаление плейлиста, если он сейчас где-то играет."""
         orders = self.check_for_orders(instance)
         if orders:
             orders_names = [order.name for order in orders]
@@ -431,19 +413,24 @@ class PlaylistViewSet(viewsets.ModelViewSet):
             соответствущего типа.
         """
 
-        def _validate_no_duplicates(files, pls_files) -> None:
+        def _validate_no_duplicates(files: set, pls_files: set) -> None:
             """Проверяем, что файлы не будут дублироваться."""
-            already_in_playlist = []
-            for file in files:
-                if file in pls_files:
-                    already_in_playlist.append(file)
-            if already_in_playlist:
+            duplicates = pls_files & files
+            if duplicates:
                 raise ValidationError(
                     'Плейлист уже содержит данные файлы: '
-                    f'{already_in_playlist}'
+                    f'{duplicates}'
                 )
 
-        def _validate_file_types(files, pls_type) -> list[dict[str, str]]:
+        # TODO: оптимизировать с использованием множеств
+        # files_types = {TYPES[file.type] for file in files}
+        #    if files_types.difference_update(
+        #            {file_type
+        #             for file_type
+        #             in files_types
+        #             if file_type != pls_type}
+        #    ):
+        def _validate_file_types(files: QuerySet, pls_type: str) -> None:
             """Проверяем, что тип файлов соответствует плейлисту."""
             bad_types = set()
             file_objs = File.objects.filter(id__in=files)
@@ -458,35 +445,33 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                     f'Тип файлов в плейлисте: {playlist_type}.\n'
                     f'Среди ваших файлов есть: {bad_types}'
                 )
-            files_list = [
-                {
-                    'id': str(file.id),
-                    'hash': file.hash
-                } for file in file_objs
-            ]
-            return files_list
         # 0
-        new_files: list = request.data.get('files')
+        new_files = request.data.get('files')
         self._validate_request_data_format(new_files)
         # 1
         playlist = get_instance_or_404(Playlist, pk)
-        playlist_files = [
-            str(file_id)
+        playlist_files = set(map(str, [
+            file_id
             for file_id
             in playlist.files.values_list('id', flat=True)
-        ]
-        playlist_type = TYPES[playlist.files.first().type]
+        ]))
         # 2
-        _validate_no_duplicates(new_files, playlist_files)
+        _validate_no_duplicates(set(new_files), playlist_files)
         # 3
-        files_list = _validate_file_types(new_files, playlist_type)
+        file_objs = File.objects.filter(id__in=new_files)
+        playlist_type = TYPES[playlist.files.first().type]
+        _validate_file_types(file_objs, playlist_type)
         # 4
         playlist.files.add(*new_files)
-        playlist.save()
         # 5
         orders = PlaylistViewSet.check_for_orders(playlist)
         # 6
         if orders:
+            files_list = [
+                {'id': str(file.id), 'hash': file.hash}
+                for file
+                in file_objs
+            ]
             self.perform_update_orders(
                 orders,
                 files_list,
@@ -511,7 +496,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         5. Оповещаем пользователя, если выполнился пункт 2.1.
         """
         # 0
-        remove_files: list = request.data.get('files')
+        remove_files: list[str] = request.data.get('files')
         self._validate_request_data_format(remove_files)
         # 1
         playlist = get_instance_or_404(Playlist, pk)

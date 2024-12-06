@@ -26,6 +26,18 @@ def user(django_user_model):
 
 
 @pytest.fixture
+def another_user(django_user_model):
+    return django_user_model.objects.create_user(
+        email='another_user@test.com',
+        phone_number='+78005553939',
+        password='test',
+        first_name='another',
+        last_name='user',
+        role='ordinary'
+    )
+
+
+@pytest.fixture
 def admin_user(django_user_model):
     return django_user_model.objects.create_user(
         email='admin@test.com',
@@ -70,6 +82,16 @@ def user_token(user):
 
 
 @pytest.fixture
+def another_user_token(another_user):
+    from rest_framework_simplejwt.tokens import RefreshToken
+    refresh = RefreshToken.for_user(another_user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
+
+@pytest.fixture
 def admin_token(admin_user):
     from rest_framework_simplejwt.tokens import RefreshToken
     refresh = RefreshToken.for_user(admin_user)
@@ -105,6 +127,16 @@ def user_client(user_token):
     client = APIClient()
     client.credentials(
         HTTP_AUTHORIZATION=f'access_token {user_token["access"]}'
+    )
+    return client
+
+
+@pytest.fixture
+def another_user_client(another_user_token):
+    from rest_framework.test import APIClient
+    client = APIClient()
+    client.credentials(
+        HTTP_AUTHORIZATION=f'access_token {another_user_token["access"]}'
     )
     return client
 

@@ -1,7 +1,6 @@
 from datetime import datetime as dt
-from itertools import chain
-
 from django_filters.rest_framework import DjangoFilterBackend
+from itertools import chain
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -77,7 +76,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         instance.is_active = False
-        instance.save()
+        instance.save(update_fields=['is_active'])
 
     @action(detail=False, methods=['GET'], url_path='versions')
     def get_versions(self, request):
@@ -110,20 +109,20 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['POST'], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
-        """Отдача задач для клиентов и обработка присылаемых данных."""
+        """Отправка задач для клиентов и обработка присылаемых данных."""
         nomenclature = get_instance_or_404(Nomenclature, pk)
-        nom_update = False
+        nom_update = []
 
         if 'version' in request.data:
             nomenclature.version = request.data['version']
-            nom_update = True
+            nom_update.append('version')
 
         if 'hw_info' in request.data:
             nomenclature.hw_info = request.data['hw_info']
-            nom_update = True
+            nom_update.append('hw_info')
 
         if nom_update:
-            nomenclature.save()
+            nomenclature.save(update_fields=[*nom_update])
 
         if 'statistic' in request.data:
             statistics = request.data['statistic']
@@ -145,7 +144,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             defaults={'last_answer_date': dt.now()}
         )
         pending_tasks = Task.objects.filter(
-            client=nomenclature.id,
+            client=pk,
             status=0
         )
         tasks = {'tasks': [
@@ -220,14 +219,14 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         """
         Переотправка заказов.
 
-        0. Получаем список заказов на переотпарвку.
+        0. Получаем список заказов на переотправку.
         1. Проверяем, что заказы в списке активны.
         1.1. Активные заказы сериализуются в JSON и отправляются в целери
             для создания соответствующих репликаций в фоне.
         1.2. Заказы, которые нельзя переотправить,
             записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут
-            переотправленны и которые переотправить нельзя.
+        2. В ответ отдаём сообщение со списком заказов которые будут
+            переотправлены и которые переотправить нельзя.
         """
         nomenclature = get_instance_or_404(Nomenclature, pk)
         empty_values = Constants.empty_values
@@ -236,7 +235,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             nomenclature.bgorders.filter(status__in=[0, 1])
         )
 
-        if orders in empty_values:
+        if list(orders) in empty_values:
             result_text = 'Нет активных заказов.'
             return Response(data=result_text, status=HTTP_200_OK)
 

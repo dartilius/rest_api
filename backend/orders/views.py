@@ -28,7 +28,6 @@ class NoDeleteViewSet(mixins.CreateModelMixin,
                       mixins.ListModelMixin,
                       viewsets.GenericViewSet):
     """Вьюсет без поддержки метода DELETE."""
-    pass
 
 
 class AdOrderViewSet(NoDeleteViewSet):

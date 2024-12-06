@@ -21,7 +21,6 @@ class TaskViewSet(
     Репликацию можно только создать и просмотреть.
     При отправке запроса на удаление репликация отменяется, если
     её статус 'Ожидает обработки', иначе будет ошибка.
-    Также репликацию нельзя изменить.
     """
 
     queryset = Task.objects.all().select_related('owner', 'client')
@@ -40,7 +39,7 @@ class TaskViewSet(
     def perform_destroy(self, instance):
         if instance.status == 0:
             instance.status = 3
-            instance.save()
+            instance.save(update_fields=['status'])
             return None
         else:
             return (

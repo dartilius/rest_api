@@ -176,16 +176,14 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Проверяем, что все файлы в плейлисте одного типа."""
-        playlist_files_type = set()
         if 'files' in self.initial_data:
             files_ids: list = self.initial_data.get('files')
             files = File.objects.filter(id__in=files_ids)
-            for file in files:
-                playlist_files_type.add(TYPES[file.type])
-            if len(playlist_files_type) > 1:
+            playlist_files_types = {TYPES[file.type] for file in files}
+            if len(playlist_files_types) > 1:
                 raise serializers.ValidationError(
                     'Плейлист не должен содержать файлы разных типов: '
-                    f'{playlist_files_type}'
+                    f'{playlist_files_types}'
                 )
         return data
 

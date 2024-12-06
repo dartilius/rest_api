@@ -728,7 +728,9 @@ class TestFiles:
         pls_obj = Playlist.objects.get(id=playlist_id)
         pls_files = pls_obj.files.all()
         pls_files_ids = [str(file.id) for file in pls_files]
-        assert data['files'][0] in pls_files_ids, 'Новый файл не добавился в плейлист.'
+        assert data['files'][0] in pls_files_ids, (
+            'Новый файл не добавился в плейлист.'
+        )
 
     def test_valid_add_files_playlist_manager(
         self,
@@ -746,7 +748,9 @@ class TestFiles:
         pls_obj = Playlist.objects.get(id=playlist_id)
         pls_files = pls_obj.files.all()
         pls_files_ids = [str(file.id) for file in pls_files]
-        assert data['files'][0] in pls_files_ids, 'Новый файл не добавился в плейлист.'
+        assert data['files'][0] in pls_files_ids, (
+            'Новый файл не добавился в плейлист.'
+        )
 
     def test_valid_add_files_playlist_user(
         self,
@@ -780,12 +784,13 @@ class TestFiles:
         self,
         admin_client,
         playlist_1,
-        file_5,
-        file_3
+        file_3,
+        file_1
     ):
         playlist_id = str(playlist_1.id)
         invalid_data = [
             {'files': [str(file_3.id)]},
+            {'files': [str(file_1.id)]},
             {'files': ['file_3.id']},
             {'files': None},
             {'files': 'None'}
@@ -818,7 +823,7 @@ class TestFiles:
         pls_files = pls_obj.files.all()
         pls_files_ids = [str(file.id) for file in pls_files]
         assert data['files'][0] not in pls_files_ids, (
-            'Новый файл не добавился в плейлист.'
+            'Файл не был убран из плейлиста.'
         )
 
     def test_valid_remove_files_playlist_manager(
@@ -842,7 +847,7 @@ class TestFiles:
         pls_files = pls_obj.files.all()
         pls_files_ids = [str(file.id) for file in pls_files]
         assert data['files'][0] not in pls_files_ids, (
-            'Новый файл не добавился в плейлист.'
+            'Файл не был убран из плейлиста.'
         )
 
     def test_valid_remove_files_playlist_user(
@@ -905,3 +910,467 @@ class TestFiles:
                 'Код статуса в ответе != 400.'
                 f'\nДанные: {data}.\nОтвет: {response.json()}'
             )
+
+    def test_delete_file_admin(
+        self,
+        admin_client,
+        file_1
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = admin_client.delete(url)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is False, (
+            'Статус актуальности файла не изменился.'
+        )
+
+    def test_delete_file_manager(
+        self,
+        manager_client,
+        file_1
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = manager_client.delete(url)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is False, (
+            'Статус актуальности файла не изменился.'
+        )
+
+    def test_delete_file_owner(
+        self,
+        user_client,
+        file_1
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = user_client.delete(url)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is False, (
+            'Статус актуальности файла не изменился.'
+        )
+
+    def test_delete_file_not_owner(
+        self,
+        another_user_client,
+        file_1
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = another_user_client.delete(url)
+        assert response.status_code == HTTPStatus.FORBIDDEN, (
+            f'Код статуса в ответе != 403.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is not False, (
+            'Статус актуальности файла изменился без должных прав.'
+        )
+
+    def test_delete_file_anon(
+        self,
+        anon_client,
+        file_1
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = anon_client.delete(url)
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            f'Код статуса в ответе != 401.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is not False, (
+            'Статус актуальности файла изменился без авторизации.'
+        )
+
+    def test_delete_file_in_playlist_admin(
+        self,
+        admin_client,
+        file_1,
+        playlist_5
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = admin_client.delete(url)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is False, (
+            'Статус актуальности файла не изменился.'
+        )
+        pls_obj = Playlist.objects.get(id=str(playlist_5.id))
+        pls_files = list(map(str, [
+                file_id
+                for file_id
+                in pls_obj.files.values_list('id', flat=True)
+            ]))
+        assert file_id not in pls_files, 'Файл остался в плейлисте'
+
+    def test_delete_file_in_playlist_manager(
+        self,
+        manager_client,
+        file_1,
+        playlist_5
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = manager_client.delete(url)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is False, (
+            'Статус актуальности файла не изменился.'
+        )
+        pls_obj = Playlist.objects.get(id=str(playlist_5.id))
+        pls_files = list(map(str, [
+                file_id
+                for file_id
+                in pls_obj.files.values_list('id', flat=True)
+            ]))
+        assert file_id not in pls_files, 'Файл остался в плейлисте'
+
+    def test_delete_file_in_playlist_owner(
+        self,
+        user_client,
+        file_1,
+        playlist_5
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = user_client.delete(url)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is False, (
+            'Статус актуальности файла не изменился.'
+        )
+        pls_obj = Playlist.objects.get(id=str(playlist_5.id))
+        pls_files = list(map(str, [
+                file_id
+                for file_id
+                in pls_obj.files.values_list('id', flat=True)
+            ]))
+        assert file_id not in pls_files, 'Файл остался в плейлисте'
+
+    def test_delete_file_in_playlist_not_owner(
+        self,
+        another_user_client,
+        file_1,
+        playlist_5
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = another_user_client.delete(url)
+        assert response.status_code == HTTPStatus.FORBIDDEN, (
+            f'Код статуса в ответе != 403.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is not False, (
+            'Статус актуальности файла изменился без должных прав.'
+        )
+        pls_obj = Playlist.objects.get(id=str(playlist_5.id))
+        pls_files = list(map(str, [
+                file_id
+                for file_id
+                in pls_obj.files.values_list('id', flat=True)
+            ]))
+        assert file_id in pls_files, 'Файл остался в плейлисте'
+
+    def test_delete_file_in_playlist_anon(
+        self,
+        anon_client,
+        file_1,
+        playlist_5
+    ):
+        file_id = str(file_1.id)
+        url = self.file_detail_url.format(file_id=file_id)
+        response = anon_client.delete(url)
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+            f'Код статуса в ответе != 401.\nОтвет: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is not False, (
+            'Статус актуальности файла изменился без авторизации.'
+        )
+        pls_obj = Playlist.objects.get(id=str(playlist_5.id))
+        pls_files = list(map(str, [
+                file_id
+                for file_id
+                in pls_obj.files.values_list('id', flat=True)
+            ]))
+        assert file_id in pls_files, (
+            'Файл был удалён из плейлиста без авторизации'
+        )
+
+    def test_delete_active_playlist(
+        self,
+        admin_client,
+        playlist_1,
+        adorder,
+        nomenclature
+    ):
+        pls_count = Playlist.objects.count()
+        playlist_id = str(playlist_1.id)
+        url = self.playlist_detail_url.format(playlist_id=playlist_id)
+        response = admin_client.delete(url)
+        assert response.status_code == HTTPStatus.BAD_REQUEST, (
+            f'Код статуса в ответе != 400.\nОтвет: {response.json()}'
+        )
+        pls_count -= 1
+        assert pls_count != Playlist.objects.count(), (
+            'Удалось удалить активный плейлист.'
+        )
+
+
+class TestMockCeleryTasks:
+    from orders.models import AdOrder, BgOrder
+    from tasks.models import Task
+
+    @staticmethod
+    def update_ad_order_task(
+            order_list: list[str],
+            files: list[dict[str, str]] | list[str],
+            action_type
+    ):
+        Task = TestMockCeleryTasks.Task
+        AdOrder = TestMockCeleryTasks.AdOrder
+        orders = AdOrder.objects.filter(id__in=order_list)
+        UPDATE_AD = 14
+        task_list = []
+        for order in orders:
+            task_list.append(
+                Task(
+                    owner=order.owner,
+                    client=order.client,
+                    type=UPDATE_AD,
+                    parameters={
+                        'order_id': str(order.id),
+                        'update_type': action_type,
+                        'files': files
+                    }
+                )
+            )
+        Task.objects.bulk_create(task_list)
+        return f'Обновлено заказов: {len(task_list)}'
+
+    @staticmethod
+    def update_bg_order_task(
+            order_list: list[str],
+            files: list[dict[str, str]] | list[str],
+            action_type
+    ):
+        from api.constants import get_bg_task_type
+        Task = TestMockCeleryTasks.Task
+        BgOrder = TestMockCeleryTasks.BgOrder
+        orders = BgOrder.objects.filter(id__in=order_list)
+        task_type = get_bg_task_type(orders[0].order_type, action='update')
+        task_list = []
+        for order in orders:
+            task_list.append(
+                Task(
+                    owner=order.owner,
+                    client=order.client,
+                    type=task_type,
+                    parameters={
+                        'order_id': str(order.id),
+                        'update_type': action_type,
+                        'files': files
+                    }
+                )
+            )
+        Task.objects.bulk_create(task_list)
+        return f'Репликаций создано: {len(task_list)}'
+
+    @staticmethod
+    def check_for_orders(pls_obj: Playlist | list[Playlist]) -> list | None:
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from itertools import chain
+        AdOrder = TestMockCeleryTasks.AdOrder
+        BgOrder = TestMockCeleryTasks.BgOrder
+        try:
+            orders = chain(
+                AdOrder.objects.filter(playlist=pls_obj),
+                BgOrder.objects.filter(playlist=pls_obj)
+            )
+        except DjangoValidationError:
+            orders = chain(
+                AdOrder.objects.filter(playlist__in=pls_obj),
+                BgOrder.objects.filter(playlist__in=pls_obj)
+            )
+        orders = list(orders)
+        try:
+            test = orders[0]
+            del test
+        except IndexError:
+            return None
+        else:
+            return orders
+
+    @staticmethod
+    def perform_remove_files(playlists: Playlist | list[Playlist],
+                             files: list[str]) -> list | None:
+        def _remove_files_and_update_orders(playlist, file_list) -> None:
+            from copy import deepcopy
+            playlist_files = list(map(str, [
+                file_id
+                for file_id
+                in playlist.files.values_list('id', flat=True)
+            ]))
+            actual_file_list = deepcopy(file_list)
+            for file in file_list:
+                if file in playlist_files:
+                    playlist.files.remove(file)
+                else:
+                    actual_file_list.remove(file)
+            playlist.save()
+            orders = TestMockCeleryTasks.check_for_orders(playlists)
+            if orders:
+                TestMockCeleryTasks.perform_update_orders(
+                    orders,
+                    actual_file_list,
+                    action_type='remove_files'
+                )
+            return
+
+        data = []
+        if isinstance(playlists, Playlist):
+            data.append(_remove_files_and_update_orders(playlists, files))
+        else:
+            for playlist in playlists:
+                data.append(_remove_files_and_update_orders(playlist, files))
+        return data if data else None
+
+    @staticmethod
+    def perform_update_orders(order_list: list, files: list, action_type: str):
+        AdOrder = TestMockCeleryTasks.AdOrder
+        update_ad_order_task = TestMockCeleryTasks.update_ad_order_task
+        update_bg_order_task = TestMockCeleryTasks.update_bg_order_task
+        ad_orders = []
+        bg_orders = []
+        for order in order_list:
+            if isinstance(order, AdOrder):
+                ad_orders.append(str(order.id))
+            else:
+                bg_orders.append(str(order.id))
+        if ad_orders:
+            update_ad_order_task(ad_orders, files, action_type)
+        if bg_orders:
+            update_bg_order_task(bg_orders, files, action_type)
+
+    @staticmethod
+    def delete_file(file_id):
+        from rest_framework.response import Response
+        file = File.objects.get(id=file_id)
+        playlists = list(Playlist.objects.filter(files__id=file_id))
+        if playlists:
+            data = TestMockCeleryTasks.perform_remove_files(playlists, [file_id])
+        file.is_active = False
+        file.save(update_fields=['is_active'])
+        return Response(
+            data=data if data else None,
+            status=HTTPStatus.NO_CONTENT
+        )
+
+    @staticmethod
+    def delete_playlist(playlist):
+        """Запрет на удаление плейлиста, если он сейчас где-то играет."""
+        from rest_framework.exceptions import ValidationError
+        orders = TestMockCeleryTasks.check_for_orders(playlist)
+        if orders:
+            orders_names = [order.name for order in orders]
+            return ValidationError(
+                'Нельзя удалить плейлист, т.к. он указан в активных заказах: '
+                f'{orders_names}'
+            )
+
+    def test_delete_file_in_adorder_playlist(
+        self,
+        file_1,
+        playlist_1,
+        adorder,
+        nomenclature
+    ):
+        Task = TestMockCeleryTasks.Task
+        task_count = Task.objects.count()
+        file_id = str(file_1.id)
+        response = self.delete_file(file_id)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.\nОтвет: {response.data}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is False, (
+            'Статус актуальности файла не изменился.'
+        )
+        pls_obj = Playlist.objects.get(id=str(playlist_1.id))
+        pls_files = list(map(str, [
+                file_id
+                for file_id
+                in pls_obj.files.values_list('id', flat=True)
+            ]))
+        assert file_id not in pls_files, 'Файл остался в плейлисте'
+        task_count += 1
+        assert task_count == Task.objects.count(), (
+            'Репликация на обновление активного заказа не была создана'
+        )
+        task = Task.objects.last()
+        check_task_params = {
+            'order_id': str(adorder.id),
+            'update_type': 'remove_files',
+            'files': [file_id]
+        }
+        assert task.parameters == check_task_params, (
+            'Параметры репликации не правильные.'
+        )
+
+    def test_delete_file_in_bgorder_playlist(
+        self,
+        file_1,
+        playlist_1,
+        bgorder,
+        nomenclature
+    ):
+        from api.constants import get_bg_task_type
+        Task = TestMockCeleryTasks.Task
+        task_count = Task.objects.count()
+        file_id = str(file_1.id)
+        response = self.delete_file(file_id)
+        assert response.status_code == HTTPStatus.NO_CONTENT, (
+            f'Код статуса в ответе != 204.\nОтвет: {response.data}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.is_active is False, (
+            'Статус актуальности файла не изменился.'
+        )
+        pls_obj = Playlist.objects.get(id=str(playlist_1.id))
+        pls_files = list(map(str, [
+                file_id
+                for file_id
+                in pls_obj.files.values_list('id', flat=True)
+            ]))
+        assert file_id not in pls_files, 'Файл остался в плейлисте'
+        task_count += 1
+        assert task_count == Task.objects.count(), (
+            'Репликация на обновление активного заказа не была создана'
+        )
+        task = Task.objects.last()
+        check_task_params = {
+            'order_id': str(bgorder.id),
+            'update_type': 'remove_files',
+            'files': [file_id]
+        }
+        assert task.parameters == check_task_params, (
+            'В репликации указаны не правильные параметры.'
+        )
+        check_task_type = get_bg_task_type(bgorder.order_type, 'update')
+        assert task.type == check_task_type, 'Репликация имеет не правильный тип'

@@ -11,7 +11,7 @@ class FileAdmin(admin.ModelAdmin):
     def full_length(self, obj):
         try:
             return f'{obj.length:%H:%M:%S}'
-        except AttributeError:
+        except TypeError:
             return obj.length
 
     @admin.display(description='Размер')
@@ -28,6 +28,7 @@ class FileAdmin(admin.ModelAdmin):
         'owner',
         'full_length',
         'formatted_size',
+        'is_active',
         'created'
     )
     search_fields = ('name',)
