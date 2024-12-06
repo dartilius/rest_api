@@ -1,7 +1,7 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
-
+@import "./vars";
 :root {
   --background: #152c4d;
   --foreground: #ffffff;
@@ -21,7 +21,7 @@ body {
 
   .sidebar {
     width: 280px; /* Фиксированная ширина боковой панели */
-    background-color: #fff;
+    background-color: $foreground-color;
     height: 100%;
 
     &__menu {
@@ -33,7 +33,7 @@ body {
       .sidebar__menu-item {
         padding: 0.8rem 1rem;
         border-radius: 4px;
-        color: #152c4d;
+        color: $main-color;
         text-decoration: none;
         transition: all 0.3s;
 
@@ -59,7 +59,7 @@ body {
       display: flex;
       font-size: 1.5rem;
       font-weight: 700;
-      color: #152c4d;
+      color: $main-color;
       margin: 1rem;
       justify-content: center;
       align-items: center;
@@ -68,7 +68,7 @@ body {
 
   .header {
     height: 60px;
-    background-color: #fff;
+    background-color: $foreground-color;
     border-bottom: 1px solid #e6e6e6;
     display: flex;
     align-items: center;
@@ -95,12 +95,12 @@ body {
   height: 800px;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #ffffff;
+  color: $foreground-color;
   gap: 0.8rem;
 
   &__title {
     font-weight: 900;
-    color: #f55f5f;
+    color: $second-color;
   }
 
   &__link {
