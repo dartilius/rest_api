@@ -1,0 +1,109 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+:root {
+  --background: #152c4d;
+  --foreground: #ffffff;
+}
+
+body {
+  color: var(--foreground);
+  // font-weight: 600;
+  background: var(--background);
+  font-family: "Montserrat", sans-serif;
+  font-weight: 500;
+}
+
+.layout {
+  display: flex;
+  height: 100vh;
+
+  .sidebar {
+    width: 280px; /* Фиксированная ширина боковой панели */
+    background-color: #fff;
+    height: 100%;
+
+    &__menu {
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      gap: 1rem;
+
+      .sidebar__menu-item {
+        padding: 0.8rem 1rem;
+        border-radius: 4px;
+        color: #152c4d;
+        text-decoration: none;
+        transition: all 0.3s;
+
+        &:hover {
+          background-color: #f0f4f8; /* Подсветка при наведении */
+        }
+
+        &.active {
+          background-color: #d1e3f8; /* Подсветка активного элемента */
+          font-weight: 600; /* Выделение жирным */
+          color: #003366;
+        }
+
+        a {
+          text-decoration: none;
+          color: inherit;
+          display: block;
+          width: 100%;
+        }
+      }
+    }
+    &__title {
+      display: flex;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #152c4d;
+      margin: 1rem;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+
+  .header {
+    height: 60px;
+    background-color: #fff;
+    border-bottom: 1px solid #e6e6e6;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+  }
+
+  .main {
+    flex: 1; /* Основной контент занимает оставшееся место */
+    display: flex;
+    flex-direction: column;
+
+    .content {
+      flex: 1;
+      padding: 1.5rem; /* Отступы для children */
+    }
+  }
+}
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 800px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  gap: 0.8rem;
+
+  &__title {
+    font-weight: 900;
+    color: #f55f5f;
+  }
+
+  &__link {
+    font-weight: 600;
+  }
+}
