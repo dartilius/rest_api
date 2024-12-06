@@ -31,13 +31,13 @@ export interface INomenclatureByIdResponse {
     description: string;
     last_answer: string;
     name: string;
+    owner: {
+      full_name: string;
+    };
+    status: number;
+    timezone: string;
+    version: string;
   };
-  owner: {
-    full_name: string;
-  };
-  status: number;
-  timezone: string;
-  version: string;
 
   settings: {
     mon: {
