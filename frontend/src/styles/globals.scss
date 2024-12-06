@@ -20,7 +20,7 @@ body {
   height: 100vh;
 
   .sidebar {
-    width: 280px; /* Фиксированная ширина боковой панели */
+    width: $width-sidebar; /* Фиксированная ширина боковой панели */
     background-color: $foreground-color;
     height: 100%;
 
@@ -73,6 +73,8 @@ body {
     display: flex;
     align-items: center;
     padding: 0 1rem;
+    position: absolute;
+    width: min(100% - $width-sidebar, 100%);
   }
 
   .main {
@@ -82,9 +84,19 @@ body {
 
     .content {
       flex: 1;
+      margin-top: 3.5rem;
       padding: 1.5rem; /* Отступы для children */
     }
   }
+}
+
+body::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+body::-webkit-scrollbar-thumb {
+  background-color: $second-color;
+  border-radius: 0.2rem;
 }
 
 .not-found {

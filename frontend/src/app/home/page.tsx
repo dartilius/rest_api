@@ -1,5 +1,5 @@
 export default function HomePage() {
     return (
-        <div>Главная админки</div>
+        <div style={{ fontWeight: 700 }}>Главная админки</div>
     );
 }
