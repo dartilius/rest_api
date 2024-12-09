@@ -1,3 +1,5 @@
+//TODO: Разбить на компоненты, чтобы юзать SSR
+
 "use client";
 
 import { useFetchNomenclatureById } from "@/hooks/useFetchNomenclatures";
@@ -5,6 +7,7 @@ import useIdFromParams from "@/hooks/useIdFromParam";
 import './nomenclature.scss'
 import nomenclature from './test.json'
 import { convertStatus } from "@/types/checkStatus";
+
 
 export default function NomenclaturePage() {
     // const token = localStorage.getItem("accessToken");
@@ -17,7 +20,7 @@ export default function NomenclaturePage() {
     return (
         <div className="nomenclature">
             <div className="main-info">
-                <div>
+                <div style={{ color: "#f55f5f" }}>
                     {nomenclature.main_info.name}
                 </div>
                 <div className="main-info__list-answer">
@@ -53,9 +56,21 @@ export default function NomenclaturePage() {
                     <div className="main-info__created__item">{nomenclature.main_info.created}</div>
                 </div>
             </div>
-            <div className="settings">
-                <div>Настройки</div>
-            </div>
+            {/* <div className="settings">
+                <div style={{ color: '#f55f5f' }}>Настройки</div>
+                <div className="settings__mon">
+                    Пн
+                    <div className="settings__mon__worktime">
+                        {nomenclature.settings.mon.worktime}
+                    </div>
+                </div>
+                <div>Вт</div>
+                <div>Ср</div>
+                <div>Чт</div>
+                <div>Пт</div>
+                <div>Сб</div>
+                <div>Вс</div>
+            </div> */}
 
             <div className="hwinfo">
 
@@ -117,6 +132,7 @@ export default function NomenclaturePage() {
                     </div>
                 </div>
             </div>
+            <div className="knopochki" style={{ color: '#f55f5f' }}>Кнопочки</div>
         </div>
     );
 }
