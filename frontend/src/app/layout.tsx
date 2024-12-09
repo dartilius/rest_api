@@ -6,6 +6,9 @@ import { Providers } from "./providers";
 import Link from "next/link";
 import AdminLayout from "./auth/layout";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import burgerMenu from '@/styles/img/Navigation/Icon.svg'
+import Image from "next/image";
 
 const fonts = localFont({
   src: [
@@ -60,6 +63,19 @@ export default function RootLayout({
 
   const isLoginPage = pathname === "/auth";
 
+  const [openSideBar, setOpenSideBar] = useState<boolean>(false);
+  const [isAnimating, setIsAnimating] = useState<boolean>(false);
+
+  const toggleSidebar = () => {
+    if (isAnimating) return; // Блокируем повторное нажатие во время анимации
+    setIsAnimating(true);
+    setOpenSideBar((prev) => !prev);
+
+    // Устанавливаем таймер завершения анимации (300ms как в SCSS)
+    setTimeout(() => setIsAnimating(false), 300);
+  };
+
+
 
 
   return (
@@ -72,7 +88,10 @@ export default function RootLayout({
             <AdminLayout>{children}</AdminLayout>
           ) : (
             <div className="layout">
-              <aside className="sidebar">
+              <aside
+                className={`sidebar ${openSideBar ? "open" : "closed"
+                  } ${isAnimating ? "animating" : ""}`}
+              >
                 <div className="sidebar__title">
                   <Link href={"/home"}>RMC ADMIN</Link>
                 </div>
@@ -89,7 +108,16 @@ export default function RootLayout({
                 </div>
               </aside>
               <div className="main">
-                <header className="header"></header>
+                <header
+                  className={`header ${!openSideBar ? "full-width" : ""}`}
+                >
+                  <div
+                    className="header__toggle"
+                    onClick={toggleSidebar}
+                  >
+                    <Image src={burgerMenu} alt="burgerMenu" width={24} height={24} />
+                  </div>
+                </header>
                 <main className="content">{children}</main>
               </div>
             </div>
