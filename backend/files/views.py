@@ -202,7 +202,7 @@ class FileViewSet(NoUpdateViewSet):
                 data = data_ad + data_bg
             case 3:
                 statistics = TickerStat.objects.filter(file=pk)
-                data = FileTickerStatSerializer(statistics, file=True).data
+                data = FileTickerStatSerializer(statistics, many=True).data
             case 4:
                 statistics = ADStat.objects.filter(file=pk)
                 data = FileAdStatSerializer(statistics, many=True).data

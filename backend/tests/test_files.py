@@ -1,15 +1,14 @@
 import pytest
 from dotenv import load_dotenv
 from http import HTTPStatus
-from itertools import product
 
-from files.models import File, Playlist
+from files.models import File, Playlist, Tag, TYPES
 
 load_dotenv()
 
 
-# @pytest.mark.django_db(transaction=True)
-@pytest.mark.skip(reason='Чтобы быстрее проверять новые тесты')
+@pytest.mark.django_db(transaction=True)
+# @pytest.mark.skip(reason='Чтобы быстрее проверять новые тесты')
 class TestFiles:
 
     files_url = '/api/files/'
@@ -115,29 +114,310 @@ class TestFiles:
             f'{updated_key} не был обновлён'
         )
 
-    def test_availability_auth(
+    def test_get_file_list_auth(
         self,
         admin_client,
         manager_client,
         superuser_client,
         user_client,
-        file_1,
-        playlist_1
+        file_1
+    ):
+        file_count = File.objects.count()
+        file_id = str(file_1.id)
+        file_name = file_1.name
+        file_length = file_1.length.strftime('%H:%M:%S')
+        file_size = file_1.size
+        file_type = TYPES[file_1.type]
+        file_tags = [tag.name for tag in file_1.tags.all()]
+        clients = [admin_client, manager_client, superuser_client, user_client]
+        for client in clients:
+            response = client.get(self.files_url)
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Пользователь {client} не имеет доступ к странице '
+                f'списка файлов.\nОтвет: {response_data}'
+            )
+            assert response_data['count'] == file_count, (
+                'Кол-во элементов в ответе не равно кол-ву файлов в базе.'
+            )
+            assert 'id' in response_data['results'][0], (
+                'Ответ не содержит айди файла'
+            )
+            assert response_data['results'][0]['id'] == file_id, (
+                'Айди файла в ответе не совпадает с айди файла в базе'
+            )
+            assert 'name' in response_data['results'][0], (
+                'Ответ не содержит название файла'
+            )
+            assert response_data['results'][0]['name'] == file_name, (
+                'Название файла в ответе не совпадает с названием файла в базе'
+            )
+            assert 'length' in response_data['results'][0], (
+                'Ответ не содержит продолжительность файла'
+            )
+            assert response_data['results'][0]['length'] == file_length, (
+                'Продолжительность файла в ответе не совпадает с '
+                'продолжительностью файла в базе'
+            )
+            assert 'size' in response_data['results'][0], (
+                'Ответ не содержит размер файла'
+            )
+            assert response_data['results'][0]['size'] == file_size, (
+                'Размер файла в ответе не совпадает с размером файла в базе'
+            )
+            assert 'type' in response_data['results'][0], (
+                'Ответ не содержит тип файла'
+            )
+            assert response_data['results'][0]['type'] == file_type, (
+                'Тип файла в ответе не совпадает с типом файла в базе'
+            )
+            assert 'tags' in response_data['results'][0], (
+                'Ответ не содержит тэги файла'
+            )
+            assert response_data['results'][0]['tags'] == file_tags, (
+                'Тэги файла в ответе не совпадает с тэгами файла в базе'
+            )
+
+    def test_get_file_detail_auth(
+        self,
+        admin_client,
+        manager_client,
+        superuser_client,
+        user_client,
+        user,
+        file_1
     ):
         file_id = str(file_1.id)
-        playlist_id = str(playlist_1.id)
-        urls = [
-            self.files_url,
-            self.playlists_url,
-            self.tags_url,
-            self.file_detail_url.format(file_id=file_id),
-            self.playlist_detail_url.format(playlist_id=playlist_id)
-        ]
+        file_name = file_1.name
+        file_length = file_1.length.strftime('%H:%M:%S')
+        file_size = file_1.size
+        file_type = TYPES[file_1.type]
+        file_tags = [{'id': tag.id, 'name': tag.name} for tag in file_1.tags.all()]
+        file_owner = user.full_name
+        file_hash = file_1.hash
+        file_created = file_1.created.strftime('%Y-%m-%d %H:%M:%S')
+        url = self.file_detail_url.format(file_id=file_id)
         clients = [admin_client, manager_client, superuser_client, user_client]
-        for combo in product(clients, urls):
-            response = combo[0].get(combo[1])
+        for client in clients:
+            response = client.get(url)
+            response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
-                f'Пользователь {combo[0]} не имеет доступ к странице {combo[1]}.'
+                f'Пользователь {client} не имеет доступ к странице '
+                f'расшифровки файла.\nОтвет: {response_data}'
+            )
+            assert 'id' in response_data, (
+                'Ответ не содержит айди файла'
+            )
+            assert response_data['id'] == file_id, (
+                'Айди файла в ответе не совпадает с айди файла в базе'
+            )
+            assert 'name' in response_data, (
+                'Ответ не содержит название файла'
+            )
+            assert response_data['name'] == file_name, (
+                'Название файла в ответе не совпадает с названием файла в базе'
+            )
+            assert 'length' in response_data, (
+                'Ответ не содержит продолжительность файла'
+            )
+            assert response_data['length'] == file_length, (
+                'Продолжительность файла в ответе не совпадает с '
+                'продолжительностью файла в базе'
+            )
+            assert 'size' in response_data, (
+                'Ответ не содержит размер файла'
+            )
+            assert response_data['size'] == file_size, (
+                'Размер файла в ответе не совпадает с размером файла в базе'
+            )
+            assert 'type' in response_data, (
+                'Ответ не содержит тип файла'
+            )
+            assert response_data['type'] == file_type, (
+                'Тип файла в ответе не совпадает с типом файла в базе'
+            )
+            assert 'tags' in response_data, (
+                'Ответ не содержит тэги файла'
+            )
+            assert response_data['tags'] == file_tags, (
+                'Тэги файла в ответе не совпадает с тэгами файла в базе'
+            )
+            assert 'owner' in response_data, (
+                'Ответ не содержит владельца файла'
+            )
+            assert response_data['owner'] == file_owner, (
+                'Владелец файла в ответе не совпадает с владельцем файла в базе'
+            )
+            assert 'hash' in response_data, (
+                'Ответ не содержит хэш файла'
+            )
+            assert response_data['hash'] == file_hash, (
+                'Хэш файла в ответе не совпадает с хэшем файла в базе'
+            )
+            assert 'created' in response_data, (
+                'Ответ не содержит дату создания файла'
+            )
+            assert response_data['created'] == file_created, (
+                'Дата создания файла в ответе не совпадает с '
+                'датой создания файла в базе'
+            )
+
+    def test_get_playlist_list_auth(
+        self,
+        admin_client,
+        manager_client,
+        superuser_client,
+        user_client,
+        user,
+        playlist_1
+    ):
+        playlist_count = Playlist.objects.count()
+        playlist_id = str(playlist_1.id)
+        playlist_name = playlist_1.name
+        playlist_owner = user.full_name
+        playlist_files_count = playlist_1.files.count()
+        clients = [admin_client, manager_client, superuser_client, user_client]
+        for client in clients:
+            response = client.get(self.playlists_url)
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Пользователь {client} не имеет доступ к странице '
+                f'списка плейлистов.\nОтвет: {response_data}.'
+            )
+            assert response_data['count'] == playlist_count, (
+                'Кол-во элементов в ответе не равно кол-ву плейлистов в базе.'
+            )
+            assert 'id' in response_data['results'][0], (
+                'Ответ не содержит айди плейлиста'
+            )
+            assert response_data['results'][0]['id'] == playlist_id, (
+                'Айди плейлиста в ответе не совпадает с айди плейлиста в базе'
+            )
+            assert 'name' in response_data['results'][0], (
+                'Ответ не содержит название плейлиста'
+            )
+            assert response_data['results'][0]['name'] == playlist_name, (
+                'Название плейлиста в ответе не совпадает с '
+                'названием плейлиста в базе'
+            )
+            assert 'files_count' in response_data['results'][0], (
+                'Ответ не содержит кол-во файлов плейлиста'
+            )
+            assert response_data['results'][0]['files_count'] == playlist_files_count, (
+                'Кол-во файлов плейлиста в ответе не совпадает с '
+                'кол-вом файлов плейлиста в базе'
+            )
+            assert 'owner' in response_data['results'][0], (
+                'Ответ не содержит владельца плейлиста'
+            )
+            assert response_data['results'][0]['owner'] == playlist_owner, (
+                'Владелец плейлиста в ответе не совпадает с '
+                'владельцем плейлиста в базе'
+            )
+
+    def test_get_playlist_detail_auth(
+        self,
+        admin_client,
+        manager_client,
+        superuser_client,
+        user_client,
+        user,
+        playlist_1
+    ):
+        playlist_id = str(playlist_1.id)
+        playlist_name = playlist_1.name
+        playlist_description = playlist_1.description
+        playlist_owner = user.full_name
+        playlist_files_count = playlist_1.files.count()
+        playlist_files = [
+            {'id': str(file.id),
+             'name': file.name,
+             'url': file.url} for file in playlist_1.files.all()
+        ]
+        url = self.playlist_detail_url.format(playlist_id=playlist_id)
+        clients = [admin_client, manager_client, superuser_client, user_client]
+        for client in clients:
+            response = client.get(url)
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Пользователь {client} не имеет доступ к странице '
+                f'расшифровки плейлиста.\nОтвет: {response_data}.'
+            )
+            assert 'id' in response_data, (
+                'Ответ не содержит айди плейлиста'
+            )
+            assert response_data['id'] == playlist_id, (
+                'Айди плейлиста в ответе не совпадает с айди плейлиста в базе'
+            )
+            assert 'name' in response_data, (
+                'Ответ не содержит название плейлиста'
+            )
+            assert 'description' in response_data, (
+                'Ответ не содержит описание плейлиста'
+            )
+            assert response_data['description'] == playlist_description, (
+                'Описание плейлиста в ответе не совпадает с '
+                'описанием плейлиста в базе'
+            )
+            assert response_data['name'] == playlist_name, (
+                'Название плейлиста в ответе не совпадает с '
+                'названием плейлиста в базе'
+            )
+            assert 'files_count' in response_data, (
+                'Ответ не содержит кол-во файлов плейлиста'
+            )
+            assert response_data['files_count'] == playlist_files_count, (
+                'Кол-во файлов плейлиста в ответе не совпадает с '
+                'кол-вом файлов плейлиста в базе'
+            )
+            assert 'owner' in response_data, (
+                'Ответ не содержит владельца плейлиста'
+            )
+            assert response_data['owner'] == playlist_owner, (
+                'Владелец плейлиста в ответе не совпадает с '
+                'владельцем плейлиста в базе'
+            )
+            assert 'files' in response_data, (
+                'Ответ не содержит списка файлов плейлиста'
+            )
+            assert response_data['files'] == playlist_files, (
+                'Список файлов плейлиста в ответе не совпадает со '
+                'списком файлов плейлиста в базе'
+            )
+
+    def test_get_tag_list_auth(
+        self,
+        admin_client,
+        manager_client,
+        superuser_client,
+        user_client,
+        tag_1
+    ):
+        tag_count = Tag.objects.count()
+        tag_id = tag_1.id
+        tag_name = tag_1.name
+        clients = [admin_client, manager_client, superuser_client, user_client]
+        for client in clients:
+            response = client.get(self.tags_url)
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Пользователь {client} не имеет доступ к странице '
+                f'списка тэгов.\nОтвет: {response_data}.'
+            )
+            assert response_data['count'] == tag_count, (
+                'Кол-во элементов в ответе не совпадает с кол-вом тэгов в базе'
+            )
+            assert 'id' in response_data['results'][0], (
+                'Ответ не содержит айди тэга'
+            )
+            assert response_data['results'][0]['id'] == tag_id, (
+                'Айди тэга в ответе не совпадает с айди тэга в базе'
+            )
+            assert 'name' in response_data['results'][0], (
+                'Ответ не содержит название тэга'
+            )
+            assert response_data['results'][0]['name'] == tag_name, (
+                'Название тэга в ответе не совпадает с названием тэга в базе'
             )
 
     def test_availability_anon(self, anon_client, file_1, playlist_1):
@@ -477,17 +757,19 @@ class TestFiles:
 
     def test_update_file(self, admin_client, file_1):
         file_id = str(file_1.id)
-        update_data = {
+        data = {
             'name': 'new_name',
-            'description': 'description',
             'tags': [{'name': 'new_tag'}],
         }
         url = self.file_detail_url.format(file_id=file_id)
-        for data in update_data:
-            response = admin_client.patch(url, data=data, format='json')
-            assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED, (
-                f'Код статуса в ответе != 405.Ответ: {response.json()}'
-            )
+        response = admin_client.patch(url, data=data, format='json')
+        assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED, (
+            f'Код статуса в ответе != 405.Ответ: {response.json()}'
+        )
+        file_obj = File.objects.get(id=file_id)
+        assert file_obj.name != data['name'], 'Имя файла обновилось'
+        file_tags = file_obj.tags.values_list('name', flat=True)
+        assert file_tags != data['tags'], 'Тэги файла обновились'
 
     def test_partial_update_file(self, admin_client, file_1):
         file_id = str(file_1.id)
@@ -633,6 +915,30 @@ class TestFiles:
         file_tags_names = [tag.name for tag in file_tags]
         assert data['tags'][0] in file_tags_names, (
             'Удалось убрать тэг без авторизации.'
+        )
+
+    def test_invalid_remove_file_tags(self, admin_client, file_1):
+        file_id = str(file_1.id)
+        data = {
+            'tags': ['no_tag']
+        }
+        url = self.file_remove_tags.format(file_id=file_id)
+        response = admin_client.post(url, data=data, format='json')
+        assert response.status_code == HTTPStatus.NOT_FOUND, (
+            f'Код статуса в ответе != 404.\nОтвет: {response.json()}'
+        )
+
+    def test_update_playlist(self, admin_client, playlist_1, file_5):
+        playlist_id = str(playlist_1.id)
+        data = {
+            'name': 'new_name',
+            'description': 'description',
+            'files': [str(file_5.id)]
+        }
+        url = self.playlist_detail_url.format(playlist_id=playlist_id)
+        response = admin_client.put(url, data=data, format='json')
+        assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED, (
+            f'Код статуса в ответе != 405.\nОтвет: {response.json()}'
         )
 
     def test_valid_partial_update_playlist_admin(self, admin_client, playlist_1):
@@ -1133,21 +1439,6 @@ class TestFiles:
             'Удалось удалить активный плейлист.'
         )
 
-
-@pytest.mark.django_db(transaction=True, databases=['default', 'clickhouse'])
-class TestNew:
-
-    files_url = '/api/files/'
-    file_detail_url = '/api/files/{file_id}/'
-    file_add_tags = '/api/files/{file_id}/add_tags/'
-    file_remove_tags = '/api/files/{file_id}/remove_tags/'
-    playlists_url = '/api/playlists/'
-    playlist_detail_url = '/api/playlists/{playlist_id}/'
-    playlist_add_files_url = '/api/playlists/{playlist_id}/add_files/'
-    playlist_remove_files_url = '/api/playlists/{playlist_id}/remove_files/'
-    tags_url = '/api/tags/'
-    tag_detail_url = '/api/tags/{tag_id}/'
-
     def test_get_stat_ad(
         self,
         admin_client,
@@ -1200,10 +1491,10 @@ class TestNew:
     def test_get_stat_image(
         self,
         admin_client,
-        file_1,
+        file_2,
         image_stat
     ):
-        file_id = str(file_1.id)
+        file_id = str(file_2.id)
         url = self.file_detail_url.format(file_id=file_id)
         response = admin_client.get(url + 'stat/')
         response_data = response.json()
@@ -1265,6 +1556,22 @@ class TestNew:
         assert 'client' in response_data[0], (
             'В ответе нет информации о номенклатуре.'
         )
+
+
+@pytest.mark.django_db(transaction=True, databases=['default', 'clickhouse'])
+# @pytest.mark.skip
+class TestNew:
+
+    files_url = '/api/files/'
+    file_detail_url = '/api/files/{file_id}/'
+    file_add_tags = '/api/files/{file_id}/add_tags/'
+    file_remove_tags = '/api/files/{file_id}/remove_tags/'
+    playlists_url = '/api/playlists/'
+    playlist_detail_url = '/api/playlists/{playlist_id}/'
+    playlist_add_files_url = '/api/playlists/{playlist_id}/add_files/'
+    playlist_remove_files_url = '/api/playlists/{playlist_id}/remove_files/'
+    tags_url = '/api/tags/'
+    tag_detail_url = '/api/tags/{tag_id}/'
 
 
 @pytest.mark.django_db(transaction=True)
