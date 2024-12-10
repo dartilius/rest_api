@@ -10,6 +10,32 @@ class TestTasks:
     url = '/api/tasks/'
     task_url = '/api/tasks/{task_id}/'
 
+    @staticmethod
+    def get_valid_data(nomenclature_id) -> list:
+        reboot_task = 15
+        update_task = 16
+        custom_task = 17
+        valid_data = [
+            {
+                'client': nomenclature_id,
+                'type': reboot_task
+            },
+            {
+                'client': nomenclature_id,
+                'type': update_task
+            },
+            {
+                'client': nomenclature_id,
+                'type': custom_task
+            },
+            {
+                'client': nomenclature_id,
+                'type': custom_task,
+                'parameters': 'test'
+            }
+        ]
+        return valid_data
+
     def test_availability_staff(self, admin_client, manager_client, task):
         urls = [
             self.url,
@@ -40,23 +66,17 @@ class TestTasks:
                 f'Не авторизованный пользователь имеет доступ к странице {url}.'
             )
 
-    def test_create_valid_task_staff(
+    def test_create_valid_task_admin(
         self,
         admin_client,
         admin_user,
-        manager_client,
-        manager_user,
         nomenclature
     ):
         task_count = Task.objects.count()
         nomenclature_id = str(nomenclature.id)
-        data = {
-            'client': nomenclature_id,
-            'parameters': 'test'
-        }
-        clients = {admin_client: admin_user, manager_client: manager_user}
-        for client in clients:
-            response = client.post(self.url, data=data, format='json')
+        valid_data = self.get_valid_data(nomenclature_id)
+        for data in valid_data:
+            response = admin_client.post(self.url, data=data, format='json')
             assert response.status_code == HTTPStatus.CREATED, (
                 'Код статуса в ответе != 201.'
             )
@@ -65,48 +85,79 @@ class TestTasks:
                 'Не удалось создать репликацию.'
             )
             response_data = response.json()
-            assert response_data['owner'] == clients[client].full_name, (
+            assert response_data['owner'] == admin_user.full_name, (
                 'Создатель репликации не встал в соответствующее поле.'
             )
-            assert response_data['client']['id'] == data['client'], (
+            assert response_data['client']['id'] == nomenclature_id, (
                 'Целевая рабочая станция созданной репликации отличается от '
                 'таковой в отправленных данных.'
             )
-            assert response_data['parameters'] == data['parameters'], (
-                'Параметры репликации отличаются от отправленных данных.'
+            assert response_data['type'] == data['type'], (
+                'Тип репликации отличается от отправленного.'
             )
+            if response_data['parameters'] is not None:
+                assert response_data['parameters'] == data['parameters'], (
+                    'Параметры репликации отличаются от отправленных данных.'
+                )
+
+    def test_create_valid_task_manager(
+        self,
+        manager_client,
+        manager_user,
+        nomenclature
+    ):
+        task_count = Task.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        valid_data = self.get_valid_data(nomenclature_id)
+        for data in valid_data:
+            response = manager_client.post(self.url, data=data, format='json')
+            assert response.status_code == HTTPStatus.CREATED, (
+                'Код статуса в ответе != 201.'
+            )
+            task_count += 1
+            assert task_count == Task.objects.count(), (
+                'Не удалось создать репликацию.'
+            )
+            response_data = response.json()
+            assert response_data['owner'] == manager_user.full_name, (
+                'Создатель репликации не встал в соответствующее поле.'
+            )
+            assert response_data['client']['id'] == nomenclature_id, (
+                'Целевая рабочая станция созданной репликации отличается от '
+                'таковой в отправленных данных.'
+            )
+            if response_data['parameters'] is not None:
+                assert response_data['parameters'] == data['parameters'], (
+                    'Параметры репликации отличаются от отправленных данных.'
+                )
 
     def test_create_valid_task_user(self, user_client, nomenclature):
         task_count = Task.objects.count()
         nomenclature_id = str(nomenclature.id)
-        data = {
-            'client': nomenclature_id,
-            'parameters': 'test'
-        }
-        response = user_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.FORBIDDEN, (
-            'Код статуса в ответе != 403.'
-        )
-        task_count += 1
-        assert task_count != Task.objects.count(), (
-            'Обычному пользователю удалось создать репликацию.'
-        )
+        valid_data = self.get_valid_data(nomenclature_id)
+        for data in valid_data:
+            response = user_client.post(self.url, data=data, format='json')
+            assert response.status_code == HTTPStatus.FORBIDDEN, (
+                'Код статуса в ответе != 403.'
+            )
+            task_count += 1
+            assert task_count != Task.objects.count(), (
+                'Обычному пользователю удалось создать репликацию.'
+            )
 
     def test_create_valid_task_anon(self, anon_client, nomenclature):
         task_count = Task.objects.count()
         nomenclature_id = str(nomenclature.id)
-        data = {
-            'client': nomenclature_id,
-            'parameters': 'test'
-        }
-        response = anon_client.post(self.url, data=data, format='json')
-        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
-            'Код статуса в ответе != 401.'
-        )
-        task_count += 1
-        assert task_count != Task.objects.count(), (
-            'Неавторизованному пользователю удалось создать репликацию.'
-        )
+        valid_data = self.get_valid_data(nomenclature_id)
+        for data in valid_data:
+            response = anon_client.post(self.url, data=data, format='json')
+            assert response.status_code == HTTPStatus.UNAUTHORIZED, (
+                'Код статуса в ответе != 401.'
+            )
+            task_count += 1
+            assert task_count != Task.objects.count(), (
+                'Неавторизованному пользователю удалось создать репликацию.'
+            )
 
     def test_create_invalid_task(self, admin_client, nomenclature):
         task_count = Task.objects.count()

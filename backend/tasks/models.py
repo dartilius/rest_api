@@ -72,9 +72,7 @@ class Task(Model):
     )
     type = PositiveSmallIntegerField(
         choices=TASK_TYPES,
-        verbose_name='Тип',
-        editable=False,
-        default=0
+        verbose_name='Тип'
     )
     status = PositiveSmallIntegerField(
         choices=STATUSES,

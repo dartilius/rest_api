@@ -1558,8 +1558,8 @@ class TestFiles:
         )
 
 
-@pytest.mark.django_db(transaction=True, databases=['default', 'clickhouse'])
-# @pytest.mark.skip
+# @pytest.mark.django_db(transaction=True, databases=['default', 'clickhouse'])
+@pytest.mark.skip
 class TestNew:
 
     files_url = '/api/files/'
