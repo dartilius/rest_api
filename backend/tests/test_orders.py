@@ -251,20 +251,31 @@ class TestOrders:
                 assert response['slides'].keys() == data['slides'].keys(), message
             case _: pass
 
-    def test_chain_list_or_instance(self, playlist_1, adorder, bgorder):
-        from itertools import chain
-        from django.core.exceptions import ValidationError
-        pls_list = [playlist_1]
-        try:
-            orders_list = chain(AdOrder.objects.filter(playlist=pls_list),
-                                BgOrder.objects.filter(playlist=pls_list))
-        except ValidationError:
-            orders_list = chain(AdOrder.objects.filter(playlist__in=pls_list),
-                                BgOrder.objects.filter(playlist__in=pls_list))
-        list_chain = len(list(orders_list))
-        assert list_chain == 2, f'{list_chain}'
+    @staticmethod
+    def check_get_orders_list_response(order_data, response_data, order_type):
+        pass
 
-    def test_availability_auth(
+    def test_get_orders_list_auth(
+        self,
+        admin_client,
+        manager_client,
+        superuser_client,
+        user_client,
+        adorder,
+        bgorder
+    ):
+        urls = [
+            self.ad_list_url,
+            self.bg_list_url,
+        ]
+        clients = [admin_client, manager_client, superuser_client, user_client]
+        for combo in product(clients, urls):
+            response = combo[0].get(combo[1])
+            assert response.status_code == HTTPStatus.OK, (
+                f'Пользователь {combo[0]} не имеет доступ к странице {combo[1]}.'
+            )
+
+    def test_get_orders_detail_auth(
         self,
         admin_client,
         manager_client,

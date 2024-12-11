@@ -229,6 +229,7 @@ def adorder(user, file_1, playlist_1, nomenclature) -> AdOrder:
         name='test',
         owner=user,
         broadcast_interval=f"({today}, {tomorrow}]",
+        broadcast_type=0,
         client=nomenclature,
         playlist=playlist_1,
         parameters={'times_in_hour': 4}
@@ -243,6 +244,7 @@ def adorder_slides(user, file_1, file_2, playlist_5, nomenclature) -> AdOrder:
         name='test',
         owner=user,
         broadcast_interval=f"({today}, {tomorrow}]",
+        broadcast_type=0,
         client=nomenclature,
         playlist=playlist_5,
         slides={str(file_1.id): [str(file_2.id)]},

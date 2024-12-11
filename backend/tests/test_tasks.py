@@ -36,20 +36,62 @@ class TestTasks:
         ]
         return valid_data
 
-    def test_availability_staff(self, admin_client, manager_client, task):
-        urls = [
-            self.url,
-            self.task_url.format(task_id=str(task.id)),
-        ]
-        for url in urls:
-            response = admin_client.get(url)
-            assert response.status_code == HTTPStatus.OK, (
-                f'Сотрудник ТО не имеет доступ к странице {url}.'
-            )
-            response = manager_client.get(url)
-            assert response.status_code == HTTPStatus.OK, (
-                f'Менеджер не имеет доступ к странице {url}.'
-            )
+    @staticmethod
+    def check_get_list_response(client, task, response, user_name):
+        task_count = Task.objects.count()
+        task_id = str(task.id)
+        task_owner = user_name
+        task_client = {'id': str(task.client.id), 'name': task.client.name}
+        task_type = task.type
+        task_status = task.status
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'{client} не имеет доступ к странице списка репликаций.'
+        )
+        assert task_count == response_data['count'], (
+            'Кол-во элементов в ответе не равно кол-ву репликаций в базе.'
+        )
+        assert 'id' in response_data['results'][0], (
+            'Ответ не содержит поле айди репликации.'
+        )
+        assert response_data['results'][0]['id'] == task_id, (
+            'Айди файла в ответе не совпадает с айди файла в базе'
+        )
+        assert 'owner' in response_data['results'][0], (
+            'Ответ не содержит поле "Кто создал" репликации.'
+        )
+        assert response_data['results'][0]['owner'] == task_owner, (
+            'Создатель репликации в ответе не совпадает с '
+            'создателем репликации в базе'
+        )
+        assert 'client' in response_data['results'][0], (
+            'Ответ не содержит поле целевой рабочей станции репликации.'
+        )
+        assert response_data['results'][0]['client'] == task_client, (
+            'Целевая рабочая станция репликации в ответе и в базе не совпадает'
+        )
+        assert 'type' in response_data['results'][0], (
+            'Ответ не содержит поле типа репликации.'
+        )
+        assert response_data['results'][0]['type'] == task_type, (
+            'Тип репликации в ответе не совпадает с типом репликации в базе'
+        )
+        assert 'status' in response_data['results'][0], (
+            'Ответ не содержит поле статуса репликации.'
+        )
+        assert response_data['results'][0]['status'] == task_status, (
+            'Статус репликации в ответе не совпадает со статусом репликации в базе'
+        )
+
+    def test_get_task_list_admin(self, admin_client, user, task):
+        response = admin_client.get(self.url)
+        user_name = user.full_name
+        self.check_get_list_response('Сотрудник ТО', task, response, user_name)
+
+    def test_get_task_list_manager(self, manager_client, user, task):
+        response = manager_client.get(self.url)
+        user_name = user.full_name
+        self.check_get_list_response('Менеджер', task, response, user_name)
 
     def test_availability_not_staff(self, user_client, anon_client, task):
         urls = [
@@ -175,6 +217,19 @@ class TestTasks:
         )
 
     def test_update_task(self, admin_client, task, nomenclature_1):
+        data = {
+            'client': str(nomenclature_1.id),
+            'parameters': None,
+            'type': 16,
+            'status': 4
+        }
+        url = self.task_url.format(task_id=str(task.id))
+        response = admin_client.put(url, data=data, format='json')
+        assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED, (
+            f'Код статуса в ответе != 405.Ответ: {response.json()}'
+        )
+
+    def test_partial_update_task(self, admin_client, task, nomenclature_1):
         update_data = [
             {'client': str(nomenclature_1.id)},
             {'parameters': None},
@@ -208,7 +263,7 @@ class TestTasks:
                 f'Не удалось отменить репликацию. Права: {clients[client]}'
             )
             task_obj.status = 0
-            task_obj.save()
+            task_obj.save(update_fields=['status'])
 
     def test_cancel_task_user(
         self,

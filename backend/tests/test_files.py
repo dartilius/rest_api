@@ -114,6 +114,203 @@ class TestFiles:
             f'{updated_key} не был обновлён'
         )
 
+    @staticmethod
+    def check_get_file_list_response(file_data, response_data):
+        assert response_data['count'] == file_data['count'], (
+            'Кол-во элементов в ответе не равно кол-ву файлов в базе.'
+        )
+        assert 'id' in response_data['results'][0], (
+            'Ответ не содержит айди файла'
+        )
+        assert response_data['results'][0]['id'] == file_data['id'], (
+            'Айди файла в ответе не совпадает с айди файла в базе'
+        )
+        assert 'name' in response_data['results'][0], (
+            'Ответ не содержит название файла'
+        )
+        assert response_data['results'][0]['name'] == file_data['name'], (
+            'Название файла в ответе не совпадает с названием файла в базе'
+        )
+        assert 'length' in response_data['results'][0], (
+            'Ответ не содержит продолжительность файла'
+        )
+        assert response_data['results'][0]['length'] == file_data['length'], (
+            'Продолжительность файла в ответе не совпадает с '
+            'продолжительностью файла в базе'
+        )
+        assert 'size' in response_data['results'][0], (
+            'Ответ не содержит размер файла'
+        )
+        assert response_data['results'][0]['size'] == file_data['size'], (
+            'Размер файла в ответе не совпадает с размером файла в базе'
+        )
+        assert 'type' in response_data['results'][0], (
+            'Ответ не содержит тип файла'
+        )
+        assert response_data['results'][0]['type'] == file_data['type'], (
+            'Тип файла в ответе не совпадает с типом файла в базе'
+        )
+        assert 'tags' in response_data['results'][0], (
+            'Ответ не содержит тэги файла'
+        )
+        assert response_data['results'][0]['tags'] == file_data['tags'], (
+            'Тэги файла в ответе не совпадает с тэгами файла в базе'
+        )
+
+    @staticmethod
+    def check_get_file_detail_response(file_data, response_data):
+        assert 'id' in response_data, (
+            'Ответ не содержит айди файла'
+        )
+        assert response_data['id'] == file_data['id'], (
+            'Айди файла в ответе не совпадает с айди файла в базе'
+        )
+        assert 'name' in response_data, (
+            'Ответ не содержит название файла'
+        )
+        assert response_data['name'] == file_data['name'], (
+            'Название файла в ответе не совпадает с названием файла в базе'
+        )
+        assert 'length' in response_data, (
+            'Ответ не содержит продолжительность файла'
+        )
+        assert response_data['length'] == file_data['length'], (
+            'Продолжительность файла в ответе не совпадает с '
+            'продолжительностью файла в базе'
+        )
+        assert 'size' in response_data, (
+            'Ответ не содержит размер файла'
+        )
+        assert response_data['size'] == file_data['size'], (
+            'Размер файла в ответе не совпадает с размером файла в базе'
+        )
+        assert 'type' in response_data, (
+            'Ответ не содержит тип файла'
+        )
+        assert response_data['type'] == file_data['type'], (
+            'Тип файла в ответе не совпадает с типом файла в базе'
+        )
+        assert 'tags' in response_data, (
+            'Ответ не содержит тэги файла'
+        )
+        assert response_data['tags'] == file_data['tags'], (
+            'Тэги файла в ответе не совпадает с тэгами файла в базе'
+        )
+        assert 'owner' in response_data, (
+            'Ответ не содержит владельца файла'
+        )
+        assert response_data['owner'] == file_data['owner'], (
+            'Владелец файла в ответе не совпадает с владельцем файла в базе'
+        )
+        assert 'hash' in response_data, (
+            'Ответ не содержит хэш файла'
+        )
+        assert response_data['hash'] == file_data['hash'], (
+            'Хэш файла в ответе не совпадает с хэшем файла в базе'
+        )
+        assert 'created' in response_data, (
+            'Ответ не содержит дату создания файла'
+        )
+        assert response_data['created'] == file_data['created'], (
+            'Дата создания файла в ответе не совпадает с '
+            'датой создания файла в базе'
+        )
+
+    @staticmethod
+    def check_get_playlist_list_response(playlist_data, response_data):
+        assert response_data['count'] == playlist_data['count'], (
+            'Кол-во элементов в ответе не равно кол-ву плейлистов в базе.'
+        )
+        assert 'id' in response_data['results'][0], (
+            'Ответ не содержит айди плейлиста'
+        )
+        assert response_data['results'][0]['id'] == playlist_data['id'], (
+            'Айди плейлиста в ответе не совпадает с айди плейлиста в базе'
+        )
+        assert 'name' in response_data['results'][0], (
+            'Ответ не содержит название плейлиста'
+        )
+        assert response_data['results'][0]['name'] == playlist_data['name'], (
+            'Название плейлиста в ответе не совпадает с '
+            'названием плейлиста в базе'
+        )
+        assert 'files_count' in response_data['results'][0], (
+            'Ответ не содержит кол-во файлов плейлиста'
+        )
+        assert response_data['results'][0]['files_count'] == playlist_data['files_count'], (
+            'Кол-во файлов плейлиста в ответе не совпадает с '
+            'кол-вом файлов плейлиста в базе'
+        )
+        assert 'owner' in response_data['results'][0], (
+            'Ответ не содержит владельца плейлиста'
+        )
+        assert response_data['results'][0]['owner'] == playlist_data['owner'], (
+            'Владелец плейлиста в ответе не совпадает с '
+            'владельцем плейлиста в базе'
+        )
+
+    @staticmethod
+    def check_get_playlist_detail_response(playlist_data, response_data):
+        assert 'id' in response_data, (
+            'Ответ не содержит айди плейлиста'
+        )
+        assert response_data['id'] == playlist_data['id'], (
+            'Айди плейлиста в ответе не совпадает с айди плейлиста в базе'
+        )
+        assert 'name' in response_data, (
+            'Ответ не содержит название плейлиста'
+        )
+        assert 'description' in response_data, (
+            'Ответ не содержит описание плейлиста'
+        )
+        assert response_data['description'] == playlist_data['description'], (
+            'Описание плейлиста в ответе не совпадает с '
+            'описанием плейлиста в базе'
+        )
+        assert response_data['name'] == playlist_data['name'], (
+            'Название плейлиста в ответе не совпадает с '
+            'названием плейлиста в базе'
+        )
+        assert 'files_count' in response_data, (
+            'Ответ не содержит кол-во файлов плейлиста'
+        )
+        assert response_data['files_count'] == playlist_data['files_count'], (
+            'Кол-во файлов плейлиста в ответе не совпадает с '
+            'кол-вом файлов плейлиста в базе'
+        )
+        assert 'owner' in response_data, (
+            'Ответ не содержит владельца плейлиста'
+        )
+        assert response_data['owner'] == playlist_data['owner'], (
+            'Владелец плейлиста в ответе не совпадает с '
+            'владельцем плейлиста в базе'
+        )
+        assert 'files' in response_data, (
+            'Ответ не содержит списка файлов плейлиста'
+        )
+        assert response_data['files'] == playlist_data['files'], (
+            'Список файлов плейлиста в ответе не совпадает со '
+            'списком файлов плейлиста в базе'
+        )
+
+    @staticmethod
+    def check_get_tags_list_response(tag_data, response_data):
+        assert response_data['count'] == tag_data['count'], (
+            'Кол-во элементов в ответе не совпадает с кол-вом тэгов в базе'
+        )
+        assert 'id' in response_data['results'][0], (
+            'Ответ не содержит айди тэга'
+        )
+        assert response_data['results'][0]['id'] == tag_data['id'], (
+            'Айди тэга в ответе не совпадает с айди тэга в базе'
+        )
+        assert 'name' in response_data['results'][0], (
+            'Ответ не содержит название тэга'
+        )
+        assert response_data['results'][0]['name'] == tag_data['name'], (
+            'Название тэга в ответе не совпадает с названием тэга в базе'
+        )
+
     def test_get_file_list_auth(
         self,
         admin_client,
@@ -122,61 +319,27 @@ class TestFiles:
         user_client,
         file_1
     ):
-        file_count = File.objects.count()
-        file_id = str(file_1.id)
-        file_name = file_1.name
-        file_length = file_1.length.strftime('%H:%M:%S')
-        file_size = file_1.size
-        file_type = TYPES[file_1.type]
-        file_tags = [tag.name for tag in file_1.tags.all()]
-        clients = [admin_client, manager_client, superuser_client, user_client]
+        file_data = {
+            'count': File.objects.count(),
+            'id': str(file_1.id),
+            'name': file_1.name,
+            'length': file_1.length.strftime('%H:%M:%S'),
+            'size': file_1.size,
+            'type': TYPES[file_1.type],
+            'tags': [tag.name for tag in file_1.tags.all()],
+        }
+        clients = {admin_client: 'Сотрудник ТО',
+                   manager_client: 'Менеджер',
+                   superuser_client: 'Суперпользователь',
+                   user_client: 'Авторизованный пользователь'}
         for client in clients:
             response = client.get(self.files_url)
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
-                f'Пользователь {client} не имеет доступ к странице '
+                f'Пользователь {clients[client]} не имеет доступ к странице '
                 f'списка файлов.\nОтвет: {response_data}'
             )
-            assert response_data['count'] == file_count, (
-                'Кол-во элементов в ответе не равно кол-ву файлов в базе.'
-            )
-            assert 'id' in response_data['results'][0], (
-                'Ответ не содержит айди файла'
-            )
-            assert response_data['results'][0]['id'] == file_id, (
-                'Айди файла в ответе не совпадает с айди файла в базе'
-            )
-            assert 'name' in response_data['results'][0], (
-                'Ответ не содержит название файла'
-            )
-            assert response_data['results'][0]['name'] == file_name, (
-                'Название файла в ответе не совпадает с названием файла в базе'
-            )
-            assert 'length' in response_data['results'][0], (
-                'Ответ не содержит продолжительность файла'
-            )
-            assert response_data['results'][0]['length'] == file_length, (
-                'Продолжительность файла в ответе не совпадает с '
-                'продолжительностью файла в базе'
-            )
-            assert 'size' in response_data['results'][0], (
-                'Ответ не содержит размер файла'
-            )
-            assert response_data['results'][0]['size'] == file_size, (
-                'Размер файла в ответе не совпадает с размером файла в базе'
-            )
-            assert 'type' in response_data['results'][0], (
-                'Ответ не содержит тип файла'
-            )
-            assert response_data['results'][0]['type'] == file_type, (
-                'Тип файла в ответе не совпадает с типом файла в базе'
-            )
-            assert 'tags' in response_data['results'][0], (
-                'Ответ не содержит тэги файла'
-            )
-            assert response_data['results'][0]['tags'] == file_tags, (
-                'Тэги файла в ответе не совпадает с тэгами файла в базе'
-            )
+            self.check_get_file_list_response(file_data, response_data)
 
     def test_get_file_detail_auth(
         self,
@@ -188,79 +351,30 @@ class TestFiles:
         file_1
     ):
         file_id = str(file_1.id)
-        file_name = file_1.name
-        file_length = file_1.length.strftime('%H:%M:%S')
-        file_size = file_1.size
-        file_type = TYPES[file_1.type]
-        file_tags = [{'id': tag.id, 'name': tag.name} for tag in file_1.tags.all()]
-        file_owner = user.full_name
-        file_hash = file_1.hash
-        file_created = file_1.created.strftime('%Y-%m-%d %H:%M:%S')
+        file_data = {
+            'id': file_id,
+            'name': file_1.name,
+            'length': file_1.length.strftime('%H:%M:%S'),
+            'size': file_1.size,
+            'type': TYPES[file_1.type],
+            'tags': [{'id': tag.id, 'name': tag.name} for tag in file_1.tags.all()],
+            'owner': user.full_name,
+            'hash': file_1.hash,
+            'created': file_1.created.strftime('%Y-%m-%d %H:%M:%S')
+        }
         url = self.file_detail_url.format(file_id=file_id)
-        clients = [admin_client, manager_client, superuser_client, user_client]
+        clients = {admin_client: 'Сотрудник ТО',
+                   manager_client: 'Менеджер',
+                   superuser_client: 'Суперпользователь',
+                   user_client: 'Авторизованный пользователь'}
         for client in clients:
             response = client.get(url)
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
-                f'Пользователь {client} не имеет доступ к странице '
+                f'Пользователь {clients[client]} не имеет доступ к странице '
                 f'расшифровки файла.\nОтвет: {response_data}'
             )
-            assert 'id' in response_data, (
-                'Ответ не содержит айди файла'
-            )
-            assert response_data['id'] == file_id, (
-                'Айди файла в ответе не совпадает с айди файла в базе'
-            )
-            assert 'name' in response_data, (
-                'Ответ не содержит название файла'
-            )
-            assert response_data['name'] == file_name, (
-                'Название файла в ответе не совпадает с названием файла в базе'
-            )
-            assert 'length' in response_data, (
-                'Ответ не содержит продолжительность файла'
-            )
-            assert response_data['length'] == file_length, (
-                'Продолжительность файла в ответе не совпадает с '
-                'продолжительностью файла в базе'
-            )
-            assert 'size' in response_data, (
-                'Ответ не содержит размер файла'
-            )
-            assert response_data['size'] == file_size, (
-                'Размер файла в ответе не совпадает с размером файла в базе'
-            )
-            assert 'type' in response_data, (
-                'Ответ не содержит тип файла'
-            )
-            assert response_data['type'] == file_type, (
-                'Тип файла в ответе не совпадает с типом файла в базе'
-            )
-            assert 'tags' in response_data, (
-                'Ответ не содержит тэги файла'
-            )
-            assert response_data['tags'] == file_tags, (
-                'Тэги файла в ответе не совпадает с тэгами файла в базе'
-            )
-            assert 'owner' in response_data, (
-                'Ответ не содержит владельца файла'
-            )
-            assert response_data['owner'] == file_owner, (
-                'Владелец файла в ответе не совпадает с владельцем файла в базе'
-            )
-            assert 'hash' in response_data, (
-                'Ответ не содержит хэш файла'
-            )
-            assert response_data['hash'] == file_hash, (
-                'Хэш файла в ответе не совпадает с хэшем файла в базе'
-            )
-            assert 'created' in response_data, (
-                'Ответ не содержит дату создания файла'
-            )
-            assert response_data['created'] == file_created, (
-                'Дата создания файла в ответе не совпадает с '
-                'датой создания файла в базе'
-            )
+            self.check_get_file_detail_response(file_data, response_data)
 
     def test_get_playlist_list_auth(
         self,
@@ -271,49 +385,25 @@ class TestFiles:
         user,
         playlist_1
     ):
-        playlist_count = Playlist.objects.count()
-        playlist_id = str(playlist_1.id)
-        playlist_name = playlist_1.name
-        playlist_owner = user.full_name
-        playlist_files_count = playlist_1.files.count()
-        clients = [admin_client, manager_client, superuser_client, user_client]
+        playlist_data = {
+            'count': Playlist.objects.count(),
+            'id': str(playlist_1.id),
+            'name': playlist_1.name,
+            'owner': user.full_name,
+            'files_count': playlist_1.files.count()
+        }
+        clients = {admin_client: 'Сотрудник ТО',
+                   manager_client: 'Менеджер',
+                   superuser_client: 'Суперпользователь',
+                   user_client: 'Авторизованный пользователь'}
         for client in clients:
             response = client.get(self.playlists_url)
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
-                f'Пользователь {client} не имеет доступ к странице '
+                f'Пользователь {clients[client]} не имеет доступ к странице '
                 f'списка плейлистов.\nОтвет: {response_data}.'
             )
-            assert response_data['count'] == playlist_count, (
-                'Кол-во элементов в ответе не равно кол-ву плейлистов в базе.'
-            )
-            assert 'id' in response_data['results'][0], (
-                'Ответ не содержит айди плейлиста'
-            )
-            assert response_data['results'][0]['id'] == playlist_id, (
-                'Айди плейлиста в ответе не совпадает с айди плейлиста в базе'
-            )
-            assert 'name' in response_data['results'][0], (
-                'Ответ не содержит название плейлиста'
-            )
-            assert response_data['results'][0]['name'] == playlist_name, (
-                'Название плейлиста в ответе не совпадает с '
-                'названием плейлиста в базе'
-            )
-            assert 'files_count' in response_data['results'][0], (
-                'Ответ не содержит кол-во файлов плейлиста'
-            )
-            assert response_data['results'][0]['files_count'] == playlist_files_count, (
-                'Кол-во файлов плейлиста в ответе не совпадает с '
-                'кол-вом файлов плейлиста в базе'
-            )
-            assert 'owner' in response_data['results'][0], (
-                'Ответ не содержит владельца плейлиста'
-            )
-            assert response_data['results'][0]['owner'] == playlist_owner, (
-                'Владелец плейлиста в ответе не совпадает с '
-                'владельцем плейлиста в базе'
-            )
+            self.check_get_playlist_list_response(playlist_data, response_data)
 
     def test_get_playlist_detail_auth(
         self,
@@ -325,65 +415,31 @@ class TestFiles:
         playlist_1
     ):
         playlist_id = str(playlist_1.id)
-        playlist_name = playlist_1.name
-        playlist_description = playlist_1.description
-        playlist_owner = user.full_name
-        playlist_files_count = playlist_1.files.count()
-        playlist_files = [
-            {'id': str(file.id),
-             'name': file.name,
-             'url': file.url} for file in playlist_1.files.all()
-        ]
+        playlist_data = {
+            'id': playlist_id,
+            'name': playlist_1.name,
+            'description': playlist_1.description,
+            'owner': user.full_name,
+            'files_count': playlist_1.files.count(),
+            'files': [
+                {'id': str(file.id),
+                 'name': file.name,
+                 'url': file.url} for file in playlist_1.files.all()
+            ]
+        }
         url = self.playlist_detail_url.format(playlist_id=playlist_id)
-        clients = [admin_client, manager_client, superuser_client, user_client]
+        clients = {admin_client: 'Сотрудник ТО',
+                   manager_client: 'Менеджер',
+                   superuser_client: 'Суперпользователь',
+                   user_client: 'Авторизованный пользователь'}
         for client in clients:
             response = client.get(url)
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
-                f'Пользователь {client} не имеет доступ к странице '
+                f'Пользователь {clients[client]} не имеет доступ к странице '
                 f'расшифровки плейлиста.\nОтвет: {response_data}.'
             )
-            assert 'id' in response_data, (
-                'Ответ не содержит айди плейлиста'
-            )
-            assert response_data['id'] == playlist_id, (
-                'Айди плейлиста в ответе не совпадает с айди плейлиста в базе'
-            )
-            assert 'name' in response_data, (
-                'Ответ не содержит название плейлиста'
-            )
-            assert 'description' in response_data, (
-                'Ответ не содержит описание плейлиста'
-            )
-            assert response_data['description'] == playlist_description, (
-                'Описание плейлиста в ответе не совпадает с '
-                'описанием плейлиста в базе'
-            )
-            assert response_data['name'] == playlist_name, (
-                'Название плейлиста в ответе не совпадает с '
-                'названием плейлиста в базе'
-            )
-            assert 'files_count' in response_data, (
-                'Ответ не содержит кол-во файлов плейлиста'
-            )
-            assert response_data['files_count'] == playlist_files_count, (
-                'Кол-во файлов плейлиста в ответе не совпадает с '
-                'кол-вом файлов плейлиста в базе'
-            )
-            assert 'owner' in response_data, (
-                'Ответ не содержит владельца плейлиста'
-            )
-            assert response_data['owner'] == playlist_owner, (
-                'Владелец плейлиста в ответе не совпадает с '
-                'владельцем плейлиста в базе'
-            )
-            assert 'files' in response_data, (
-                'Ответ не содержит списка файлов плейлиста'
-            )
-            assert response_data['files'] == playlist_files, (
-                'Список файлов плейлиста в ответе не совпадает со '
-                'списком файлов плейлиста в базе'
-            )
+            self.check_get_playlist_detail_response(playlist_data, response_data)
 
     def test_get_tag_list_auth(
         self,
@@ -393,32 +449,23 @@ class TestFiles:
         user_client,
         tag_1
     ):
-        tag_count = Tag.objects.count()
-        tag_id = tag_1.id
-        tag_name = tag_1.name
-        clients = [admin_client, manager_client, superuser_client, user_client]
+        tag_data = {
+            'count': Tag.objects.count(),
+            'id': tag_1.id,
+            'name': tag_1.name
+        }
+        clients = {admin_client: 'Сотрудник ТО',
+                   manager_client: 'Менеджер',
+                   superuser_client: 'Суперпользователь',
+                   user_client: 'Авторизованный пользователь'}
         for client in clients:
             response = client.get(self.tags_url)
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
-                f'Пользователь {client} не имеет доступ к странице '
+                f'Пользователь {clients[client]} не имеет доступ к странице '
                 f'списка тэгов.\nОтвет: {response_data}.'
             )
-            assert response_data['count'] == tag_count, (
-                'Кол-во элементов в ответе не совпадает с кол-вом тэгов в базе'
-            )
-            assert 'id' in response_data['results'][0], (
-                'Ответ не содержит айди тэга'
-            )
-            assert response_data['results'][0]['id'] == tag_id, (
-                'Айди тэга в ответе не совпадает с айди тэга в базе'
-            )
-            assert 'name' in response_data['results'][0], (
-                'Ответ не содержит название тэга'
-            )
-            assert response_data['results'][0]['name'] == tag_name, (
-                'Название тэга в ответе не совпадает с названием тэга в базе'
-            )
+            self.check_get_tags_list_response(tag_data, response_data)
 
     def test_availability_anon(self, anon_client, file_1, playlist_1):
         file_id = str(file_1.id)

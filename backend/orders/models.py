@@ -80,8 +80,7 @@ class AdOrder(BaseOrder):
     )
     broadcast_type = models.PositiveSmallIntegerField(
         choices=BROADCAST_TYPES,
-        verbose_name='Тип вещания',
-        default=0
+        verbose_name='Тип вещания'
     )
     parameters = models.JSONField(
         verbose_name='Параметры заказа'
