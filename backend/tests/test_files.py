@@ -7,7 +7,7 @@ from files.models import File, Playlist, Tag, TYPES
 load_dotenv()
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db(transaction=True, databases=['default', 'clickhouse'])
 # @pytest.mark.skip(reason='Чтобы быстрее проверять новые тесты')
 class TestFiles:
 

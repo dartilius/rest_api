@@ -4,6 +4,7 @@ from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
+from api.base_objects import UUIDPKField
 from api.custom_user import CustomUserManager
 
 ROLES = {
@@ -29,6 +30,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                 'а почта должна иметь такой вид: адрес@домен'
     )
 
+    id = UUIDPKField()
     last_name = models.CharField(
         max_length=150,
         verbose_name='Фамилия',

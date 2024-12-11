@@ -10,21 +10,35 @@ class TestUsers:
     url = '/api/users/'
     detail_url = '/api/users/{user_id}/'
 
-    def test_avail_staff(self, admin_client, manager_client):
-        response = admin_client.get(self.url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Сотрудник ТО не имеет доступ к странице.'
-        )
-        response = manager_client.get(self.url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Менеджер не имеет доступ к странице.'
-        )
-
-    def test_avail_user(self, user_client):
-        response = user_client.get(self.url)
-        assert response.status_code == HTTPStatus.OK, (
-            'Авторизованный пользователь не имеет доступ к странице.'
-        )
+    def test_avail_staff(
+        self,
+        admin_client,
+        admin_user,
+        manager_client,
+        user_client
+    ):
+        user_count = CustomUser.objects.count()
+        clients = {admin_client: 'Сотрудник ТО',
+                   manager_client: 'Менеджер',
+                   user_client: 'Авторизованный пользователь'}
+        for client in clients:
+            response = client.get(self.url)
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'{clients[client]} не имеет доступ к странице.'
+            )
+            assert response_data['count'] == user_count, (
+                'Кол-во элементов в ответе не равно кол-ву пользователей в базе.'
+            )
+            assert 'id' in response_data['results'][0], (
+                'Ответ не содержит айди пользователя.'
+            )
+            assert 'role' in response_data['results'][0], (
+                'Ответ не содержит роль пользователя.'
+            )
+            assert 'created' in response_data['results'][0], (
+                'Ответ не содержит дату создания пользователя.'
+            )
 
     def test_avail_anon(self, anon_client):
         response = anon_client.get(self.url)

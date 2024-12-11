@@ -74,9 +74,21 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = self.perform_destroy(instance)
+        return Response(data=data, status=400 if data else 204)
+
     def perform_destroy(self, instance):
-        instance.is_active = False
-        instance.save(update_fields=['is_active'])
+        if instance.is_active is True:
+            instance.is_active = False
+            instance.save(update_fields=['is_active'])
+            return None
+        else:
+            return (
+                'Нельзя деактивировать номенклатуру, т.к '
+                'она уже деактивирована'
+            )
 
     @action(detail=False, methods=['GET'], url_path='versions')
     def get_versions(self, request):
