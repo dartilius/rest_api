@@ -37,61 +37,36 @@ class TestTasks:
         return valid_data
 
     @staticmethod
-    def check_get_list_response(client, task, response, user_name):
-        task_count = Task.objects.count()
-        task_id = str(task.id)
-        task_owner = user_name
-        task_client = {'id': str(task.client.id), 'name': task.client.name}
-        task_type = task.type
-        task_status = task.status
-        response_data = response.json()
-        assert response.status_code == HTTPStatus.OK, (
-            f'{client} не имеет доступ к странице списка репликаций.'
-        )
+    def check_get_list_response(task_data, response_data):
+        task_count = task_data.pop('count')
         assert task_count == response_data['count'], (
             'Кол-во элементов в ответе не равно кол-ву репликаций в базе.'
         )
-        assert 'id' in response_data['results'][0], (
-            'Ответ не содержит поле айди репликации.'
-        )
-        assert response_data['results'][0]['id'] == task_id, (
-            'Айди файла в ответе не совпадает с айди файла в базе'
-        )
-        assert 'owner' in response_data['results'][0], (
-            'Ответ не содержит поле "Кто создал" репликации.'
-        )
-        assert response_data['results'][0]['owner'] == task_owner, (
-            'Создатель репликации в ответе не совпадает с '
-            'создателем репликации в базе'
-        )
-        assert 'client' in response_data['results'][0], (
-            'Ответ не содержит поле целевой рабочей станции репликации.'
-        )
-        assert response_data['results'][0]['client'] == task_client, (
-            'Целевая рабочая станция репликации в ответе и в базе не совпадает'
-        )
-        assert 'type' in response_data['results'][0], (
-            'Ответ не содержит поле типа репликации.'
-        )
-        assert response_data['results'][0]['type'] == task_type, (
-            'Тип репликации в ответе не совпадает с типом репликации в базе'
-        )
-        assert 'status' in response_data['results'][0], (
-            'Ответ не содержит поле статуса репликации.'
-        )
-        assert response_data['results'][0]['status'] == task_status, (
-            'Статус репликации в ответе не совпадает со статусом репликации в базе'
-        )
+        for key in task_data:
+            assert key in response_data['results'][0], (
+                f'Ответ не содержит ключ {key}.'
+            )
+            assert response_data['results'][0][key] == task_data[key], (
+                f'{key} репликации в ответе не совпадает с {key} репликации в базе'
+            )
 
-    def test_get_task_list_admin(self, admin_client, user, task):
-        response = admin_client.get(self.url)
-        user_name = user.full_name
-        self.check_get_list_response('Сотрудник ТО', task, response, user_name)
-
-    def test_get_task_list_manager(self, manager_client, user, task):
-        response = manager_client.get(self.url)
-        user_name = user.full_name
-        self.check_get_list_response('Менеджер', task, response, user_name)
+    def test_get_task_list_staff(self, admin_client, manager_client, user, task):
+        task_data = {
+            'count': Task.objects.count(),
+            'id': str(task.id),
+            'owner': user.full_name,
+            'client': {'id': str(task.client.id), 'name': task.client.name},
+            'type': task.type,
+            'status': task.status
+        }
+        clients = {admin_client: 'Сотрудник ТО', manager_client: 'Менеджер'}
+        for client in clients:
+            response = client.get(self.url)
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'{clients[client]} не имеет доступ к странице списка репликаций.'
+            )
+            self.check_get_list_response(task_data, response_data)
 
     def test_availability_not_staff(self, user_client, anon_client, task):
         urls = [

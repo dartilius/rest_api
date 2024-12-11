@@ -413,10 +413,9 @@ class AdOrderListSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'client',
-            'playlist',
-            'slides',
             'status',
-            'broadcast_interval'
+            'broadcast_interval',
+            'broadcast_type'
         )
         read_only_fields = fields
         model = AdOrder
@@ -426,11 +425,6 @@ class AdOrderListSerializer(serializers.ModelSerializer):
         repr_['client'] = {
             'id': value.client.id,
             'name': value.client.name
-        }
-        repr_['playlist'] = {
-            'id': value.playlist.id,
-            'name': value.playlist.name,
-            'files_count': value.playlist.files.count()
         }
         return repr_
 
@@ -451,6 +445,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
             'order_type',
             'playlist',
             'broadcast_interval',
+            'parameters',
             'status',
             'created'
         )
@@ -556,7 +551,6 @@ class BgOrderListSerializer(serializers.ModelSerializer):
             'name',
             'client',
             'order_type',
-            'playlist',
             'status',
             'broadcast_interval'
         )
@@ -568,10 +562,5 @@ class BgOrderListSerializer(serializers.ModelSerializer):
         repr_['client'] = {
             'id': value.client.id,
             'name': value.client.name
-        }
-        repr_['playlist'] = {
-            'id': value.playlist.id,
-            'name': value.playlist.name,
-            'files_count': value.playlist.files.count()
         }
         return repr_

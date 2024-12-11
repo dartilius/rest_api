@@ -252,8 +252,27 @@ class TestOrders:
             case _: pass
 
     @staticmethod
-    def check_get_orders_list_response(order_data, response_data, order_type):
-        pass
+    def check_get_orders_list_response(order_data, order_count, response_data):
+        assert response_data['count'] == order_count, (
+            'Кол-во элементов в ответе не совпадает с кол-вом заказов в базе.'
+        )
+        for key in order_data:
+            assert key in response_data['results'][0], (
+                f'Ответ не содержит ключа {key}.'
+            )
+            assert response_data['results'][0][key] == order_data[key], (
+                f'{key} заказа в ответе не совпадает с {key} заказа в базе.'
+            )
+
+    @staticmethod
+    def check_get_orders_detail_response(order_data, response_data):
+        for key in order_data:
+            assert key in response_data, (
+                f'Ответ не содержит ключа {key}.'
+            )
+            assert response_data[key] == order_data[key], (
+                f'{key} заказа в ответе не совпадает с {key} заказа в базе.'
+            )
 
     def test_get_orders_list_auth(
         self,
@@ -264,15 +283,46 @@ class TestOrders:
         adorder,
         bgorder
     ):
-        urls = [
-            self.ad_list_url,
-            self.bg_list_url,
-        ]
-        clients = [admin_client, manager_client, superuser_client, user_client]
+        ad_list_url = self.ad_list_url
+        bg_list_url = self.bg_list_url
+        adorder_data = {
+            'id': str(adorder.id),
+            'name': adorder.name,
+            'client': {'id': str(adorder.client.id),
+                       'name': adorder.client.name},
+            'status': adorder.status,
+            'broadcast_interval': {'lower': adorder.broadcast_interval[1:20],
+                                   'upper': adorder.broadcast_interval[22:-1]},
+            'broadcast_type': adorder.broadcast_type,
+        }
+        bgorder_data = {
+            'id': str(bgorder.id),
+            'name': bgorder.name,
+            'client': {'id': str(bgorder.client.id),
+                       'name': bgorder.client.name},
+            'order_type': bgorder.order_type,
+            'status': bgorder.status,
+            'broadcast_interval': {'lower': bgorder.broadcast_interval[1:20],
+                                   'upper': bgorder.broadcast_interval[22:-1]},
+        }
+        adorder_count = AdOrder.objects.count()
+        bgorder_count = BgOrder.objects.count()
+        urls = {ad_list_url: 'ad', bg_list_url: 'bg'}
+        clients = {admin_client: 'Сотрудник ТО',
+                   manager_client: 'Менеджер',
+                   superuser_client: 'Суперпользователь',
+                   user_client: 'Авторизованный пользователь'}
         for combo in product(clients, urls):
             response = combo[0].get(combo[1])
+            response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
-                f'Пользователь {combo[0]} не имеет доступ к странице {combo[1]}.'
+                f'Пользователь {clients[combo[0]]} не имеет доступ '
+                f'к странице {combo[1]}.'
+            )
+            self.check_get_orders_list_response(
+                adorder_data if urls[combo[1]] == 'ad' else bgorder_data,
+                adorder_count if urls[combo[1]] == 'ad' else bgorder_count,
+                response_data,
             )
 
     def test_get_orders_detail_auth(
@@ -281,20 +331,59 @@ class TestOrders:
         manager_client,
         superuser_client,
         user_client,
+        user,
         adorder,
         bgorder
     ):
-        urls = [
-            self.ad_list_url,
-            self.bg_list_url,
-            self.ad_detail_url.format(adorder=str(adorder.id)),
-            self.bg_detail_url.format(bgorder=str(bgorder.id)),
-        ]
-        clients = [admin_client, manager_client, superuser_client, user_client]
+        ad_detail_url = self.ad_detail_url.format(adorder=str(adorder.id))
+        bg_detail_url = self.bg_detail_url.format(bgorder=str(bgorder.id))
+        adorder_data = {
+            'id': str(adorder.id),
+            'name': adorder.name,
+            'description': adorder.description,
+            'owner': user.full_name,
+            'client': {'id': str(adorder.client.id),
+                       'name': adorder.client.name},
+            'broadcast_type': adorder.broadcast_type,
+            'broadcast_interval': {'lower': adorder.broadcast_interval[1:20],
+                                   'upper': adorder.broadcast_interval[22:-1]},
+            'playlist': {'id': str(adorder.playlist.id),
+                         'name': adorder.playlist.name,
+                         'files_count': adorder.playlist.files.count()},
+            'slides': adorder.slides if adorder.slides else None,
+            'parameters': adorder.parameters,
+            'status': adorder.status
+        }
+        bgorder_data = {
+            'id': str(bgorder.id),
+            'name': bgorder.name,
+            'description': bgorder.description,
+            'owner': user.full_name,
+            'client': {'id': str(bgorder.client.id),
+                       'name': bgorder.client.name},
+            'order_type': bgorder.order_type,
+            'playlist': {'id': str(bgorder.playlist.id),
+                         'name': bgorder.playlist.name,
+                         'files_count': bgorder.playlist.files.count()},
+            'broadcast_interval': {'lower': bgorder.broadcast_interval[1:20],
+                                   'upper': bgorder.broadcast_interval[22:-1]},
+            'parameters': bgorder.parameters,
+            'status': bgorder.status
+        }
+        urls = {ad_detail_url: 'ad', bg_detail_url: 'bg'}
+        clients = {admin_client: 'Сотрудник ТО',
+                   manager_client: 'Менеджер',
+                   superuser_client: 'Суперпользователь',
+                   user_client: 'Авторизованный пользователь'}
         for combo in product(clients, urls):
             response = combo[0].get(combo[1])
+            response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
                 f'Пользователь {combo[0]} не имеет доступ к странице {combo[1]}.'
+            )
+            self.check_get_orders_detail_response(
+                adorder_data if urls[combo[1]] == 'ad' else bgorder_data,
+                response_data
             )
 
     def test_availability_anon(self, anon_client, adorder, bgorder):
