@@ -280,7 +280,8 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         2. Иначе делаем то же самое с каждым плейлистом из списка.
         """
 
-        def _remove_files_and_update_orders(playlist, file_list) -> None:
+        def _remove_files_and_update_orders(playlist: Playlist,
+                                            file_list: list[str]) -> None:
             """
             Убираем из плейлиста только те файлы, которые реально в нём есть.
 

@@ -139,7 +139,7 @@ def restricted_update(viewset, request, *args, **kwargs):
     Отличия от стандартного метода update():
     1. Проверяем, что получен запрос именно на частичное обновление.
     2. Проверяем, что в запросе есть только ключи из списка updatable_fields.
-    2.1 Иначе возвращаем ошибку с сообщением error_message
+    2.1 Иначе возвращаем ошибку с сообщением error_message.
     """
     from rest_framework.response import Response
     from rest_framework.status import (

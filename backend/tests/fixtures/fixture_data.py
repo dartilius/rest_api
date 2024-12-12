@@ -4,7 +4,7 @@ from random import randint
 
 from ch_statistic.models import ADStat, ImageStat, MusicStat, TickerStat, VideoStat
 from files.models import File, Playlist, Tag
-from nomenclatures.models import Nomenclature, StatusHistory
+from nomenclatures.models import Nomenclature, NomenclatureAvailability, StatusHistory
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 
@@ -52,6 +52,15 @@ def status_history(nomenclature) -> StatusHistory:
     return StatusHistory.objects.create(
         client=nomenclature,
         change_time=dt.now(),
+        status=0
+    )
+
+
+@pytest.fixture
+def nomenclature_availability(nomenclature) -> NomenclatureAvailability:
+    return NomenclatureAvailability.objects.create(
+        client=nomenclature,
+        last_answer_date=dt.now(),
         status=0
     )
 

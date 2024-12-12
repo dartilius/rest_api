@@ -37,28 +37,25 @@ class TestTasks:
         return valid_data
 
     @staticmethod
-    def check_get_list_response(task_data, response_data):
-        task_count = task_data.pop('count')
+    def check_get_list_response(task_data, task_count, response_data):
         assert task_count == response_data['count'], (
             'Кол-во элементов в ответе не равно кол-ву репликаций в базе.'
         )
         for key in task_data:
-            assert key in response_data['results'][0], (
-                f'Ответ не содержит ключ {key}.'
-            )
+            assert key in response_data['results'][0], f'Ответ не содержит ключ {key}.'
             assert response_data['results'][0][key] == task_data[key], (
                 f'{key} репликации в ответе не совпадает с {key} репликации в базе'
             )
 
     def test_get_task_list_staff(self, admin_client, manager_client, user, task):
         task_data = {
-            'count': Task.objects.count(),
             'id': str(task.id),
             'owner': user.full_name,
             'client': {'id': str(task.client.id), 'name': task.client.name},
             'type': task.type,
             'status': task.status
         }
+        task_count = Task.objects.count()
         clients = {admin_client: 'Сотрудник ТО', manager_client: 'Менеджер'}
         for client in clients:
             response = client.get(self.url)
@@ -66,7 +63,7 @@ class TestTasks:
             assert response.status_code == HTTPStatus.OK, (
                 f'{clients[client]} не имеет доступ к странице списка репликаций.'
             )
-            self.check_get_list_response(task_data, response_data)
+            self.check_get_list_response(task_data, task_count, response_data)
 
     def test_availability_not_staff(self, user_client, anon_client, task):
         urls = [

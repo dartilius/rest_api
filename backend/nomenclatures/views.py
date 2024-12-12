@@ -10,7 +10,7 @@ from rest_framework.status import (
     HTTP_201_CREATED
 )
 
-from api.constants import Constants, get_instance_or_404
+from api.constants import Constants, get_instance_or_404, restricted_update
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -45,7 +45,7 @@ from nomenclatures.tasks import (
 )
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
-from users.permissions import SuperuserDStaffCUAuthRetrieve
+from users.permissions import StaffCUDAuthRetrieve
 
 
 class NomenclatureViewSet(viewsets.ModelViewSet):
@@ -56,7 +56,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     ).select_related('owner', 'availability')
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
-    permission_classes = [SuperuserDStaffCUAuthRetrieve]
+    permission_classes = [StaffCUDAuthRetrieve]
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -78,6 +78,22 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         data = self.perform_destroy(instance)
         return Response(data=data, status=400 if data else 204)
+
+    def update(self, request, *args, **kwargs):
+        error_message = (
+            'Изменить можно только название, описание, '
+            'часовой пояс и настройки вещания. Лишние ключи: {keys}.'
+        )
+        updatable_fields = (
+            'name',
+            'description',
+            'timezone',
+            'settings'
+        )
+        kwargs.update(updatable_fields=updatable_fields,
+                      error_message=error_message)
+        response = restricted_update(self, request, *args, **kwargs)
+        return response
 
     def perform_destroy(self, instance):
         if instance.is_active is True:
