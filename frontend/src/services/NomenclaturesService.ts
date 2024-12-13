@@ -10,9 +10,9 @@ class NomenclaturesService {
   private URL = API_URL;
   constructor() {}
 
-  getAll({ limit, page, token, timezone, status }: INomenclaturesService) {
+  getAll({ limit, page, token }: INomenclaturesService) {
     return axios.get<INomenclaturesResponse>(
-      `${this.URL}nomenclatures/?page=${page}&limit=${limit}&timezone=${timezone}&status=${status}`,
+      `${this.URL}nomenclatures/?page=${page}&limit=${limit}`,
       {
         headers: {
           Authorization: `access_token ${token}`,
@@ -21,7 +21,7 @@ class NomenclaturesService {
     );
   }
 
-  getById({ id, token }: { id: string; token: string }) {
+  getById({ id, token }: { id: string | undefined; token: string | null }) {
     return axios.get<INomenclatureByIdResponse>(
       `${this.URL}nomenclatures/${id}`,
       {

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Paper, Button } from "@mui/material";
 import './nomenclatures.scss'
 import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
@@ -17,35 +17,41 @@ const columns = [
 ];
 export default function NomenclaturesPage() {
     const [page, setPage] = useState(1); // Начинаем с первой страницы
-    const [rowsPerPage, setRowsPerPage] = useState(5);
+    const [limit, setLimit] = useState(10);
     const [zone, setZone] = useState<string>("");
     const [status, setStatus] = useState<string>("");
     const token = localStorage.getItem("accessToken");
     const statusTypes = [0, 1, 2, 3];
 
-    const { fetchData, nomenclatures, totalItems } = useFetchNomenclatures(
+    const { fetchData, nomenclatures, totalItems, loading } = useFetchNomenclatures(
         {
             token,
             page,
-            limit: rowsPerPage,
+            limit: limit,
             timezone: zone,
             status
         }
     );
 
+    useEffect(() => {
+        fetchData()
+    }, [page, limit]);
+
+
     return (
         <Paper sx={{ width: "100%", overflow: "hidden" }}>
             <Button onClick={fetchData}>Обновить данные</Button>
             <TableComponent
-                data={nomenclatures.slice((page - 1) * rowsPerPage, page * rowsPerPage)}
+                data={nomenclatures}
                 columns={columns}
                 link="nomenclatures"
-                limit={rowsPerPage}
+                limit={limit}
+                loading={loading}
             />
             <CustomPagination
                 totalItems={totalItems}
-                itemsPerPage={rowsPerPage}
-                setItemsPerPage={setRowsPerPage}
+                itemsPerPage={limit}
+                setItemsPerPage={setLimit}
                 currentPage={page}
                 setCurrentPage={setPage}
             />

@@ -8,9 +8,11 @@ interface Props {
     columns: any;
     link: string;
     limit: number;
+    loading: boolean;
 }
 
-const TableComponent = ({ data, columns, link, limit }: Props) => {
+const TableComponent = ({ data, columns, link, limit, loading }: Props) => {
+
     return (
         <TableContainer>
             <Table stickyHeader aria-label="sticky table" className="rounded">
@@ -24,7 +26,7 @@ const TableComponent = ({ data, columns, link, limit }: Props) => {
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {(!data || data.length === 0) ? (
+                    {loading ? (
                         <TableRowsLoader rowsNum={limit} columnsNum={columns.length} />
                     ) : (
                         data.map((row: any) => (
@@ -40,12 +42,10 @@ const TableComponent = ({ data, columns, link, limit }: Props) => {
                             </TableRow>
                         ))
                     )}
-
                 </TableBody>
             </Table>
         </TableContainer>
-
     );
-}
+};
 
 export default TableComponent;

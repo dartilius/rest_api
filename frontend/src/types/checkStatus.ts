@@ -7,8 +7,8 @@ const types: Types = {
 type Types = {
   [key: number]: string;
 };
-export function convertStatus(statusId: number | undefined): string {
-  if (statusId === undefined) {
+export function convertStatus(statusId: number | undefined | null): string {
+  if (statusId === undefined || statusId === null) {
     return "Undefined Status";
   }
   if (statusId in types) {

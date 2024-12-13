@@ -33,8 +33,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             setLoading(true);
             const { data } = await AuthService.login({ email, password });
+            document.cookie = `accessToken=${data.access}`;
+            document.cookie = `refreshToken=${data.refresh}`;
             localStorage.setItem('accessToken', data.access);
             localStorage.setItem('refreshToken', data.refresh);
+
             setIsAuthenticated(true);
         } catch (error) {
             console.error('Ошибка при входе:', error);
