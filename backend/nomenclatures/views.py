@@ -128,29 +128,53 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         )
         return Response({"id": nomenclature.pk})
 
-    @action(detail=True, methods=['GET'])
-    def status_history(self, request, pk):
+    @action(detail=True, methods=['POST'])
+    def resend_orders(self, request, pk):
+        """
+        Переотправка заказов.
+
+        0. Получаем список заказов на переотправку.
+        1. Проверяем, что заказы в списке активны.
+        1.1. Активные заказы сериализуются в JSON и отправляются в целери
+            для создания соответствующих репликаций в фоне.
+        1.2. Заказы, которые нельзя переотправить,
+            записываем в отдельный список.
+        2. В ответ отдаём сообщение со списком заказов которые будут
+            переотправлены и которые переотправить нельзя.
+        """
         nomenclature = get_instance_or_404(Nomenclature, pk)
-        history = nomenclature.history.all()
-        serializer = StatusHistorySerializer(history, many=True)
-        return Response(serializer.data, status=HTTP_200_OK)
+        empty_values = Constants.empty_values
+        orders = chain(
+            nomenclature.adorders.filter(status__in=[0, 1]),
+            nomenclature.bgorders.filter(status__in=[0, 1])
+        )
+
+        if list(orders) in empty_values:
+            result_text = 'Нет активных заказов.'
+            return Response(data=result_text, status=HTTP_200_OK)
+
+        order_ids = [order.id for order in orders]
+        resend_orders_task.delay(order_ids)
+
+        result_text = 'Запрос на переотправку заказов принят.'
+        return Response(data=result_text, status=HTTP_201_CREATED)
 
     @action(detail=True, methods=['POST'], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
         """Отправка задач для клиентов и обработка присылаемых данных."""
         nomenclature = get_instance_or_404(Nomenclature, pk)
-        nom_update = []
+        update_fields = []
 
         if 'version' in request.data:
             nomenclature.version = request.data['version']
-            nom_update.append('version')
+            update_fields.append('version')
 
         if 'hw_info' in request.data:
             nomenclature.hw_info = request.data['hw_info']
-            nom_update.append('hw_info')
+            update_fields.append('hw_info')
 
-        if nom_update:
-            nomenclature.save(update_fields=[*nom_update])
+        if update_fields:
+            nomenclature.save(update_fields=update_fields)
 
         if 'statistic' in request.data:
             statistics = request.data['statistic']
@@ -160,8 +184,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         if 'task_status' in request.data:
             task_list = list()
-            for task in request.data['task_status']:
-                task_id, task_status = task.items()
+            for task_id in request.data['task_status']:
+                task_status = request.data['task_status'][task_id]
                 task_instance = Task.objects.get(id=task_id)
                 task_instance.status = task_status
                 task_list.append(task_instance)
@@ -181,6 +205,50 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
              'parameters': task.parameters}
             for task in pending_tasks]}
         return Response(tasks, status=HTTP_200_OK)
+
+    @action(detail=True, methods=['POST'], url_path='actions')
+    def send_task(self, request, pk):
+        """
+        Отправка административных репликаций на тачку.
+
+        Типы репликаций:
+         - Перезагрузка
+         - Обновление
+         - SH команда
+            parameters = {'command': 'rm -rf /'}
+         - Настройки вещания
+            settings = {'mon' = {'default_volume': [50, 50, 50, 50], ...}
+        """
+        nomenclature = get_instance_or_404(Nomenclature, pk)
+        task = request.data['task']
+        owner = str(request.user.id)
+
+        match task:
+            case 'reboot':
+                if not nomenclature.tasks.filter(status=0, type=15).exists():
+                    reboot_task.delay(pk, owner)
+            case 'update':
+                if not nomenclature.tasks.filter(status=0, type=16).exists():
+                    update_task.delay(pk, owner)
+            case 'custom':
+                parameters = request.data['parameters']
+                custom_task.delay(pk, parameters, owner)
+            case 'settings':
+                settings = request.data['settings']
+                settings_task.delay(pk, settings, owner)
+
+    @action(detail=True, methods=['POST'], url_path='tasks')
+    def get_tasks(self, request, pk):
+        """Запрос списка репликаций номенклатуры."""
+        get_instance_or_404(Nomenclature, pk)
+        tasks = Task.objects.filter(client=pk)
+
+        page = self.paginate_queryset(tasks)
+        if page is not None:
+            serializer = TaskListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = TaskListSerializer(tasks, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
 
     @action(detail=True, methods=['GET'], url_path='ad_stat')
     def get_ad_stat(self, request, pk):
@@ -242,77 +310,9 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(detail=True, methods=['POST'])
-    def resend_orders(self, request, pk):
-        """
-        Переотправка заказов.
-
-        0. Получаем список заказов на переотправку.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в целери
-            для создания соответствующих репликаций в фоне.
-        1.2. Заказы, которые нельзя переотправить,
-            записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов которые будут
-            переотправлены и которые переотправить нельзя.
-        """
+    @action(detail=True, methods=['GET'])
+    def status_history(self, request, pk):
         nomenclature = get_instance_or_404(Nomenclature, pk)
-        empty_values = Constants.empty_values
-        orders = chain(
-            nomenclature.adorders.filter(status__in=[0, 1]),
-            nomenclature.bgorders.filter(status__in=[0, 1])
-        )
-
-        if list(orders) in empty_values:
-            result_text = 'Нет активных заказов.'
-            return Response(data=result_text, status=HTTP_200_OK)
-
-        order_ids = [order.id for order in orders]
-        resend_orders_task.delay(order_ids)
-
-        result_text = 'Запрос на переотправку заказов принят.'
-        return Response(data=result_text, status=HTTP_201_CREATED)
-
-    @action(detail=True, methods=['POST'], url_path='actions')
-    def send_task(self, request, pk):
-        """
-        Отправка административных репликаций на тачку.
-
-        Типы репликаций:
-         - Перезагрузка
-         - Обновление
-         - SH команда
-            parameters = {'command': 'rm -rf /'}
-         - Настройки вещания
-            settings = {'mon' = {'default_volume': [50, 50, 50, 50], ...}
-        """
-        nomenclature = get_instance_or_404(Nomenclature, pk)
-        task = request.data['task']
-        owner = str(request.user.id)
-
-        match task:
-            case 'reboot':
-                if not nomenclature.tasks.filter(status=0, type=15).exists():
-                    reboot_task.delay(pk, owner)
-            case 'update':
-                if not nomenclature.tasks.filter(status=0, type=16).exists():
-                    update_task.delay(pk, owner)
-            case 'custom':
-                parameters = request.data['parameters']
-                custom_task.delay(pk, parameters, owner)
-            case 'settings':
-                settings = request.data['settings']
-                settings_task.delay(pk, settings, owner)
-
-    @action(detail=True, methods=['POST'], url_path='tasks')
-    def get_tasks(self, request, pk):
-        """Запрос списка репликаций номенклатуры."""
-        get_instance_or_404(Nomenclature, pk)
-        tasks = Task.objects.filter(client=pk)
-
-        page = self.paginate_queryset(tasks)
-        if page is not None:
-            serializer = TaskListSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = TaskListSerializer(tasks, many=True)
+        history = nomenclature.history.all()
+        serializer = StatusHistorySerializer(history, many=True)
         return Response(serializer.data, status=HTTP_200_OK)

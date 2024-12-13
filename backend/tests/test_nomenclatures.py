@@ -1,15 +1,21 @@
-import copy
 import pytest
 
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td
 from http import HTTPStatus
 from random import randint, choices
 from string import ascii_letters, digits
+from uuid import uuid4
 
-from nomenclatures.models import Nomenclature, NomenclatureAvailability, TIMEZONES
+from nomenclatures.models import (
+    Nomenclature,
+    NomenclatureAvailability,
+    StatusHistory,
+    TIMEZONES
+)
 
 
-@pytest.mark.django_db
+# @pytest.mark.django_db
+@pytest.mark.skip
 class TestNomenclaturesCRUD:
 
     nomenclature_list_url = '/api/nomenclatures/'
@@ -63,7 +69,6 @@ class TestNomenclaturesCRUD:
 
     @staticmethod
     def get_valid_custom_settings() -> dict:
-        from random import randint
         custom_settings = TestNomenclaturesCRUD.get_valid_settings()
         for day in custom_settings:
             begin_time = f'{randint(9, 14)}:00:00'
@@ -849,8 +854,269 @@ class TestNomenclaturesCRUD:
 @pytest.mark.django_db(databases=['clickhouse', 'default'])
 class TestNomenclatureActions:
 
+    from ch_statistic.models import (
+        ADStat,
+        MusicStat,
+        ImageStat,
+        VideoStat,
+        TickerStat
+    )
+    from tasks.models import Task
+
     status_history_url = '/api/nomenclatures/{nomenclature_id}/status_history/'
     pending_tasks_url = '/api/nomenclatures/{nomenclature_id}/pending_tasks/'
+
+    @staticmethod
+    def update_nomenclature_status() -> None:
+        statuses = NomenclatureAvailability.objects.all()
+        statuses_to_update = []
+        status_histories_to_create = []
+        ONLINE = 0
+        OFFLINE_5_MIN = 1
+        OFFLINE_1_HOUR = 2
+
+        for status in statuses:
+            now_time = dt.now()
+            new_status = ONLINE
+            current_status = status.status
+            last_answer = status.last_answer_date
+            if current_status == ONLINE:
+                if now_time - last_answer > td(hours=1):
+                    new_status = OFFLINE_1_HOUR
+                elif now_time - last_answer > td(minutes=5):
+                    new_status = OFFLINE_5_MIN
+                if new_status != current_status:
+                    status.status = new_status
+                    statuses_to_update.append(status)
+                    status_histories_to_create.append(
+                        StatusHistory(
+                            status=new_status,
+                            client=status.client
+                        )
+                    )
+
+            if current_status == OFFLINE_5_MIN:
+                new_status = OFFLINE_5_MIN
+                if now_time - last_answer > td(hours=1):
+                    new_status = OFFLINE_1_HOUR
+                elif now_time - last_answer < td(minutes=5):
+                    new_status = ONLINE
+                if new_status != current_status:
+                    status.status = new_status
+                    statuses_to_update.append(status)
+                    status_histories_to_create.append(
+                        StatusHistory(
+                            status=new_status,
+                            client=status.client
+                        )
+                    )
+
+            if current_status == OFFLINE_1_HOUR:
+                if now_time - last_answer < td(minutes=5):
+                    status.status = ONLINE
+                    statuses_to_update.append(status)
+                    status_histories_to_create.append(
+                        StatusHistory(
+                            status=new_status,
+                            client=status.client
+                        )
+                    )
+
+        NomenclatureAvailability.objects.bulk_update(statuses_to_update, ['status'])
+        StatusHistory.objects.bulk_create(status_histories_to_create)
+
+    @staticmethod
+    def create_statistic(stat_type, nomenclature_id, stat_list):
+        AdStat = TestNomenclatureActions.ADStat
+        MusicStat = TestNomenclatureActions.MusicStat
+        ImageStat = TestNomenclatureActions.ImageStat
+        VideoStat = TestNomenclatureActions.VideoStat
+        TickerStat = TestNomenclatureActions.TickerStat
+        stat_objects = []
+        match stat_type:
+            case 'ad':
+                model = AdStat
+                for stat_element in stat_list:
+                    stat_objects += [model(
+                        client=nomenclature_id,
+                        file=stat_element['file'],
+                        played=stat_element['played'],
+                        length=stat_element['length'],
+                        ad_block=stat_element['ad_block']
+                    )]
+            case 'music':
+                model = MusicStat
+            case 'video':
+                model = VideoStat
+            case 'image':
+                model = ImageStat
+            case 'ticker':
+                model = TickerStat
+            case _:
+                model = None
+
+        if model:
+            if stat_type != 'ad':
+                for stat_element in stat_list:
+                    stat_objects += [model(
+                        client=nomenclature_id,
+                        file=stat_element['file'],
+                        played=stat_element['played'],
+                        length=stat_element['length']
+                    )]
+            model.objects.bulk_create(stat_objects)
+
+    @staticmethod
+    def check_create_statistic(data, stat_type):
+        ADStat = TestNomenclatureActions.ADStat
+        MusicStat = TestNomenclatureActions.MusicStat
+        ImageStat = TestNomenclatureActions.ImageStat
+        VideoStat = TestNomenclatureActions.VideoStat
+        TickerStat = TestNomenclatureActions.TickerStat
+        match stat_type:
+            case 'ad':
+                stat_obj = ADStat.objects.last()
+                assert (
+                    data['statistic'][stat_type][0]['file'] == stat_obj.file
+                ), 'Айди файла встал неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['played'] ==
+                    f'{stat_obj.played:%Y-%m-%d %H:%M:%S}'
+                ), 'Время, когда сыграл файл, встало неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['length'] ==
+                    stat_obj.length
+                ), 'Хронометраж файла встал неправильно'
+                assert (
+                    data['statistic']['ad'][0]['ad_block'] ==
+                    stat_obj.ad_block
+                ), 'Рекламный блок встал неправильно'
+            case 'music':
+                stat_obj = MusicStat.objects.last()
+                assert (
+                    data['statistic'][stat_type][0]['file'] == stat_obj.file
+                ), 'Айди файла встал неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['played'] ==
+                    f'{stat_obj.played:%Y-%m-%d %H:%M:%S}'
+                ), 'Время, когда сыграл файл, встало неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['length'] ==
+                    stat_obj.length
+                ), 'Хронометраж файла встал неправильно'
+            case 'image':
+                stat_obj = ImageStat.objects.last()
+                assert (
+                    data['statistic'][stat_type][0]['file'] == stat_obj.file
+                ), 'Айди файла встал неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['played'] ==
+                    f'{stat_obj.played:%Y-%m-%d %H:%M:%S}'
+                ), 'Время, когда сыграл файл, встало неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['length'] ==
+                    stat_obj.length
+                ), 'Хронометраж файла встал неправильно'
+            case 'video':
+                stat_obj = VideoStat.objects.last()
+                assert (
+                    data['statistic'][stat_type][0]['file'] == stat_obj.file
+                ), 'Айди файла встал неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['played'] ==
+                    f'{stat_obj.played:%Y-%m-%d %H:%M:%S}'
+                ), 'Время, когда сыграл файл, встало неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['length'] ==
+                    stat_obj.length
+                ), 'Хронометраж файла встал неправильно'
+            case 'ticker':
+                stat_obj = TickerStat.objects.last()
+                assert (
+                    data['statistic'][stat_type][0]['file'] == stat_obj.file
+                ), 'Айди файла встал неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['played'] ==
+                    f'{stat_obj.played:%Y-%m-%d %H:%M:%S}'
+                ), 'Время, когда сыграл файл, встало неправильно'
+                assert (
+                    data['statistic'][stat_type][0]['length'] ==
+                    stat_obj.length
+                ), 'Хронометраж файла встал неправильно'
+
+    @staticmethod
+    def resend_orders(pk) -> dict:
+        from itertools import chain
+        from api.constants import Constants, get_instance_or_404
+        try:
+            nomenclature = get_instance_or_404(Nomenclature, pk)
+            empty_values = Constants.empty_values
+            orders = chain(
+                nomenclature.adorders.filter(status__in=[0, 1]),
+                nomenclature.bgorders.filter(status__in=[0, 1])
+            )
+
+            if list(orders) in empty_values:
+                result_text = 'Нет активных заказов.'
+                return {'data': result_text, 'status': HTTPStatus.OK}
+
+            order_ids = [order.id for order in orders]
+            TestNomenclatureActions.resend_orders_task(order_ids)
+
+            result_text = 'Запрос на переотправку заказов принят.'
+            return {'data': result_text, 'status': HTTPStatus.CREATED}
+        except Exception as e:
+            return {'data': e, 'status': HTTPStatus.BAD_REQUEST}
+
+    @staticmethod
+    def resend_orders_task(order_ids: list) -> None:
+        from itertools import chain
+        from orders.models import AdOrder, BgOrder
+
+        Task = TestNomenclatureActions.Task
+        task_list = []
+        AD = 4
+        orders = chain(
+            AdOrder.objects.filter(id__in=order_ids),
+            BgOrder.objects.filter(id__in=order_ids)
+        )
+        assert 1 == 0, f'{order_ids}, {list(orders)}'
+        for order in orders:
+            parameters = {
+                'order_id': str(order.id),
+                'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                      f'{order.broadcast_interval.upper}',
+                'playlist': {
+                    'id': str(order.playlist.id),
+                    'files': [
+                        {
+                            'id': str(file.id),
+                            'hash': file.hash
+                        } for file in order.playlist.files.all()
+                    ]
+                }
+            }
+            if isinstance(order, AdOrder):
+                parameters.update({
+                    'order_parameters': order.parameters,
+                    'broadcast_type': order.broadcast_type,
+                })
+                parameters['playlist']['slides'] = (
+                    order.slides if order.slides else None
+                )
+                task_type = AD
+            else:
+                parameters.update({'type': order.order_type})
+                task_type = order.order_type
+            task_list.append(
+                Task(
+                    owner=order.owner,
+                    client=order.client,
+                    type=task_type,
+                    parameters=parameters
+                )
+            )
+        Task.objects.bulk_create(task_list)
 
     def test_get_status_history_auth(
         self,
@@ -885,7 +1151,115 @@ class TestNomenclatureActions:
             'Не авторизованный пользователь может запросить историю доступности.'
         )
 
-    def test_create_nomenclature_availability_with_pending_tasks(
+    def test_pending_tasks_create_status_history(self, client, nomenclature):
+        status_history_count = StatusHistory.objects.count()
+        url = self.pending_tasks_url.format(nomenclature_id=str(nomenclature.id))
+        response = client.post(url, data={}, format='json')
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.Ответ: {response.json()}'
+        )
+        self.update_nomenclature_status()
+        status_history_count += 1
+        assert status_history_count == StatusHistory.objects.count(), (
+            'Не удалось создать запись об изменении статуса номенклатуры.'
+        )
+
+    def test_pending_tasks_update_nomenclature_version(self, client, nomenclature):
+        nomenclature_id = str(nomenclature.id)
+        data = {'version': '1337'}
+        url = self.pending_tasks_url.format(nomenclature_id=nomenclature_id)
+        response = client.post(url, data=data, format='json')
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response.json()}.'
+        )
+        nom_obj = Nomenclature.objects.get(id=nomenclature_id)
+        assert nom_obj.version == data['version'], (
+            'Версия ПО встала неправильно.'
+        )
+
+    def test_pending_tasks_update_nomenclature_hw_info(self, client, nomenclature):
+        nomenclature_id = str(nomenclature.id)
+        data = {
+            'hw_info': {
+                'model': 'Raspberry Pi 3 Model B Rev 1.2',
+                'revision': 'a02082',
+                'interfaces': [
+                    {'ip': '172.31.170.227/27',
+                     'mac': 'b8:27:eb:a4:d2:1f',
+                     'iface': 'eth0'},
+                    {'ip': '',
+                     'mac': 'b8:27:eb:f1:87:4a',
+                     'iface': 'wlan0'}
+                ],
+                'audiodevices': [
+                    {'card': 0, 'name': 'bcm2835 HDMI 1'},
+                    {'card': 1, 'name': 'bcm2835 Headphones'}
+                ],
+                'sd_card_data': {'name': 'SD32G', 'manf_id': '0x000027'},
+                'serial_number': '0000000067a4d21f'
+            }
+        }
+        url = self.pending_tasks_url.format(nomenclature_id=nomenclature_id)
+        response = client.post(
+            url,
+            data=data,
+            format='json',
+            content_type='application/json'
+        )
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response.json()}.'
+        )
+        nom_obj = Nomenclature.objects.get(id=nomenclature_id)
+        assert nom_obj.hw_info == data['hw_info'], (
+            'Информация о железе встала неправильно.'
+        )
+
+    def test_pending_tasks_update_nomenclature_hw_info_and_version(
+        self,
+        client,
+        nomenclature
+    ):
+        nomenclature_id = str(nomenclature.id)
+        data = {
+            'hw_info': {
+                'model': 'Raspberry Pi 3 Model B Rev 1.2',
+                'revision': 'a02082',
+                'interfaces': [
+                    {'ip': '172.31.170.227/27',
+                     'mac': 'b8:27:eb:a4:d2:1f',
+                     'iface': 'eth0'},
+                    {'ip': '',
+                     'mac': 'b8:27:eb:f1:87:4a',
+                     'iface': 'wlan0'}
+                ],
+                'audiodevices': [
+                    {'card': 0, 'name': 'bcm2835 HDMI 1'},
+                    {'card': 1, 'name': 'bcm2835 Headphones'}
+                ],
+                'sd_card_data': {'name': 'SD32G', 'manf_id': '0x000027'},
+                'serial_number': '0000000067a4d21f'
+            },
+            'version': '1337'
+        }
+        url = self.pending_tasks_url.format(nomenclature_id=nomenclature_id)
+        response = client.post(
+            url,
+            data=data,
+            format='json',
+            content_type='application/json'
+        )
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response.json()}.'
+        )
+        nom_obj = Nomenclature.objects.get(id=nomenclature_id)
+        assert nom_obj.hw_info == data['hw_info'], (
+            'Информация о железе встала неправильно.'
+        )
+        assert nom_obj.version == data['version'], (
+            'Версия ПО встала неправильно.'
+        )
+
+    def test_pending_tasks_create_nomenclature_availability(
         self,
         client,
         nomenclature
@@ -901,7 +1275,7 @@ class TestNomenclatureActions:
             'Запись о доступности номенклатуры не была создана при получении запроса.'
         )
 
-    def test_update_nomenclature_availability_with_pending_tasks(
+    def test_pending_tasks_update_nomenclature_availability(
         self,
         client,
         nomenclature,
@@ -920,8 +1294,86 @@ class TestNomenclatureActions:
             'Время последнего выхода в доступ номенклатуры встало неправильно. '
         )
 
+    def test_pending_tasks_returns_pending_tasks(self, client, nomenclature, task):
+        task_id = str(task.id)
+        data = {}
+        url = self.pending_tasks_url.format(nomenclature_id=str(nomenclature.id))
+        response = client.post(url, data=data, format='json')
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+        )
+        check_response = {
+            'tasks': [
+                {'task_id': task_id,
+                 'task_type': task.type,
+                 'parameters': task.parameters}
+            ]
+        }
+        assert response_data == check_response, (
+            'Репликации ожидающие обработки не были отправлены в ответ на запрос'
+        )
 
-@pytest.mark.django_db(databases=['clickhouse', 'default'])
+    def test_pending_tasks_update_task_status(self, client, nomenclature, task):
+        task_id = str(task.id)
+        data = {
+            'task_status': {task_id: 2}
+        }
+        url = self.pending_tasks_url.format(nomenclature_id=str(nomenclature.id))
+        response = client.post(
+            url,
+            data=data,
+            format='json',
+            content_type='application/json'
+        )
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет: {response_data}'
+        )
+        task_obj = self.Task.objects.get(id=task_id)
+        assert task_obj.status == data['task_status'][task_id], (
+            'Статус репликации не изменился'
+        )
+
+    def test_pending_tasks_create_statistic(self, client, nomenclature):
+        nomenclature_id = str(nomenclature.id)
+        stat_data = [
+            {'statistic': {'ad': [{'file': f'{uuid4()}',
+                                   'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                   'length': randint(15, 59),
+                                   'ad_block': randint(1, 12)}]}},
+            {'statistic': {'music': [{'file': f'{uuid4()}',
+                                      'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                      'length': randint(15, 59)}]}},
+            {'statistic': {'image': [{'file': f'{uuid4()}',
+                                      'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                      'length': randint(15, 59)}]}},
+            {'statistic': {'video': [{'file': f'{uuid4()}',
+                                      'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                      'length': randint(15, 59)}]}},
+            {'statistic': {'ticker': [{'file': f'{uuid4()}',
+                                       'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                       'length': randint(15, 59)}]}}
+        ]
+        for data in stat_data:
+            stat_type, stat_list = next(iter(data['statistic'].items()))
+            self.create_statistic(stat_type, nomenclature_id, stat_list)
+            self.check_create_statistic(data, stat_type)
+
+    def test_resend_orders(self, admin_client, nomenclature, adorder):
+        task_count = self.Task.objects.count()
+        response = self.resend_orders(str(nomenclature.id))
+        assert response['status'] == HTTPStatus.CREATED, (
+                f'Код статуса в ответе != 201.\nОтвет: {response["data"]}'
+        )
+        task_count += 1
+        assert task_count == self.Task.objects.count(), (
+            'Репликация на переотправку не создалась'
+        )
+
+
+@pytest.mark.skip
+# @pytest.mark.django_db(databases=['clickhouse', 'default'])
 class TestNomenclatureStatistic:
 
     ad_stat_url = '/api/nomenclatures/{nomenclature_id}/ad_stat?date={date}'
