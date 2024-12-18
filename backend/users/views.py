@@ -30,7 +30,10 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         data = self.perform_destroy(instance)
-        return Response(data=data, status=400 if data else 204)
+        return Response(
+            data={'detail': data} if data else None,
+            status=400 if data else 204
+        )
 
     def perform_destroy(self, instance):
         if instance.is_active is True:

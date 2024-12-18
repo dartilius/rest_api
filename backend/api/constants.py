@@ -152,8 +152,8 @@ def restricted_update(viewset, request, *args, **kwargs):
     partial = kwargs.pop('partial', False)
     # 1
     if not partial:
-        return Response(data='Метод "PUT" запрещён, '
-                             'используйте метод "PATCH".',
+        return Response(data={'detail': 'Метод "PUT" запрещён, '
+                                        'используйте метод "PATCH".'},
                         status=HTTP_405_METHOD_NOT_ALLOWED)
     instance = viewset.get_object()
     serializer = viewset.get_serializer(
@@ -166,7 +166,7 @@ def restricted_update(viewset, request, *args, **kwargs):
     bad_keys = {key for key in initial_data if key not in updatable_fields}
     if bad_keys:
         return Response(
-            data=error_message.format(keys=bad_keys),
+            data={'detail': error_message.format(keys=bad_keys)},
             status=HTTP_400_BAD_REQUEST
         )
     serializer.is_valid(raise_exception=True)

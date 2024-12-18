@@ -85,24 +85,24 @@ def update_nomenclature_status():
 
 
 @shared_task
-def resend_orders_task(order_ids: list):
+def resend_orders_task(nomenclature_id: int):
     """
-    Переотправка рекламного заказа.
+    Переотправка заказов.
 
-    0. Фильтруем заказы по пришедшему списку айди, собираем в список.
-    1. Проходим по списку заказов. Заполняем параметры репликации,
+    1. Собираем список всех актуальных заказов, которые есть у номенклатуры.
+    2. Проходим по списку заказов. Собираем параметры репликации,
         в зависимости от типа заказа.
-    2. Формируем список репликаций для создания.
-    3. Создаём все репликации одной операцией, фиксируем их количество.
+    3. Формируем список репликаций для создания.
+    4. Создаём все репликации одной операцией, фиксируем их количество.
     """
     task_list = []
     AD = 4
-    # 0
-    orders = chain(
-        AdOrder.objects.filter(id__in=order_ids),
-        BgOrder.objects.filter(id__in=order_ids)
-    )
     # 1
+    orders = chain(
+        AdOrder.objects.filter(client=nomenclature_id, status__in=[0, 1]),
+        BgOrder.objects.filter(client=nomenclature_id, status__in=[0, 1])
+    )
+    # 2
     for order in orders:
         parameters = {
             'order_id': str(order.id),
@@ -128,9 +128,9 @@ def resend_orders_task(order_ids: list):
             )
             task_type = AD
         else:
-            parameters.update({'type': order.order_type})
+            parameters.update({'order_type': order.order_type})
             task_type = order.order_type
-        # 2
+        # 3
         task_list.append(
             Task(
                 owner=order.owner,
@@ -139,7 +139,7 @@ def resend_orders_task(order_ids: list):
                 parameters=parameters
             )
         )
-    # 3
+    # 4
     Task.objects.bulk_create(task_list)
     result = f'Переотправленно заказов: {len(task_list)}.'
     return result

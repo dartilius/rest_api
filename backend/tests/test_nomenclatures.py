@@ -6,6 +6,7 @@ from random import randint, choices
 from string import ascii_letters, digits
 from uuid import uuid4
 
+import tests.test_tasks
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
@@ -865,6 +866,8 @@ class TestNomenclatureActions:
 
     status_history_url = '/api/nomenclatures/{nomenclature_id}/status_history/'
     pending_tasks_url = '/api/nomenclatures/{nomenclature_id}/pending_tasks/'
+    send_tasks_url = '/api/nomenclatures/{nomenclature_id}/actions/'
+    get_tasks_url = '/api/nomenclatures/{nomenclature_id}/tasks/'
 
     @staticmethod
     def update_nomenclature_status() -> None:
@@ -1046,30 +1049,22 @@ class TestNomenclatureActions:
 
     @staticmethod
     def resend_orders(pk) -> dict:
-        from itertools import chain
-        from api.constants import Constants, get_instance_or_404
+        from api.constants import get_instance_or_404
         try:
             nomenclature = get_instance_or_404(Nomenclature, pk)
-            empty_values = Constants.empty_values
-            orders = chain(
-                nomenclature.adorders.filter(status__in=[0, 1]),
-                nomenclature.bgorders.filter(status__in=[0, 1])
-            )
-
-            if list(orders) in empty_values:
+            is_adorders = nomenclature.adorders.filter(status__in=[0, 1]).count()
+            is_bgorders = nomenclature.bgorders.filter(status__in=[0, 1]).count()
+            if is_adorders == 0 and is_bgorders == 0:
                 result_text = 'Нет активных заказов.'
                 return {'data': result_text, 'status': HTTPStatus.OK}
-
-            order_ids = [order.id for order in orders]
-            TestNomenclatureActions.resend_orders_task(order_ids)
-
+            TestNomenclatureActions.resend_orders_task(pk)
             result_text = 'Запрос на переотправку заказов принят.'
             return {'data': result_text, 'status': HTTPStatus.CREATED}
         except Exception as e:
-            return {'data': e, 'status': HTTPStatus.BAD_REQUEST}
+            return {'data': f'{type(e)}: {e}', 'status': HTTPStatus.BAD_REQUEST}
 
     @staticmethod
-    def resend_orders_task(order_ids: list) -> None:
+    def resend_orders_task(nomenclature_id: str) -> None:
         from itertools import chain
         from orders.models import AdOrder, BgOrder
 
@@ -1077,10 +1072,9 @@ class TestNomenclatureActions:
         task_list = []
         AD = 4
         orders = chain(
-            AdOrder.objects.filter(id__in=order_ids),
-            BgOrder.objects.filter(id__in=order_ids)
+            AdOrder.objects.filter(client=nomenclature_id, status__in=[0, 1]),
+            BgOrder.objects.filter(client=nomenclature_id, status__in=[0, 1])
         )
-        assert 1 == 0, f'{order_ids}, {list(orders)}'
         for order in orders:
             parameters = {
                 'order_id': str(order.id),
@@ -1106,7 +1100,7 @@ class TestNomenclatureActions:
                 )
                 task_type = AD
             else:
-                parameters.update({'type': order.order_type})
+                parameters.update({'order_type': order.order_type})
                 task_type = order.order_type
             task_list.append(
                 Task(
@@ -1117,6 +1111,33 @@ class TestNomenclatureActions:
                 )
             )
         Task.objects.bulk_create(task_list)
+
+    @staticmethod
+    def check_resend_orders_tasks(
+        task_ids: list,
+        adorder_id: str | None,
+        bgorder_id: str | None,
+        nom_id: str
+    ):
+        tasks = TestNomenclatureActions.Task.objects.filter(id__in=task_ids)
+        for task in tasks:
+            assert str(task.client.id) == nom_id, (
+                'Репликацию ушла на другую машину.'
+            )
+            if task.type == 4:
+                assert task.parameters['order_id'] == adorder_id, (
+                    'В параметрах репликации указан не правильный айди заказа.'
+                )
+                assert task.parameters['broadcast_type'] == 0, (
+                    'В параметрах репликации указан не верный тип вещания.'
+                )
+            else:
+                assert task.parameters['order_id'] == bgorder_id, (
+                    'В параметрах репликации указан не правильный айди заказа.'
+                )
+                assert task.parameters['order_type'] == 0, (
+                    'В параметрах репликации указан не верный тип заказа.'
+                )
 
     def test_get_status_history_auth(
         self,
@@ -1339,20 +1360,20 @@ class TestNomenclatureActions:
         nomenclature_id = str(nomenclature.id)
         stat_data = [
             {'statistic': {'ad': [{'file': f'{uuid4()}',
-                                   'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                   'played': f'{dt.now().date()} 00:00:{randint(10, 59)}',
                                    'length': randint(15, 59),
                                    'ad_block': randint(1, 12)}]}},
             {'statistic': {'music': [{'file': f'{uuid4()}',
-                                      'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                      'played': f'{dt.now().date()} 00:00:{randint(10, 59)}',
                                       'length': randint(15, 59)}]}},
             {'statistic': {'image': [{'file': f'{uuid4()}',
-                                      'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                      'played': f'{dt.now().date()} 00:00:{randint(10, 59)}',
                                       'length': randint(15, 59)}]}},
             {'statistic': {'video': [{'file': f'{uuid4()}',
-                                      'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                      'played': f'{dt.now().date()} 00:00:{randint(10, 59)}',
                                       'length': randint(15, 59)}]}},
             {'statistic': {'ticker': [{'file': f'{uuid4()}',
-                                       'played': f'{dt.now().date()} 00:00:{randint(5, 59)}',
+                                       'played': f'{dt.now().date()} 00:00:{randint(10, 59)}',
                                        'length': randint(15, 59)}]}}
         ]
         for data in stat_data:
@@ -1360,15 +1381,126 @@ class TestNomenclatureActions:
             self.create_statistic(stat_type, nomenclature_id, stat_list)
             self.check_create_statistic(data, stat_type)
 
-    def test_resend_orders(self, admin_client, nomenclature, adorder):
+    def test_resend_adorder(self, admin_client, nomenclature, adorder):
         task_count = self.Task.objects.count()
-        response = self.resend_orders(str(nomenclature.id))
+        nomenclature_id = str(nomenclature.id)
+        response = self.resend_orders(nomenclature_id)
         assert response['status'] == HTTPStatus.CREATED, (
                 f'Код статуса в ответе != 201.\nОтвет: {response["data"]}'
         )
         task_count += 1
         assert task_count == self.Task.objects.count(), (
-            'Репликация на переотправку не создалась'
+            'Репликация на переотправку не создалась.'
+        )
+        task_id = self.Task.objects.last().id
+        self.check_resend_orders_tasks(task_ids=[task_id],
+                                       adorder_id=str(adorder.id),
+                                       bgorder_id=None,
+                                       nom_id=nomenclature_id)
+
+    def test_resend_bgorder(self, admin_client, nomenclature, bgorder):
+        task_count = self.Task.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        response = self.resend_orders(nomenclature_id)
+        assert response['status'] == HTTPStatus.CREATED, (
+                f'Код статуса в ответе != 201.\nОтвет: {response["data"]}'
+        )
+        task_count += 1
+        assert task_count == self.Task.objects.count(), (
+            'Репликация на переотправку не создалась.'
+        )
+        task_id = self.Task.objects.last().id
+        self.check_resend_orders_tasks(task_ids=[task_id],
+                                       adorder_id=None,
+                                       bgorder_id=str(bgorder.id),
+                                       nom_id=nomenclature_id)
+
+    def test_resend_orders(
+        self,
+        admin_client,
+        nomenclature,
+        adorder,
+        bgorder
+    ):
+        task_count = self.Task.objects.count()
+        nomenclature_id = str(nomenclature.id)
+        response = self.resend_orders(nomenclature_id)
+        assert response['status'] == HTTPStatus.CREATED, (
+                f'Код статуса в ответе != 201.\nОтвет: {response["data"]}'
+        )
+        task_count += 2
+        assert task_count == self.Task.objects.count(), (
+            'Репликации на переотправку не создались.'
+        )
+        task_ids = [task.id
+                    for task
+                    in self.Task.objects.all()]
+        self.check_resend_orders_tasks(task_ids=task_ids,
+                                       adorder_id=str(adorder.id),
+                                       bgorder_id=str(bgorder.id),
+                                       nom_id=nomenclature_id)
+
+    def test_valid_send_tasks(self, admin_client, nomenclature):
+        nomenclature_id = str(nomenclature.id)
+        task_data = [
+            {'task': 'reboot'},
+            {'task': 'update'},
+            {'task': 'custom',
+             'parameters': 'test'},
+            {'task': 'settings',
+             'parameters': TestNomenclaturesCRUD.get_valid_custom_settings()}
+        ]
+        url = self.send_tasks_url.format(nomenclature_id=nomenclature_id)
+        for data in task_data:
+            response = admin_client.post(url, data=data, format='json')
+            response_data = response.json()
+            assert response.status_code == HTTPStatus.OK, (
+                f'Код статуса в ответе != 200.'
+                f'\nДанные: {data}.\nОтвет: {response_data}'
+            )
+
+    def test_invalid_send_tasks(self, admin_client, nomenclature):
+        nomenclature_id = str(nomenclature.id)
+        invalid_data = [
+            {'task': 'invalid_task'},
+            {'task': None},
+            {'task': 'custom',
+             'parameters': None},
+            {'task': 'custom'},
+            {'task': 'settings',
+             'parameters': TestNomenclaturesCRUD.get_invalid_settings()[0]},
+            {'task': 'settings',
+             'parameters': TestNomenclaturesCRUD.get_invalid_custom_settings()[0]},
+            {'task': 'settings'},
+            {'task': 'settings',
+             'parameters': None},
+        ]
+        url = self.send_tasks_url.format(nomenclature_id=nomenclature_id)
+        for data in invalid_data:
+            response = admin_client.post(url, data=data, format='json')
+            assert response.status_code == HTTPStatus.BAD_REQUEST, (
+                f'Код статуса в ответе != 400.\nДанные: {data}'
+            )
+
+    def test_get_tasks(self, admin_client, user, nomenclature, task):
+        nomenclature_id = str(nomenclature.id)
+        task_data = {
+            'id': str(task.id),
+            'owner': user.full_name,
+            'client': {'id': str(task.client.id), 'name': task.client.name},
+            'type': task.type,
+            'status': task.status
+        }
+        url = self.get_tasks_url.format(nomenclature_id=nomenclature_id)
+        response = admin_client.get(url)
+        response_data = response.json()
+        assert response.status_code == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет:{response_data}'
+        )
+        tests.test_tasks.TestTasks().check_get_list_response(
+            task_data,
+            1,
+            response_data
         )
 
 

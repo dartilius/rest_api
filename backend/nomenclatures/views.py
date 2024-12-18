@@ -1,16 +1,16 @@
 from datetime import datetime as dt
 from django_filters.rest_framework import DjangoFilterBackend
-from itertools import chain
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
-    HTTP_201_CREATED
+    HTTP_201_CREATED,
+    HTTP_400_BAD_REQUEST
 )
 
-from api.constants import Constants, get_instance_or_404, restricted_update
+from api.constants import get_instance_or_404, restricted_update
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -74,11 +74,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        data = self.perform_destroy(instance)
-        return Response(data=data, status=400 if data else 204)
-
     def update(self, request, *args, **kwargs):
         error_message = (
             'Изменить можно только название, описание, '
@@ -95,16 +90,23 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         response = restricted_update(self, request, *args, **kwargs)
         return response
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = self.perform_destroy(instance)
+        return Response(
+            data={'detail': data} if data else None,
+            status=400 if data else 204
+        )
+
     def perform_destroy(self, instance):
-        if instance.is_active is True:
-            instance.is_active = False
-            instance.save(update_fields=['is_active'])
-            return None
-        else:
+        if instance.is_active is False:
             return (
                 'Нельзя деактивировать номенклатуру, т.к '
-                'она уже деактивирована'
+                'она уже деактивирована.'
             )
+        instance.is_active = False
+        instance.save(update_fields=['is_active'])
+        return None
 
     @action(detail=False, methods=['GET'], url_path='versions')
     def get_versions(self, request):
@@ -143,18 +145,14 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             переотправлены и которые переотправить нельзя.
         """
         nomenclature = get_instance_or_404(Nomenclature, pk)
-        empty_values = Constants.empty_values
-        orders = chain(
-            nomenclature.adorders.filter(status__in=[0, 1]),
-            nomenclature.bgorders.filter(status__in=[0, 1])
-        )
+        adorders = nomenclature.adorders.filter(status__in=[0, 1]).count()
+        bgorders = nomenclature.bgorders.filter(status__in=[0, 1]).count()
 
-        if list(orders) in empty_values:
+        if adorders == 0 and bgorders == 0:
             result_text = 'Нет активных заказов.'
             return Response(data=result_text, status=HTTP_200_OK)
 
-        order_ids = [order.id for order in orders]
-        resend_orders_task.delay(order_ids)
+        resend_orders_task.delay(pk)
 
         result_text = 'Запрос на переотправку заказов принят.'
         return Response(data=result_text, status=HTTP_201_CREATED)
@@ -231,13 +229,30 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 if not nomenclature.tasks.filter(status=0, type=16).exists():
                     update_task.delay(pk, owner)
             case 'custom':
-                parameters = request.data['parameters']
+                parameters = request.data.get('parameters')
+                if not parameters:
+                    return Response(
+                        {'detail': 'Не введена команда.'},
+                        status=HTTP_400_BAD_REQUEST
+                    )
                 custom_task.delay(pk, parameters, owner)
             case 'settings':
-                settings = request.data['settings']
+                settings = request.data.get('parameters')
+                if not settings:
+                    return Response(
+                        {'detail': 'Не переданы настройки вещания.'},
+                        status=HTTP_400_BAD_REQUEST
+                    )
+                settings = NomenclatureSerializer().validate_settings(settings)
                 settings_task.delay(pk, settings, owner)
+            case _:
+                return Response(
+                    {'detail': 'Недопустимое действие.'},
+                    status=HTTP_400_BAD_REQUEST
+                )
+        return Response({'message': 'Репликация создана.'})
 
-    @action(detail=True, methods=['POST'], url_path='tasks')
+    @action(detail=True, methods=['GET'], url_path='tasks')
     def get_tasks(self, request, pk):
         """Запрос списка репликаций номенклатуры."""
         get_instance_or_404(Nomenclature, pk)

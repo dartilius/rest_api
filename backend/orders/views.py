@@ -83,8 +83,10 @@ class AdOrderViewSet(NoDeleteViewSet):
     def cancel(self, request, pk):
         """Отмена заказа."""
         cancel_ad_order_task.delay(str(pk))
-        result_text = f'Запрос на отмену заказа принят.'
-        return Response(data=result_text, status=HTTP_200_OK)
+        return Response(
+            data={'message': 'Запрос на отмену заказа принят.'},
+            status=HTTP_200_OK
+        )
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -152,8 +154,10 @@ class BgOrderViewSet(NoDeleteViewSet):
     def cancel(self, request, pk):
         """Отмена заказа."""
         cancel_bg_order_task.delay(str(pk))
-        result_text = f'Запрос на отмену заказа принят.'
-        return Response(data=result_text, status=HTTP_200_OK)
+        return Response(
+            data={'message': 'Запрос на отмену заказа принят.'},
+            status=HTTP_200_OK
+        )
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

@@ -91,15 +91,30 @@ class FileViewSet(NoUpdateViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    def perform_destroy(self, instance):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = self.perform_destroy(instance)
+        return Response(
+            data={'detail': data} if data else None,
+            status=400 if data else 204
+        )
+
+    def perform_destroy(self, instance) -> str | None:
         """
         Мягкое удаление.
 
+        0. Если файл уже был деактивирован, вызываем ошибку.
         1. Проверяем, находится ли файл в каких-либо плейлистах.
         2. Если такие плейлисты нашлись, вызываем метод, чтобы почистить их
             и обновить активные заказы, в которых данные плейлисты указаны.
         3. Меняем статус актуальности файла.
         """
+        # 0
+        if instance.is_active is False:
+            return (
+                'Файл уже был "удалён".'
+                'Для окончательного удаления воспользуйтесь админ-панелью.'
+            )
         file_id = str(instance.id)
         # 1
         playlists = list(Playlist.objects.filter(files__id=file_id))
@@ -108,6 +123,7 @@ class FileViewSet(NoUpdateViewSet):
             PlaylistViewSet.perform_remove_files(playlists, [file_id])
         instance.is_active = False
         instance.save(update_fields=['is_active'])
+        return None
 
     @staticmethod
     def _validate_tag_data(tag_data: list[str]) -> None:
@@ -149,7 +165,7 @@ class FileViewSet(NoUpdateViewSet):
         ]
         # 3
         file.tags.add(*new_tags_ids)
-        return Response(data='Тэги успешно присвоены файлу.')
+        return Response(data={'message': 'Тэги успешно присвоены файлу.'})
 
     @action(
         detail=True,
@@ -180,7 +196,7 @@ class FileViewSet(NoUpdateViewSet):
         ]
         # 3
         file.tags.remove(*remove_tags_ids)
-        return Response(data='Тэги успешно отвязаны от файла.')
+        return Response(data={'message': 'Тэги успешно отвязаны от файла.'})
 
     @action(detail=True, methods=['GET'], url_path='stat')
     def get_stat(self, request, pk):
@@ -478,7 +494,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                 action_type='add_files'
             )
 
-        return Response(data='Файлы успешно добавлены в плейлист.')
+        return Response(data={'message': 'Файлы успешно добавлены в плейлист.'})
 
     @action(detail=True, methods=['POST'])
     def remove_files(self, request, pk):
@@ -502,7 +518,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         playlist = get_instance_or_404(Playlist, pk)
         # 2
         self.perform_remove_files(playlist, remove_files)
-        return Response(data='Файлы успешно убраны из плейлиста.')
+        return Response(data={'message': 'Файлы успешно убраны из плейлиста.'})
 
 
 class UploadFilesViewSet(viewsets.ModelViewSet):
