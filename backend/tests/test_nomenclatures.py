@@ -15,8 +15,7 @@ from nomenclatures.models import (
 )
 
 
-# @pytest.mark.django_db
-@pytest.mark.skip
+@pytest.mark.django_db
 class TestNomenclaturesCRUD:
 
     nomenclature_list_url = '/api/nomenclatures/'
@@ -1504,8 +1503,7 @@ class TestNomenclatureActions:
         )
 
 
-@pytest.mark.skip
-# @pytest.mark.django_db(databases=['clickhouse', 'default'])
+@pytest.mark.django_db(databases=['clickhouse', 'default'])
 class TestNomenclatureStatistic:
 
     ad_stat_url = '/api/nomenclatures/{nomenclature_id}/ad_stat?date={date}'

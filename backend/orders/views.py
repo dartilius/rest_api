@@ -15,9 +15,11 @@ from orders.serializers import (
 from orders.models import AdOrder, BgOrder
 from orders.tasks import (
     create_ad_order_task,
+    update_ad_order_task,
     cancel_ad_order_task,
     create_bg_order_task,
-    cancel_bg_order_task,
+    update_bg_order_task,
+    cancel_bg_order_task
 )
 from users.permissions import StaffCUDAuthRetrieve
 
@@ -77,6 +79,9 @@ class AdOrderViewSet(NoDeleteViewSet):
         kwargs.update(updatable_fields=updatable_fields,
                       error_message=error_message)
         response = restricted_update(self, request, *args, **kwargs)
+        if 'playlist' in request.data or 'slides' in request.data:
+            instance = self.get_object()
+            update_ad_order_task.delay(order_id=str(instance.id))
         return response
 
     @action(detail=True, methods=['DELETE'])
@@ -148,6 +153,9 @@ class BgOrderViewSet(NoDeleteViewSet):
         kwargs.update(updatable_fields=updatable_fields,
                       error_message=error_message)
         response = restricted_update(self, request, *args, **kwargs)
+        if 'playlist' in request.data:
+            instance = self.get_object()
+            update_bg_order_task.delay(order_id=str(instance.id))
         return response
 
     @action(detail=True, methods=['DELETE'])

@@ -38,7 +38,10 @@ from files.serializers import (
 )
 from files.models import Playlist, File, Tag, TYPES
 from orders.models import AdOrder, BgOrder
-from orders.tasks import update_ad_order_task, update_bg_order_task
+from orders.tasks import (
+    add_or_remove_files_ad_order_task,
+    add_or_remove_files_bg_order_task
+)
 from users.permissions import StaffCUDAuthRetrieve, OwnerAndStaffCRUD
 
 
@@ -359,9 +362,9 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                 bg_orders.append(str(order.id))
         # 2
         if ad_orders:
-            update_ad_order_task(ad_orders, files, action_type)
+            add_or_remove_files_ad_order_task(ad_orders, files, action_type)
         if bg_orders:
-            update_bg_order_task(bg_orders, files, action_type)
+            add_or_remove_files_bg_order_task(bg_orders, files, action_type)
 
     @staticmethod
     def _validate_request_data_format(files: list[str]) -> None:

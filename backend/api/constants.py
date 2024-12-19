@@ -148,7 +148,8 @@ def restricted_update(viewset, request, *args, **kwargs):
     )
 
     updatable_fields = kwargs.pop('updatable_fields', [])
-    error_message = kwargs.pop('error_message', 'Нельзя обновить поля: {keys}')
+    error_message = kwargs.pop('error_message',
+                               {'detail': 'Нельзя обновить поля: {keys}'})
     partial = kwargs.pop('partial', False)
     # 1
     if not partial:

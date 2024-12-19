@@ -4,7 +4,9 @@ from datetime import datetime as dt, timedelta as td
 from http import HTTPStatus
 from itertools import product
 
+from api.constants import get_bg_task_type
 from orders.models import AdOrder, BgOrder
+from tasks.models import Task
 
 
 @pytest.mark.django_db
@@ -101,11 +103,11 @@ class TestOrders:
 
     @staticmethod
     def get_valid_bgorder_data(
-            nomenclature,
-            playlist_1,
-            playlist_2,
-            playlist_3,
-            playlist_4
+        nomenclature,
+        playlist_1,
+        playlist_2,
+        playlist_3,
+        playlist_4
     ) -> list:
         today = TestOrders.get_today_date()
         tomorrow = TestOrders.get_tomorrow_date()
@@ -195,7 +197,6 @@ class TestOrders:
 
     @staticmethod
     def check_valid_create_bgorder_response(data, user, response) -> None:
-
         assert response[0][0]['owner'] == user.full_name, (
             'Создатель заказа не встал в соответствующее поле.'
         )
@@ -216,10 +217,65 @@ class TestOrders:
         ), 'Тип заказа отличается от указанного в отправленных данных.'
 
     @staticmethod
+    def check_create_order_task(order):
+        order_id = str(order.id)
+        task_count = Task.objects.count()
+        if isinstance(order, AdOrder):
+            MockCeleryTasks.create_ad_order_task([order_id])
+            correct_task_type = 4
+            check_task_parameters = {
+                'order_id': order_id,
+                'order_parameters': order.parameters,
+                'broadcast_type': order.broadcast_type,
+                'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                      f'{order.broadcast_interval.upper}',
+                'playlist': {
+                    'id': str(order.playlist.id),
+                    'files': [
+                        {
+                            'id': str(file.id),
+                            'hash': file.hash
+                        } for file in order.playlist.files.all()
+                    ],
+                    'slides': order.slides if order.slides else None
+                }
+            }
+            task_count += 1
+        else:
+            MockCeleryTasks.create_bg_order_task([order_id])
+            correct_task_type = order.order_type
+            check_task_parameters = {
+                'order_id': order_id,
+                'type': order.order_type,
+                'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                      f'{order.broadcast_interval.upper}',
+                'playlist': {
+                    'id': str(order.playlist.id),
+                    'files': [
+                        {
+                            'id': str(file.id),
+                            'hash': file.hash
+                        } for file in order.playlist.files.all()
+                    ]
+                }
+            }
+            task_count += 1
+        assert task_count == Task.objects.count(), (
+            'Репликация не была создана.'
+        )
+        task_obj = Task.objects.last()
+        assert task_obj.type == correct_task_type, (
+             'Репликация имеет неправильный тип.'
+        )
+        assert task_obj.parameters == check_task_parameters, (
+            'Плейлист в параметрах репликации неправильный.'
+        )
+
+    @staticmethod
     def get_valid_partial_update_adorder_data(
-            playlist_id,
-            file_1_id,
-            file_2_id
+        playlist_id,
+        file_1_id,
+        file_2_id
     ) -> list:
         valid_data = [
             {'name': 'new_name'},
@@ -250,6 +306,48 @@ class TestOrders:
             case 'slides':
                 assert response['slides'].keys() == data['slides'].keys(), message
             case _: pass
+
+    @staticmethod
+    def check_update_order_task(order, playlist_id, task_count):
+        order_id = str(order.id)
+        if isinstance(order, AdOrder):
+            MockCeleryTasks.update_ad_order_task(order_id)
+            updated_order_playlist = {
+                'id': playlist_id,
+                'files': [
+                    {
+                        'id': str(file.id),
+                        'hash': file.hash
+                    } for file in order.playlist.files.all()
+                ],
+                'slides': order.slides
+                if order.slides
+                else None
+            }
+            correct_task_type = 14
+        else:
+            MockCeleryTasks.update_bg_order_task(order_id)
+            updated_order_playlist = {
+                'id': playlist_id,
+                'files': [
+                    {
+                        'id': str(file.id),
+                        'hash': file.hash
+                    } for file in order.playlist.files.all()
+                ]
+            }
+            correct_task_type = get_bg_task_type(order.order_type, 'update')
+        task_count += 1
+        assert task_count == Task.objects.count(), (
+            'Репликация на обновление не была создана.'
+        )
+        task_obj = Task.objects.last()
+        assert task_obj.type == correct_task_type, (
+             'Репликация имеет неправильный тип.'
+        )
+        assert task_obj.parameters['playlist'] == updated_order_playlist, (
+            'Плейлист в параметрах репликации неправильный.'
+        )
 
     @staticmethod
     def check_get_orders_list_response(order_data, order_count, response_data):
@@ -424,7 +522,13 @@ class TestOrders:
             assert adorder_count == AdOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            self.check_valid_create_adorder_response(data, admin_user, response_data)
+            self.check_valid_create_adorder_response(
+                data,
+                admin_user,
+                response_data
+            )
+            order = AdOrder.objects.last()
+            self.check_create_order_task(order)
 
     def test_create_valid_adorder_manager(
         self,
@@ -451,14 +555,15 @@ class TestOrders:
             assert adorder_count == AdOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            self.check_valid_create_adorder_response(data, manager_user, response_data)
+            self.check_valid_create_adorder_response(
+                data,
+                manager_user,
+                response_data
+            )
+            order = AdOrder.objects.last()
+            self.check_create_order_task(order)
 
-    def test_create_valid_adorder_user(
-        self,
-        user_client,
-        nomenclature,
-        playlist_1
-    ):
+    def test_create_valid_adorder_user(self, user_client, nomenclature, playlist_1):
 
         adorder_count = AdOrder.objects.count()
         nomenclature_id = str(nomenclature.id)
@@ -478,12 +583,7 @@ class TestOrders:
                 f'Удалось создать рекламный заказ без должных прав.'
             )
 
-    def test_create_valid_adorder_anon(
-        self,
-        anon_client,
-        nomenclature,
-        playlist_1
-    ):
+    def test_create_valid_adorder_anon(self, anon_client, nomenclature, playlist_1):
         adorder_count = AdOrder.objects.count()
         nomenclature_id = str(nomenclature.id)
         playlist_id = str(playlist_1.id)
@@ -502,17 +602,12 @@ class TestOrders:
                 f'Удалось создать рекламный заказ без авторизации.'
             )
 
-    def test_create_invalid_adorder(
-        self,
-        admin_client,
-        nomenclature,
-        playlist_1
-    ):
+    def test_create_invalid_adorder(self, admin_client, nomenclature, playlist_1):
         adorder_count = AdOrder.objects.count()
         nomenclature_id = str(nomenclature.id)
         playlist_id = str(playlist_1.id)
-        today = TestOrders.get_today_date()
-        tomorrow = TestOrders.get_tomorrow_date()
+        today = self.get_today_date()
+        tomorrow = self.get_tomorrow_date()
         invalid_data = [
             [{
                 'name': None,
@@ -847,7 +942,13 @@ class TestOrders:
             assert bgorder_count == BgOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            self.check_valid_create_bgorder_response(data, admin_user, response_data)
+            self.check_valid_create_bgorder_response(
+                data,
+                admin_user,
+                response_data
+            )
+            order = BgOrder.objects.last()
+            self.check_create_order_task(order)
 
     def test_create_valid_bgorder_manager(
         self,
@@ -881,7 +982,13 @@ class TestOrders:
             assert bgorder_count == BgOrder.objects.count(), (
                 f'Не удалось создать рекламный заказ.'
             )
-            self.check_valid_create_bgorder_response(data, manager_user, response_data)
+            self.check_valid_create_bgorder_response(
+                data,
+                manager_user,
+                response_data
+            )
+            order = BgOrder.objects.last()
+            self.check_create_order_task(order)
 
     def test_create_valid_bgorder_user(
         self,
@@ -945,17 +1052,12 @@ class TestOrders:
                 f'Удалось создать рекламный заказ без авторизации.'
             )
 
-    def test_create_invalid_bgorder(
-        self,
-        admin_client,
-        nomenclature,
-        playlist_1
-    ):
+    def test_create_invalid_bgorder(self, admin_client, nomenclature, playlist_1):
         bgorder_count = BgOrder.objects.count()
         nomenclature_id = str(nomenclature.id)
         playlist_id = str(playlist_1.id)
-        today = TestOrders.get_today_date()
-        tomorrow = TestOrders.get_tomorrow_date()
+        today = self.get_today_date()
+        tomorrow = self.get_tomorrow_date()
         invalid_data = [
             [{
                 'name': None,
@@ -1026,21 +1128,22 @@ class TestOrders:
         admin_client,
         adorder_slides,
         nomenclature_1,
-        playlist_5,
+        playlist_1,
         file_2,
-        file_5
+        file_1
     ):
-        playlist_5_id = str(playlist_5.id)
-        track_id = str(file_5.id)
+        playlist_id = str(playlist_1.id)
+        track_id = str(file_1.id)
         slide_id = str(file_2.id)
-        update_data = TestOrders.get_valid_partial_update_adorder_data(
-            playlist_5_id,
+        update_data = self.get_valid_partial_update_adorder_data(
+            playlist_id,
             track_id,
             slide_id
         )
         adorder_id = str(adorder_slides.id)
         url = self.ad_detail_url.format(adorder=adorder_id)
         for data in update_data:
+            task_count = Task.objects.count()
             response = admin_client.patch(url, data=data, format='json')
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
@@ -1049,27 +1152,31 @@ class TestOrders:
             )
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
+            if 'playlist' in data or 'slides' in data:
+                order_obj = AdOrder.objects.get(id=adorder_id)
+                self.check_update_order_task(order_obj, playlist_id, task_count)
 
     def test_valid_partial_update_adorder_manager(
         self,
         manager_client,
         adorder_slides,
         nomenclature_1,
-        playlist_5,
+        playlist_1,
         file_2,
-        file_5
+        file_1
     ):
-        playlist_5_id = str(playlist_5.id)
-        track_id = str(file_5.id)
+        playlist_id = str(playlist_1.id)
+        track_id = str(file_1.id)
         slide_id = str(file_2.id)
-        update_data = TestOrders.get_valid_partial_update_adorder_data(
-            playlist_5_id,
+        update_data = self.get_valid_partial_update_adorder_data(
+            playlist_id,
             track_id,
             slide_id
         )
         adorder_id = str(adorder_slides.id)
         url = self.ad_detail_url.format(adorder=adorder_id)
         for data in update_data:
+            task_count = Task.objects.count()
             response = manager_client.patch(url, data=data, format='json')
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
@@ -1078,6 +1185,9 @@ class TestOrders:
             )
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
+            if 'playlist' in data or 'slides' in data:
+                order_obj = AdOrder.objects.get(id=adorder_id)
+                self.check_update_order_task(order_obj, playlist_id, task_count)
 
     def test_valid_partial_update_adorder_user(
         self,
@@ -1091,7 +1201,7 @@ class TestOrders:
         playlist_5_id = str(playlist_5.id)
         track_id = str(file_5.id)
         slide_id = str(file_2.id)
-        update_data = TestOrders.get_valid_partial_update_adorder_data(
+        update_data = self.get_valid_partial_update_adorder_data(
             playlist_5_id,
             track_id,
             slide_id
@@ -1118,7 +1228,7 @@ class TestOrders:
         playlist_5_id = str(playlist_5.id)
         track_id = str(file_5.id)
         slide_id = str(file_2.id)
-        update_data = TestOrders.get_valid_partial_update_adorder_data(
+        update_data = self.get_valid_partial_update_adorder_data(
             playlist_5_id,
             track_id,
             slide_id
@@ -1144,8 +1254,8 @@ class TestOrders:
         file_3,
         file_4
     ):
-        today = TestOrders.get_today_date()
-        new_end = TestOrders.get_new_tomorrow_date()
+        today = self.get_today_date()
+        new_end = self.get_new_tomorrow_date()
         nomenclature_id = str(nomenclature_1.id)
         user_id = str(user.id)
         invalid_data = [
@@ -1187,8 +1297,8 @@ class TestOrders:
         file_2,
         file_3
     ):
-        today = TestOrders.get_today_date()
-        tomorrow = TestOrders.get_tomorrow_date()
+        today = self.get_today_date()
+        tomorrow = self.get_tomorrow_date()
         nomenclature_id = str(nomenclature.id)
         playlist_id = str(playlist_5.id)
         track_id = str(file_3.id)
@@ -1225,10 +1335,11 @@ class TestOrders:
         playlist_6
     ):
         playlist_id = str(playlist_6.id)
-        update_data = TestOrders.get_valid_partial_update_bgorder_data(playlist_id)
+        update_data = self.get_valid_partial_update_bgorder_data(playlist_id)
         bgorder_id = str(bgorder.id)
         url = self.bg_detail_url.format(bgorder=bgorder_id)
         for data in update_data:
+            task_count = Task.objects.count()
             response = admin_client.patch(url, data=data, format='json')
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
@@ -1237,6 +1348,9 @@ class TestOrders:
             )
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
+            if 'playlist' in data:
+                order_obj = BgOrder.objects.get(id=bgorder_id)
+                self.check_update_order_task(order_obj, playlist_id, task_count)
 
     def test_valid_partial_update_bgorder_manager(
         self,
@@ -1245,10 +1359,11 @@ class TestOrders:
         playlist_6
     ):
         playlist_id = str(playlist_6.id)
-        update_data = TestOrders.get_valid_partial_update_bgorder_data(playlist_id)
+        update_data = self.get_valid_partial_update_bgorder_data(playlist_id)
         bgorder_id = str(bgorder.id)
         url = self.bg_detail_url.format(bgorder=bgorder_id)
         for data in update_data:
+            task_count = Task.objects.count()
             response = manager_client.patch(url, data=data, format='json')
             response_data = response.json()
             assert response.status_code == HTTPStatus.OK, (
@@ -1257,6 +1372,9 @@ class TestOrders:
             )
             updated_key = ''.join(data.keys())
             self.check_valid_update_response(data, response_data, updated_key)
+            if 'playlist' in data:
+                order_obj = BgOrder.objects.get(id=bgorder_id)
+                self.check_update_order_task(order_obj, playlist_id, task_count)
 
     def test_valid_partial_update_bgorder_user(
         self,
@@ -1265,7 +1383,7 @@ class TestOrders:
         playlist_6
     ):
         playlist_id = str(playlist_6.id)
-        update_data = TestOrders.get_valid_partial_update_bgorder_data(playlist_id)
+        update_data = self.get_valid_partial_update_bgorder_data(playlist_id)
         bgorder_id = str(bgorder.id)
         url = self.bg_detail_url.format(bgorder=bgorder_id)
         for data in update_data:
@@ -1283,7 +1401,7 @@ class TestOrders:
         playlist_6
     ):
         playlist_id = str(playlist_6.id)
-        update_data = TestOrders.get_valid_partial_update_bgorder_data(playlist_id)
+        update_data = self.get_valid_partial_update_bgorder_data(playlist_id)
         bgorder_id = str(bgorder.id)
         url = self.bg_detail_url.format(bgorder=bgorder_id)
         for data in update_data:
@@ -1302,8 +1420,8 @@ class TestOrders:
         nomenclature_1,
         playlist_6
     ):
-        today = TestOrders.get_today_date()
-        new_end = TestOrders.get_new_tomorrow_date()
+        today = self.get_today_date()
+        new_end = self.get_new_tomorrow_date()
         nomenclature_id = str(nomenclature_1.id)
         user_id = str(user.id)
         invalid_data = [
@@ -1335,15 +1453,9 @@ class TestOrders:
                 f'\nДанные:{data}\nОтвет:{response_data}'
             )
 
-    def test_update_bgorder(
-        self,
-        admin_client,
-        bgorder,
-        nomenclature,
-        playlist_1
-    ):
-        today = TestOrders.get_today_date()
-        tomorrow = TestOrders.get_tomorrow_date()
+    def test_update_bgorder(self, admin_client, bgorder, nomenclature, playlist_1):
+        today = self.get_today_date()
+        tomorrow = self.get_tomorrow_date()
         nomenclature_id = str(nomenclature.id)
         playlist_id = str(playlist_1.id)
         valid_data = [
@@ -1373,112 +1485,236 @@ class TestOrders:
                 f'\nДанные:{data}.\nОтвет:{response_data}'
             )
 
-
-@pytest.mark.skip(
-    reason='Запросы работают. Нужно придумать как тестировать таски celery'
-)
-class TestCeleryTasks:
-
-    def test_cancel_adorder_admin(
-        self,
-        admin_client,
-        adorder
-    ):
+    def test_cancel_adorder(self, adorder):
         adorder_id = str(adorder.id)
-        url = TestOrders.ad_cancel_url.format(adorder=adorder_id)
-        response = admin_client.delete(url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
+        response = MockCeleryTasks.cancel_ad_order_task(adorder_id)
+        assert response['status'] == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет:{response}.'
         )
         order_obj = AdOrder.objects.get(id=adorder_id)
         assert order_obj.status == 3, 'Статус заказа не Отменён.'
-
-    def test_cancel_adorder_manager(
-        self,
-        manager_client,
-        adorder
-    ):
-        adorder_id = str(adorder.id)
-        url = TestOrders.ad_cancel_url.format(adorder=adorder_id)
-        response = manager_client.delete(url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
+        assert Task.objects.count() == 1, (
+            'Репликация на отмену не была создана.'
         )
-        order_obj = AdOrder.objects.get(id=adorder_id)
-        assert order_obj.status == 3, 'Статус заказа не Отменён.'
+        task_obj = Task.objects.last()
+        assert task_obj.type == 9, 'Репликация имеет неверный тип.'
+        assert task_obj.parameters['order_id'] == adorder_id, (
+            'В репликации записан неверный айди заказа'
+        )
+        client = adorder.client
+        assert task_obj.client == client, 'Репликация ушла на другую машину.'
 
-    def test_cancel_adorder_user(
-        self,
-        user_client,
-        adorder
-    ):
+    def test_cancel_adorder_user(self, user_client, adorder):
         adorder_id = str(adorder.id)
-        url = TestOrders.ad_cancel_url.format(adorder=adorder_id)
+        url = self.ad_cancel_url.format(adorder=adorder_id)
         response = user_client.delete(url)
         assert response.status_code == HTTPStatus.FORBIDDEN, (
             f'Код статуса в ответе != 403.\nОтвет:{response.json()}.'
         )
+        assert Task.objects.count() == 0, (
+            'Репликация на отмену была создана без должных прав.'
+        )
 
-    def test_cancel_adorder_anon(
-        self,
-        anon_client,
-        adorder
-    ):
+    def test_cancel_adorder_anon(self, anon_client, adorder):
         adorder_id = str(adorder.id)
-        url = TestOrders.ad_cancel_url.format(adorder=adorder_id)
+        url = self.ad_cancel_url.format(adorder=adorder_id)
         response = anon_client.delete(url)
         assert response.status_code == HTTPStatus.UNAUTHORIZED, (
             f'Код статуса в ответе != 401.\nОтвет:{response.json()}.'
         )
+        assert Task.objects.count() == 0, (
+            'Репликация на отмену была создана без авторизации.'
+        )
 
-    def test_cancel_bgorder_admin(
-        self,
-        admin_client,
-        bgorder
-    ):
+    def test_cancel_bgorder(self, bgorder):
         bgorder_id = str(bgorder.id)
-        url = TestOrders.bg_cancel_url.format(bgorder=bgorder_id)
-        response = admin_client.delete(url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
+        response = MockCeleryTasks.cancel_bg_order_task(bgorder_id)
+        assert response['status'] == HTTPStatus.OK, (
+            f'Код статуса в ответе != 200.\nОтвет:{response}.'
         )
         order_obj = BgOrder.objects.get(id=bgorder_id)
         assert order_obj.status == 3, 'Статус заказа не Отменён.'
-
-    def test_cancel_bgorder_manager(
-        self,
-        manager_client,
-        bgorder
-    ):
-        bgorder_id = str(bgorder.id)
-        url = TestOrders.bg_cancel_url.format(bgorder=bgorder_id)
-        response = manager_client.delete(url)
-        assert response.status_code == HTTPStatus.OK, (
-            f'Код статуса в ответе != 200.\nОтвет:{response.json()}.'
+        assert Task.objects.count() == 1, (
+            'Репликация на отмену не была создана.'
         )
-        order_obj = BgOrder.objects.get(id=bgorder_id)
-        assert order_obj.status == 3, 'Статус заказа не Отменён.'
+        task_obj = Task.objects.last()
+        task_type = get_bg_task_type(bgorder.order_type, action='cancel')
+        assert task_obj.type == task_type, 'Репликация имеет неверный тип.'
+        assert task_obj.parameters['order_id'] == bgorder_id, (
+            'В репликации записан неверный айди заказа'
+        )
+        client = bgorder.client
+        assert task_obj.client == client, 'Репликация ушла на другую машину.'
 
-    def test_cancel_bgorder_user(
-        self,
-        user_client,
-        bgorder
-    ):
+    def test_cancel_bgorder_user(self, user_client, bgorder):
         bgorder_id = str(bgorder.id)
-        url = TestOrders.bg_cancel_url.format(bgorder=bgorder_id)
+        url = self.bg_cancel_url.format(bgorder=bgorder_id)
         response = user_client.delete(url)
         assert response.status_code == HTTPStatus.FORBIDDEN, (
             f'Код статуса в ответе != 403.\nОтвет:{response.json()}.'
         )
+        assert Task.objects.count() == 0, (
+            'Репликация на отмену была создана без должных прав.'
+        )
 
-    def test_cancel_bgorder_anon(
-        self,
-        anon_client,
-        bgorder
-    ):
+    def test_cancel_bgorder_anon(self, anon_client, bgorder):
         bgorder_id = str(bgorder.id)
-        url = TestOrders.bg_cancel_url.format(bgorder=bgorder_id)
+        url = self.bg_cancel_url.format(bgorder=bgorder_id)
         response = anon_client.delete(url)
         assert response.status_code == HTTPStatus.UNAUTHORIZED, (
             f'Код статуса в ответе != 401.\nОтвет:{response.json()}.'
         )
+        assert Task.objects.count() == 0, (
+            'Репликация на отмену была создана без авторизации.'
+        )
+
+
+class MockCeleryTasks:
+
+    @staticmethod
+    def create_ad_order_task(orders_ids: list):
+        task_list = []
+        AD = 4
+        orders = AdOrder.objects.filter(pk__in=orders_ids)
+        for order in orders:
+            task_list.append(
+                Task(
+                    owner=order.owner,
+                    client=order.client,
+                    type=AD,
+                    parameters={
+                        'order_id': str(order.id),
+                        'order_parameters': order.parameters,
+                        'broadcast_type': order.broadcast_type,
+                        'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                              f'{order.broadcast_interval.upper}',
+                        'playlist': {
+                            'id': str(order.playlist.id),
+                            'files': [
+                                {
+                                    'id': str(file.id),
+                                    'hash': file.hash
+                                } for file in order.playlist.files.all()
+                            ],
+                            'slides': order.slides if order.slides else None
+                        }
+                    }
+                )
+            )
+        Task.objects.bulk_create(task_list)
+        return {'data': f'Отправленно заказов: {len(task_list)}.',
+                'status': HTTPStatus.OK}
+
+    @staticmethod
+    def create_bg_order_task(orders_ids: list):
+        orders = BgOrder.objects.filter(pk__in=orders_ids)
+        task_list = []
+        for order in orders:
+            task_list.append(
+                Task(
+                    owner=order.owner,
+                    client=order.client,
+                    type=order.order_type,
+                    parameters={
+                        'order_id': str(order.id),
+                        'type': order.order_type,
+                        'broadcast_interval': f'{order.broadcast_interval.lower}-'
+                                              f'{order.broadcast_interval.upper}',
+                        'playlist': {
+                            'id': str(order.playlist.id),
+                            'files': [
+                                {
+                                    'id': str(file.id),
+                                    'hash': file.hash
+                                } for file in order.playlist.files.all()
+                            ]
+                        }
+                    }
+                )
+            )
+        Task.objects.bulk_create(task_list)
+        return {'data': f'Создано заказов: {len(task_list)}.',
+                'status': HTTPStatus.OK}
+
+    @staticmethod
+    def update_ad_order_task(order_id: str):
+        order = AdOrder.objects.get(id=order_id)
+        UPDATE_AD = 14
+        Task.objects.create(
+            owner=order.owner,
+            client=order.client,
+            type=UPDATE_AD,
+            parameters={
+                'order_id': str(order.id),
+                'playlist': {
+                    'id': str(order.playlist.id),
+                    'files': [
+                        {
+                            'id': str(file.id),
+                            'hash': file.hash
+                        } for file in order.playlist.files.all()
+                    ],
+                    'slides': order.slides if order.slides else None
+                },
+                'action_type': 'update_playlist'
+            }
+        )
+        return {'data': f'Обновлён заказ: {order_id}',
+                'status': HTTPStatus.OK}
+
+    @staticmethod
+    def update_bg_order_task(order_id: str):
+        order = BgOrder.objects.get(id=order_id)
+        task_type = get_bg_task_type(order.order_type, action='update')
+        Task.objects.create(
+            owner=order.owner,
+            client=order.client,
+            type=task_type,
+            parameters={
+                'order_id': str(order.id),
+                'playlist': {
+                    'id': str(order.playlist.id),
+                    'files': [
+                        {
+                            'id': str(file.id),
+                            'hash': file.hash
+                        } for file in order.playlist.files.all()
+                    ]
+                },
+                'action_type': 'update_playlist'
+            }
+        )
+        return {'data': f'Обновлён заказ: {order_id}',
+                'status': HTTPStatus.OK}
+
+    @staticmethod
+    def cancel_ad_order_task(order_id: str):
+        CANCEL = 3
+        CANCEL_AD = 9
+        order = AdOrder.objects.get(id=order_id)
+        Task.objects.create(
+            owner=order.owner,
+            client=order.client,
+            type=CANCEL_AD,
+            parameters={'order_id': order_id}
+        )
+        order.status = CANCEL
+        order.save(update_fields=['status'])
+        return {'data': f'Отменён заказ: {order_id}.',
+                'status': HTTPStatus.OK}
+
+    @staticmethod
+    def cancel_bg_order_task(order_id: str):
+        CANCEL = 3
+        order = BgOrder.objects.get(id=order_id)
+        task_type = get_bg_task_type(order.order_type, action='cancel')
+        Task.objects.create(
+            owner=order.owner,
+            client=order.client,
+            type=task_type,
+            parameters={'order_id': order_id}
+        )
+        order.status = CANCEL
+        order.save(update_fields=['status'])
+        return {'data': f'Отменено заказов: {order_id}.',
+                'status': HTTPStatus.OK}

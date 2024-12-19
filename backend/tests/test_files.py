@@ -8,7 +8,6 @@ load_dotenv()
 
 
 @pytest.mark.django_db(transaction=True, databases=['default', 'clickhouse'])
-# @pytest.mark.skip(reason='Чтобы быстрее проверять новые тесты')
 class TestFiles:
 
     files_url = '/api/files/'
@@ -1469,22 +1468,6 @@ class TestFiles:
         assert 'client' in response_data[0], (
             'В ответе нет информации о номенклатуре.'
         )
-
-
-# @pytest.mark.django_db(transaction=True, databases=['default', 'clickhouse'])
-@pytest.mark.skip
-class TestNew:
-
-    files_url = '/api/files/'
-    file_detail_url = '/api/files/{file_id}/'
-    file_add_tags = '/api/files/{file_id}/add_tags/'
-    file_remove_tags = '/api/files/{file_id}/remove_tags/'
-    playlists_url = '/api/playlists/'
-    playlist_detail_url = '/api/playlists/{playlist_id}/'
-    playlist_add_files_url = '/api/playlists/{playlist_id}/add_files/'
-    playlist_remove_files_url = '/api/playlists/{playlist_id}/remove_files/'
-    tags_url = '/api/tags/'
-    tag_detail_url = '/api/tags/{tag_id}/'
 
 
 @pytest.mark.django_db(transaction=True)

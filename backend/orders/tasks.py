@@ -108,22 +108,22 @@ def create_ad_order_task(orders_ids: list):
         )
     # 3
     Task.objects.bulk_create(task_list)
-    result = f'Отправленно заказов: {len(task_list)}.'
+    result = f'Создано заказов: {len(task_list)}.'
     return result
 
 
 @shared_task
-def update_ad_order_task(
+def add_or_remove_files_ad_order_task(
     order_list: list[str],
     files: list[dict[str, str]] | list[str],
     action_type
 ):
     """
-    Обновление активного заказа.
+    Добавление/удаление файлов из активного заказа.
 
-    В зависимости от действия (удаление или добавление файлов в плейлист)
-    отдаётся список словарей, содержащий айдишки и хэши новых файлов,
-    либо список с айдишками файлов, которые нужно убрать.
+    В зависимости от действия (удаление/добавление) отдаётся список словарей,
+    содержащий айдишки и хэши новых файлов, либо список с айдишками файлов,
+    которые нужно убрать.
 
     0. Фильтруем заказы по айди.
     1. Собираем список репликаций, подставляем информацию из заказа,
@@ -153,6 +153,42 @@ def update_ad_order_task(
     Task.objects.bulk_create(task_list)
     # 3
     return f'Обновлено заказов: {len(task_list)}'
+
+
+@shared_task
+def update_ad_order_task(order_id: str):
+    """
+    Обновление плейлиста активного рекламного заказа.
+
+    0. Находим объект заказа по айди.
+    1. Создаём репликацию, параметры берём из заказа.
+    2. В ответ отдаём айди обновлённого заказа.
+    """
+    # 0
+    order = AdOrder.objects.get(id=order_id)
+    UPDATE_AD = 14
+    # 1
+    Task.objects.create(
+        owner=order.owner,
+        client=order.client,
+        type=UPDATE_AD,
+        parameters={
+            'order_id': str(order.id),
+            'playlist': {
+                        'id': str(order.playlist.id),
+                        'files': [
+                            {
+                                'id': str(file.id),
+                                'hash': file.hash
+                            } for file in order.playlist.files.all()
+                        ],
+                        'slides': order.slides if order.slides else None
+                    },
+            'action_type': 'update_playlist'
+        }
+    )
+    # 2
+    return f'Обновлён заказ: {order_id}'
 
 
 @shared_task
@@ -236,17 +272,17 @@ def create_bg_order_task(orders_ids: list):
 
 
 @shared_task
-def update_bg_order_task(
+def add_or_remove_files_bg_order_task(
     order_list: list[str],
     files: list[dict[str, str]] | list[str],
     action_type
 ):
     """
-    Обновление активного заказа.
+    Добавление/удаление файлов из активного заказа.
 
-    В зависимости от действия (удаление или добавление файлов в плейлист)
-    отдаётся список словарей, содержащий айдишки и хэши новых файлов,
-    либо список с айдишками файлов, которые нужно убрать.
+    В зависимости от действия (удаление/добавление) отдаётся список словарей,
+    содержащий айдишки и хэши новых файлов, либо список с айдишками файлов,
+    которые нужно убрать.
 
     0. Фильтруем заказы по айди.
     1. Подбираем тип репликации по типу первого заказа, т.к все заказы в списке
@@ -278,7 +314,44 @@ def update_bg_order_task(
     # 3
     Task.objects.bulk_create(task_list)
     # 4
-    return f'Репликаций создано: {len(task_list)}'
+    return f'Обновлено заказов: {len(task_list)}'
+
+
+@shared_task
+def update_bg_order_task(order_id: str):
+    """
+    Обновление плейлиста активного фонового заказа.
+
+    0. Находим заказ по айди.
+    1. Подбираем тип репликации по типу заказа.
+    2. Создаём репликацию, параметры берём из заказа.
+    3. В ответ отдаём номер обновлённого заказа.
+    """
+    # 0
+    order = BgOrder.objects.get(id=order_id)
+    # 1
+    task_type = get_bg_task_type(order.order_type, action='update')
+    # 2
+    Task.objects.create(
+        owner=order.owner,
+        client=order.client,
+        type=task_type,
+        parameters={
+            'order_id': str(order.id),
+            'playlist': {
+                'id': str(order.playlist.id),
+                'files': [
+                    {
+                        'id': str(file.id),
+                        'hash': file.hash
+                    } for file in order.playlist.files.all()
+                ]
+            },
+            'action_type': 'update_playlist'
+        }
+    )
+    # 3
+    return f'Обновлён заказ: {order_id}'
 
 
 @shared_task
@@ -298,7 +371,7 @@ def cancel_bg_order_task(order_id: str):
     # 1
     task_type = get_bg_task_type(order.order_type, action='cancel')
     # 2
-    Task.objects.bulk_create(
+    Task.objects.create(
         owner=order.owner,
         client=order.client,
         type=task_type,
