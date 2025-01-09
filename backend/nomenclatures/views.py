@@ -135,27 +135,30 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         """
         Переотправка заказов.
 
-        0. Получаем список заказов на переотправку.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в целери
-            для создания соответствующих репликаций в фоне.
-        1.2. Заказы, которые нельзя переотправить,
-            записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов которые будут
-            переотправлены и которые переотправить нельзя.
+        0. Получем список айди закзаов и проверяем,
+            что объект запроса существует.
+        1. Фильтруем активные заказы всех типов на совпадение
+            с полученным списком айди.
+        2. Если не нашлось ни одного заказа, возвращаем соответствующий ответ.
+        3. Иначе отправляем заказы на переотправку и оповещаем об успехе.
         """
+        # 0
         nomenclature = get_instance_or_404(Nomenclature, pk)
+        # 1
         adorders = nomenclature.adorders.filter(status__in=[0, 1]).count()
         bgorders = nomenclature.bgorders.filter(status__in=[0, 1]).count()
-
+        # 2
         if adorders == 0 and bgorders == 0:
-            result_text = 'Нет активных заказов.'
-            return Response(data=result_text, status=HTTP_200_OK)
-
+            return Response(
+                data={'message': 'Нет активных заказов.'},
+                status=HTTP_200_OK
+            )
+        # 3
         resend_orders_task.delay(pk)
-
-        result_text = 'Запрос на переотправку заказов принят.'
-        return Response(data=result_text, status=HTTP_201_CREATED)
+        return Response(
+            data={'message': 'Запрос на переотправку заказов принят.'},
+            status=HTTP_201_CREATED
+        )
 
     @action(detail=True, methods=['POST'], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):

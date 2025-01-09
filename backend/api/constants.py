@@ -187,17 +187,19 @@ def filter_by_owner_name(queryset, name, value):
     ничего не возвращает.
     """
     from django.db.models import Q
-    if len(value.split()) == 2:
-        first_name, last_name = value.split()
+    arg_list = value.split()
+    if len(arg_list) == 2:
+        first_name, last_name = arg_list
         return queryset.filter(
             (Q(owner__last_name__icontains=last_name) &
              Q(owner__first_name__icontains=first_name)) |
             (Q(owner__last_name__icontains=first_name) &
              Q(owner__first_name__icontains=last_name))
         )
-    elif len(value.split()) == 1:
+    elif len(arg_list) == 1:
         return queryset.filter(
             Q(owner__last_name__icontains=value) |
             Q(owner__first_name__icontains=value)
         )
-
+    else:
+        return None

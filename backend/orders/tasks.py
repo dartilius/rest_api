@@ -72,7 +72,7 @@ def create_ad_order_task(orders_ids: list):
 
     0. Фильтруем заказы по полученному списку.
     1. Проходим по получившемуся списку.
-    2. Заполняем список репликаций на отмену, берём нужную инфу с заказа.
+    2. Заполняем список репликаций, берём нужную инфу с заказа.
     3. Создаём все репликации одной операцией, фиксируем количество.
     """
     task_list = []
@@ -184,7 +184,7 @@ def update_ad_order_task(order_id: str):
                         ],
                         'slides': order.slides if order.slides else None
                     },
-            'action_type': 'update_playlist'
+            'update_type': 'update_playlist'
         }
     )
     # 2
@@ -226,7 +226,7 @@ def create_bg_order_task(orders_ids: list):
 
     0. Фильтруем заказы по полученному списку.
     1. Проходим по получившемуся списку.
-    2. Заполняем список репликаций на отмену, берём нужную инфу с заказа.
+    2. Заполняем список репликаций, берём нужную инфу с заказа.
     3. Создаём все репликации одной операцией, фиксируем количество.
     """
     # 0
@@ -347,7 +347,7 @@ def update_bg_order_task(order_id: str):
                     } for file in order.playlist.files.all()
                 ]
             },
-            'action_type': 'update_playlist'
+            'update_type': 'update_playlist'
         }
     )
     # 3
