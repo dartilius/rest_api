@@ -9,7 +9,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     client = serializers.SlugRelatedField(
         slug_field='id',
-        queryset=Nomenclature.objects.all(),
+        queryset=Nomenclature.active.all(),
         write_only=True
     )
 

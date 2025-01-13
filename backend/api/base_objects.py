@@ -1,6 +1,6 @@
 from uuid import uuid4
 from django.db import transaction
-from django.db.models import DO_NOTHING, ForeignKey, Model
+from django.db.models import DO_NOTHING, ForeignKey, Model, Manager
 from django.db.models.fields import (
     BooleanField,
     CharField,
@@ -163,6 +163,7 @@ class APIBaseObjectModel(Model):
     )
 
     active = ActiveManager()
+    objects = Manager()
 
     class Meta:
         abstract = True
