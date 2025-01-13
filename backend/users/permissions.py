@@ -22,7 +22,10 @@ class SuperuserCUDAuthRetrieve(BasePermission):
         return request.user.is_authenticated and request.user.is_superuser
 
     def has_object_permission(self, request, view, obj):
-        return request.method in SAFE_METHODS or request.user.is_superuser
+        if request.method in SAFE_METHODS:
+            return request.user.is_authenticated
+
+        return request.user.is_authenticated and request.user.is_superuser
 
 
 class OnlyStaffCRUD(BasePermission):
@@ -114,18 +117,21 @@ class SuperuserDeleteAdminCRU(BasePermission):
             return request.user.is_authenticated
 
         return request.user.is_authenticated and (
-                request.user.is_admin or
-                request.user.is_superuser
+            request.user.is_admin or
+            request.user.is_superuser
         )
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
-            return True
+            return request.user.is_authenticated
 
         if request.method == 'DELETE':
-            return request.user.is_superuser
+            return request.user.is_authenticated and request.user.is_superuser
 
-        return request.user.is_admin or request.user.is_superuser
+        return request.user.is_authenticated and (
+            request.user.is_admin or
+            request.user.is_superuser
+        )
 
 
 class SuperuserDeleteOwnerCRU(BasePermission):
@@ -142,14 +148,16 @@ class SuperuserDeleteOwnerCRU(BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS or (
-            request.method in MUTATE_METHODS and (
-                obj.owner == request.user or request.user.is_superuser
-            )
-        ):
-            return True
+        if request.method in SAFE_METHODS:
+            return request.user.is_authenticated
 
-        return request.user.is_superuser
+        if request.method in MUTATE_METHODS:
+            return request.user.is_authenticated and (
+                obj.owner == request.user or
+                request.user.is_superuser
+            )
+
+        return request.user.is_authenticated and request.user.is_superuser
 
 
 class OwnerAndStaffCRUD(BasePermission):
@@ -167,8 +175,9 @@ class OwnerAndStaffCRUD(BasePermission):
         if request.method in SAFE_METHODS:
             return request.user.is_authenticated
 
-        return request.method in MUTATE_DELETE_METHODS and (
-            obj.owner == request.user or not request.user.is_ordinary
+        return request.user.is_authenticated and (
+            obj.owner == request.user or
+            not request.user.is_ordinary
         )
 
 
@@ -185,9 +194,9 @@ class AdminAndSuperuserCRUD(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
-            return True
+            return request.user.is_authenticated
 
-        return request.method in MUTATE_DELETE_METHODS and (
+        return request.user.is_authenticated and (
             request.user.is_admin or request.user.is_superuser
         )
 
@@ -204,10 +213,13 @@ class OnlySuperuserUDAdminManagerCR(BasePermission):
         return request.user.is_authenticated and not request.user.is_ordinary
 
     def has_object_permission(self, request, view, obj):
-        if request.method in MUTATE_DELETE_METHODS:
-            return request.user.is_superuser
+        if request.method in SAFE_METHODS:
+            return (
+                request.user.is_authenticated and
+                not request.user.is_ordinary
+            )
 
-        return request.method in SAFE_METHODS and not request.user.is_ordinary
+        return request.user.is_authenticated and request.user.is_superuser
 
 
 class OnlySuperuserUDAdminManagerCAuthR(BasePermission):
@@ -226,7 +238,6 @@ class OnlySuperuserUDAdminManagerCAuthR(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
-            return True
+            return request.user.is_authenticated
 
-        if request.method in MUTATE_DELETE_METHODS:
-            return request.user.is_superuser
+        return request.user.is_authenticated and request.user.is_superuser

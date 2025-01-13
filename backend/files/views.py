@@ -278,15 +278,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                            BgOrder.objects.filter(playlist__in=pls_obj))
         orders = list(orders)
         # 2
-        try:
-            test = orders[0]
-            del test
-        # 2.1
-        except IndexError:
-            return None
-        # 2.2
-        else:
-            return orders
+        return orders if orders else None
 
     @staticmethod
     def perform_remove_files(playlists: Playlist | list[Playlist],
@@ -362,9 +354,9 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                 bg_orders.append(str(order.id))
         # 2
         if ad_orders:
-            add_or_remove_files_ad_order_task(ad_orders, files, action_type)
+            add_or_remove_files_ad_order_task.delay(ad_orders, files, action_type)
         if bg_orders:
-            add_or_remove_files_bg_order_task(bg_orders, files, action_type)
+            add_or_remove_files_bg_order_task.delay(bg_orders, files, action_type)
 
     @staticmethod
     def _validate_request_data_format(files: list[str]) -> None:
@@ -461,7 +453,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                 raise ValidationError(
                     'Вы пытаетесь добавить в плейлист файлы '
                     'не соответствующего типа.\n'
-                    f'Тип файлов в плейлисте: {playlist_type}.\n'
+                    f'Тип файлов в плейлисте: {pls_type}.\n'
                     f'Среди ваших файлов есть: {bad_types}'
                 )
         # 0
