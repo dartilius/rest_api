@@ -1,6 +1,6 @@
 from uuid import uuid4
 from django.db import transaction
-from django.db.models import DO_NOTHING, ForeignKey, Model
+from django.db.models import DO_NOTHING, ForeignKey, Model, Manager
 from django.db.models.fields import (
     BooleanField,
     CharField,
@@ -137,6 +137,7 @@ class APIBaseObjectModel(Model):
     :ivar created: ``DateTimeField``
     """
 
+    from api.custom_managers import ActiveManager
     from users.models import CustomUser
 
     id = UUIDPKField()
@@ -152,11 +153,17 @@ class APIBaseObjectModel(Model):
         max_length=255,
         verbose_name='Название'
     )
-    is_active = BooleanField(default=True)
+    is_active = BooleanField(
+        default=True,
+        verbose_name='Актуальность'
+    )
     created = DateTimeField(
         auto_now_add=True,
         verbose_name='Дата создания'
     )
+
+    active = ActiveManager()
+    objects = Manager()
 
     class Meta:
         abstract = True

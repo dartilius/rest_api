@@ -60,7 +60,11 @@ class GetFileInfo:
         command = ['mediainfo',
                    '--Inform=General;%Duration%',
                    temp_file_path]
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
         os.remove(temp_file_path)
         try:
             microseconds = int(result.stdout.decode().strip())

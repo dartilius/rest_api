@@ -44,12 +44,34 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         """
         Валидация настроек.
 
-        Проверяется наличие обязательных ключей worktime и default_volume,
-        корректность значений этих ключей и опциональных значений custom_volume
+        Проверяется:
+        1. Наличие обязательных ключей worktime и default_volume
+        2. Корректность значений этих ключей
+        3. При наличии опциональных значений custom_volume - всё то же самое,
+            а также они дополнительно преверяются на пересечение
         """
+        def _translate_error(err):
+            """Это нужно для перевода стандартной ошибки time"""
+            time_val = str()
+            e_list = str(err).split()
+            match e_list[0]:
+                case 'second':
+                    time_val = 'секунд'
+                case 'minute':
+                    time_val = 'минут'
+                case 'hour':
+                    time_val = 'часов'
+            raise serializers.ValidationError(
+                f'Количество {time_val} должно быть '
+                f'в пределах {e_list[-1]}'
+            )
 
         def _validate_time(interval: str) -> None:
             """Валидация промежутков времени."""
+            if not isinstance(interval, str):
+                raise serializers.ValidationError(
+                    'Интервал времени имеет не правильный формат!'
+                )
             split_interval = interval.split('-')
             if len(split_interval) != 2:
                 raise serializers.ValidationError(
@@ -57,7 +79,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
             start = list(map(int, split_interval[0].split(':')))
             end = list(map(int, split_interval[1].split(':')))
-            if not time(0, 0, 0) <= time(*start) < time(*end) <= time(23, 59, 59):
+            try:
+                start_time = time(*start)
+                end_time = time(*end)
+            except ValueError as e:
+                if 'must be' in str(e):
+                    _translate_error(e)
+                else:
+                    raise e
+            if not time(0, 0, 0) <= start_time < end_time <= time(23, 59, 59):
                 raise serializers.ValidationError(
                     'Время начала не может быть больше времени окончания '
                     'и должно быть в промежутке 00:00:00 - 23:59:59'
@@ -94,15 +124,22 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     )
 
         for day, settings in value.items():
+            # 1
             try:
                 req_keys = {
                     'worktime': settings['worktime'],
                     'default_volume': tuple(settings['default_volume'])
                 }
-            except KeyError as k:
-                raise serializers.ValidationError(f'{k} не передан')
+            except KeyError as ke:
+                raise serializers.ValidationError(f'{ke} не передан')
+            except TypeError:
+                raise serializers.ValidationError(
+                    'Список значений громкости имеет не правильный формат'
+                )
+            # 2
             _validate_time(req_keys['worktime'])
             _validate_volume(req_keys['default_volume'])
+            # 3
             if 'custom_volume' in settings:
                 for interval, volume in settings['custom_volume'].items():
                     _validate_time(interval)
@@ -118,9 +155,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj):
         try:
-            return obj.availability.last_answer_date.strftime(
-                '%Y-%m-%d %H:%M:%S'
-            )
+            return f'{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}'
         except AttributeError:
             return 'Не выходила в сеть'
 
@@ -129,12 +164,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         repr_['main_info'] = {
             'name': obj.name,
             'description': obj.description,
-            'owner': f'{obj.owner.last_name} {obj.owner.first_name}',
+            'owner': obj.owner.full_name,
             'timezone': TIMEZONES[obj.timezone],
             'status': self.get_status(obj),
             'last_answer': self.get_last_answer(obj),
             'version': obj.version,
-            'created': obj.created.strftime('%Y-%m-%d %H:%M:%S')
+            'created': f'{obj.created:%Y-%m-%d %H:%M:%S}'
         }
         # чтобы поля не дублировались
         for field in repr_['main_info']:
@@ -176,9 +211,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj):
         try:
-            return obj.availability.last_answer_date.strftime(
-                '%Y-%m-%d %H:%M:%S'
-            )
+            return f'{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}'
         except AttributeError:
             return 'Не выходила в сеть'
 
@@ -201,5 +234,5 @@ class StatusHistorySerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['change_time'] = value.change_time.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['change_time'] = f'{value.change_time:%Y-%m-%d %H:%M:%S}'
         return repr_

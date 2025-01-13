@@ -1,28 +1,36 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import PermissionsMixin
 from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
+from api.base_objects import UUIDPKField
+from api.custom_managers import CustomUserManager
 
 ROLES = {
     'admin': 'Сотрудник ТО',
     'manager': 'Менеджер',
+    'ordinary': 'Пользователь',
     'superuser': 'Суперпользователь'
 }
 
 
-class CustomUser(AbstractUser):
+class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Пользователи."""
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    EMAIL_FIELD = 'email'
+    USERNAME_FIELD = EMAIL_FIELD
+    REQUIRED_FIELDS = []
+
+    objects = CustomUserManager()
 
     email_validator = EmailValidator(
-        message='Такая почта уже занята, либо введены запрещённые символы. '
+        message='Емэйл уже занят, либо введён некорректно. '
                 'Разрешены только буквы, цифры и @/./+/-/_ символы, '
                 'а почта должна иметь такой вид: адрес@домен'
     )
 
+    id = UUIDPKField()
     last_name = models.CharField(
         max_length=150,
         verbose_name='Фамилия',
@@ -33,20 +41,21 @@ class CustomUser(AbstractUser):
     )
     middle_name = models.CharField(
         max_length=150,
-        blank=True,
+        verbose_name='Отчество',
         null=True,
-        verbose_name='Отчество'
+        blank=True
     )
     role = models.CharField(
         choices=ROLES,
         max_length=32,
-        null=True,
-        blank=True,
-        verbose_name='Роль'
+        verbose_name='Роль',
+        default='ordinary'
     )
     phone_number = PhoneNumberField(
         unique=True,
-        verbose_name='Номер телефона'
+        verbose_name='Номер телефона',
+        null=True,
+        blank=True
     )
     email = models.EmailField(
         max_length=255,
@@ -55,8 +64,13 @@ class CustomUser(AbstractUser):
         verbose_name='Электронная почта'
     )
     is_active = models.BooleanField(
-        default=True,
-        verbose_name='Актуальность пользователя'
+        verbose_name='Актуальность пользователя',
+        default=True
+    )
+    is_staff = models.BooleanField(
+        verbose_name='Пользователь админ-панели',
+        help_text='Влияет на возможность зайти в админ-панель django',
+        default=False
     )
     created = models.DateTimeField(
         auto_now_add=True,
@@ -73,6 +87,22 @@ class CustomUser(AbstractUser):
         """Проверяем, что пользователь админ."""
         return self.role == 'admin'
 
+    @property
+    def is_ordinary(self):
+        """Проверяем, что это обычный пользователь."""
+        return self.role == 'ordinary'
+
+    @property
+    def is_super_user(self):
+        """Проверяем, что это superuser."""
+        return self.role == 'superuser'
+
+    @property
+    def full_name(self):
+        return {
+            'full_name': f'{self.last_name} {self.first_name}'
+        }
+
     def save(self, *args, **kwargs):
         self.username = self.email
         super().save(*args, **kwargs)
@@ -84,4 +114,4 @@ class CustomUser(AbstractUser):
         verbose_name_plural = 'Пользователи'
 
     def __str__(self):
-        return f'{self.last_name} {self.first_name}'
+        return self.full_name['full_name']

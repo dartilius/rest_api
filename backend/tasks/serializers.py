@@ -9,7 +9,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     client = serializers.SlugRelatedField(
         slug_field='id',
-        queryset=Nomenclature.objects.all(),
+        queryset=Nomenclature.active.all(),
         write_only=True
     )
 
@@ -34,16 +34,13 @@ class TaskSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
+        repr_['owner'] = value.owner.full_name
         repr_['client'] = {
-            'id': value.client.id,
+            'id': str(value.client.id),
             'name': value.client.name
         }
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        repr_['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
+        repr_['updated'] = f'{value.updated:%Y-%m-%d %H:%M:%S}'
         return repr_
 
 
@@ -65,14 +62,11 @@ class TaskListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
+        repr_['owner'] = value.owner.full_name
         repr_['client'] = {
-            'id': value.client.id,
+            'id': str(value.client.id),
             'name': value.client.name
         }
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
-        repr_['updated'] = value.updated.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
+        repr_['updated'] = f'{value.updated:%Y-%m-%d %H:%M:%S}'
         return repr_

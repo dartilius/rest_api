@@ -1,7 +1,7 @@
-from django.db.models import Q
 from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
-from .models import AdOrder, BgOrder
+from api.constants import filter_by_owner_name
+from orders.models import AdOrder, BgOrder
 
 
 class AdOrderFilter(FilterSet):
@@ -16,7 +16,7 @@ class AdOrderFilter(FilterSet):
         created  - попадание в заданный промежуток времени
     """
 
-    owner = CharFilter(method='filter_by_owner_name')
+    owner = CharFilter(method='owner_filter')
     name = CharFilter(field_name='name', lookup_expr='icontains')
     brc_type = CharFilter(field_name='broadcast_type', lookup_expr='exact')
     id = CharFilter(field_name='id', lookup_expr='exact')
@@ -31,28 +31,8 @@ class AdOrderFilter(FilterSet):
         model = AdOrder
         fields = ('name', 'brc_type', 'id', 'client', 'owner', 'created')
 
-    def filter_by_owner_name(self, queryset, name, value):
-        """
-        Специальный метод для фильтрации по имени и фамилии создателя.
-
-        Поддерживает поиск по фамилии и имени, указанным
-        вместе в любом порядке либо отдельно по фамилии или имени.
-        При не совпадении или указании более двух аргументов
-        возвращает список всех пользователей.
-        """
-        if len(value.split()) == 2:
-            first_name, last_name = value.split()
-            return queryset.filter(
-                (Q(owner__last_name__icontains=last_name) &
-                 Q(owner__first_name__icontains=first_name)) |
-                (Q(owner__last_name__icontains=first_name) &
-                 Q(owner__first_name__icontains=last_name))
-            )
-        elif len(value.split()) == 1:
-            return queryset.filter(
-                Q(owner__last_name__icontains=value) |
-                Q(owner__first_name__icontains=value)
-            )
+    def owner_filter(self, queryset, name, value):
+        return filter_by_owner_name(queryset, name, value)
 
 
 class BgOrderFilter(FilterSet):
@@ -67,7 +47,7 @@ class BgOrderFilter(FilterSet):
         created    - попадание в заданный промежуток времени
     """
 
-    owner = CharFilter(method='filter_by_owner_name')
+    owner = CharFilter(method='owner_filter')
     name = CharFilter(field_name='name', lookup_expr='icontains')
     id = CharFilter(field_name='id', lookup_expr='exact')
     client = CharFilter(
@@ -82,25 +62,5 @@ class BgOrderFilter(FilterSet):
         model = BgOrder
         fields = ('name', 'id', 'client', 'order_type', 'owner', 'created')
 
-    def filter_by_owner_name(self, queryset, name, value):
-        """
-        Специальный метод для фильтрации по имени и фамилии создателя.
-
-        Поддерживает поиск по фамилии и имени, указанным
-        вместе в любом порядке либо отдельно по фамилии или имени.
-        При не совпадении или указании более двух аргументов
-        ничего не возвращает.
-        """
-        if len(value.split()) == 2:
-            first_name, last_name = value.split()
-            return queryset.filter(
-                (Q(owner__last_name__icontains=last_name) &
-                 Q(owner__first_name__icontains=first_name)) |
-                (Q(owner__last_name__icontains=first_name) &
-                 Q(owner__first_name__icontains=last_name))
-            )
-        elif len(value.split()) == 1:
-            return queryset.filter(
-                Q(owner__last_name__icontains=value) |
-                Q(owner__first_name__icontains=value)
-            )
+    def owner_filter(self, queryset, name, value):
+        return filter_by_owner_name(queryset, name, value)
