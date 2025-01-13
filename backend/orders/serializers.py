@@ -371,7 +371,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Внесение клиентов из списка айди."""
         client_ids = validated_data.pop('clients')
-        clients = Nomenclature.objects.filter(id__in=client_ids)
+        clients = Nomenclature.active.filter(id__in=client_ids)
         order_list = []
         for client in clients:
             order_list.append(AdOrder(client=client,
@@ -509,7 +509,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Внесение клиентов из списка айди."""
         client_ids = validated_data.pop('clients')
-        clients = Nomenclature.objects.filter(id__in=client_ids)
+        clients = Nomenclature.active.filter(id__in=client_ids)
         order_list = []
         for client in clients:
             order_list.append(BgOrder(client=client,

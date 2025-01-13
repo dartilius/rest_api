@@ -63,7 +63,7 @@ class TagViewSet(NoUpdateViewSet):
     Старый, при необходимости, удалить.
     """
 
-    queryset = Tag.objects.all().order_by('id')
+    queryset = Tag.objects.all().order_by('name')
     serializer_class = TagSerializer
     permission_classes = [StaffCUDAuthRetrieve]
 
@@ -71,7 +71,7 @@ class TagViewSet(NoUpdateViewSet):
 class FileViewSet(NoUpdateViewSet):
     """Работа с файлами."""
 
-    queryset = File.objects.all().select_related('owner')
+    queryset = File.active.all().select_related('owner')
     serializer_class = FileSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = FileFilter
@@ -527,9 +527,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
 class UploadFilesViewSet(viewsets.ModelViewSet):
     """Для загрузки файлов из старой админки."""
 
-    queryset = File.objects.all().select_related(
-        'owner'
-    )
+    queryset = File.objects.all().select_related('owner')
     serializer_class = FileSourceSerializer()
 
     def get_serializer(self, *args, **kwargs):

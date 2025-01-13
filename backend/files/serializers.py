@@ -153,7 +153,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
     files = serializers.SlugRelatedField(
         slug_field='id',
-        queryset=File.objects.all(),
+        queryset=File.active.all(),
         write_only=True,
         many=True
     )
@@ -175,10 +175,16 @@ class PlaylistSerializer(serializers.ModelSerializer):
         model = Playlist
 
     def validate(self, data):
-        """Проверяем, что все файлы в плейлисте одного типа."""
+        """Проверяем, что все файлы в плейлисте актуальны и одного типа."""
         if 'files' in self.initial_data:
             files_ids: list = self.initial_data.get('files')
-            files = File.objects.filter(id__in=files_ids)
+            all_files_count = File.objects.filter(id__in=files_ids).count()
+            active_files_count = File.active.filter(id__in=files_ids).count()
+            if all_files_count != active_files_count:
+                raise serializers.ValidationError(
+                    'Плейлист не должен содержать удалённых файлов'
+                )
+            files = File.active.filter(id__in=files_ids)
             playlist_files_types = {TYPES[file.type] for file in files}
             if len(playlist_files_types) > 1:
                 raise serializers.ValidationError(

@@ -18,10 +18,10 @@ def update_order_status():
     Обновление статусов доступности номенклатур
     и запись истории их изменения.
     """
-    waiting_adorders = AdOrder.objects.filter(status=0)
-    waiting_bgorders = BgOrder.objects.filter(status=0)
-    ending_adorders = AdOrder.objects.filter(status=1)
-    ending_bgorders = BgOrder.objects.filter(status=1)
+    waiting_adorders = AdOrder.active.filter(status=0)
+    waiting_bgorders = BgOrder.active.filter(status=0)
+    ending_adorders = AdOrder.active.filter(status=1)
+    ending_bgorders = BgOrder.active.filter(status=1)
     adorders_started = []
     bgorders_started = []
     adorders_ended = []
@@ -36,15 +36,16 @@ def update_order_status():
             order.status = ON_AIR
             adorders_started.append(order)
     count += len(adorders_started)
-    AdOrder.objects.bulk_update(adorders_started, fields=['status'])
+    AdOrder.active.bulk_update(adorders_started, fields=['status'])
 
     for order in ending_adorders:
         order_end = order.broadcast_interval.upper
         if order_end <= dt.now():
             order.status = COMPLETED
+            order.is_active = False
             adorders_ended.append(order)
     count += len(adorders_ended)
-    AdOrder.objects.bulk_update(adorders_ended, fields=['status'])
+    AdOrder.active.bulk_update(adorders_ended, fields=['status', 'is_active'])
 
     for order in waiting_bgorders:
         order_start = order.broadcast_interval.lower
@@ -52,15 +53,16 @@ def update_order_status():
             order.status = ON_AIR
             bgorders_started.append(order)
     count += len(bgorders_started)
-    BgOrder.objects.bulk_update(bgorders_started, fields=['status'])
+    BgOrder.active.bulk_update(bgorders_started, fields=['status'])
 
     for order in ending_bgorders:
         order_end = order.broadcast_interval.upper
         if order_end <= dt.now():
             order.status = COMPLETED
+            order.is_active = False
             bgorders_ended.append(order)
     count += len(bgorders_ended)
-    BgOrder.objects.bulk_update(bgorders_ended, fields=['status'])
+    BgOrder.active.bulk_update(bgorders_ended, fields=['status', 'is_active'])
 
     return f"Обновлено {count} статусов заказов."
 
@@ -78,7 +80,7 @@ def create_ad_order_task(orders_ids: list):
     task_list = []
     AD = 4
     # 0
-    orders = AdOrder.objects.filter(pk__in=orders_ids)
+    orders = AdOrder.active.filter(pk__in=orders_ids)
     # 1
     for order in orders:
         # 2
@@ -132,7 +134,7 @@ def add_or_remove_files_ad_order_task(
     3. В ответ отдаём количество созданных репликаций.
     """
     # 0
-    orders = AdOrder.objects.filter(id__in=order_list)
+    orders = AdOrder.active.filter(id__in=order_list)
     UPDATE_AD = 14
     task_list = []
     # 1
@@ -165,7 +167,7 @@ def update_ad_order_task(order_id: str):
     2. В ответ отдаём айди обновлённого заказа.
     """
     # 0
-    order = AdOrder.objects.get(id=order_id)
+    order = AdOrder.active.get(id=order_id)
     UPDATE_AD = 14
     # 1
     Task.objects.create(
@@ -204,7 +206,7 @@ def cancel_ad_order_task(order_id: str):
     CANCEL = 3
     CANCEL_AD = 9
     # 0
-    order = AdOrder.objects.get(id=order_id)
+    order = AdOrder.active.get(id=order_id)
     # 1
     Task.objects.create(
         owner=order.owner,
@@ -214,7 +216,8 @@ def cancel_ad_order_task(order_id: str):
     )
     # 2
     order.status = CANCEL
-    order.save(update_fields=['status'])
+    order.is_active = False
+    order.save(update_fields=['status', 'is_active'])
     # 3
     return f'Отменён заказ: {order_id}.'
 
@@ -230,7 +233,7 @@ def create_bg_order_task(orders_ids: list):
     3. Создаём все репликации одной операцией, фиксируем количество.
     """
     # 0
-    orders = BgOrder.objects.filter(pk__in=orders_ids)
+    orders = BgOrder.active.filter(pk__in=orders_ids)
     task_list = []
     # 1
     for order in orders:
@@ -293,7 +296,7 @@ def add_or_remove_files_bg_order_task(
     4. В ответ отдаём количество созданных репликаций.
     """
     # 0
-    orders = BgOrder.objects.filter(id__in=order_list)
+    orders = BgOrder.active.filter(id__in=order_list)
     # 1
     task_type = get_bg_task_type(orders[0].order_type, action='update')
     task_list = []
@@ -328,7 +331,7 @@ def update_bg_order_task(order_id: str):
     3. В ответ отдаём номер обновлённого заказа.
     """
     # 0
-    order = BgOrder.objects.get(id=order_id)
+    order = BgOrder.active.get(id=order_id)
     # 1
     task_type = get_bg_task_type(order.order_type, action='update')
     # 2
@@ -367,7 +370,7 @@ def cancel_bg_order_task(order_id: str):
     """
     CANCEL = 3
     # 0
-    order = BgOrder.objects.get(id=order_id)
+    order = BgOrder.active.get(id=order_id)
     # 1
     task_type = get_bg_task_type(order.order_type, action='cancel')
     # 2
@@ -379,7 +382,8 @@ def cancel_bg_order_task(order_id: str):
     )
     # 3
     order.status = CANCEL
-    order.save(update_fields=['status'])
+    order.is_active = False
+    order.save(update_fields=['status', 'is_active'])
     # 4
     result = f'Отменено заказов: {order_id}.'
     return result

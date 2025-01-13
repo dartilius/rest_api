@@ -1,5 +1,6 @@
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
+from django.db.models import Manager
 
 
 class CustomUserManager(UserManager):
@@ -27,3 +28,8 @@ class CustomUserManager(UserManager):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self._create_user(email, password, **extra_fields)
+
+
+class ActiveManager(Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)

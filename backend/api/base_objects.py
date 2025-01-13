@@ -137,6 +137,7 @@ class APIBaseObjectModel(Model):
     :ivar created: ``DateTimeField``
     """
 
+    from api.custom_managers import ActiveManager
     from users.models import CustomUser
 
     id = UUIDPKField()
@@ -160,6 +161,8 @@ class APIBaseObjectModel(Model):
         auto_now_add=True,
         verbose_name='Дата создания'
     )
+
+    active = ActiveManager()
 
     class Meta:
         abstract = True

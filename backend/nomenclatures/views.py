@@ -51,9 +51,10 @@ from users.permissions import StaffCUDAuthRetrieve
 class NomenclatureViewSet(viewsets.ModelViewSet):
     """Работа с номенклатурами."""
 
-    queryset = Nomenclature.objects.filter(
-        is_active=True
-    ).select_related('owner', 'availability')
+    queryset = Nomenclature.active.all().select_related(
+        'owner',
+        'availability'
+    )
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
     permission_classes = [StaffCUDAuthRetrieve]

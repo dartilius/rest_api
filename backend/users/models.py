@@ -5,7 +5,7 @@ from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
 from api.base_objects import UUIDPKField
-from api.custom_user import CustomUserManager
+from api.custom_managers import CustomUserManager
 
 ROLES = {
     'admin': 'Сотрудник ТО',
