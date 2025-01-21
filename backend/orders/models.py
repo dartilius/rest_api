@@ -82,9 +82,6 @@ class AdOrder(BaseOrder):
         choices=BROADCAST_TYPES,
         verbose_name='Тип вещания'
     )
-    parameters = models.JSONField(
-        verbose_name='Параметры заказа'
-    )
 
     class Meta:
         db_table = 'adorder'
@@ -99,10 +96,6 @@ class BgOrder(BaseOrder):
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
         verbose_name='Тип фона'
-    )
-    parameters = models.JSONField(
-        verbose_name='Параметры заказа',
-        default=dict
     )
 
     class Meta:

@@ -147,13 +147,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 _validate_collision(settings['custom_volume'])
         return value
 
-    def get_status(self, obj):
+    def get_status(self, obj) -> int | None:
         try:
             return obj.availability.status
         except AttributeError:
             return None
 
-    def get_last_answer(self, obj):
+    def get_last_answer(self, obj) -> str:
         try:
             return f'{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}'
         except AttributeError:
