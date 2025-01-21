@@ -8,8 +8,8 @@ from files.file_info import GetFileInfo
 
 TYPES = {
     0: 'music',
-    1: 'image',
-    2: 'video',
+    1: 'video',
+    2: 'image',
     3: 'ticker',
     4: 'ad'
 }
