@@ -197,9 +197,11 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             client=nomenclature,
             defaults={'last_answer_date': dt.now()}
         )
-        pending_tasks = Task.objects.filter(
-            client=pk,
-            status=0
+        pending_tasks = sorted(
+            Task.objects.filter(
+                client=pk,
+                status=0
+            ), key=lambda t: t.priority
         )
         tasks = {'tasks': [
             {'task_id': task.id,
