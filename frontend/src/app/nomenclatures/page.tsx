@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Paper, Button } from "@mui/material";
 import './nomenclatures.scss'
 import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
@@ -15,28 +15,38 @@ const columns = [
     { id: "last_answer", label: "Последний ответ", minWidth: 120 },
     { id: "status", label: "Статус", minWidth: 120 },
 ];
+
 export default function NomenclaturesPage() {
     const [page, setPage] = useState(1); // Начинаем с первой страницы
     const [limit, setLimit] = useState(10);
     const [zone, setZone] = useState<string>("");
     const [status, setStatus] = useState<string>("");
-    const token = localStorage.getItem("accessToken");
+    const [token, setToken] = useState<string | null>(null); // Token state
     const statusTypes = [0, 1, 2, 3];
+
+    // Check if localStorage is available on the client-side
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const storedToken = localStorage.getItem("accessToken");
+            setToken(storedToken);
+        }
+    }, []); // Runs once after component mounts
 
     const { fetchData, nomenclatures, totalItems, loading } = useFetchNomenclatures(
         {
             token,
             page,
-            limit: limit,
+            limit,
             timezone: zone,
             status
         }
     );
 
     useEffect(() => {
-        fetchData()
-    }, [page, limit]);
-
+        if (token) {
+            fetchData(); // Only fetch data if the token is available
+        }
+    }, [page, limit, token]); // Triggered when page, limit, or token changes
 
     return (
         <Paper sx={{ width: "100%", overflow: "hidden" }}>
@@ -57,7 +67,4 @@ export default function NomenclaturesPage() {
             />
         </Paper>
     );
-};
-
-
-//limit * (pageNumber - 1)
+}
