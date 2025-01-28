@@ -1,5 +1,3 @@
-from email.policy import default
-
 from django.db.models import (
     DateTimeField,
     DO_NOTHING,
@@ -48,28 +46,6 @@ TASK_TYPES = {
     19: 'PLACEHOLDER'
 }
 
-TASK_TYPE_PRIORITY = {
-    16: 0,
-    18: 1,
-    17: 2,
-    15: 3,
-    0: 4,
-    1: 4,
-    2: 4,
-    3: 4,
-    4: 4,
-    10: 5,
-    11: 5,
-    12: 5,
-    13: 5,
-    14: 5,
-    5: 6,
-    6: 6,
-    7: 6,
-    8: 6,
-    9: 6,
-    19: 7
-}
 
 class Task(Model):
     """Репликация."""
@@ -114,7 +90,6 @@ class Task(Model):
     @property
     def priority(self):
         """Приоритет репликации."""
-        # return TASK_TYPE_PRIORITY[self.type]
 
         match self.type:
             case 0 | 1 | 2 | 3 | 4:
