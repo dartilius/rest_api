@@ -87,6 +87,27 @@ class Task(Model):
         auto_now=True,
         verbose_name='Время выполнения'
     )
+    @property
+    def priority(self):
+        """Приоритет репликации."""
+
+        match self.type:
+            case 0 | 1 | 2 | 3 | 4:
+                return 4
+            case 10 | 11 | 12 | 13 | 14:
+                return 5
+            case 5 | 6 | 7 | 8 | 9:
+                return 6
+            case 16:
+                return 0
+            case 18:
+                return 1
+            case 17:
+                return 2
+            case 15:
+                return 3
+            case _:
+                return 7
 
     class Meta:
         db_table = 'task'
