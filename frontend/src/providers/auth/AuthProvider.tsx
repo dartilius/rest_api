@@ -11,18 +11,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const fetchUser = async () => {
         const accessToken = localStorage.getItem('accessToken');
-        if (!accessToken) {
-            setIsAuthenticated(false);
-            setLoading(false);
-            return;
-        }
+        if (!accessToken) return setIsAuthenticated(false);
 
         try {
             await AuthService.accessCreate({ access: accessToken }); // Проверяем токен
             setIsAuthenticated(true);
-        } catch (error) {
-            console.error('Токен недействителен или истек:', error);
-            setIsAuthenticated(false);
+        } catch {
             localStorage.removeItem('accessToken'); // Удаляем невалидный токен
         } finally {
             setLoading(false);
@@ -30,27 +24,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const login = async ({ email, password }: IAuth) => {
+        setLoading(true);
         try {
-            setLoading(true);
             const { data } = await AuthService.login({ email, password });
-            document.cookie = `accessToken=${data.access}`;
-            document.cookie = `refreshToken=${data.refresh}`;
             localStorage.setItem('accessToken', data.access);
             localStorage.setItem('refreshToken', data.refresh);
-
             setIsAuthenticated(true);
         } catch (error) {
             console.error('Ошибка при входе:', error);
-            setIsAuthenticated(false);
         } finally {
             setLoading(false);
         }
     };
 
     const logout = () => {
+        setIsAuthenticated(false);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        setIsAuthenticated(false);
     };
 
     useEffect(() => {

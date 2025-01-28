@@ -32,6 +32,9 @@ export default function NomenclaturesPage() {
         }
     }, []); // Runs once after component mounts
 
+    console.log(token);
+
+
     const { fetchData, nomenclatures, totalItems, loading } = useFetchNomenclatures(
         {
             token,

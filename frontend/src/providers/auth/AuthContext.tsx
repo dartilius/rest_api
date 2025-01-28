@@ -9,8 +9,14 @@ interface AuthContextType {
     logout: () => void; // Метод для выхода
 }
 
+const defaultValue = {
+    isAuthenticated: false,
+    loading: true,
+    login: async () => { },
+    logout: () => { },
+}
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType>(defaultValue);
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
