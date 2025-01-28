@@ -135,9 +135,6 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
 }
 
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'collected_static'
-
 # ---------------------------------- MINIO ---------------------------------- #
 
 MINIO_REGION = os.environ.get('MINIO_REGION')
@@ -153,14 +150,14 @@ MINIO_PRIVATE_BUCKETS = [
 ]
 MINIO_MEDIA_FILES_BUCKET = 'local-media'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
-# STORAGES = {
-#     'default': {
-#         'BACKEND': 'django_minio_backend.models.MinioBackend'
-#     },
-#     'staticfiles': {
-#         'BACKEND': 'django_minio_backend.models.MinioBackendStatic'
-#     },
-# }
+STORAGES = {
+    'default': {
+        'BACKEND': 'django_minio_backend.models.MinioBackend'
+    },
+    'staticfiles': {
+        'BACKEND': 'django_minio_backend.models.MinioBackendStatic'
+    },
+}
 
 # --------------------------------- CELERY ---------------------------------- #
 

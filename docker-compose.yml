@@ -64,8 +64,6 @@ services:
     build: ./backend
     container_name: backend
     env_file: .env
-    volumes:
-      - static:/backend_static
     healthcheck:
       test: curl --fail ${BACKEND_HC} || exit 1
       interval: 10s
@@ -119,7 +117,7 @@ services:
     container_name: gateway
     env_file: .env
     volumes:
-      - static:/staticfiles/
+      - static:/staticfiles
     ports:
       - 80:80
     depends_on:
