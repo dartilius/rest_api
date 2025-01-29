@@ -52,13 +52,13 @@ class File(APIBaseObjectModel):
         verbose_name='MD5'
     )
     sha256hash = models.CharField(
-        max_length=256,
+        max_length=64,
         editable=False,
         verbose_name='SHA256'
     )
     hash = models.CharField(
         editable=False,
-        max_length=288,
+        max_length=96,
         unique=True
     )
     length = models.TimeField(
@@ -88,7 +88,7 @@ class File(APIBaseObjectModel):
         ordering = ('-created',)
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
-        # добавляем это после фикса в джанге
+        # TODO: добавляем это после фикса в джанге
         # https://github.com/django/django/pull/17723
         # constraints = [
         #     models.UniqueConstraint(
