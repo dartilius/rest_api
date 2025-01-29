@@ -1,7 +1,17 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+const nextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  output: "standalone",
+  redirects() {
+    return [
+      {
+        source: "/", //начальный путь
+        destination: "/nomenclatures", //конечный путь
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -20,7 +20,7 @@ const AuthButton = () => {
         router.push('/auth'); // Перенаправляем на страницу авторизации
     };
 
-    console.log('contextAuth.isAuthenticated', contextAuth.isAuthenticated);
+    // console.log('contextAuth.isAuthenticated', contextAuth.isAuthenticated);
 
     return (
         <Button
