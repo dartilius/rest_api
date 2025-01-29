@@ -5,28 +5,30 @@ import {
   INomenclaturesService,
 } from "@/interfaces/Nomenclatures.interface";
 import axios from "axios";
+import { getAccessToken } from "./accessToken";
 
 class NomenclaturesService {
   private URL = API_URL;
+  private TOKEN = getAccessToken();
   constructor() {}
 
-  getAll({ limit, page, token }: INomenclaturesService) {
+  getAll({ limit, page }: INomenclaturesService) {
     return axios.get<INomenclaturesResponse>(
       `${this.URL}nomenclatures/?page=${page}&limit=${limit}`,
       {
         headers: {
-          Authorization: `access_token ${token}`,
+          Authorization: `access_token ${this.TOKEN}`,
         },
       }
     );
   }
 
-  getById({ id, token }: { id: string | undefined; token: string | null }) {
+  getById(id: string | undefined) {
     return axios.get<INomenclatureByIdResponse>(
       `${this.URL}nomenclatures/${id}`,
       {
         headers: {
-          Authorization: `access_token ${token}`,
+          Authorization: `access_token ${this.TOKEN}`,
         },
       }
     );

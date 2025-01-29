@@ -15,7 +15,7 @@ export interface INomenclatureResults {
 }
 
 export interface INomenclaturesService {
-  token: string | null;
+  token?: string | null;
   page: number;
   limit: number;
   timezone?: string;

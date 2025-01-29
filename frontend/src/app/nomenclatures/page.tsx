@@ -21,23 +21,25 @@ export default function NomenclaturesPage() {
     const [limit, setLimit] = useState(10);
     const [zone, setZone] = useState<string>("");
     const [status, setStatus] = useState<string>("");
-    const [token, setToken] = useState<string | null>(null); // Token state
+    // Token state
     const statusTypes = [0, 1, 2, 3];
 
-    // Check if localStorage is available on the client-side
+    const [token, setToken] = useState<string>('');
+
     useEffect(() => {
         if (typeof window !== "undefined") {
             const storedToken = localStorage.getItem("accessToken");
-            setToken(storedToken);
+            if (storedToken) {
+                setToken(storedToken);
+            }
         }
-    }, []); // Runs once after component mounts
+    }, []);
 
-    console.log(token);
+    // Check if localStorage is available on the client-side
+    // Runs once after component mounts
 
-
-    const { fetchData, nomenclatures, totalItems, loading } = useFetchNomenclatures(
+    const { fetchData, nomenclatures, totalItems } = useFetchNomenclatures(
         {
-            token,
             page,
             limit,
             timezone: zone,
@@ -47,9 +49,10 @@ export default function NomenclaturesPage() {
 
     useEffect(() => {
         if (token) {
-            fetchData(); // Only fetch data if the token is available
+            fetchData();
         }
-    }, [page, limit, token]); // Triggered when page, limit, or token changes
+    }, [token, page, limit, status, token]);
+
 
     return (
         <Paper sx={{ width: "100%", overflow: "hidden" }}>
@@ -59,7 +62,7 @@ export default function NomenclaturesPage() {
                 columns={columns}
                 link="nomenclatures"
                 limit={limit}
-                loading={loading}
+                loading={!nomenclatures}
             />
             <CustomPagination
                 totalItems={totalItems}

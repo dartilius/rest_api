@@ -6,11 +6,11 @@ import { Providers } from "./providers";
 import Link from "next/link";
 import AdminLayout from "./auth/layout";
 import { usePathname } from "next/navigation";
-import { ReactNode, useContext, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 import burgerMenu from '@/styles/img/Navigation/Icon.svg'
 import Image from "next/image";
 import AuthButton from "@/components/AuthButton/AuthButton";
-import { useAuth } from "@/providers/auth/AuthContext";
+import Sidebar from "@/components/Ui/Sidebar/Sidebar";
 
 const fonts = localFont({
   src: [
@@ -47,24 +47,17 @@ const fonts = localFont({
   ],
 })
 
-const menuItems = [
-  { href: "/nomenclatures", label: "Номенклатуры" },
-  { href: "/files", label: "Файлы" },
-  { href: "/playlists", label: "Плейлисты" },
-  { href: "/orders", label: "Заказы" },
-  { href: "/tasks", label: "Задачи" },
-];
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const pathname = usePathname();
-
   const [openSideBar, setOpenSideBar] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { isAuthenticated } = useAuth();
+
+  const pathname = usePathname()
+
+  const isLoginPage = pathname === "/auth";
 
   const toggleSidebar = () => {
     if (isAnimating) return; // Блокируем повторное нажатие во время анимации
@@ -74,14 +67,11 @@ export default function RootLayout({
     // Устанавливаем таймер завершения анимации (300ms как в SCSS)
     setTimeout(() => setIsAnimating(false), 300);
   };
-
-  console.log('isAuthenticated', isAuthenticated);
-
   return (
     <html lang="en">
       <body className={`${fonts.className} antialiased`}>
         <Providers>
-          {isAuthenticated ? (
+          {isLoginPage ? (
             <AdminLayout>{children}</AdminLayout>
           ) : (
             <div className="layout">
@@ -92,20 +82,7 @@ export default function RootLayout({
                 <div className="sidebar__title">
                   <Link href={"/home"}>RMC ADMIN</Link>
                 </div>
-                <div className="sidebar__menu">
-                  {isAuthenticated &&
-                    menuItems.map((item) => (
-                      <div
-                        key={item.href}
-                        className={`sidebar__menu-item ${pathname.startsWith(item.href) ? "active" : ""
-                          }`}
-                      >
-                        <Link href={item.href}>{item.label}</Link>
-                      </div>
-                    ))
-                  }
-
-                </div>
+                <Sidebar />
               </aside>
               <div className="main">
                 <header
@@ -116,7 +93,6 @@ export default function RootLayout({
                     onClick={toggleSidebar}
                   >
                     <Image src={burgerMenu} alt="burgerMenu" width={24} height={24} />
-
                   </div>
                   <AuthButton />
                 </header>
@@ -124,7 +100,6 @@ export default function RootLayout({
               </div>
             </div>
           )}
-
         </Providers>
       </body>
     </html>
