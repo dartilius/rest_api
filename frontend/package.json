@@ -11,14 +11,13 @@
   "dependencies": {
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
-    "@material-ui/core": "^4.11.2",
     "@mui/material": "^6.1.10",
     "@reduxjs/toolkit": "^2.5.0",
     "@tanstack/react-query": "^5.62.2",
     "axios": "^1.7.9",
     "next": "15.0.3",
-    "react": "19.0.0-rc-66855b96-20241106",
-    "react-dom": "19.0.0-rc-66855b96-20241106",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-redux": "^9.2.0",
     "sass": "^1.82.0"
   },
