@@ -9,7 +9,7 @@ const AuthButton = () => {
     const contextAuth = useContext(AuthContext);
     const router = useRouter();
 
-    // if (!contextAuth) throw new Error('Проблема авторизации')
+    if (!contextAuth) throw new Error('Проблема авторизации')
 
     const handleLogout = () => {
         contextAuth.logout();
