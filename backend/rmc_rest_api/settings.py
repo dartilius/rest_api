@@ -4,11 +4,11 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = os.environ.get('DEBUG').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1, localhost').split(', ')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1, localhost').split(', ')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -74,19 +74,19 @@ WSGI_APPLICATION = 'rmc_rest_api.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB'),
-        'HOST': os.getenv('POSTGRES_HOST'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PORT': os.getenv('POSTGRES_PORT'),
-        'PASSWORD': os.getenv('POSTGRES_PASS')
+        'NAME': os.environ.get('POSTGRES_DB'),
+        'HOST': os.environ.get('POSTGRES_HOST'),
+        'USER': os.environ.get('POSTGRES_USER'),
+        'PORT': os.environ.get('POSTGRES_PORT'),
+        'PASSWORD': os.environ.get('POSTGRES_PASS')
     },
     'clickhouse': {
         'ENGINE': 'clickhouse_backend.backend',
-        'NAME': os.getenv('CLICKHOUSE_DB'),
-        'HOST': os.getenv('CLICKHOUSE_HOST'),
-        'USER': os.getenv('CLICKHOUSE_USER'),
-        'PORT': os.getenv('CLICKHOUSE_PORT'),
-        'PASSWORD': os.getenv('CLICKHOUSE_PASSWORD'),
+        'NAME': os.environ.get('CLICKHOUSE_DB'),
+        'HOST': os.environ.get('CLICKHOUSE_HOST'),
+        'USER': os.environ.get('CLICKHOUSE_USER'),
+        'PORT': os.environ.get('CLICKHOUSE_PORT'),
+        'PASSWORD': os.environ.get('CLICKHOUSE_PASSWORD'),
     }
 }
 
@@ -128,16 +128,19 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
     'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
     'PAGE_SIZE': 25,
 }
 
 # ---------------------------------- MINIO ---------------------------------- #
 
-MINIO_REGION = os.getenv('MINIO_REGION')
-MINIO_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY')
-MINIO_SECRET_KEY = os.getenv('MINIO_STORAGE_SECRET_KEY')
-MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
+MINIO_REGION = os.environ.get('MINIO_REGION')
+MINIO_ACCESS_KEY = os.environ.get('MINIO_STORAGE_ACCESS_KEY')
+MINIO_SECRET_KEY = os.environ.get('MINIO_STORAGE_SECRET_KEY')
+MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT')
 MINIO_USE_HTTPS = os.environ.get('MINIO_HTTPS').lower() == 'true'
 MINIO_EXTERNAL_ENDPOINT = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
 MINIO_EXTERNAL_ENDPOINT_USE_HTTPS = os.environ.get('MINIO_EXTERNAL_HTTPS').lower() == 'true'
@@ -145,10 +148,16 @@ MINIO_PRIVATE_BUCKETS = [
     'local-media',
     'local-static'
 ]
-DEFAULT_FILE_STORAGE = 'django_minio_backend.models.MinioBackend'
 MINIO_MEDIA_FILES_BUCKET = 'local-media'
-STATICFILES_STORAGE = 'django_minio_backend.models.MinioBackendStatic'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django_minio_backend.models.MinioBackend'
+    },
+    'staticfiles': {
+        'BACKEND': 'django_minio_backend.models.MinioBackendStatic'
+    },
+}
 
 # --------------------------------- CELERY ---------------------------------- #
 
@@ -160,18 +169,18 @@ CELERY_TIMEZONE = TIME_ZONE
 # -------------------------------- SECURITY --------------------------------- #
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
 if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
     CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
-    REST_FRAMEWORK.update({
-        'DEFAULT_PERMISSION_CLASSES': (
-            'rest_framework.permissions.IsAuthenticated',
-        )})
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': td(days=30),
-    'REFRESH_TOKEN_LIFETIME': td(days=60),
+    'ACCESS_TOKEN_LIFETIME': td(
+        days=30  # int(os.environ.get("ACCESS_TOKEN_LIFETIME_DAYS"))
+    ),
+    'REFRESH_TOKEN_LIFETIME': td(
+        days=60  # int(os.environ.get("REFRESH_TOKEN_LIFETIME_DAYS"))
+    ),
     'AUTH_HEADER_TYPES': ('access_token',),
     'BLACKLIST_AFTER_ROTATION': True,
     'ROTATE_REFRESH_TOKENS': True,

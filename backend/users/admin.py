@@ -10,10 +10,8 @@ class CustomUserAdmin(admin.ModelAdmin):
     @admin.display(description='ФИО')
     def full_name(self, obj):
         """Возвращает полное имя пользователя одним полем."""
-        return (
-            f'{obj.last_name} {obj.first_name} {obj.middle_name}'
-            if obj.middle_name else f'{obj.last_name} {obj.first_name}'
-        )
+        return (f'{obj.full_name["full_name"]} '
+                f'{obj.middle_name if obj.middle_name else ""}')
 
     list_display = (
         'id',
@@ -30,11 +28,3 @@ class CustomUserAdmin(admin.ModelAdmin):
         'role',
         'is_active'
     )
-
-    # def get_queryset(self, request):
-    #     return CustomUser.objects.all().select_related('')
-
-
-# @admin.register()
-# class JWTAdmin(admin.ModelAdmin):
-#     list_display = '__all__'

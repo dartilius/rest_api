@@ -14,6 +14,11 @@ services:
     ports:
       - 8123:8123
       - 8888:9000
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     ulimits:
@@ -44,6 +49,11 @@ services:
     container_name: files
     env_file: .env
     command: server /data --console-address ":9001"
+    healthcheck:
+      test: curl -I ${MINIO_EXTERNAL_ENDPOINT}/minio/health/live
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - s3:/data
     ports:
@@ -54,8 +64,6 @@ services:
     build: ./backend
     container_name: backend
     env_file: .env
-    volumes:
-      - ./scripts/backend:/app/scripts
     healthcheck:
       test: curl --fail ${BACKEND_HC} || exit 1
       interval: 10s
@@ -65,13 +73,32 @@ services:
       - 8000:8000
     depends_on:
       files:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
       clickhouse:
-        condition: service_started
+        condition: service_healthy
       rabbit:
         condition: service_healthy
+
+  worker:
+    build: ./backend
+    env_file: .env
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: celery -A rmc_rest_api worker
+    deploy:
+      replicas: 2
+
+  beat:
+    build: ./backend
+    container_name: celery_beat
+    env_file: .env
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: celery -A rmc_rest_api beat
 
   frontend:
     env_file: .env

@@ -7,7 +7,6 @@ from ch_statistic.models import (
     ImageStat,
     TickerStat
 )
-from files.models import File
 
 
 @shared_task

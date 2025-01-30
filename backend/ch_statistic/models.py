@@ -12,11 +12,11 @@ class Stat(models.ClickhouseModel):
         verbose_name='Когда было проиграно'
     )
     file = models.StringField(
-        max_length=288,
+        max_length=36,
         verbose_name='Идентификатор файла'
     )
     client = models.StringField(
-        max_length=288,
+        max_length=36,
         verbose_name='Идентификатор номенклатуры'
     )
     length = models.UInt16Field(
@@ -47,6 +47,7 @@ class MusicStat(Stat):
 
     class Meta:
         db_table = 'music_stat'
+        ordering = ['-played']
         verbose_name = 'Статистика музыки'
         verbose_name_plural = 'Статистика музыки'
 
@@ -56,6 +57,7 @@ class ImageStat(Stat):
 
     class Meta:
         db_table = 'image_stat'
+        ordering = ['-played']
         verbose_name = 'Статистика изображений'
         verbose_name_plural = 'Статистика изображений'
 
@@ -65,6 +67,7 @@ class VideoStat(Stat):
 
     class Meta:
         db_table = 'video_stat'
+        ordering = ['-played']
         verbose_name = 'Статистика видео'
         verbose_name_plural = 'Статистика видео'
 
@@ -74,5 +77,6 @@ class TickerStat(Stat):
 
     class Meta:
         db_table = 'ticker_stat'
+        ordering = ['-played']
         verbose_name = 'Статистика бегущей строки'
         verbose_name_plural = 'Статистика бегущих строк'

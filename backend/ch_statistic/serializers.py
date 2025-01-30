@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime as dt, timedelta as td
 
 from rest_framework import serializers
 
@@ -9,8 +9,6 @@ from ch_statistic.models import (
     TickerStat,
     ImageStat
 )
-from files.models import File
-from nomenclatures.models import Nomenclature
 
 
 class StatisticSerializer(serializers.Serializer):
@@ -18,27 +16,19 @@ class StatisticSerializer(serializers.Serializer):
 
     played = serializers.DateTimeField()
     length = serializers.IntegerField()
-    created = serializers.DateTimeField()
 
     class Meta:
         fields = (
-            'played',
             'length',
-            'created'
         )
         read_only_fields = (
-            'played',
             'length',
-            'created'
         )
         abstract = True
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['created'] = value.created.strftime(
-            '%Y-%m-%d %H:%M:%S'
-        )
-        representation['played'] = value.played.strftime('%Y-%m-%d %H:%M:%S')
+        representation['played'] = f'{value.played:%Y-%m-%d %H:%M:%S}'
         return representation
 
 
@@ -50,7 +40,7 @@ class BaseNomenclatureSerializer(StatisticSerializer):
     class Meta:
         fields = StatisticSerializer.Meta.fields + ('file',)
         read_only_fields = ('file',)
-        abstract=True
+        abstract = True
 
 
 class BaseFileSerializer(StatisticSerializer):
@@ -83,10 +73,10 @@ class NomenclatureAdStatSerializer(
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        td = timedelta(seconds=value.ad_block)
-        representation['ad_block'] = datetime.strftime(
-            datetime.strptime(str(td), "%H:%M:%S"),
-            "%H:%M:%S"
+        representation.pop('played')
+        ad_block = f'{td(seconds=value.ad_block)}'
+        representation['ad_block'] = (
+            f'{dt.strptime(ad_block, "%H:%M:%S").time()}'
         )
         return representation
 
@@ -158,10 +148,9 @@ class FileAdStatSerializer(
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        td = timedelta(seconds=value.ad_block)
-        representation['ad_block'] = datetime.strftime(
-            datetime.strptime(str(td), "%H:%M:%S"),
-            "%H:%M:%S"
+        ad_block = f'{td(seconds=value.ad_block)}'
+        representation['ad_block'] = (
+            f'{dt.strptime(ad_block, "%H:%M:%S").time()}'
         )
         return representation
 

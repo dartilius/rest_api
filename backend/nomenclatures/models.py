@@ -30,16 +30,6 @@ TIMEZONES = {
     'Etc/GMT-12': 'UTC +12'
 }
 
-DAYS = {
-    1: 'Понедельник',
-    2: 'Вторник',
-    3: 'Среда',
-    4: 'Четверг',
-    5: 'Пятница',
-    6: 'Суббота',
-    7: 'Воскресенье'
-}
-
 STATUSES = {
     0: 'Online',
     1: 'Offline 5+ minutes',
@@ -149,7 +139,7 @@ class StatusHistory(models.Model):
 
     def __str__(self):
         return (
-            f'{self.change_time.strftime("%Y-%m-%d %H:%M:%S")}: ' 
+            f'{self.change_time:%Y-%m-%d %H:%M:%S}: ' 
             f'статус {self.client.name} '
             f'изменился на {STATUSES[self.status][1]}'
         )

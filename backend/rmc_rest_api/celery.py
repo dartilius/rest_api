@@ -16,5 +16,9 @@ app.conf.beat_schedule = {
     'update_nomenclature_statuses_5_sec': {
         'task': 'nomenclatures.tasks.update_nomenclature_status',
         'schedule': 5.0,
-    }
+    },
+    'update_order_statuses_30_sec': {
+            'task': 'orders.tasks.update_order_status',
+            'schedule': 30.0,
+        }
 }

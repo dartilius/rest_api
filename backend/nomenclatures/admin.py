@@ -27,13 +27,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         'is_active',
         'status'
     )
-    search_fields = (
-        'id',
-        'name',
-        'status',
-        'timezone',
-        'is_active'
-    )
+    search_fields = ('name',)
 
     def get_queryset(self, request):
         return Nomenclature.objects.all().select_related(

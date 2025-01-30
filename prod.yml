@@ -1,0 +1,203 @@
+volumes:
+  rabbitdata:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/rabbitdata
+
+  pg_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/pg_data
+
+  static:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/static
+
+  celery:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/celery
+
+  clickhouse_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/clickhouse_data
+
+  s3:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/s3
+
+services:
+  clickhouse:
+    image: yandex/clickhouse-server
+    container_name: clickhouse
+    env_file: .env
+    ports:
+      - 8123:8123
+      - 8888:9000
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile: 262144
+
+  db:
+    image: postgres:16.2
+    container_name: db
+    env_file: .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_NAME=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_PASSWORD=${POSTGRES_PASS}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./scripts/postgres:/docker-entrypoint-initdb.d
+      - pg_data:/var/lib/postgresql/data
+
+  files:
+    image: minio/minio
+    container_name: files
+    env_file: .env
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: curl -I ${MINIO_EXTERNAL_ENDPOINT}/minio/health/live
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - s3:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
+
+  backend:
+    build: ./backend
+    container_name: backend
+    env_file: .env
+    volumes:
+      - ./scripts/backend:/app/scripts
+    healthcheck:
+      test: curl --fail ${BACKEND_HC} || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 8000:8000
+    command: gunicorn --bind 0:8000 --workers 8 --threads 2 --timeout 90 rmc_rest_api.wsgi
+    depends_on:
+      files:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+
+  worker:
+    build: ./backend
+    env_file: .env
+    volumes:
+      - ./scripts/backend:/app/scripts
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: celery -A rmc_rest_api worker
+    deploy:
+      replicas: 8
+
+  beat:
+    build: ./backend
+    container_name: celery_beat
+    env_file: .env
+    volumes:
+      - ./scripts/backend:/app/scripts
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: celery -A rmc_rest_api beat
+
+  frontend:
+    env_file: .env
+    container_name: frontend
+    build: ./frontend
+    ports:
+      - 3000:3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - static:/frontend_static
+
+  gateway:
+    build: ./nginx
+    container_name: gateway
+    env_file: .env
+    volumes:
+      - static:/staticfiles
+    ports:
+      - 80:80
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
+  rabbit:
+    image: rabbitmq:3.13-management
+    container_name: rabbit
+    hostname: rabbit
+    env_file: .env
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    volumes:
+      - rabbitdata:/var/lib/rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+  dashboard:
+    image: mher/flower
+    container_name: dashboard
+    env_file: .env
+    command: celery flower
+    volumes:
+      - celery:/app
+    ports:
+      - 5555:5555
+    depends_on:
+      gateway:
+        condition: service_started
+
+  redis:
+    image: redis:7.0.5-alpine
+    container_name: redis
+    hostname: redis
