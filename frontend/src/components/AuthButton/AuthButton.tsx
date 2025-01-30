@@ -13,7 +13,7 @@ const AuthButton = () => {
 
     const handleLogout = () => {
         contextAuth.logout();
-        router.push('/'); // Возвращаем пользователя на главную страницу
+        router.push('/login'); // Возвращаем пользователя на главную страницу
     };;
 
     const handleLoginRedirect = () => {
