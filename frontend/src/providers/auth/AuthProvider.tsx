@@ -1,11 +1,9 @@
-// context/AuthProvider.tsx
 'use client';
 
-import authService from '@/src/services/auth/auth.service';
 import React, { useState, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
-import { IAuthInput } from '@/src/types/interface/user.interface';
-import { useRouter } from 'next/navigation';
+import AuthService from '@/services/AuthService';
+import { IAuth } from '@/interfaces/Auth.interface';
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -13,43 +11,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const fetchUser = async () => {
         const accessToken = localStorage.getItem('accessToken');
-        if (!accessToken) {
-            setIsAuthenticated(false);
-            setLoading(false);
-            return;
-        }
+        if (!accessToken) return setIsAuthenticated(false);
 
         try {
-            await authService.verifyToken(accessToken); // Проверяем токен
+            await AuthService.accessCreate({ access: accessToken }); // Проверяем токен
             setIsAuthenticated(true);
-        } catch (error) {
-            console.error('Токен недействителен или истек:', error);
-            setIsAuthenticated(false);
+        } catch {
             localStorage.removeItem('accessToken'); // Удаляем невалидный токен
         } finally {
             setLoading(false);
         }
     };
 
-    const login = async ({ email, password }: IAuthInput) => {
+    const login = async ({ email, password }: IAuth) => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const { data } = await authService.login({ email, password });
+            const { data } = await AuthService.login({ email, password });
             localStorage.setItem('accessToken', data.access);
             localStorage.setItem('refreshToken', data.refresh);
             setIsAuthenticated(true);
         } catch (error) {
             console.error('Ошибка при входе:', error);
-            setIsAuthenticated(false);
         } finally {
             setLoading(false);
         }
     };
 
     const logout = () => {
+        setIsAuthenticated(false);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        setIsAuthenticated(false);
     };
 
     useEffect(() => {

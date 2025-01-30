@@ -1,11 +1,5 @@
-export const dynamic = 'force-dynamic';
+import HomePage from "./home/page";
 
 export default function Home() {
-  return (
-    <main>
-      <h1 className="flex justify-center text-3xl font-bold underline">
-        Одменка!
-      </h1>
-    </main>
-  );
+  return <HomePage />
 }

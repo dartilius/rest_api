@@ -1,17 +1,22 @@
 'use client';
-
-import { IAuthInput } from '@/src/types/interface/user.interface';
-import { createContext, useContext, useState, useEffect } from 'react';
+import { IAuth } from '@/interfaces/Auth.interface';
+import { createContext, useContext } from 'react';
 
 interface AuthContextType {
     isAuthenticated: boolean; // Статус авторизации
     loading: boolean; // Статус загрузки
-    login: ({ email, password }: IAuthInput) => Promise<void>; // Метод для входа
+    login: ({ email, password }: IAuth) => Promise<void>; // Метод для входа
     logout: () => void; // Метод для выхода
 }
 
+const defaultValue = {
+    isAuthenticated: false,
+    loading: true,
+    login: async () => { },
+    logout: () => { },
+}
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType>(defaultValue);
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
