@@ -1,4 +1,4 @@
-import { INomenclatureByIdResponse } from '@/interfaces/Nomenclatures.interface';
+import { DayConfig, INomenclatureByIdResponse } from '@/interfaces/Nomenclatures.interface';
 import '../nomenclature.scss'
 import { Skeleton } from '@mui/material';
 
@@ -48,19 +48,24 @@ const Settings = (props: SettingsProps) => {
                     <div className="settings__accordion">
                         {
                             settings ?
-                                Object.entries(settings).map(([day, config]) => (
-                                    <details key={day} className="settings__accordion-item">
-                                        <summary>{day.toUpperCase()}</summary>
-                                        <div className="settings__accordion-content">
-                                            <div className="settings__accordion-custom">
-                                                Индивидуальная громкость:
-                                                <div className="settings__accordion-custom-item">
-                                                    {Object.keys(config.custom_volume).length > 0 ? JSON.stringify(config.custom_volume) : "Не указано"}
+                                Object.entries(settings).map(([day, config]) => {
+                                    const dayConfig = config as DayConfig; // Утверждение типа
+                                    return (
+                                        <details key={day} className="settings__accordion-item">
+                                            <summary>{day.toUpperCase()}</summary>
+                                            <div className="settings__accordion-content">
+                                                <div className="settings__accordion-custom">
+                                                    Индивидуальная громкость:
+                                                    <div className="settings__accordion-custom-item">
+                                                        {Object.keys(dayConfig.custom_volume).length > 0
+                                                            ? JSON.stringify(dayConfig.custom_volume)
+                                                            : "Не указано"}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </details>
-                                )) :
+                                        </details>
+                                    );
+                                }) :
                                 Array.from({ length: 7 }).map((_, index) => (
                                     <div key={index} className="settings__accordion-skeleton">
                                         <Skeleton

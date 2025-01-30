@@ -6,15 +6,23 @@ import {
 } from "@/interfaces/Nomenclatures.interface";
 import axios from "axios";
 import { getAccessToken } from "./accessToken";
+import { IVersions } from "@/hooks/useFetchNomenclatures";
 
 class NomenclaturesService {
   private URL = API_URL;
   private TOKEN = getAccessToken();
   constructor() {}
 
-  getAll({ limit, page }: INomenclaturesService) {
+  async getAll({
+    limit,
+    page,
+    search,
+    status,
+    timezone,
+    version,
+  }: INomenclaturesService) {
     return axios.get<INomenclaturesResponse>(
-      `${this.URL}nomenclatures/?page=${page}&limit=${limit}`,
+      `${this.URL}nomenclatures/?page=${page}&limit=${limit}&name=${search}&status=${status}&timezone=${timezone}&version=${version}`,
       {
         headers: {
           Authorization: `access_token ${this.TOKEN}`,
@@ -23,7 +31,7 @@ class NomenclaturesService {
     );
   }
 
-  getById(id: string | undefined) {
+  async getById(id: string | undefined) {
     return axios.get<INomenclatureByIdResponse>(
       `${this.URL}nomenclatures/${id}`,
       {
@@ -32,6 +40,14 @@ class NomenclaturesService {
         },
       }
     );
+  }
+
+  async getVersions() {
+    return axios.get<IVersions>(`${this.URL}nomenclatures/versions/`, {
+      headers: {
+        Authorization: `access_token ${this.TOKEN}`,
+      },
+    });
   }
 }
 

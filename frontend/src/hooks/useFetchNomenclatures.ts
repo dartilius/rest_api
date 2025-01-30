@@ -1,68 +1,70 @@
 import {
   INomenclatureByIdResponse,
-  INomenclatureResults,
   INomenclaturesService,
 } from "@/interfaces/Nomenclatures.interface";
 import NomenclaturesService from "@/services/NomenclaturesService";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export const useFetchNomenclatures = ({
   page,
   limit,
-  timezone,
+  search,
   status,
+  timezone,
+  version,
 }: INomenclaturesService) => {
-  const [nomenclatures, setNomenclatures] = useState<INomenclatureResults[]>(
-    []
-  );
-  const [totalItems, setTotalItems] = useState<number>(0);
-
-  const fetchData = async () => {
-    try {
-      setNomenclatures([]);
-      const response = await NomenclaturesService.getAll({
-        page: page,
-        limit: limit,
-        timezone,
+  const { data, isLoading, isError, refetch, error } = useQuery({
+    queryKey: [
+      "nomenclaturesList",
+      page,
+      limit,
+      search,
+      status,
+      timezone,
+      version,
+    ],
+    queryFn: () =>
+      NomenclaturesService.getAll({
+        page,
+        limit,
+        search,
         status,
-      });
+        timezone,
+        version,
+      }),
+  });
 
-      const newNomenclatures = response.data.results;
-      const count = response.data.count;
-      setTotalItems(count);
-      setTimeout(() => setNomenclatures(newNomenclatures), 3000);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
+  const nomenclatures = data?.data.results || [];
+  const totalItems = data?.data.count || 0;
 
-  useEffect(() => {
-    fetchData();
-  }, [page, limit, timezone]);
-
-  return { nomenclatures, fetchData, totalItems };
+  return { nomenclatures, isLoading, isError, refetch, error, totalItems };
 };
 
 export const useFetchNomenclatureById = (id: string | undefined) => {
-  const [nomenclature, setNomenclature] = useState<INomenclatureByIdResponse>();
-  const [loading, setLoading] = useState<boolean>(true);
+  const { data, isLoading, refetch, isError, error } = useQuery({
+    queryKey: ["nomenclatureById", id],
+    queryFn: () => NomenclaturesService.getById(id),
+  });
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await NomenclaturesService.getById(id);
-      setTimeout(() => {
-        setNomenclature(response.data);
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.error("Ошибка при загрузке данных:", error);
-    }
-  }, [id]);
+  if (!data) return { refetch, isError, error };
 
-  useEffect(() => {
-    fetchData();
-  }, [id, fetchData]);
+  const nomenclature: INomenclatureByIdResponse = data.data;
 
-  return { nomenclature, fetchData, loading };
+  return { nomenclature, refetch, isError, error, isLoading };
+};
+
+export interface IVersions {
+  versions: string[];
+}
+
+export const useGetVersions = () => {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["getVersionsNomenclatures"],
+    queryFn: () => NomenclaturesService.getVersions(),
+    select: ({ data }) => data,
+  });
+  const versionsList: IVersions = data || {
+    versions: [],
+  };
+  return { versionsList, isLoading, isError, error };
 };

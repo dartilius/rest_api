@@ -2,7 +2,6 @@
 
 import localFont from "next/font/local";
 import "../styles/globals.scss";
-import { Providers } from "./providers";
 import Link from "next/link";
 import AdminLayout from "./login/layout";
 import { usePathname } from "next/navigation";
@@ -11,6 +10,7 @@ import burgerMenu from '@/styles/img/Navigation/Icon.svg'
 import Image from "next/image";
 import AuthButton from "@/components/AuthButton/AuthButton";
 import Sidebar from "@/components/Ui/Sidebar/Sidebar";
+import Providers from "./providers";
 
 const fonts = localFont({
   src: [

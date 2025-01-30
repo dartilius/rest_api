@@ -15,11 +15,18 @@ export interface INomenclatureResults {
 }
 
 export interface INomenclaturesService {
-  token?: string | null;
   page: number;
   limit: number;
-  timezone?: string;
-  status?: string;
+  timezone: string;
+  status: string;
+  search: string;
+  version: string;
+}
+
+export interface DayConfig {
+  default_volume: number[];
+  worktime: string;
+  custom_volume: string; // Замените на конкретный тип, если известна структура
 }
 
 export interface INomenclatureByIdResponse {
@@ -41,41 +48,13 @@ export interface INomenclatureByIdResponse {
       }
     | undefined;
 
-  settings: {
-    mon: {
-      default_volume: number[];
-      worktime: string;
-      custom_volume: any;
-    };
-    thu: {
-      default_volume: number[];
-      worktime: string;
-      custom_volume: any;
-    };
-    wed: {
-      default_volume: number[];
-      worktime: string;
-      custom_volume: any;
-    };
-    tue: {
-      default_volume: number[];
-      worktime: string;
-      custom_volume: any;
-    };
-    fri: {
-      default_volume: number[];
-      worktime: string;
-      custom_volume: any;
-    };
-    sat: {
-      default_volume: number[];
-      worktime: string;
-      custom_volume: any;
-    };
-    sun: {
-      default_volume: number[];
-      worktime: string;
-      custom_volume: any;
-    };
+  settings?: {
+    mon: DayConfig;
+    thu: DayConfig;
+    wed: DayConfig;
+    tue: DayConfig;
+    fri: DayConfig;
+    sat: DayConfig;
+    sun: DayConfig;
   };
 }
