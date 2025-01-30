@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import "../styles/globals.scss";
 import { Providers } from "./providers";
 import Link from "next/link";
-import AdminLayout from "./auth/layout";
+import AdminLayout from "./login/layout";
 import { usePathname } from "next/navigation";
 import { ReactNode, useState } from "react";
 import burgerMenu from '@/styles/img/Navigation/Icon.svg'
@@ -57,7 +57,7 @@ export default function RootLayout({
 
   const pathname = usePathname()
 
-  const isLoginPage = pathname === "/auth";
+  const isLoginPage = pathname === "/login";
 
   const toggleSidebar = () => {
     if (isAnimating) return; // Блокируем повторное нажатие во время анимации

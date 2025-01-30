@@ -17,7 +17,7 @@ const AuthButton = () => {
     };;
 
     const handleLoginRedirect = () => {
-        router.push('/auth'); // Перенаправляем на страницу авторизации
+        router.push('/login'); // Перенаправляем на страницу авторизации
     };
 
     // console.log('contextAuth.isAuthenticated', contextAuth.isAuthenticated);
