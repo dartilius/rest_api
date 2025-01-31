@@ -11,7 +11,7 @@ export interface INomenclatureResults {
   timezone: string;
   version: string;
   last_answer: string;
-  status: string;
+  status: number;
 }
 
 export interface INomenclaturesService {
