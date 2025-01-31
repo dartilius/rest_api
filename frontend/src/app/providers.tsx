@@ -16,7 +16,6 @@ const queryClient = new QueryClient({
             retry: (failureCount, error) => {
                 const axiosError = error as AxiosError;
                 if (axiosError.response?.status === 401) {
-                    alert(axiosError.response?.statusText || "Неавторизованный доступ");
                     window.location.href = "/login"
                     return false;
                 }
