@@ -14,8 +14,8 @@ import VersionSelect from "./components/Version/VersionSelect";
 
 const columns = [
     { id: "name", label: "Название", minWidth: 170 },
-    { id: "timezone", label: "Часовой пояс", minWidth: 170 },
-    { id: "version", label: "Версия", minWidth: 170 },
+    { id: "timezone", label: "Часовой пояс", maxWidth: 170 },
+    { id: "version", label: "Версия", maxWidth: 170 },
     { id: "last_answer", label: "Последний ответ", minWidth: 120 },
     {
         id: "status",
