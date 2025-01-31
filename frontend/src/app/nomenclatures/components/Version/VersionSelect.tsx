@@ -32,7 +32,7 @@ const VersionSelect = ({ setVersion, version }: TimezoneSelectProps) => {
                 ) : (
                     versionsList.versions.map((item, key) => (
                         <MenuItem key={key} value={item}>
-                            {item === '' ? 'Все' : item}
+                            {item === '' ? 'Без версии' : item}
                         </MenuItem>
                     )))}
 
