@@ -9,7 +9,7 @@ interface Props {
     columns: any;
     link: string;
     limit: number;
-    loading: boolean;
+    loading?: boolean;
 }
 
 const statusColors: Record<any, string> = {
@@ -20,6 +20,8 @@ const statusColors: Record<any, string> = {
 };
 
 const TableComponent = ({ data, columns, link, limit, loading }: Props) => {
+
+    if (!data) return <>WTF</>
 
     return (
         <TableContainer>
