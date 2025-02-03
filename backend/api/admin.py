@@ -12,12 +12,6 @@ class CustomOutstandingTokenAdmin(OutstandingTokenAdmin):
     def has_delete_permission(self, *args, **kwargs):
         return True
 
-    def get_actions(self, request):
-        actions = super(OutstandingTokenAdmin, self).get_actions(request)
-        if 'delete_selected' in actions:
-            del actions['delete_selected']
-        return actions
-
     @admin.action(description='Удалить выбранные токены')
     def delete(self, request, queryset):
         """Удаление токенов."""

@@ -26,6 +26,7 @@ from ch_statistic.serializers import (
     NomenclatureTickerStatSerializer
 )
 from ch_statistic.tasks import create_statistic
+from files.models import File
 from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.serializers import (
     NomenclatureSerializer,
@@ -166,6 +167,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         """Отправка задач для клиентов и обработка присылаемых данных."""
         nomenclature = get_instance_or_404(Nomenclature, pk)
         update_fields = []
+        data = dict()
 
         if 'version' in request.data:
             nomenclature.version = request.data['version']
@@ -193,6 +195,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 task_list.append(task_instance)
             Task.objects.bulk_update(task_list, ['status'])
 
+        if 'files_to_download' in request.data:
+            files_urls = dict()
+            for file_id in request.data['files_to_download']:
+                file_obj = File.active.get(id=file_id)
+                files_urls[file_id] = file_obj.url
+            data['file_urls'] = files_urls
+
         NomenclatureAvailability.objects.update_or_create(
             client=nomenclature,
             defaults={'last_answer_date': dt.now()}
@@ -201,12 +210,12 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             client=pk,
             status=0
         )
-        tasks = {'tasks': [
+        data['tasks'] = [
             {'task_id': task.id,
              'task_type': task.type,
              'parameters': task.parameters}
-            for task in pending_tasks]}
-        return Response(tasks, status=HTTP_200_OK)
+            for task in pending_tasks]
+        return Response(data, status=HTTP_200_OK)
 
     @action(detail=True, methods=['POST'], url_path='actions')
     def send_task(self, request, pk):
