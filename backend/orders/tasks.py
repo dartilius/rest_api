@@ -100,8 +100,7 @@ def create_ad_order_task(orders_ids: list):
                         'files': [
                             {
                                 'id': str(file.id),
-                                'hash': file.hash,
-                                'name': file.name
+                                'hash': file.hash
                             } for file in order.playlist.files.all()
                         ],
                         'slides': order.slides if order.slides else None
