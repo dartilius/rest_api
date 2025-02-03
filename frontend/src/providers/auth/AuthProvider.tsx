@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
 import AuthService from '@/services/AuthService';
 import { IAuth } from '@/interfaces/Auth.interface';
+import { setCookie } from 'cookies-next';
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,6 +28,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(true);
         try {
             const { data } = await AuthService.login({ email, password });
+            setCookie('accessToken', data.access)
+            setCookie('refreshToken', data.refresh)
             localStorage.setItem('accessToken', data.access);
             localStorage.setItem('refreshToken', data.refresh);
             setIsAuthenticated(true);
