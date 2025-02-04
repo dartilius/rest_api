@@ -106,8 +106,8 @@ def resend_orders_task(nomenclature_id: int):
     for order in orders:
         parameters = {
             'order_id': str(order.id),
-            'broadcast_interval': f'{order.broadcast_interval.lower}-'
-                                  f'{order.broadcast_interval.upper}',
+            'broadcast_start': f'{order.broadcast_interval.lower}',
+            'broadcast_end': f'{order.broadcast_interval.upper}',
             'playlist': {
                 'id': str(order.playlist.id),
                 'files': [
