@@ -245,7 +245,7 @@ def create_bg_order_task(orders_ids: list):
                 type=order.order_type,
                 parameters={
                     'order_id': str(order.id),
-                    'type': order.order_type,
+                    'order_type': order.order_type,
                     'broadcast_start': f'{order.broadcast_interval.lower}',
                     'broadcast_end': f'{order.broadcast_interval.upper}',
                     'playlist': {
