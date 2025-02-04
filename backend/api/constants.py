@@ -74,15 +74,17 @@ def get_minio_client(external=False):
 
     if external:
         endpoint = settings.MINIO_EXTERNAL_ENDPOINT
+        secure = settings.MINIO_EXTERNAL_ENDPOINT_USE_HTTPS
     else:
         endpoint = settings.MINIO_ENDPOINT
+        secure = settings.MINIO_USE_HTTPS
     minio_client = Minio(
         endpoint,
         region=settings.MINIO_REGION,
         access_key=settings.MINIO_ACCESS_KEY,
         secret_key=settings.MINIO_SECRET_KEY,
-        secure=settings.MINIO_USE_HTTPS,
-        cert_check=settings.MINIO_USE_HTTPS
+        secure=secure,
+        cert_check=secure
     )
     return minio_client
 

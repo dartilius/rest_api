@@ -93,8 +93,8 @@ def create_ad_order_task(orders_ids: list):
                     'order_id': str(order.id),
                     'order_parameters': order.parameters,
                     'broadcast_type': order.broadcast_type,
-                    'broadcast_interval': f'{order.broadcast_interval.lower}-'
-                                          f'{order.broadcast_interval.upper}',
+                    'broadcast_start': f'{order.broadcast_interval.lower}',
+                    'broadcast_end': f'{order.broadcast_interval.upper}',
                     'playlist': {
                         'id': str(order.playlist.id),
                         'files': [
@@ -246,8 +246,8 @@ def create_bg_order_task(orders_ids: list):
                 parameters={
                     'order_id': str(order.id),
                     'type': order.order_type,
-                    'broadcast_interval': f'{order.broadcast_interval.lower}-'
-                                          f'{order.broadcast_interval.upper}',
+                    'broadcast_start': f'{order.broadcast_interval.lower}',
+                    'broadcast_end': f'{order.broadcast_interval.upper}',
                     'playlist': {
                         'id': str(order.playlist.id),
                         # TODO протестировать разницу по времени выполнения
