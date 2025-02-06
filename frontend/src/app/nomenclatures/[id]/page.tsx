@@ -6,6 +6,7 @@ import { useFetchNomenclatureById } from '@/hooks/useFetchNomenclatures';
 import MainInfo from './components/MainInfo';
 import Settings from './components/Settings';
 
+
 export default function NomenclaturePage() {
     const id = useIdFromParams()
     const { error, isError, refetch, isLoading, nomenclature } = useFetchNomenclatureById(id)

@@ -11,6 +11,8 @@
   gap: 2rem;
   margin-bottom: 2rem;
   font-weight: 900;
+  background-color: $main-color;
+  color: $foreground-color;
 
   .main-info {
     grid-column: 1; /* Располагается в первой колонке */
@@ -23,11 +25,11 @@
       display: flex;
       flex-direction: row;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       font-weight: 700;
 
       &__item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -36,17 +38,17 @@
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       font-weight: 700;
       &__item {
         overflow-wrap: break-word;
         word-break: break-all;
         white-space: pre-line;
         border: 0.2rem solid $second-color-light;
-        background-color: $foreground-color;
+        background-color: $main-color;
         border-radius: 4px;
         padding: 0.5rem;
-        color: $main-color;
+        color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -55,10 +57,10 @@
       display: flex;
       flex-direction: row;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       font-weight: 700;
       &__item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -67,10 +69,10 @@
       display: flex;
       flex-direction: row;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       font-weight: 700;
       &__item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -79,10 +81,10 @@
       display: flex;
       flex-direction: row;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       font-weight: 700;
       &__item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -91,10 +93,10 @@
       display: flex;
       flex-direction: row;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       font-weight: 700;
       &__item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -103,10 +105,10 @@
       display: flex;
       flex-direction: row;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       font-weight: 700;
       &__item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -123,9 +125,9 @@
       display: flex;
       flex-direction: row;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       &-item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -134,9 +136,9 @@
       display: flex;
       flex-direction: row;
       gap: 0.5rem;
-      color: $second-color-light;
+      // color: $second-color-light;
       &-item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -144,7 +146,7 @@
     &__title {
       font-weight: 700;
       cursor: pointer;
-      color: $second-color-light;
+      // color: $second-color-light;
     }
 
     &__accordion {
@@ -156,9 +158,9 @@
         display: flex;
         flex-direction: row;
         gap: 0.5rem;
-        color: $second-color-light;
+        // color: $second-color-light;
         &-item {
-          color: $foreground-color;
+          // color: $foreground-color;
           font-weight: 500;
         }
       }
@@ -166,7 +168,7 @@
         summary {
           font-weight: 500;
           cursor: pointer;
-          color: $foreground-color;
+          // color: $foreground-color;
         }
       }
 
@@ -195,10 +197,10 @@
         display: flex;
         flex-direction: row;
         gap: 0.5rem;
-        color: $second-color-light;
+        // color: $second-color-light;
         font-weight: 700;
         &__item {
-          color: $foreground-color;
+          // color: $foreground-color;
           font-weight: 500;
         }
       }
@@ -207,10 +209,10 @@
         display: flex;
         flex-direction: row;
         gap: 0.5rem;
-        color: $second-color-light;
+        // color: $second-color-light;
         font-weight: 700;
         &__item {
-          color: $foreground-color;
+          // color: $foreground-color;
           font-weight: 500;
         }
       }
@@ -219,10 +221,10 @@
         display: flex;
         flex-direction: row;
         gap: 0.5rem;
-        color: $second-color-light;
+        // color: $second-color-light;
         font-weight: 700;
         &__item {
-          color: $foreground-color;
+          // color: $foreground-color;
           font-weight: 500;
         }
       }
@@ -253,11 +255,11 @@
         display: flex;
         flex-direction: row;
         gap: 0.5rem;
-        color: $second-color-light;
+        // color: $second-color-light;
         font-weight: 700;
       }
       &__item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }
@@ -271,11 +273,11 @@
         display: flex;
         flex-direction: row;
         gap: 0.5rem;
-        color: $second-color-light;
+        // color: $second-color-light;
         font-weight: 800;
       }
       &__item {
-        color: $foreground-color;
+        // color: $foreground-color;
         font-weight: 500;
       }
     }

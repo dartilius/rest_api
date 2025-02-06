@@ -6,7 +6,7 @@ interface TimezoneSelectProps {
     setVersion: (status: string) => void;
 }
 
-const VersionSelect = ({ setVersion, version }: TimezoneSelectProps) => {
+export const VersionSelect = ({ setVersion, version }: TimezoneSelectProps) => {
     const { versionsList, error, isError, isLoading } = useGetVersions()
 
     if (isError) console.error(error)
@@ -42,5 +42,3 @@ const VersionSelect = ({ setVersion, version }: TimezoneSelectProps) => {
 
     );
 };
-
-export default VersionSelect;

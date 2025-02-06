@@ -1,16 +1,13 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Box, Paper } from "@mui/material";
+import { Box, Button, Paper } from "@mui/material";
 import './nomenclatures.scss'
 import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
 import TableComponent from "@/components/Ui/Table/Table";
 import { useFetchNomenclatures } from "@/hooks/useFetchNomenclatures";
-import Search from "./components/Search/Search";
 import { useDebounce } from "@/hooks/useDebounce";
-import StatusSelect from "./components/Status/StatusSelect";
-import TimezoneSelect from "./components/TimeZone/TimezoneSelect";
-import VersionSelect from "./components/Version/VersionSelect";
+import FiltersModal from "./components/FiltersModal";
 
 const columns = [
     { id: "name", label: "Название", minWidth: 170 },
@@ -69,8 +66,10 @@ export default function NomenclaturesPage() {
 
     if (isError) console.error(error);
 
-    const handleSearchChange = (event: { target: { value: string } }) => {
-        setSearchValue(event.target.value);
+    const [isFiltersModalOpen, setFiltersModalOpen] = useState(false);
+
+    const handleSearchChange = (searchValue: string) => {
+        setSearchValue(searchValue);
     };
 
     const handleStatusChange = (status: string) => {
@@ -85,26 +84,25 @@ export default function NomenclaturesPage() {
         setVersion(version);
     };
 
+    useEffect(() => {
+        setPage(1)
+    }, [status, version, searchValue, zone])
+
     return (
         <Paper sx={{ width: "100%", overflow: "hidden" }}>
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    gap: "12px",
-                    alignItems: "center",
-                    margin: "24px",
-                }}
-            >
-                <Search
-                    onSearchChange={handleSearchChange}
-                    placeholder="Поиск"
-                    searchValue={searchValue ? searchValue : ""}
-                />
-                <StatusSelect status={status} setStatus={handleStatusChange} />
-                <TimezoneSelect timezone={zone} setTimezone={handleStatusTimezone} />
-                <VersionSelect setVersion={handleVersionChange} version={version} />
-            </div>
+            <FiltersModal
+                open={isFiltersModalOpen}
+                onClose={() => setFiltersModalOpen(false)}
+                setVersion={handleVersionChange}
+                onSearchChange={handleSearchChange}
+                setTimezone={handleStatusTimezone}
+                searchValue={searchValue}
+                setStatus={handleStatusChange}
+                status={status}
+                timezone={zone}
+                version={version}
+            />
+            <Button variant="outlined" onClick={() => setFiltersModalOpen(true)}>Фильтра</Button>
             <TableComponent
                 data={nomenclatures}
                 columns={columns}

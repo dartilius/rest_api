@@ -7,7 +7,7 @@ type SearchProps = {
 };
 
 
-const Search = (props: SearchProps) => {
+export const Search = (props: SearchProps) => {
     const { searchValue, onSearchChange, placeholder } =
         props;
 
@@ -24,5 +24,3 @@ const Search = (props: SearchProps) => {
 
     )
 }
-
-export default Search
