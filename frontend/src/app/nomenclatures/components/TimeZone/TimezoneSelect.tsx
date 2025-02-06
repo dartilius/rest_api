@@ -6,7 +6,7 @@ interface TimezoneSelectProps {
     setTimezone: (status: string) => void;
 }
 
-const TimezoneSelect = ({ timezone, setTimezone }: TimezoneSelectProps) => {
+export const TimezoneSelect = ({ timezone, setTimezone }: TimezoneSelectProps) => {
 
     return (
         <FormControl fullWidth>
@@ -31,5 +31,3 @@ const TimezoneSelect = ({ timezone, setTimezone }: TimezoneSelectProps) => {
 
     );
 };
-
-export default TimezoneSelect;

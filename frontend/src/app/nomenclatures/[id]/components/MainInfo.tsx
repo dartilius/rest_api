@@ -14,7 +14,7 @@ const MainInfo = (props: MainInfoProps) => {
     const { main_info } = props
     return (
         <div className="main-info">
-            <div style={{ color: "#f55f5f" }}>
+            <div style={{ color: '#f55f5f' }}>
                 {
                     main_info ?
                         main_info.name :

@@ -6,7 +6,7 @@ interface StatusSelectProps {
   setStatus: (status: string) => void;
 }
 
-const StatusSelect = ({ status, setStatus }: StatusSelectProps) => {
+export const StatusSelect = ({ status, setStatus }: StatusSelectProps) => {
   const statusTypes = [0, 1, 2, 3];
 
   return (
@@ -31,5 +31,3 @@ const StatusSelect = ({ status, setStatus }: StatusSelectProps) => {
 
   );
 };
-
-export default StatusSelect;
