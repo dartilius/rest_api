@@ -17,10 +17,10 @@ export interface INomenclatureResults {
 export interface INomenclaturesService {
   page: number;
   limit: number;
-  timezone: string;
-  status: string;
-  search: string;
-  version: string;
+  timezone?: string;
+  status?: string;
+  search?: string;
+  version?: string;
 }
 
 export interface DayConfig {

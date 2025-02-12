@@ -5,6 +5,7 @@ import { AuthContext } from './AuthContext';
 import AuthService from '@/services/AuthService';
 import { IAuth } from '@/interfaces/Auth.interface';
 import { setCookie } from 'cookies-next';
+import {getAccessToken} from "@/services/accessToken";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);

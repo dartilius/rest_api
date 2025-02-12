@@ -8,6 +8,7 @@ import TableComponent from "@/components/Ui/Table/Table";
 import { useFetchNomenclatures } from "@/hooks/useFetchNomenclatures";
 import { useDebounce } from "@/hooks/useDebounce";
 import FiltersModal from "./components/FiltersModal";
+import {INomenclatureResults} from "@/interfaces/Nomenclatures.interface";
 
 const columns = [
     { id: "name", label: "Название", minWidth: 170 },
@@ -46,25 +47,27 @@ function getStatusColor(statusId: number): string {
     }
 }
 
-export default function NomenclaturesPage() {
+export default function NomenclaturesPage({initialData}: {initialData: INomenclatureResults[]}) {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [searchValue, setSearchValue] = useState<string>("");
     const [status, setStatus] = useState<string>("");
     const [zone, setZone] = useState<string>("");
     const [version, setVersion] = useState<string>("");
+    const [nomenclatures, setNomenclatures] = useState(initialData);
     const debouncedSearchValue = useDebounce(searchValue, 500);
 
-    const { nomenclatures, isError, isLoading, error, totalItems } = useFetchNomenclatures({
-        page,
-        limit,
-        search: debouncedSearchValue,
-        status: status,
-        timezone: zone,
-        version: version,
-    });
 
-    if (isError) console.error(error);
+    // const { nomenclatures, isError, isLoading, error, totalItems } = useFetchNomenclatures({
+    //     page,
+    //     limit,
+    //     search: debouncedSearchValue,
+    //     status: status,
+    //     timezone: zone,
+    //     version: version,
+    // });
+
+    // if (isError) console.error(error);
 
     const [isFiltersModalOpen, setFiltersModalOpen] = useState(false);
 
@@ -108,10 +111,10 @@ export default function NomenclaturesPage() {
                 columns={columns}
                 link="nomenclatures"
                 limit={limit}
-                loading={isLoading}
+                // loading={isLoading}
             />
             <CustomPagination
-                totalItems={totalItems}
+                totalItems={nomenclatures.length}
                 itemsPerPage={limit}
                 setItemsPerPage={setLimit}
                 currentPage={page}
