@@ -8,7 +8,6 @@ type Types = {
   [key: number]: string;
 };
 export function convertStatus(statusId: number | undefined | null): string {
-  console.log(statusId);
 
   if (statusId === undefined || statusId === null) {
     return "Не в сети";

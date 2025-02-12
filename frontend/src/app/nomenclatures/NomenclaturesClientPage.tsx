@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from "react";
+import {ChangeEvent, useEffect, useState} from "react";
 import { Box, Button, Paper } from "@mui/material";
 import './nomenclatures.scss'
 import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
@@ -9,6 +9,11 @@ import { useFetchNomenclatures } from "@/hooks/useFetchNomenclatures";
 import { useDebounce } from "@/hooks/useDebounce";
 import FiltersModal from "./components/FiltersModal";
 import {INomenclatureResults} from "@/interfaces/Nomenclatures.interface";
+import {useRouter, useSearchParams} from "next/navigation";
+import {getNomenclatures} from "@/app/nomenclatures/page";
+import {API_URL} from "@/config/api.config";
+import {getClientAccessToken} from "@/utils";
+import {useQuery} from "@tanstack/react-query";
 
 const columns = [
     { id: "name", label: "Название", minWidth: 170 },
@@ -55,7 +60,29 @@ export default function NomenclaturesPage({initialData}: {initialData: INomencla
     const [zone, setZone] = useState<string>("");
     const [version, setVersion] = useState<string>("");
     const [nomenclatures, setNomenclatures] = useState(initialData);
+    const [loading, setLoading] = useState(false);
     const debouncedSearchValue = useDebounce(searchValue, 500);
+
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Обновление URL с фильтрами
+    const updateUrlWithFilters = () => {
+        const newParams = new URLSearchParams();
+
+        if (searchValue) newParams.set("name", searchValue);
+        if (status) newParams.set("status", status);
+        if (zone) newParams.set("timezone", zone);
+        if (version) newParams.set("version", version);
+
+        router.push(`/?${newParams.toString()}`);
+    };
+
+    const {data, isLoading, refetch} = useQuery({
+        queryFn: () => getNomenclatures({page, limit, name: searchValue, status, timezone: zone, version}),
+        queryKey: ["nomenclatures", page, limit, searchValue, status, zone, version],
+        enabled: false,
+    })
 
 
     // const { nomenclatures, isError, isLoading, error, totalItems } = useFetchNomenclatures({
@@ -73,23 +100,48 @@ export default function NomenclaturesPage({initialData}: {initialData: INomencla
 
     const handleSearchChange = (searchValue: string) => {
         setSearchValue(searchValue);
+        updateUrlWithFilters();
     };
 
     const handleStatusChange = (status: string) => {
         setStatus(status);
+        updateUrlWithFilters();
     };
 
     const handleStatusTimezone = (zone: string) => {
         setZone(zone);
+        updateUrlWithFilters();
     };
 
     const handleVersionChange = (version: string) => {
         setVersion(version);
+        updateUrlWithFilters();
     };
 
     useEffect(() => {
-        setPage(1)
-    }, [status, version, searchValue, zone])
+        refetch().catch((data) => setNomenclatures(data.results));
+        // setNomenclatures(data)
+    }, [page, limit, status, version, searchValue, zone])
+
+    // useEffect(() => {
+    //     const params = new URLSearchParams(searchParams.toString());
+    //     const page = params.get("page") ?? "1";
+    //     const limit = params.get("limit") ?? "10";
+    //     const name = params.get("name") ?? "";
+    //     const status = params.get("status") ?? "";
+    //     const timezone = params.get("timezone") ?? "";
+    //     const version = params.get("version") ?? "";
+    //
+    //     setSearchValue(name);
+    //     setStatus(status);
+    //     setZone(timezone);
+    //     setVersion(version);
+    //
+    //     // Выполняем запрос для обновления данных с новыми параметрами
+    //     // getNomenclatures({ page, limit, name, status, timezone, version })
+    //     //     .then(data => setNomenclatures(data.results))
+    //     //     .catch(err => console.error(err));
+    // }, [searchParams]);
 
     return (
         <Paper sx={{ width: "100%", overflow: "hidden" }}>
@@ -111,7 +163,7 @@ export default function NomenclaturesPage({initialData}: {initialData: INomencla
                 columns={columns}
                 link="nomenclatures"
                 limit={limit}
-                // loading={isLoading}
+                loading={loading}
             />
             <CustomPagination
                 totalItems={nomenclatures.length}

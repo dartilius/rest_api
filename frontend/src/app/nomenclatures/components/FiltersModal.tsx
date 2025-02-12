@@ -1,6 +1,11 @@
+'use client'
+
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from "@mui/material";
+
+
 import { useState, useEffect, ChangeEvent } from "react";
 import { Search, StatusSelect, TimezoneSelect, VersionSelect } from './index'
+import { useRouter } from "next/navigation";
 
 interface FiltersModalProps {
   open: boolean;
@@ -33,6 +38,7 @@ const FiltersModal = ({
   const [localStatus, setLocalStatus] = useState(status);
   const [localTimezone, setLocalTimezone] = useState(timezone);
   const [localVersion, setLocalVersion] = useState(version);
+  const router = useRouter();
 
   // Синхронизация начальных значений с props
   useEffect(() => {
@@ -48,7 +54,15 @@ const FiltersModal = ({
     setStatus(localStatus);
     setTimezone(localTimezone);
     setVersion(localVersion);
+    const queryString = new URLSearchParams({
+      name: localSearchValue,
+      status: localStatus,
+      timezone: localTimezone,
+      version: localVersion,
+    }).toString();
 
+    // Update URL with new filter parameters
+    router.push(`${window.location.pathname}?${queryString}`);
     // Закрытие модального окна
     onClose();
   };
@@ -73,7 +87,7 @@ const FiltersModal = ({
           />
 
           <Typography variant="subtitle1">Версия</Typography>
-          <VersionSelect version={localVersion} setVersion={setLocalVersion} />
+          {/*<VersionSelect version={localVersion} setVersion={setLocalVersion} />*/}
 
           <Typography variant="subtitle1">Статус</Typography>
           <StatusSelect status={localStatus} setStatus={setLocalStatus} />

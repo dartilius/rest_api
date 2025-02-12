@@ -28,6 +28,8 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
         if (currentPage < totalPages) {
             setCurrentPage(currentPage + 1);
         }
+
+
     };
 
     const handleItemsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
