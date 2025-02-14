@@ -17,7 +17,7 @@ class NomenclaturesService extends ApiRequest{
   }
 
   async getAll({page, limit}: INomenclaturesService): Promise<INomenclaturesResponse> {
-    let newQueryParams = `?page=${page}&limit=${limit}`;
+    const newQueryParams = `?page=${page}&limit=${limit}`;
     return super.getAll(newQueryParams);
   }
 
