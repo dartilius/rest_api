@@ -34,8 +34,10 @@ export const useFetchNomenclatures = ({
       }),
   });
 
-  const nomenclatures = data?.data.results || [];
-  const totalItems = data?.data.count || 0;
+  const nomenclatures = data?.results || [];
+  const totalItems = data?.count || 0;
+
+  console.log(data)
 
   return { nomenclatures, isLoading, isError, refetch, error, totalItems };
 };

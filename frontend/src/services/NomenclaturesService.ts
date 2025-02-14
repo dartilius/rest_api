@@ -7,29 +7,37 @@ import {
 import axios from "axios";
 import { getAccessToken } from "./accessToken";
 import { IVersions } from "@/hooks/useFetchNomenclatures";
+import ApiRequest from "@/services/ApiRequest";
 
-class NomenclaturesService {
+class NomenclaturesService extends ApiRequest{
   private URL = API_URL;
   private TOKEN = getAccessToken();
-  constructor() {}
-
-  async getAll({
-    limit,
-    page,
-    search,
-    status,
-    timezone,
-    version,
-  }: INomenclaturesService) {
-    return axios.get<INomenclaturesResponse>(
-      `${this.URL}nomenclatures/?page=${page}&limit=${limit}&name=${search}&status=${status}&timezone=${timezone}&version=${version}`,
-      {
-        headers: {
-          Authorization: `access_token ${this.TOKEN}`,
-        },
-      }
-    );
+  constructor() {
+    super('nomenclatures', API_URL);
   }
+
+  async getAll({page, limit}: INomenclaturesService): Promise<INomenclaturesResponse> {
+    let newQueryParams = `?page=${page}&limit=${limit}`;
+    return super.getAll(newQueryParams);
+  }
+
+  // async getAll({
+  //   limit,
+  //   page,
+  //   search,
+  //   status,
+  //   timezone,
+  //   version,
+  // }: INomenclaturesService) {
+  //   return axios.get<INomenclaturesResponse>(
+  //     `${this.URL}nomenclatures/?page=${page}&limit=${limit}&name=${search}&status=${status}&timezone=${timezone}&version=${version}`,
+  //     {
+  //       headers: {
+  //         Authorization: `access_token ${this.TOKEN}`,
+  //       },
+  //     }
+  //   );
+  // }
 
   async getById(id: string | undefined) {
     return axios.get<INomenclatureByIdResponse>(
