@@ -22,107 +22,28 @@ body {
 
 .layout {
   display: flex;
+  flex-direction: column;
+  width: 100vw;
   height: 100vh;
   overflow: hidden;
-
-  .sidebar {
-    width: $width-sidebar; /* Фиксированная ширина боковой панели */
-    background-color: $foreground-color;
-    height: 100%;
-    transition: width 0.3s ease-in-out;
-
-    &.animating {
-      pointer-events: none; /* Блокируем взаимодействие во время анимации */
-    }
-
-    &.open {
-      width: $width-sidebar; // Открытая ширина
-    }
-
-    &.closed {
-      width: 0; // Закрытая ширина
-      overflow: hidden; // Скрываем содержимое
-    }
-
-    &__menu {
-      display: flex;
-      flex-direction: column;
-      padding: 1rem;
-      gap: 1rem;
-      height: 100%;
-
-      .sidebar__menu-item {
-        padding: 0.8rem 1rem;
-        border-radius: 4px;
-        color: $main-color;
-        text-decoration: none;
-        transition: all 0.3s;
-
-        &:hover {
-          background-color: #f0f4f8;
-        }
-
-        &.active {
-          background-color: #d1e3f8;
-          font-weight: 600;
-          color: #003366;
-        }
-      }
-    }
-    &__title {
-      display: flex;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: $main-color;
-      margin: 1rem;
-      justify-content: center;
-      align-items: center;
-    }
-  }
-
-  .header {
-    height: 60px;
-    background-color: $foreground-color;
-    border-bottom: 1px solid #e6e6e6;
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
-    position: absolute;
-    transition: width 0.3s ease;
-
-    // Когда sidebar открыт
-    width: calc(100% - $width-sidebar);
-
-    // Когда sidebar закрыт
-    &.full-width {
-      width: 100%;
-    }
-
-    &__toggle {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      width: 100%;
-      margin-right: 1rem;
-      cursor: pointer;
-      color: $main-color;
-    }
-  }
-
-  .main {
+}
+.flex_sidebar_and_main{
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: row;
+}
+ .main {
     flex: 1; /* Основной контент занимает оставшееся место */
     display: flex;
     flex-direction: column;
 
     .content {
       flex: 1;
-      margin-top: 3.5rem;
       padding: 1.5rem; /* Отступы для children */
       overflow-y: auto;
     }
   }
-}
-
 .content::-webkit-scrollbar {
   width: 0.5rem;
 }

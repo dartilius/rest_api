@@ -99,6 +99,7 @@ class ApiRequest implements ApiRequestParams {
             const response = await axios.get(`${this.url}${this.typeRequest}/${queryParams}`, {
                 headers: await this.getAuthHeader(),
                 params: queryParams,
+                method: 'no-cors',
             });
 
             if (response.status === 200) {

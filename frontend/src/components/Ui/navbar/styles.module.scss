@@ -1,0 +1,40 @@
+@import '@/styles/_vars.scss';
+
+
+.wrapper_navbar {
+    height: 60px;
+    width: 100%;
+    background-color: $foreground-color;
+    border-bottom: 1px solid #e6e6e6;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    padding: 0 1rem;
+    transition: width 0.3s ease;
+}
+
+.wrapper_title_navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: calc($width-sidebar - 1rem);
+}
+
+.title {
+    display: flex;
+    width: 100%;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: $main-color;
+    justify-content: center;
+    align-items: center;
+}
+
+.authButton {
+    margin-left: auto; // Это сдвинет кнопку вправо
+}
+
+.sidebar_toggle {
+    cursor: pointer;
+    color: $main-color;
+}
