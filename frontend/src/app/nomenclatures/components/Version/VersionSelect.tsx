@@ -1,44 +1,74 @@
+'use client'
+
 import { useGetVersions } from "@/hooks/useFetchNomenclatures";
-import { FormControl, InputLabel, MenuItem, Select, Skeleton } from "@mui/material";
+import { FormControl, MenuItem, Select, Skeleton, Alert } from "@mui/material";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import {handleQueryParamChange} from "@/utils";
 
-interface TimezoneSelectProps {
-    version: string;
-    setVersion: (status: string) => void;
-}
+export const VersionSelect = () => {
+    const { versionsList, error, isError, isLoading } = useGetVersions();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
 
-export const VersionSelect = ({ setVersion, version }: TimezoneSelectProps) => {
-    const { versionsList, error, isError, isLoading } = useGetVersions()
+    const currentVersion = searchParams.get('version')?.toString() || '';
+    const [version, setVersion] = useState<string>(currentVersion);
 
-    if (isError) console.error(error)
+    useEffect(() => {
+        setVersion(currentVersion);
+    }, [currentVersion]);
 
-    console.log(versionsList);
+    const handleVersionChange = (value: string) => {
+        handleQueryParamChange(router, pathname, searchParams, 'version', value);
+    };
+
+    if (isError) {
+        return (
+            <Alert severity="error">
+                Ошибка загрузки версий: {error?.message || 'Неизвестная ошибка'}
+            </Alert>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <Skeleton
+                variant="rectangular"
+                width="100%"
+                height={56}
+                sx={{
+                    borderRadius: '4px',
+                    mt: 1
+                }}
+            />
+        );
+    }
+
+    const uniqueVersions = Array.from(new Set(versionsList?.versions || []));
 
     return (
-
         <FormControl fullWidth>
-            <InputLabel id="timezone-label">Версия</InputLabel>
             <Select
-                labelId="timezone-label"
-                id="select-timezone"
                 value={version}
-                defaultValue={version}
-                onChange={(event) => setVersion(event.target.value as string)}
-                label="Версия"
-
-                style={{ color: 'black' }}
+                onChange={(e) => handleVersionChange(e.target.value)}
+                displayEmpty
+                sx={{
+                    color: 'black',
+                    '.MuiSelect-select': {
+                        py: 1.5
+                    }
+                }}
             >
-                {isLoading ? (
-                    <Skeleton animation="wave" variant="text" />
-                ) : (
-                    versionsList.versions.map((item, key) => (
-                        <MenuItem key={key} value={item}>
-                            {item === '' ? 'Без версии' : item}
-                        </MenuItem>
-                    )))}
-
+                <MenuItem value="">
+                    <em>Все версии</em>
+                </MenuItem>
+                {uniqueVersions.map((item) => (
+                    <MenuItem key={item || 'no-version'} value={item}>
+                        {item || 'Без версии'}
+                    </MenuItem>
+                ))}
             </Select>
-        </FormControl >
-
-
+        </FormControl>
     );
 };

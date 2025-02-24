@@ -1,109 +1,51 @@
-'use client'
+'use client';
 
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from "@mui/material";
-
-
-import { useState, useEffect, ChangeEvent } from "react";
-import { Search, StatusSelect, TimezoneSelect, VersionSelect } from './index'
-import { useRouter } from "next/navigation";
+import {Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Tooltip} from "@mui/material";
+import {Search, StatusSelect, TimezoneSelect, VersionSelect} from './index';
+import {useRouter, useSearchParams} from "next/navigation";
 
 interface FiltersModalProps {
   open: boolean;
   onClose: () => void;
-  setVersion: (version: string) => void;
-  setStatus: (status: string) => void;
-  searchValue: string;
-  onSearchChange: (value: string) => void;
-  setTimezone: (timezone: string) => void;
-  timezone: string;
-  version: string;
-  status: string;
 }
 
-const FiltersModal = ({
-  onClose,
-  onSearchChange,
-  open,
-  searchValue,
-  setStatus,
-  setTimezone,
-  setVersion,
-  status,
-  timezone,
-  version,
-}: FiltersModalProps) => {
-
-  // Локальные состояния для фильтров
-  const [localSearchValue, setLocalSearchValue] = useState(searchValue);
-  const [localStatus, setLocalStatus] = useState(status);
-  const [localTimezone, setLocalTimezone] = useState(timezone);
-  const [localVersion, setLocalVersion] = useState(version);
-  const router = useRouter();
-
-  // Синхронизация начальных значений с props
-  useEffect(() => {
-    setLocalSearchValue(searchValue);
-    setLocalStatus(status);
-    setLocalTimezone(timezone);
-    setLocalVersion(version);
-  }, [searchValue, status, timezone, version]);
-
-  const handleApplyFilters = () => {
-    // Обновление значений в родительском компоненте
-    onSearchChange(localSearchValue);
-    setStatus(localStatus);
-    setTimezone(localTimezone);
-    setVersion(localVersion);
-    const queryString = new URLSearchParams({
-      name: localSearchValue,
-      status: localStatus,
-      timezone: localTimezone,
-      version: localVersion,
-    }).toString();
-
-    // Update URL with new filter parameters
-    router.push(`${window.location.pathname}?${queryString}`);
-    // Закрытие модального окна
-    onClose();
-  };
-
-  const clearFilter = () => {
-    setLocalSearchValue('')
-    setLocalStatus('')
-    setLocalTimezone('')
-    setLocalVersion('')
-  }
+const FiltersModal = ({ open, onClose }: FiltersModalProps) => {
+    const router = useRouter();
+    const searchParams = useSearchParams()
+    const clearModalFilters = () => {
+        const params = new URLSearchParams(searchParams);
+        params.delete('name');
+        params.delete('version');
+        params.delete('status');
+        params.delete('timezone');
+        router.push(`?${params.toString()}`);
+    }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Фильтры</DialogTitle>
-      <DialogContent>
-        <Box display="flex" flexDirection="column" gap={2}>
-          <Typography variant="subtitle1">Поиск</Typography>
-          <Search
-            searchValue={localSearchValue}
-            onSearchChange={(event: ChangeEvent<HTMLInputElement>) => setLocalSearchValue(event.target.value)}
-            placeholder="Введите значение для поиска"
-          />
+      <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+        <DialogTitle>Фильтры</DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={2}>
+            <Typography variant="subtitle1">Поиск</Typography>
+            <Search />
 
-          <Typography variant="subtitle1">Версия</Typography>
-          {/*<VersionSelect version={localVersion} setVersion={setLocalVersion} />*/}
+            <Typography variant="subtitle1">Версия</Typography>
+            <VersionSelect />
 
-          <Typography variant="subtitle1">Статус</Typography>
-          <StatusSelect status={localStatus} setStatus={setLocalStatus} />
+            <Typography variant="subtitle1">Статус</Typography>
+            <StatusSelect />
 
-          <Typography variant="subtitle1">Часовой пояс</Typography>
-          <TimezoneSelect timezone={localTimezone} setTimezone={setLocalTimezone} />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={clearFilter} color='warning'>Сбросить</Button>
-        <Button onClick={onClose} color="secondary">Отмена</Button>
-        <Button onClick={handleApplyFilters} variant="contained" color="primary">
-          Применить фильтры
-        </Button>
-      </DialogActions>
-    </Dialog>
+            <Typography variant="subtitle1">Часовой пояс</Typography>
+            <TimezoneSelect />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button color='warning' onClick={clearModalFilters}>Сбросить</Button>
+            <Tooltip title='При закрытии значения сохраняться'>
+                <Button onClick={onClose} color="primary">Закрыть</Button>
+            </Tooltip>
+        </DialogActions>
+      </Dialog>
   );
 };
 

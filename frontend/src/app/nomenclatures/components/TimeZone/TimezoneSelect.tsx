@@ -1,24 +1,31 @@
 import { timezonesArray } from "@/types/timeZone";
-import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import { FormControl, MenuItem, Select } from "@mui/material";
+import {usePathname, useRouter, useSearchParams} from "next/navigation";
+import {useEffect, useState} from "react";
+import {handleQueryParamChange} from "@/utils";
 
-interface TimezoneSelectProps {
-    timezone: string;
-    setTimezone: (status: string) => void;
-}
+export const TimezoneSelect = () => {
 
-export const TimezoneSelect = ({ timezone, setTimezone }: TimezoneSelectProps) => {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const currentTimezone = searchParams.get("timezone") || '';
+    const [timezone, setTimezone] = useState<string>(currentTimezone);
+
+    useEffect(() => {
+        setTimezone(currentTimezone);
+    }, [currentTimezone]);
+
+    const handleTimezoneChange = (value: string) => {
+        handleQueryParamChange(router, pathname, searchParams, 'timezone', value);
+    };
 
     return (
         <FormControl fullWidth>
-            <InputLabel id="timezone-label">Часовой пояс</InputLabel>
             <Select
-                labelId="timezone-label"
-                id="select-timezone"
                 value={timezone}
                 defaultValue={timezone}
-                onChange={(event) => setTimezone(event.target.value as string)}
-                label="Часовой пояс"
-
+                onChange={(event) => handleTimezoneChange(event.target.value as string)}
                 style={{ color: 'black' }}
             >
                 {timezonesArray.map((item, key) => (

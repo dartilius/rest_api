@@ -1,41 +1,22 @@
-import React from "react";
+'use client';
 import './customPagination.scss';
+import { ChangeEvent } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 
-interface CustomPaginationProps {
-    totalItems: number;
-    itemsPerPage: number;
-    setItemsPerPage: (count: number) => void;
-    currentPage: number;
-    setCurrentPage: (page: number) => void;
-}
+const CustomPagination = ({ totalItems }: { totalItems: number }) => {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const currentPage = Number(searchParams.get('page')) || 1;
+    const itemsPerPage = Number(searchParams.get('limit')) || 10;
 
-const CustomPagination: React.FC<CustomPaginationProps> = ({
-    totalItems,
-    itemsPerPage,
-    setItemsPerPage,
-    currentPage,
-    setCurrentPage,
-}) => {
+    const createPageURL = (pageNumber: number, limit: number = itemsPerPage) => {
+        const params = new URLSearchParams(searchParams);
+        params.set('page', pageNumber.toString());
+        params.set('limit', limit.toString());
+        return `${pathname}?${params.toString()}`;
+    };
+
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-    const handlePreviousPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-        }
-    };
-
-    const handleNextPage = () => {
-        if (currentPage < totalPages) {
-            setCurrentPage(currentPage + 1);
-        }
-
-
-    };
-
-    const handleItemsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        setItemsPerPage(Number(event.target.value));
-        setCurrentPage(1); // Сброс на первую страницу
-    };
 
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
@@ -49,7 +30,9 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
                 <select
                     className="items-per-page-select"
                     value={itemsPerPage}
-                    onChange={handleItemsPerPageChange}
+                    onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                        window.location.href = createPageURL(1, Number(event.target.value));
+                    }}
                 >
                     <option value={5}>5</option>
                     <option value={10}>10</option>
@@ -59,14 +42,14 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
             <div className="pagination-controls">
                 <button
                     className="pagination-button"
-                    onClick={handlePreviousPage}
+                    onClick={() => (window.location.href = createPageURL(currentPage - 1))}
                     disabled={currentPage === 1}
                 >
-                    &#8592; {/* Стрелка влево */}
+                    &#8592;
                 </button>
                 <button
                     className="pagination-button"
-                    onClick={handleNextPage}
+                    onClick={() => (window.location.href = createPageURL(currentPage + 1))}
                     disabled={currentPage === totalPages}
                 >
                     &#8594; {/* Стрелка вправо */}

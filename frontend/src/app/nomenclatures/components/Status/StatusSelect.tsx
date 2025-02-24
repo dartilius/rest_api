@@ -1,33 +1,38 @@
+'use client'
 import { convertStatus } from "@/types/checkStatus";
 import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
-interface StatusSelectProps {
-  status: string;
-  setStatus: (status: string) => void;
-}
+export const StatusSelect = () => {
+    const statusTypes = [0, 1, 2, 3];
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const currentStatus = searchParams.get("status") || '';
+    const [status, setStatus] = useState<string>(currentStatus);
 
-export const StatusSelect = ({ status, setStatus }: StatusSelectProps) => {
-  const statusTypes = [0, 1, 2, 3];
+    useEffect(() => {
+        setStatus(currentStatus);
+    }, [currentStatus]);
 
-  return (
-    <FormControl fullWidth>
-      <InputLabel id="status-label">Статус</InputLabel>
-      <Select
-        labelId="status-label"
-        id="select-status"
-        value={status}
-        onChange={(event) => setStatus(event.target.value as string)}
-        label="Статус"
+    const handleStatusChange = (value: string) => {
+        handleQueryParamChange(router, pathname, searchParams, 'status', value);
+    };
 
-        style={{ color: 'black' }}
-      >
-        {statusTypes.map((item) => (
-          <MenuItem key={item} value={item}>
-            {convertStatus(item)}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-
-  );
+    return (
+        <FormControl fullWidth>
+            <Select
+                value={status}
+                onChange={(event) => handleStatusChange(event.target.value as string)} // Передаем строку
+                style={{ color: 'black' }}
+            >
+                {statusTypes.map((item) => (
+                    <MenuItem key={item} value={item.toString()}> {/* Преобразуем item в строку */}
+                        {convertStatus(item)}  {/* Передаем числовое значение в convertStatus */}
+                    </MenuItem>
+                ))}
+            </Select>
+        </FormControl>
+    );
 };

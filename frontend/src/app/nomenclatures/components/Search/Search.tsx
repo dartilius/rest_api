@@ -1,26 +1,36 @@
-import { InputLabel, OutlinedInput, TextField } from '@mui/material';
+'use client';
+import { ChangeEvent, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useDebouncedCallback } from "use-debounce";
+import { TextField } from "@mui/material";
+import {handleQueryParamChange} from "@/utils";
 
-type SearchProps = {
-    searchValue: string;
-    onSearchChange: any;
-    placeholder: string;
-};
+export function Search() {
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
+    const currentSearchValue = searchParams?.get('name') || '';
+    const [searchValue, setSearchValue] = useState<string>(currentSearchValue);
 
+    const handleSearch = useDebouncedCallback((value: string) => {
+        handleQueryParamChange(router, pathname, searchParams, 'name', value);
+    }, 500);
 
-export const Search = (props: SearchProps) => {
-    const { searchValue, onSearchChange, placeholder } =
-        props;
+    useEffect(() => {
+        setSearchValue(currentSearchValue);
+    }, [currentSearchValue]);
 
     return (
-        <TextField
-            id="search-outlined"
-            label={placeholder}
-            variant="outlined"
-            type='text'
-            value={searchValue}
-            onChange={onSearchChange}
-            fullWidth
-        />
-
-    )
+        <div className="relative flex flex-1 flex-shrink-0">
+            <TextField
+                variant="outlined"
+                fullWidth
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    setSearchValue(e.target.value);
+                    handleSearch(e.target.value);
+                }}
+                value={searchValue}
+            />
+        </div>
+    );
 }
