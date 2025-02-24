@@ -27,7 +27,6 @@ export default async function Page(props: {
     return (
         <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
             <FiltersModalWrapper openModalFilters={openModalFilters} />
-
             <TableNomenclatures name={name} currentPage={currentPage} limit={limit} version={version} status={status} timezone={timezone} />
         </div>
     );

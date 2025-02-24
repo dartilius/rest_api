@@ -27,7 +27,7 @@ export const FiltersModalWrapper = ({ openModalFilters }: { openModalFilters: bo
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-            <Button onClick={() => toggleModal(true)} variant='contained' color='error' style={{maxWidth: '120px'}}>Фильтры</Button>
+            <Button onClick={() => toggleModal(true)} variant='contained' color='secondary' style={{maxWidth: '120px'}}>Фильтры</Button>
             <FiltersModal open={open} onClose={() => toggleModal(false)} />
         </div>
     );
