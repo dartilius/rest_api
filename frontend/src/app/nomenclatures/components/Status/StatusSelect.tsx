@@ -1,8 +1,9 @@
 'use client'
 import { convertStatus } from "@/types/checkStatus";
-import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import { FormControl, MenuItem, Select } from "@mui/material";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import {handleQueryParamChange} from "@/utils";
 
 export const StatusSelect = () => {
     const statusTypes = [0, 1, 2, 3];
