@@ -54,6 +54,7 @@ class NomenclaturesService extends ApiRequest{
     return axios.get<IVersions>(`${this.URL}nomenclatures/versions/`, {
       headers: {
         Authorization: `access_token ${this.TOKEN}`,
+        
       },
     });
   }
