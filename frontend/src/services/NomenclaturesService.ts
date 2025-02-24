@@ -8,8 +8,9 @@ import axios from "axios";
 import { getAccessToken } from "./accessToken";
 import { IVersions } from "@/hooks/useFetchNomenclatures";
 import ApiRequest from "@/services/ApiRequest";
+import {getServerAccessToken} from "@/utils";
 
-class NomenclaturesService extends ApiRequest{
+export class NomenclaturesService extends ApiRequest{
   private URL = API_URL;
   private TOKEN = getAccessToken();
   constructor() {
@@ -60,4 +61,51 @@ class NomenclaturesService extends ApiRequest{
   }
 }
 
-export default new NomenclaturesService();
+type fetchNomenclaturesQuery = {
+  page?: number | string;
+  limit?: number | string;
+  name?: string;
+  status?: string;
+  timezone?: string;
+  version?: string;
+}
+
+export type NomenclaturesDataList = {
+  id: string;
+  article: string;
+  name: string;
+  timezone: string;
+  status: string;
+  last_answer: string;
+  version: string;
+}
+
+export type fetchNomenclaturesResponse = {
+  count: number;
+  next: string;
+  previous: string;
+  results: NomenclaturesDataList[];
+}
+
+export default async function fetchNomenclatures(props: fetchNomenclaturesQuery): Promise<fetchNomenclaturesResponse> {
+  const { name, page, limit, version, status, timezone } = props;
+  const token = await getServerAccessToken()
+  try {
+    const response = await fetch(`${API_URL}/nomenclatures/?page=${page}&limit=${limit}&name=${name}&version=${version}&status=${status}&timezone=${timezone}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `access_token ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('No such nomenclature');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching nomenclatures:', error);
+    throw new Error('Failed to fetch nomenclatures');
+  }
+}
