@@ -9,6 +9,8 @@ import Settings from './components/Settings';
 
 export default function NomenclaturePage() {
     const id = useIdFromParams()
+    console.log(id);
+    
     const { error, isError, refetch, isLoading, nomenclature } = useFetchNomenclatureById(id)
 
     return (
