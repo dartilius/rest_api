@@ -1,6 +1,13 @@
 import {FiltersWrapper, TableNomenclatures} from "@/app/nomenclatures/components";
-import {Suspense} from "react";
+import {Metadata} from "next";
 
+export const metadata: Metadata = {
+    title: 'Номенклатуры',
+    description: 'Страница со списком номенклатур',
+    icons: {
+        icon: '/favicon.svg'
+    }
+}
 
 type NomenclaturesListProps = {
     page?: number | string;

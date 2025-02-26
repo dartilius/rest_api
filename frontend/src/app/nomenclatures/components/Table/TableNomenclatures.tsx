@@ -4,6 +4,7 @@ import Link from "next/link";
 import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
 import {getStatusColor} from "@/utils";
 import {convertStatus} from "@/types/checkStatus";
+import {NomenclatureActions} from "@/app/nomenclatures/components";
 
 const columns = [
     {id: "name", label: "Название", minWidth: 170},
@@ -11,6 +12,7 @@ const columns = [
     {id: "version", label: "Версия", maxWidth: 170},
     {id: "last_answer", label: "Последний ответ", minWidth: 120},
     {id: "status", label: "Статус", minWidth: 120},
+    {id: "actions", label: "Действия", minWidth: 120},
 
 ];
 
@@ -27,6 +29,7 @@ export async function TableNomenclatures(props: Props) {
     const { name, currentPage, limit, version, status, timezone } = props
 
     const listNomenclatures = await fetchNomenclatures({page: currentPage, limit, name, version, status, timezone})
+
     return (
         <TableContainer style={{borderRadius: '8px'}}>
 
@@ -59,6 +62,8 @@ export async function TableNomenclatures(props: Props) {
                                             >
                                                 {convertStatus(value)}
                                             </Box>
+                                        ) : column.id === "actions" ? (
+                                            <NomenclatureActions id={row.id} />
                                         ) : (
                                             <Link href={`/nomenclatures/${row.id}`}>{value}</Link>
                                         )}

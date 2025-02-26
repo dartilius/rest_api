@@ -71,6 +71,7 @@ export default function RootLayout({
         <title>RMC</title>
         <meta name='description' content='Реклама в ТЦ' />
         <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+        <link rel="icon" href="/favicon.ico" type="image/ico" />
       </Head>
       <body className={`${fonts.className} antialiased`}>
         <Providers>

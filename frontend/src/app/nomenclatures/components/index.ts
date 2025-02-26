@@ -4,3 +4,4 @@ export { TimezoneSelect } from "./TimeZone/TimezoneSelect";
 export { VersionSelect } from "./Version/VersionSelect";
 export { FiltersWrapper } from './FiltersWrapper'
 export { TableNomenclatures } from './Table/TableNomenclatures'
+export { NomenclatureActions } from './Table/NomenclatureActions'
