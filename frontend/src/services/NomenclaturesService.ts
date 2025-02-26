@@ -109,3 +109,26 @@ export default async function fetchNomenclatures(props: fetchNomenclaturesQuery)
     throw new Error('Failed to fetch nomenclatures');
   }
 }
+
+export async function deleteNomenclatures(id: string) {
+  const token = await getServerAccessToken()
+  try {
+    const response = await fetch(`${API_URL}/nomenclatures/${id}/`, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `access_token ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('No id nomenclature');
+    }
+
+    return response.status;
+  } catch (error) {
+    console.error('Error delete nomenclatures:', error);
+    throw new Error('Failed delete nomenclatures');
+  }
+}

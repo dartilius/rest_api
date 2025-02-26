@@ -22,6 +22,17 @@
         text-decoration: none;
         transition: all 0.3s;
 
+        .active {
+            // background-color: $foreground-color;
+            font-size: 1.2rem;
+            // text-decoration: underline ;
+            font-weight: 600;
+            color: #003366;
+            &:hover {
+                color: $foreground-color;
+            }
+        }
+
         &:hover {
             background-color: $main-color;
             color: $foreground-color;
@@ -30,7 +41,7 @@
         &.active {
             background-color: #d1e3f8;
             font-weight: 600;
-            color: #003366;
+            color: $main-color;
         }
     }
 }

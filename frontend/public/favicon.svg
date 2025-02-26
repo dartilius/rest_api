@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+  <style>
+    text {
+      font-family: sans-serif;
+      font-weight: bold;
+      fill: #ffffff;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+  </style>
+  <g>
+    <ellipse cx="50" cy="25" rx="45" ry="22" fill="#152c4d" />
+    <text x="50" y="25" font-size="28">RMC</text>
+  </g>
+  
+</svg>
