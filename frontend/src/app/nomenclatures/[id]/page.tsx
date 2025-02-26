@@ -5,6 +5,8 @@ import './nomenclature.scss'
 import { useFetchNomenclatureById } from '@/hooks/useFetchNomenclatures';
 import MainInfo from './components/MainInfo';
 import Settings from './components/Settings';
+import {useRouter} from "next/navigation";
+import {Button} from "@mui/material";
 
 
 export default function NomenclaturePage() {
@@ -12,9 +14,14 @@ export default function NomenclaturePage() {
     console.log(id);
     
     const { error, isError, refetch, isLoading, nomenclature } = useFetchNomenclatureById(id)
+    const router = useRouter();
+    const handleBack = () => {
+        router.push(`/nomenclatures/`)
+    }
 
     return (
-        <div>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+            <Button onClick={handleBack} variant='contained' color='secondary' style={{maxWidth: '120px'}}>Назад</Button>
             <div className="nomenclature">
 
                 <MainInfo main_info={nomenclature?.main_info} />
