@@ -1,9 +1,11 @@
+import TabsPanel from "@/components/tabs/TabsPanel";
+
 const page = () => {
   
    return (
-    <div>
-      hi
-    </div>
+
+      <TabsPanel/>
+ 
   );
 };
 export default page;
