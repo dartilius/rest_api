@@ -2,7 +2,6 @@ import fetchNomenclatures from "@/services/NomenclaturesService";
 import {Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
 import Link from "next/link";
 import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
-import {FiltersModalWrapper} from "@/app/nomenclatures/components/FiltersModalWrapper";
 import {getStatusColor} from "@/utils";
 import {convertStatus} from "@/types/checkStatus";
 
@@ -11,26 +10,7 @@ const columns = [
     {id: "timezone", label: "Часовой пояс", maxWidth: 170},
     {id: "version", label: "Версия", maxWidth: 170},
     {id: "last_answer", label: "Последний ответ", minWidth: 120},
-    {
-        id: "status",
-        label: "Статус",
-        minWidth: 120,
-        renderCell: (row: any) => (
-            <Box
-                sx={{
-                    display: "inline-block",
-                    padding: "4px 8px",
-                    borderRadius: "8px",
-                    backgroundColor: getStatusColor(row.status),
-                    color: "white",
-                    textAlign: "center",
-                    minWidth: "80px",
-                }}
-            >
-                {row.status}
-            </Box>
-        ),
-    },
+    {id: "status", label: "Статус", minWidth: 120},
 
 ];
 
