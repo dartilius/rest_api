@@ -2,6 +2,7 @@
 
 .wrapper_sidebar {
     width: $width-sidebar;
+    /* Фиксированная ширина боковой панели */
     background-color: $foreground-color;
     height: 100%;
     transition: width 0.3s ease-in-out;
@@ -37,6 +38,10 @@
             color: $foreground-color;
         }
 
-
+        &.active {
+            background-color: #d1e3f8;
+            font-weight: 600;
+            color: $main-color;
+        }
     }
 }
