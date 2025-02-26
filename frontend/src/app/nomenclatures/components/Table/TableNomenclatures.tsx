@@ -23,7 +23,7 @@ type Props = {
     timezone: string;
 }
 
-export default async function TableNomenclatures(props: Props) {
+export async function TableNomenclatures(props: Props) {
     const { name, currentPage, limit, version, status, timezone } = props
 
     const listNomenclatures = await fetchNomenclatures({page: currentPage, limit, name, version, status, timezone})

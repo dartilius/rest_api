@@ -1,13 +1,13 @@
 'use client'
 
 import { useGetVersions } from "@/hooks/useFetchNomenclatures";
-import { FormControl, MenuItem, Select, Skeleton, Alert } from "@mui/material";
+import { FormControl, MenuItem, Select, Alert } from "@mui/material";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {handleQueryParamChange} from "@/utils";
 
 export const VersionSelect = () => {
-    const { versionsList, error, isError, isLoading } = useGetVersions();
+    const { versionsList, error, isError } = useGetVersions();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -31,20 +31,6 @@ export const VersionSelect = () => {
         );
     }
 
-    if (isLoading) {
-        return (
-            <Skeleton
-                variant="rectangular"
-                width="100%"
-                height={56}
-                sx={{
-                    borderRadius: '4px',
-                    mt: 1
-                }}
-            />
-        );
-    }
-
     const uniqueVersions = Array.from(new Set(versionsList?.versions || []));
 
     return (
@@ -53,12 +39,7 @@ export const VersionSelect = () => {
                 value={version}
                 onChange={(e) => handleVersionChange(e.target.value)}
                 displayEmpty
-                sx={{
-                    color: 'black',
-                    '.MuiSelect-select': {
-                        py: 1.5
-                    }
-                }}
+                style={{backgroundColor: 'white', borderRadius: '4px'}}
             >
                 <MenuItem value="">
                     <em>Все версии</em>

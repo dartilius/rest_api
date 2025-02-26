@@ -1,3 +1,5 @@
+'use client'
+
 import { timezonesArray } from "@/types/timeZone";
 import { FormControl, MenuItem, Select } from "@mui/material";
 import {usePathname, useRouter, useSearchParams} from "next/navigation";
@@ -21,12 +23,12 @@ export const TimezoneSelect = () => {
     };
 
     return (
-        <FormControl fullWidth>
+        <FormControl fullWidth >
             <Select
                 value={timezone}
                 defaultValue={timezone}
                 onChange={(event) => handleTimezoneChange(event.target.value as string)}
-                style={{ color: 'black' }}
+                style={{ color: 'black', backgroundColor: 'white', borderRadius: '4px' }}
             >
                 {timezonesArray.map((item, key) => (
                     <MenuItem key={key} value={item.value}>

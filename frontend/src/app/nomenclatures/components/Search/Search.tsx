@@ -21,7 +21,6 @@ export function Search() {
     }, [currentSearchValue]);
 
     return (
-        <div className="relative flex flex-1 flex-shrink-0">
             <TextField
                 variant="outlined"
                 fullWidth
@@ -30,7 +29,7 @@ export function Search() {
                     handleSearch(e.target.value);
                 }}
                 value={searchValue}
+                style={{backgroundColor: 'white', borderRadius: '4px'}}
             />
-        </div>
     );
 }

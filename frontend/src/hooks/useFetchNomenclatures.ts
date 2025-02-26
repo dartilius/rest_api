@@ -4,6 +4,8 @@ import {
 } from "@/interfaces/Nomenclatures.interface";
 import { useQuery } from "@tanstack/react-query";
 import {NomenclaturesService} from "@/services/NomenclaturesService";
+import {API_URL} from "@/config/api.config";
+import {getClientAccessToken} from "@/utils";
 
 const nomenclaturesService = new NomenclaturesService()
 
@@ -66,6 +68,7 @@ export const useGetVersions = () => {
     queryKey: ["getVersionsNomenclatures"],
     queryFn: () => nomenclaturesService.getVersions(),
     select: ({ data }) => data,
+    gcTime: 60,
   });
   const versionsList: IVersions = data || {
     versions: [],

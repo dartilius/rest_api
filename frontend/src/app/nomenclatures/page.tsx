@@ -1,5 +1,6 @@
-import TableNomenclatures from "@/app/nomenclatures/components/Table/TableNomenclatures";
-import {FiltersModalWrapper} from "@/app/nomenclatures/components/FiltersModalWrapper";
+import {FiltersWrapper, TableNomenclatures} from "@/app/nomenclatures/components";
+import {Suspense} from "react";
+
 
 type NomenclaturesListProps = {
     page?: number | string;
@@ -22,11 +23,10 @@ export default async function Page(props: {
     const version = searchParams?.version || '';
     const status = searchParams?.status || '';
     const timezone = searchParams?.timezone || '';
-    const openModalFilters = String(searchParams?.openModalFilters) === 'true';
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-            <FiltersModalWrapper openModalFilters={openModalFilters} />
+            <FiltersWrapper />
             <TableNomenclatures name={name} currentPage={currentPage} limit={limit} version={version} status={status} timezone={timezone} />
         </div>
     );

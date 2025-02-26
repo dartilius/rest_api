@@ -26,7 +26,7 @@ export const StatusSelect = () => {
             <Select
                 value={status}
                 onChange={(event) => handleStatusChange(event.target.value as string)} // Передаем строку
-                style={{ color: 'black' }}
+                style={{ color: 'black', backgroundColor: 'white', borderRadius: '4px' }}
             >
                 {statusTypes.map((item) => (
                     <MenuItem key={item} value={item.toString()}> {/* Преобразуем item в строку */}
