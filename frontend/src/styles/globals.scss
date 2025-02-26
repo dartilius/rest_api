@@ -5,6 +5,7 @@
 :root {
   --background: #152c4d;
   --foreground: #ffffff;
+  font-size: $font-size;
 }
 
 body {
@@ -40,7 +41,7 @@ body {
 
     .content {
       flex: 1;
-      padding: 1.5rem; /* Отступы для children */
+      padding: $padding8; /* Отступы для children */
       overflow-y: auto;
     }
   }

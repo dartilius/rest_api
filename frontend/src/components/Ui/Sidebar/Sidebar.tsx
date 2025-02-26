@@ -14,24 +14,25 @@ const menuItems = [
 const Sidebar = () => {
   const { isAuthenticated } = useAuth()
   const pathname = usePathname()
+  
   return (
     <div className={styles.wrapper_sidebar}>
       <div className={styles.sidebar_menu}>
-        {menuItems.map((item) => (
-          <div
-            key={item.href}
-            className={`${styles.sidebar_menu__item}${
-              pathname.startsWith(item.href) ? styles.active : ''
-            }`}
-          >
-            <Link
-              href={isAuthenticated ? item.href : '#'}
-              className={isAuthenticated ? '' : 'inactive-link'}
-            >
-              {item.label}
-            </Link>
-          </div>
-        ))}
+        {menuItems.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+          
+          return (
+            <div key={item.href} className={styles.sidebar_menu__item}>
+              <Link
+              key={item.href}
+                href={isAuthenticated ? item.href : '#'}
+                className={`${isAuthenticated ? '' : 'inactive-link'} ${isActive ? styles.active : ''}`}
+              >
+                {item.label}
+              </Link>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
