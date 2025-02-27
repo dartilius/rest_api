@@ -159,7 +159,7 @@ export async function resendOrders(id: string) {
   }
 }
 
-export async function sendActions(id: string, type: string) {
+export async function sendActions(id: string, type: string, parameters?: string) {
   const token = await getServerAccessToken();
 
   try {
@@ -169,7 +169,7 @@ export async function sendActions(id: string, type: string) {
         Authorization: `access_token ${token}`,
       },
       method: 'POST',
-      body: JSON.stringify({"task": type}),
+      body: JSON.stringify({"task": type, "parameters": parameters}),
     });
 
     const responseBody = await resend.json();
