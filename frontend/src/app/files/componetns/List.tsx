@@ -14,7 +14,7 @@ export async function List(props: FiltersWrapperProps) {
 
     const listFiles = await fetchFilesList({page: currentPage,limit})
 
-    console.log(listFiles)
+    // console.log(listFiles)
 
     return (
         <div></div>
