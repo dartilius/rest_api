@@ -72,7 +72,6 @@ export function ActionButtons({ id }: ActionButtonsProps) {
                             fullWidth
                             onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                 setCommand(e.target.value);
-                                // handleSearch(e.target.value);
                             }}
                             value={command}
                             style={{backgroundColor: 'white', borderRadius: '4px'}}
