@@ -77,7 +77,7 @@ export function ActionButtons({ id }: ActionButtonsProps) {
                             style={{backgroundColor: 'white', borderRadius: '4px'}}
                         />
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button onClick={() => handleSendCommand(id, 'parameters', setAlert, setOpen, command)} variant="contained" color="info" style={{ maxWidth: '104px', justifyContent: 'center' }}>Выполнить</Button>
+                            <Button onClick={() => handleSendCommand(id, 'custom', setAlert, setOpen, command, handleCloseModal, setCommand)} variant="contained" color="info" style={{ maxWidth: '104px', justifyContent: 'center' }}>Выполнить</Button>
                         </div>
                     </Box>
                 </Modal>
