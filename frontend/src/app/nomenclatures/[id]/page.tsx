@@ -16,7 +16,7 @@ export default function NomenclaturePage() {
     const { error, isError, refetch, isLoading, nomenclature } = useFetchNomenclatureById(id)
     const router = useRouter();
     const handleBack = () => {
-        router.push(`/nomenclatures/`)
+        router.back()
     }
 
     return (
