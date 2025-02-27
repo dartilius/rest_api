@@ -1,16 +1,20 @@
 // middleware.ts
-import { NextResponse } from 'next/server';
 
-export function middleware(request: Request) {
-    const token = request.headers.get('Authorization');
+import { NextResponse, NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+    const token = request.cookies.get('access_token')?.value;
+
+    console.log('token', token);
 
     if (!token) {
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    return NextResponse.next(); // Пропускаем дальше к API или странице
+    return NextResponse.next();
 }
 
+
 export const config = {
-    matcher: ['/*'], // Применить к API и dashboard
+        matcher: ['/((?!_next).*)'], // Все страницы, кроме _next
 };

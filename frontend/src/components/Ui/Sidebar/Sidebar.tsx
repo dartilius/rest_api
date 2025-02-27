@@ -1,8 +1,11 @@
-
+'use client'
 import { useAuth } from '@/providers/auth/AuthContext'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import styles from './styles.module.scss'
+import useIdFromParams from "@/hooks/useIdFromParam";
+import {ActionButtons} from "@/app/nomenclatures/[id]/components/ActionButtons";
+import {Divider} from "@mui/material";
 
 const menuItems = [
   { href: '/nomenclatures', label: 'Номенклатуры' },
@@ -15,6 +18,10 @@ const menuItems = [
 const Sidebar = () => {
   const { isAuthenticated } = useAuth()
   const pathname = usePathname()
+  const id = useIdFromParams()
+
+
+  const isNomenclaturePage = pathname === `/nomenclatures/${id}`
   
   return (
     <div className={styles.wrapper_sidebar}>
@@ -34,6 +41,14 @@ const Sidebar = () => {
             </div>
           )
         })}
+
+        {(isNomenclaturePage && id) && (
+            <div style={{color: 'black', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1rem', padding: '0.8rem 1rem'}}>
+              <Divider color='black'/>
+              Админ действия
+              <ActionButtons id={id}/>
+            </div>
+        )}
       </div>
     </div>
   )
