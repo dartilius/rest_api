@@ -87,14 +87,18 @@ export type fetchNomenclaturesResponse = {
   results: NomenclaturesDataList[];
 }
 
+const defaultHeaders = {
+  'Accept': 'application/json',
+  'Content-Type': 'application/json',
+}
+
 export default async function fetchNomenclatures(props: fetchNomenclaturesQuery): Promise<fetchNomenclaturesResponse> {
   const { name, page, limit, version, status, timezone } = props;
   const token = await getServerAccessToken()
   try {
     const response = await fetch(`${API_URL}/nomenclatures/?page=${page}&limit=${limit}&name=${name}&version=${version}&status=${status}&timezone=${timezone}`, {
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        ...defaultHeaders,
         'Authorization': `access_token ${token}`,
       }
     });
@@ -116,8 +120,7 @@ export async function deleteNomenclatures(id: string) {
     const response = await fetch(`${API_URL}/nomenclatures/${id}/`, {
       method: 'DELETE',
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        ...defaultHeaders,
         'Authorization': `access_token ${token}`,
       }
     });
@@ -130,5 +133,54 @@ export async function deleteNomenclatures(id: string) {
   } catch (error) {
     console.error('Error delete nomenclatures:', error);
     throw new Error('Failed delete nomenclatures');
+  }
+}
+export async function resendOrders(id: string) {
+  const token = await getServerAccessToken();
+  try {
+    const resend = await fetch(`${API_URL}/nomenclatures/${id}/resend_orders/`, {
+      headers: {
+        ...defaultHeaders,
+        Authorization: `access_token ${token}`,
+      },
+      method: 'POST',
+    });
+
+    const responseBody = await resend.json();
+
+    return {
+      status: resend.status,
+      message: responseBody.message || `Статус: ${resend.status}`,
+      detail: responseBody.detail,
+    };
+  } catch (error) {
+    console.error('Ошибка при переотправке заказов:', error);
+    throw error;
+  }
+}
+
+export async function sendActions(id: string, type: string) {
+  const token = await getServerAccessToken();
+
+  try {
+    const resend = await fetch(`${API_URL}/nomenclatures/${id}/actions/`, {
+      headers: {
+        ...defaultHeaders,
+        Authorization: `access_token ${token}`,
+      },
+      method: 'POST',
+      body: JSON.stringify({"task": type}),
+    });
+
+    const responseBody = await resend.json();
+
+    return {
+      status: resend.status,
+      message: responseBody.message || `Статус: ${resend.status}`,
+      detail: responseBody.detail,
+    };
+  } catch (error) {
+    console.error('Ошибка при переотправке заказов:', error);
+    throw error;
   }
 }
