@@ -20,7 +20,7 @@ export function NomenclatureActions({ id }: NomenclatureActionsProps) {
     async function handleDelete() {
         console.log("Delete:", id);
         const res = await deleteNomenclatures(id)
-        console.log(res)
+        // console.log(res)
         if (res === 204) {
             router.refresh()
         }
