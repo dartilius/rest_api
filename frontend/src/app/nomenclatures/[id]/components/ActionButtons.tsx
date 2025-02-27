@@ -2,8 +2,7 @@
 
 import {Alert, Box, Button, Modal, Snackbar, TextField, Typography} from "@mui/material";
 import {ChangeEvent, useState} from "react";
-import {handleResend, handleSendAction} from "@/app/nomenclatures/[id]/lib";
-import {handleSendCommand} from "@/app/nomenclatures/[id]/lib/handleSendCommand";
+import {handleResend, handleSendAction, handleSendCommand} from "../utils";
 
 type ActionButtonsProps = {
     id: string;
