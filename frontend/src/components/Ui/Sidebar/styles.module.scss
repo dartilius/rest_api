@@ -22,14 +22,8 @@
         transition: all 0.3s;
 
         .active {
-            // background-color: $foreground-color;
             font-size: 1.2rem;
-            // text-decoration: underline ;
-            font-weight: 600;
-            color: #003366;
-            &:hover {
-                color: $foreground-color;
-            }
+            font-weight: 700;
         }
 
         &:hover {
