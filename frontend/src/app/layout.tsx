@@ -9,6 +9,7 @@ import Sidebar from '@/components/Ui/Sidebar/Sidebar'
 import Providers from './providers'
 import Head from 'next/head'
 import Navbar from '@/components/Ui/navbar/Navbar'
+import useIdFromParams from "@/hooks/useIdFromParam";
 
 const fonts = localFont({
   src: [
@@ -50,11 +51,10 @@ export default function RootLayout({
 }: Readonly<{
   children: ReactNode
 }>) {
-  const [openSideBar, setOpenSideBar] = useState<boolean>(false)
+  const [openSideBar, setOpenSideBar] = useState<boolean>(true)
   const [isAnimating, setIsAnimating] = useState<boolean>(false)
 
   const pathname = usePathname()
-
   const isLoginPage = pathname === '/login'
 
   const toggleSidebar = () => {
@@ -83,12 +83,7 @@ export default function RootLayout({
               <div className='flex_sidebar_and_main'>
                 {openSideBar && <Sidebar />}
                 <div className='main'>
-                  <main
-                    onClick={() => setOpenSideBar(false)}
-                    className='content'
-                  >
-                    {children}
-                  </main>
+                  <main className='content'>{children}</main>
                 </div>
               </div>
             </div>

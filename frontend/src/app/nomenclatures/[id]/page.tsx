@@ -11,12 +11,12 @@ import {Button} from "@mui/material";
 
 export default function NomenclaturePage() {
     const id = useIdFromParams()
-    console.log(id);
+    // console.log(id);
     
     const { error, isError, refetch, isLoading, nomenclature } = useFetchNomenclatureById(id)
     const router = useRouter();
     const handleBack = () => {
-        router.push(`/nomenclatures/`)
+        router.back()
     }
 
     return (

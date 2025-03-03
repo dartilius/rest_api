@@ -11,7 +11,7 @@ function Page() {
     const { id } = useParams();
 
     const handleBack = () => {
-        router.push(`/nomenclatures/`)
+        router.back()
     }
     return (
         <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>

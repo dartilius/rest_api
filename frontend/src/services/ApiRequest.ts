@@ -53,7 +53,7 @@ class ApiRequest implements ApiRequestParams {
         if (error.response) {
             // Если есть ответ от сервера, проверяем статус
             const status = error.response.status;
-            console.log(error.message, error.response?.status);
+            // console.log(error.message, error.response?.status);
 
             if (status === 401) {
                 errorMessage = "Необходима авторизация. Пожалуйста, войдите в систему.";
