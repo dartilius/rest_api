@@ -1,14 +1,16 @@
 'use client'
-
 import { AuthProvider } from '@/providers/auth/AuthProvider'
 import { MobxProvider } from '@/providers/mobx-provider/MobxProvider'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
+import 'dayjs/locale/ru'
 import { ReactNode } from 'react'
-
 export interface ProvidersProps {
   children: ReactNode
 }
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,13 +30,15 @@ const queryClient = new QueryClient({
 
 function Providers({ children }: ProvidersProps) {
   return (
-    <AuthProvider>
-      <MobxProvider>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      </MobxProvider>
-    </AuthProvider>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={'ru'}>
+      <AuthProvider>
+        <MobxProvider>
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        </MobxProvider>
+      </AuthProvider>
+    </LocalizationProvider>
   )
 }
 
