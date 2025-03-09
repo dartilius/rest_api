@@ -14,6 +14,9 @@ body {
   background: var(--background);
   font-family: "Montserrat", sans-serif;
   font-weight: 500;
+  height: 100vh;
+  display: block;
+  box-sizing: border-box;
 }
 .inactive-link {
   pointer-events: none; /* Запрещаем клики */
@@ -23,9 +26,10 @@ body {
 
 .layout {
   display: flex;
+  padding: 2px;
   flex-direction: column;
   width: 100vw;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
 }
 .flex_sidebar_and_main{
@@ -33,18 +37,15 @@ body {
   height: 100%;
   width: 100%;
   flex-direction: row;
+  overflow: hidden;
 }
- .main {
-    flex: 1; /* Основной контент занимает оставшееся место */
-    display: flex;
-    flex-direction: column;
-
+ 
     .content {
       flex: 1;
       padding: $padding8; /* Отступы для children */
       overflow-y: auto;
     }
-  }
+  
 .content::-webkit-scrollbar {
   width: 0.5rem;
 }

@@ -1,28 +1,33 @@
+import { IDataAdResponse, IDataBgResponse } from '@/types/orderTypes';
 import { Dayjs } from 'dayjs';
 import { action, makeObservable, observable } from 'mobx';
-import { observer } from 'mobx-react';
+
 
 // Интерфейс для типизации вашего стора
 interface IOrdersStore {
-  dataBg: any[];
+  dataBgResponse: IDataBgResponse | null;
+  dataAdResponse: IDataAdResponse | null;
   activeTab: number;
   startDate: Dayjs | null;
   endDate: Dayjs | null;
   setActiveTabs(val: number): void;
-  setDataBg(data: any[]): void; 
+  setDataBg(data: IDataBgResponse): void; 
+  setDataAd(data: IDataAdResponse): void; 
 }
 
 class OrdersStore implements IOrdersStore {
   setNomenclatures(nomenclatures: any) {
      throw new Error("Method not implemented.");
   }
-  dataBg: any[] = [];
+  dataBgResponse: IDataBgResponse | null = null;
+  dataAdResponse: IDataAdResponse | null = null;
   activeTab = 0;
   startDate: Dayjs | null = null;
   endDate: Dayjs | null = null;
   constructor() {
     makeObservable(this, {
-      dataBg: observable,
+      dataBgResponse: observable,
+      dataAdResponse: observable,
       activeTab: observable,
       startDate: observable,
       endDate: observable,
@@ -30,10 +35,14 @@ class OrdersStore implements IOrdersStore {
       setStartDate: action,
       setEndDate: action,
       setDataBg: action,
+      setDataAd: action,
     });
   }
-  setDataBg(data: any[]): void {
-    this.dataBg = data
+  setDataBg(data: IDataBgResponse): void {
+    this.dataBgResponse = data
+  }
+  setDataAd(data: IDataAdResponse): void {
+    this.dataAdResponse = data
   }
   setActiveTabs(val: number) {
     this.activeTab = val;

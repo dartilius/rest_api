@@ -1,5 +1,5 @@
 import TabsPanel from "@/components/tabs/TabsPanel";
-import { getDataBg } from "./api";
+import { getDataAd, getDataBg } from "./api";
 
 const OrdersPage = async ({ searchParams }: { searchParams?: {
    page: number;
@@ -9,12 +9,13 @@ const OrdersPage = async ({ searchParams }: { searchParams?: {
    timezone: string;
    version: string
 } }) => {
-   const { page = 1, limit = 10, name = "", status = "", timezone = "", version = "" } = await searchParams ?? {};
-   const dataBg = await getDataBg({ page, limit, name, status, timezone, version });
-   console.log(dataBg);
+   const { page = 1, limit = 10, name = "", status = "", timezone = "", version = "" } = searchParams ?? {};
+   const dataBgResponse = await getDataBg({ page, limit, name, status, timezone, version });
+   const dataAdResponse = await getDataAd({ page, limit, name, status, timezone, version });
+   console.log(dataBgResponse);
    return (
 
-      <TabsPanel dataBg={dataBg}/>
+      <TabsPanel dataBgResponse={dataBgResponse} dataAdResponse={dataAdResponse}/>
  
   );
 };

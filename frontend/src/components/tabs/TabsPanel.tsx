@@ -6,11 +6,20 @@ import { observer } from 'mobx-react'
 import BgOrders from '../bg-orders/BgOrders'
 import AdOrders from '../ad-orders/AdOrders'
 import FiltersPanel from '../filters/FiltersPanel'
-
-const TabsPanel = ({dataBg}: any) => {
-  const data = dataBg
+import { useEffect } from 'react'
+import { IDataAdResponse, IDataBgResponse } from '@/types/orderTypes'
+interface IPropsTabsPanel {
+  dataBgResponse: IDataBgResponse
+  dataAdResponse: IDataAdResponse
+}
+const TabsPanel = ({ ...props }: IPropsTabsPanel) => {
   const { ordersStore } = useStore()
-  ordersStore.setDataBg(data)
+  const { dataBgResponse, dataAdResponse } = props
+
+  useEffect(() => {
+    ordersStore.setDataBg(dataBgResponse)
+    ordersStore.setDataAd(dataAdResponse)
+  }, [dataBgResponse, dataAdResponse, ordersStore]) // Зависимости для обновления данных при их изменении
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     ordersStore.setActiveTabs(newValue)
@@ -22,7 +31,7 @@ const TabsPanel = ({dataBg}: any) => {
     <Paper
       elevation={4}
       sx={{ width: '100%', height: '100%' }}
-      className='relative overflow-hidden'
+      className='relative overflow-y-auto'
     >
       <AppBar position='static' color='transparent'>
         <Box
