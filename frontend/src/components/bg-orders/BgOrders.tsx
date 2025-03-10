@@ -12,18 +12,27 @@ import {
 import dayjs from 'dayjs'
 import { toJS } from 'mobx'
 import { observer } from 'mobx-react'
-import { useRouter } from 'next/navigation'
-import React, { useEffect, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 const BgOrders = () => {
   const { ordersStore } = useStore()
   const [data, setData] = useState<IBgData[]>([])
   const columnHelper = createColumnHelper<IBgData>()
-  
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { pageBg, limit, totalPagesBg } = ordersStore
+
+  const isNextButtonDisabled = pageBg >= totalPagesBg
+
   useEffect(() => {
-    if(ordersStore.dataBgResponse?.results)
-    setData(toJS(ordersStore.dataBgResponse?.results))
-  }, [ordersStore.dataBgResponse?.results ])
+    const pageBgFromUrl = parseInt(searchParams.get('pageBg') || '1')
+    ordersStore.setPageBg(pageBgFromUrl)
+    if (ordersStore.dataBgResponse?.results) {
+      setData(toJS(ordersStore.dataBgResponse?.results))
+    }
+  }, [ordersStore.dataBgResponse?.results, pageBg, ordersStore])
 
   const columns = [
     columnHelper.accessor('name', {
@@ -114,7 +123,6 @@ const BgOrders = () => {
     }),
   ]
 
-  const router = useRouter()
   const table = useReactTable({
     data,
     columns,
@@ -127,12 +135,20 @@ const BgOrders = () => {
     router.push(`orders/bg/${id}`)
   }
 
+  console.log(totalPagesBg)
+  const goToPage = (newPage: number) => {
+    ordersStore.setPageBg(newPage)
+    const params = new URLSearchParams()
+    params.set('pageBg', newPage.toString())
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
   return (
     <div className='p-2 w-full h-full'>
       {data.length < 1 ? (
         <p>loading</p>
       ) : (
-        <table className='w-full h-full'>
+        <table className='w-full '>
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
@@ -178,7 +194,10 @@ const BgOrders = () => {
                 onClick={() => handleRowClick(row.original.id)}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className='text-center cursor-pointer p-2'>
+                  <td
+                    key={cell.id}
+                    className='text-center text-nowrap cursor-pointer p-2'
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -203,6 +222,25 @@ const BgOrders = () => {
           </tfoot>
         </table>
       )}
+      <div className='flex items-center gap-2 p-4'>
+        <button
+          onClick={() => goToPage(pageBg - 1)}
+          disabled={pageBg === 1}
+          className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+        >
+          Предыдущая
+        </button>
+        <span>
+          Страница: {pageBg} из {totalPagesBg}
+        </span>
+        <button
+          onClick={() => goToPage(pageBg + 1)}
+          disabled={isNextButtonDisabled}
+          className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+        >
+          Следующая
+        </button>
+      </div>
     </div>
   )
 }

@@ -11,15 +11,39 @@ import { IDataAdResponse, IDataBgResponse } from '@/types/orderTypes'
 interface IPropsTabsPanel {
   dataBgResponse: IDataBgResponse
   dataAdResponse: IDataAdResponse
+  initialPageBg: number
+  initialPageAd: number
+  initialLimit: number
 }
 const TabsPanel = ({ ...props }: IPropsTabsPanel) => {
   const { ordersStore } = useStore()
-  const { dataBgResponse, dataAdResponse } = props
+  const {
+    dataBgResponse,
+    dataAdResponse,
+    initialPageBg,
+    initialPageAd,
+    initialLimit,
+  } = props
 
   useEffect(() => {
     ordersStore.setDataBg(dataBgResponse)
     ordersStore.setDataAd(dataAdResponse)
-  }, [dataBgResponse, dataAdResponse, ordersStore]) // Зависимости для обновления данных при их изменении
+    // Устанавливаем общее количество элементов
+    ordersStore.totalCountBg = dataBgResponse.count
+    ordersStore.totalCountAd = dataAdResponse.count
+    ordersStore.setPagination({
+      pageBg: initialPageBg,
+      pageAd: initialPageAd,
+      limit: initialLimit,
+    })
+  }, [
+    dataBgResponse,
+    dataAdResponse,
+    initialPageBg,
+    initialPageAd,
+    initialLimit,
+    ordersStore,
+  ]) 
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     ordersStore.setActiveTabs(newValue)
@@ -66,14 +90,14 @@ const TabsPanel = ({ ...props }: IPropsTabsPanel) => {
                   borderRadius: '2px',
                 }}
                 value={0}
-                label='Bg-Orders'
+                label='Фоновые'
               />
               <Tab
                 sx={{
                   borderRadius: '2px',
                 }}
                 value={1}
-                label='AD-Orders'
+                label='Реклама'
               />
             </Tabs>
           </Box>

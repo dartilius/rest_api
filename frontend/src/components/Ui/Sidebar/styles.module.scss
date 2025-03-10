@@ -5,9 +5,14 @@
     /* Фиксированная ширина боковой панели */
     background-color: $foreground-color;
     height: 100%;
-    transition: width 0.3s ease-in-out;
+    transition: width .5s ease-in-out;
+    overflow: hidden; // Скрываем содержимое при закрытии
 }
-
+.sidebar_closed  {
+    width: 0; // Ширина закрытого сайдбара
+    transition: width .5s ease-in-out;
+    
+  }
 .sidebar_menu {
     display: flex;
     flex-direction: column;

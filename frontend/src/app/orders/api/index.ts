@@ -7,7 +7,7 @@ const isSSR = typeof window === "undefined";
 console.log('isSsr', isSSR);
 
 export async function getDataBg(queryParams: {
-    page: number;
+    pageBg: number;
     limit: number;
     name: string;
     status: string;
@@ -28,11 +28,11 @@ export async function getDataBg(queryParams: {
 
     const stringifiedQueryParams = {
         ...queryParams,
-        page: queryParams.page.toString(),
+        page: queryParams.pageBg.toString(),
         limit: queryParams.limit.toString()
     };
 
-    const url = `${API_URL}/bgorders`;
+    const url = `${API_URL}bgorders`;
 
     const res = await client.get<IDataBgResponse>(url, {
         params: stringifiedQueryParams,
@@ -44,7 +44,7 @@ export async function getDataBg(queryParams: {
     return res; 
 }
 export async function getDataAd(queryParams: {
-    page: number;
+    pageAd: number;
     limit: number;
     name: string;
     status: string;
@@ -65,11 +65,11 @@ export async function getDataAd(queryParams: {
 
     const stringifiedQueryParams = {
         ...queryParams,
-        page: queryParams.page.toString(),
+        page: queryParams.pageAd.toString(),
         limit: queryParams.limit.toString()
     };
 
-    const url = `${API_URL}/adorders`;
+    const url = `${API_URL}adorders`;
 
     const res = await client.get<IDataAdResponse>(url, {
         params: stringifiedQueryParams,
