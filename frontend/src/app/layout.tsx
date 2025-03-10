@@ -9,7 +9,7 @@ import Sidebar from '@/components/Ui/Sidebar/Sidebar'
 import Providers from './providers'
 import Head from 'next/head'
 import Navbar from '@/components/Ui/navbar/Navbar'
-import useIdFromParams from "@/hooks/useIdFromParam";
+import useIdFromParams from '@/hooks/useIdFromParam'
 
 const fonts = localFont({
   src: [
@@ -71,7 +71,7 @@ export default function RootLayout({
         <title>RMC</title>
         <meta name='description' content='Реклама в ТЦ' />
         <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-        <link rel="icon" href="/favicon.ico" type="image/ico" />
+        <link rel='icon' href='/favicon.ico' type='image/ico' />
       </Head>
       <body className={`${fonts.className} antialiased`}>
         <Providers>
@@ -82,9 +82,9 @@ export default function RootLayout({
               <Navbar toggleSidebar={toggleSidebar} />
               <div className='flex_sidebar_and_main'>
                 {openSideBar && <Sidebar />}
-                <div className='main'>
-                  <main className='content'>{children}</main>
-                </div>
+                <main onClick={() => setOpenSideBar(false)} className='content'>
+                  {children}
+                </main>
               </div>
             </div>
           )}
