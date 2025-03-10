@@ -216,7 +216,7 @@ const AdOrders = () => {
           ))}
         </tfoot>
       </table>
-      <div className='flex items-center gap-2 p-4'>
+      <div className='w-full flex items-center justify-center gap-2 p-4'>
         <button
           onClick={() => goToPage(pageAd - 1)}
           disabled={pageAd === 1}

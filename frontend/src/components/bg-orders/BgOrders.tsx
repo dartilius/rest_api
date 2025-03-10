@@ -222,7 +222,7 @@ const BgOrders = () => {
           </tfoot>
         </table>
       )}
-      <div className='flex items-center gap-2 p-4'>
+      <div className='w-full flex items-center justify-center gap-2 p-4'>
         <button
           onClick={() => goToPage(pageBg - 1)}
           disabled={pageBg === 1}
