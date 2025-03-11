@@ -12,18 +12,26 @@ import {
 import dayjs from 'dayjs'
 import { toJS } from 'mobx'
 import { observer } from 'mobx-react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 const AdOrders = () => {
   const { ordersStore } = useStore()
   const [data, setData] = useState<IAdData[]>([])
   const columnHelper = createColumnHelper<IAdData>()
+  const { pageAd, limit, totalPagesAd } = ordersStore
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const isNextButtonDisabled = pageAd >= totalPagesAd
 
   useEffect(() => {
-    if (ordersStore.dataAdResponse?.results)
+    const pageBgFromUrl = parseInt(searchParams.get('pageAd') || '1')
+    ordersStore.setPageAd(pageBgFromUrl)
+    if (ordersStore.dataAdResponse?.results) {
       setData(toJS(ordersStore.dataAdResponse?.results))
-  }, [ordersStore.dataAdResponse?.results])
+    }
+  }, [ordersStore.dataAdResponse?.results, pageAd, ordersStore])
 
   const columns = [
     columnHelper.accessor('name', {
@@ -116,7 +124,6 @@ const AdOrders = () => {
     }),
   ]
 
-  const router = useRouter()
   const table = useReactTable({
     data,
     columns,
@@ -128,6 +135,15 @@ const AdOrders = () => {
     // Переход на страницу с расшифровкой
     router.push(`orders/ad/${id}`)
   }
+
+  console.log(pathname)
+  const goToPage = (newPage: number) => {
+    ordersStore.setPageAd(newPage)
+    const params = new URLSearchParams()
+    params.set('pageAd', newPage.toString())
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
   return (
     <div className='p-2 w-full h-full'>
       <table className='w-full '>
@@ -173,7 +189,10 @@ const AdOrders = () => {
               onClick={() => handleRowClick(row.original.id)}
             >
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className='text-center cursor-pointer p-2'>
+                <td
+                  key={cell.id}
+                  className='text-center text-nowrap cursor-pointer p-2'
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
@@ -197,6 +216,25 @@ const AdOrders = () => {
           ))}
         </tfoot>
       </table>
+      <div className='w-full flex items-center justify-center gap-2 p-4'>
+        <button
+          onClick={() => goToPage(pageAd - 1)}
+          disabled={pageAd === 1}
+          className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+        >
+          Предыдущая
+        </button>
+        <span>
+          Страница: {pageAd} из {totalPagesAd}
+        </span>
+        <button
+          onClick={() => goToPage(pageAd + 1)}
+          disabled={isNextButtonDisabled}
+          className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+        >
+          Следующая
+        </button>
+      </div>
     </div>
   )
 }
