@@ -7,20 +7,17 @@ interface IOrdersStore {
   dataBgResponse: IDataBgResponse | null;
   dataAdResponse: IDataAdResponse | null;
   activeTab: number;
-  startDate: Dayjs | null;
-  endDate: Dayjs | null;
-  pageBg: number; // Текущая страница для Bg-Orders
-  pageAd: number; // Текущая страница для Ad-Orders
+  page: number; // Текущая страница для 
+
   limit: number; // Лимит на страницу
   totalCountBg: number; // Общее количество элементов для Bg-Orders
   totalCountAd: number; // Общее количество элементов для Ad-Orders
   setActiveTabs(val: number): void;
   setDataBg(data: IDataBgResponse): void;
   setDataAd(data: IDataAdResponse): void;
-  setPageBg(page: number): void; // Установка текущей страницы для Bg-Orders
-  setPageAd(page: number): void; // Установка текущей страницы для Ad-Orders
+  setPage(page: number): void; // Установка текущей страницы 
   setLimit(limit: number): void; // Установка лимита
-  setPagination(params: { pageBg: number; pageAd: number; limit: number }): void; // Установка пагинации
+  setPagination(params: { page: number; limit: number }): void; // Установка пагинации
   get totalPagesBg(): number; // Общее количество страниц для Bg-Orders
   get totalPagesAd(): number; // Общее количество страниц для Ad-Orders
 }
@@ -29,10 +26,7 @@ class OrdersStore implements IOrdersStore {
   dataBgResponse: IDataBgResponse | null = null;
   dataAdResponse: IDataAdResponse | null = null;
   activeTab = 0;
-  startDate: Dayjs | null = null;
-  endDate: Dayjs | null = null;
-  pageBg = 1; // Начальная страница для Bg-Orders
-  pageAd = 1; // Начальная страница для Ad-Orders
+  page = 1; // Начальная страница
   limit = 20; // Лимит по умолчанию
   totalCountBg = 0; // Общее количество элементов для Bg-Orders
   totalCountAd = 0; // Общее количество элементов для Ad-Orders
@@ -42,20 +36,14 @@ class OrdersStore implements IOrdersStore {
       dataBgResponse: observable,
       dataAdResponse: observable,
       activeTab: observable,
-      startDate: observable,
-      endDate: observable,
-      pageBg: observable,
-      pageAd: observable,
+      page: observable,
       limit: observable,
       totalCountBg: observable,
       totalCountAd: observable,
       setActiveTabs: action,
-      setStartDate: action,
-      setEndDate: action,
       setDataBg: action,
       setDataAd: action,
-      setPageBg: action,
-      setPageAd: action,
+      setPage: action,
       setLimit: action,
       setPagination: action,
       totalPagesBg: computed, // Вычисляемое свойство для общего количества страниц Bg-Orders
@@ -74,28 +62,14 @@ class OrdersStore implements IOrdersStore {
   }
 
   // Установка активной вкладки
-  setActiveTabs(val: number): void {
+  
+  setActiveTabs(val: number){
     this.activeTab = val;
   }
 
-  // Установка начальной даты
-  setStartDate(date: Dayjs | null): void {
-    this.startDate = date;
-  }
-
-  // Установка конечной даты
-  setEndDate(date: Dayjs | null): void {
-    this.endDate = date;
-  }
-
-  // Установка текущей страницы для Bg-Orders
-  setPageBg(page: number): void {
-    this.pageBg = page;
-  }
-
-  // Установка текущей страницы для Ad-Orders
-  setPageAd(page: number): void {
-    this.pageAd = page;
+  // Установка текущей страницы
+  setPage(page: number): void {
+    this.page = page;
   }
 
   // Установка лимита
@@ -104,16 +78,12 @@ class OrdersStore implements IOrdersStore {
   }
 
   // Установка пагинации (страница и лимит)
-  setPagination(params: { pageBg: number; pageAd: number; limit: number }): void {
-    this.pageBg = params.pageBg;
-    this.pageAd = params.pageAd;
+  setPagination(params: { page: number;  limit: number }): void {
+    this.page = params.page;
     this.limit = params.limit;
   }
 
-  // Геттер для диапазона дат
-  get dateRange() {
-    return { startDate: this.startDate, endDate: this.endDate };
-  }
+
    // Вычисляемое свойство для общего количества страниц Bg-Orders
    get totalPagesBg(): number {
     return Math.ceil(this.totalCountBg / this.limit);

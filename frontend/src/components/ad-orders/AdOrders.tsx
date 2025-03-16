@@ -1,241 +1,214 @@
 'use client'
 
 import { useStore } from '@/providers/mobx-provider/MobxProvider'
-import { IAdData } from '@/types/orderTypes'
+import { IAdData, IDataAdResponse } from '@/types/orderTypes'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
 import {
-  createColumnHelper,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import dayjs from 'dayjs'
-import { toJS } from 'mobx'
 import { observer } from 'mobx-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import FiltersPanel from '../filters/FiltersPanel'
+import AppBar from '@mui/material/AppBar'
+import { Typography } from '@mui/material'
+import { adColumnsTable } from './adColumnsTable'
 
-const AdOrders = () => {
+interface IProps {
+  dataResponse: IDataAdResponse
+}
+const AdOrders = ({ ...props }: IProps) => {
+  const { dataResponse } = props
+  
   const { ordersStore } = useStore()
   const [data, setData] = useState<IAdData[]>([])
-  const columnHelper = createColumnHelper<IAdData>()
-  const { pageAd, limit, totalPagesAd } = ordersStore
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const isNextButtonDisabled = pageAd >= totalPagesAd
+  const { totalPagesBg } = ordersStore
+  const page = searchParams.get('page')
+
+  const isNextButtonDisabled = Number(page) >= totalPagesBg
 
   useEffect(() => {
-    const pageBgFromUrl = parseInt(searchParams.get('pageAd') || '1')
-    ordersStore.setPageAd(pageBgFromUrl)
-    if (ordersStore.dataAdResponse?.results) {
-      setData(toJS(ordersStore.dataAdResponse?.results))
+
+    const params = new URLSearchParams(searchParams)
+    if (!params.has('page')) {
+      params.set('page', '1')
+      router.replace(`${pathname}?${params.toString()}`)
     }
-  }, [ordersStore.dataAdResponse?.results, pageAd, ordersStore])
 
-  const columns = [
-    columnHelper.accessor('name', {
-      header: () => <span>Название</span>,
-      cell: (info) => info.getValue(),
-      // footer: (info) => info.column.id,
-      enableSorting: true,
-    }),
-    columnHelper.accessor((row) => row.client.name, {
-      id: 'client',
-      cell: (info) => <i>{info.getValue()}</i>,
-      header: () => <span>Номенклатура</span>,
-      // footer: (info) => info.column.id,
-      enableSorting: true,
-    }),
-    columnHelper.accessor('broadcast_interval', {
-      header: 'Интервал работы заказа',
-      cell: (info) => {
-        const { lower, upper } = info.getValue() as {
-          lower: string
-          upper: string
-        }
-        const formatDate = (dateString: string) => {
-          return dayjs(dateString).format('DD/MM/YYYY-HH:mm')
-        }
-        return `${formatDate(lower)} - ${formatDate(upper)}`
-      },
-      sortingFn: (rowA, rowB) => {
-        const intervalA = rowA.getValue('broadcast_interval') as {
-          lower: string
-        }
-        const intervalB = rowB.getValue('broadcast_interval') as {
-          lower: string
-        }
+    setData(dataResponse.results)
+    ordersStore.totalCountBg = dataResponse.count
+    ordersStore.setActiveTabs(1)
+  }, []) 
 
-        const dateA = dayjs(intervalA.lower)
-        const dateB = dayjs(intervalB.lower)
-
-        return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0
-      },
-      enableSorting: true,
-    }),
-    columnHelper.accessor('broadcast_type', {
-      header: 'Тип вещания',
-      cell: (info) => {
-        const orderTypes = {
-          0: 'По времени работы точки',
-          1: 'Начало работы + смещение по времени',
-          2: 'Конец работы – смещение по времени',
-          4: 'С открытия до конкретного часа',
-          5: 'С фиксированного часа до закрытия',
-          6: 'Старт по событию',
-        } as const
-        return (
-          orderTypes[info.getValue() as keyof typeof orderTypes] ||
-          'Неизвестный тип'
-        )
-      },
-      enableSorting: true,
-    }),
-    columnHelper.accessor('status', {
-      header: 'Статус',
-      cell: (info) => {
-        const statusMapping = {
-          0: {
-            label: 'Ожидает эфира',
-            backgroundColor: 'rgba(255, 167, 86, 0.4)',
-          },
-          1: { label: 'В эфире', backgroundColor: 'rgba(0, 182, 155, 0.4)' },
-          2: { label: 'Завершен', backgroundColor: 'rgba(128, 128, 128, 0.4)' },
-          3: { label: 'Отменен', backgroundColor: 'rgba(239, 56, 40, 0.4)' },
-          4: { label: 'Ошибка', backgroundColor: 'rgba(239, 56, 40, 0.4)' },
-        }
-        const status = statusMapping[
-          info.getValue() as keyof typeof statusMapping
-        ] || { label: 'Неизвестный статус', backgroundColor: 'white' }
-        return (
-          <div
-            style={{
-              backgroundColor: status.backgroundColor,
-              padding: '5px',
-              borderRadius: '8px',
-            }}
-          >
-            {status.label}
-          </div>
-        )
-      },
-      enableSorting: true,
-    }),
-  ]
-
+  
   const table = useReactTable({
     data,
-    columns,
+    columns: adColumnsTable,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     enableSorting: true,
   })
   const handleRowClick = (id: string) => {
     // Переход на страницу с расшифровкой
-    router.push(`orders/ad/${id}`)
+    router.push(`bgorders/${id}`)
   }
-
-  console.log(pathname)
   const goToPage = (newPage: number) => {
-    ordersStore.setPageAd(newPage)
-    const params = new URLSearchParams()
-    params.set('pageAd', newPage.toString())
+    // ordersStore.setPage(newPage)
+    const params = new URLSearchParams(searchParams)
+    params.set('page', newPage.toString())
     router.push(`${pathname}?${params.toString()}`)
   }
 
   return (
-    <div className='p-2 w-full h-full'>
-      <table className='w-full '>
-        <thead className='sticky'>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className='h-16 border-2 border-slate-300'>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  style={{ width: header.id === 'status' ? '160px' : 'auto' }}
+    <Paper
+      elevation={4}
+      sx={{ width: '100%', height: '100%' }}
+      className='relative overflow-y-auto'
+    >
+      <AppBar position='static' color='transparent'>
+        <Box
+          display={'flex'}
+          justifyContent={'center'}
+          width={'100%'}
+          padding={1}
+          gap={2}
+        >
+          <Typography
+            variant='h5'
+            noWrap
+            component='div'
+            fontStyle={'uppercase'}
+            sx={{
+              flexGrow: 1,
+              alignSelf: 'center',
+              justifyContent: 'center',
+              alignItems: 'center',
+              textAlign: 'center',
+              fontSize: '2rem',
+              fontStyle: 'oblique',
+              fontVariantCaps: 'all-small-caps',
+              color: '#152c4d',
+            }}
+          >
+            Рекламные
+          </Typography>
+          <Box sx={{ width: 2 / 3 }}>
+            <FiltersPanel />
+          </Box>
+        </Box>
+      </AppBar>
+      <div className='p-2 w-full'>
+        {data.length < 1 ? (
+          <p>loading</p>
+        ) : (
+          <table className='w-full '>
+            <thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr
+                  key={headerGroup.id}
+                  className='h-16 border-2 border-slate-300'
                 >
-                  {header.isPlaceholder ? null : (
-                    <div
-                      className='cursor-pointer'
-                      {...{
-                        onClick: header.column.getToggleSortingHandler(),
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      style={{
+                        width: header.id === 'status' ? '160px' : 'auto',
                       }}
                     >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className='cursor-pointer'
+                          {...{
+                            onClick: header.column.getToggleSortingHandler(),
+                          }}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {/* Индикатор сортировки */}
+                          <span>
+                            {header.column.getIsSorted()
+                              ? header.column.getIsSorted() === 'asc'
+                                ? ' 🔼'
+                                : ' 🔽'
+                              : ''}
+                          </span>
+                        </div>
                       )}
-                      {/* Индикатор сортировки */}
-                      <span>
-                        {header.column.getIsSorted()
-                          ? header.column.getIsSorted() === 'asc'
-                            ? ' 🔼'
-                            : ' 🔽'
-                          : ''}
-                      </span>
-                    </div>
-                  )}
-                </th>
+                    </th>
+                  ))}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr
-              key={row.id}
-              className='border-2 border-slate-300 text-center h-16'
-              onClick={() => handleRowClick(row.original.id)}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  className='text-center text-nowrap cursor-pointer p-2'
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className='border-2 border-slate-300 text-center h-16'
+                  onClick={() => handleRowClick(row.original.id)}
                 >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          {table.getFooterGroups().map((footerGroup) => (
-            <tr key={footerGroup.id}>
-              {footerGroup.headers.map((header) => (
-                <th key={header.id}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.footer,
-                        header.getContext()
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className='text-center text-nowrap cursor-pointer p-2'
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
                       )}
-                </th>
+                    </td>
+                  ))}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </tfoot>
-      </table>
-      <div className='w-full flex items-center justify-center gap-2 p-4'>
-        <button
-          onClick={() => goToPage(pageAd - 1)}
-          disabled={pageAd === 1}
-          className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
-        >
-          Предыдущая
-        </button>
-        <span>
-          Страница: {pageAd} из {totalPagesAd}
-        </span>
-        <button
-          onClick={() => goToPage(pageAd + 1)}
-          disabled={isNextButtonDisabled}
-          className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
-        >
-          Следующая
-        </button>
+            </tbody>
+            <tfoot>
+              {table.getFooterGroups().map((footerGroup) => (
+                <tr key={footerGroup.id}>
+                  {footerGroup.headers.map((header) => (
+                    <th key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.footer,
+                            header.getContext()
+                          )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </tfoot>
+          </table>
+        )}
+        <div className='w-full flex items-center justify-center gap-2 p-4'>
+          <button
+            onClick={() => goToPage(Number(page) - 1)}
+            disabled={Number(page) === 1}
+            className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+          >
+            Предыдущая
+          </button>
+          <span>
+            Страница: {Number(page)} из {totalPagesBg}
+          </span>
+          <button
+            onClick={() => goToPage(Number(page) + 1)}
+            disabled={isNextButtonDisabled}
+            className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+          >
+            Следующая
+          </button>
+        </div>
       </div>
-    </div>
+    </Paper>
   )
 }
+
 export default observer(AdOrders)

@@ -6,50 +6,15 @@ import { getServerAccessToken, getClientAccessToken } from "@/utils";
 const isSSR = typeof window === "undefined";
 console.log('isSsr', isSSR);
 
-export async function getDataBg(queryParams: {
-    pageBg: number;
-    limit: number;
-    name: string;
-    status: string;
-    timezone: string;
-    version: string;
-}): Promise<IDataBgResponse> {
-    let token;
-    if (isSSR) {
-        // Для SSR получаем токен с сервера
-        token = await getServerAccessToken();
-        console.log('token isSsr', token);
-    } else {
-        // Для клиента получаем токен с клиента
-        token = getClientAccessToken();
-        console.log('token !isSsr', token);
-    }
-
-
-    const stringifiedQueryParams = {
-        ...queryParams,
-        page: queryParams.pageBg.toString(),
-        limit: queryParams.limit.toString()
-    };
-
-    const url = `${API_URL}bgorders`;
-
-    const res = await client.get<IDataBgResponse>(url, {
-        params: stringifiedQueryParams,
-        headers: {
-            Authorization: `access_token ${token}`,
-        }
-    });
-
-    return res; 
-}
 export async function getDataAd(queryParams: {
-    pageAd: number;
+    page: number;
     limit: number;
     name: string;
+    client: string;
     status: string;
-    timezone: string;
-    version: string;
+    created_after: string;
+    created_before: string;
+    brc_type: string;
 }): Promise<IDataAdResponse> {
     let token;
     if (isSSR) {
@@ -65,8 +30,13 @@ export async function getDataAd(queryParams: {
 
     const stringifiedQueryParams = {
         ...queryParams,
-        page: queryParams.pageAd.toString(),
-        limit: queryParams.limit.toString()
+        page: queryParams.page.toString(),
+        limit: queryParams.limit.toString(),
+        name: queryParams.name.toString(),
+        client: queryParams.client.toString(),
+        brc_type: queryParams.brc_type.toString(),
+        created_after: queryParams.created_after.toString(),
+        created_before: queryParams.created_before.toString(),
     };
 
     const url = `${API_URL}adorders`;
