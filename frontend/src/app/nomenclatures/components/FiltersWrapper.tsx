@@ -12,7 +12,7 @@ export const FiltersWrapper = () => {
         <Box display="flex" flexDirection="row" gap={2} width='100%'>
             <div style={{ display: 'flex', flexDirection: 'column', width: '100%'}}>
                 <Typography variant="subtitle1">Поиск</Typography>
-                <Search />
+                <Search  nameQueryParams="name" label='Название'/>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                 <Typography variant="subtitle1">Версия</Typography>
