@@ -1,0 +1,54 @@
+import { API_URL } from "@/config/api.config";
+import { client } from "@/services/httpClient";
+import {IDataBgResponse } from "@/types/orderTypes";
+import { getServerAccessToken, getClientAccessToken } from "@/utils";
+
+const isSSR = typeof window === "undefined";
+console.log('isSsr', isSSR);
+
+export async function getDataBg(queryParams: {
+    page: number;
+    limit: number;
+    name: string;
+    client: string;
+    status: string;
+    created_after: string;
+    created_before: string;
+    order_type: string;
+}): Promise<IDataBgResponse> {
+    let token;
+    if (isSSR) {
+        // Для SSR получаем токен с сервера
+        token = await getServerAccessToken();
+        console.log('token isSsr', token);
+    } else {
+        // Для клиента получаем токен с клиента
+        token = getClientAccessToken();
+        console.log('token !isSsr', token);
+    }
+
+
+    const stringifiedQueryParams = {
+        ...queryParams,
+        page: queryParams.page.toString(),
+        limit: queryParams.limit.toString(),
+        name: queryParams.name.toString(),
+        client: queryParams.client.toString(),
+        order_type: queryParams.order_type.toString(),
+        created_after: queryParams.created_after.toString(),
+        created_before: queryParams.created_before.toString(),
+
+    };
+
+    const url = `${API_URL}bgorders`;
+
+    const res = await client.get<IDataBgResponse>(url, {
+        params: stringifiedQueryParams,
+        headers: {
+            Authorization: `access_token ${token}`,
+        }
+    });
+console.log(res);
+
+    return res; 
+}

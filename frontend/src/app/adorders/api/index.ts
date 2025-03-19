@@ -1,17 +1,21 @@
+import { API_URL } from "@/config/api.config";
 import { client } from "@/services/httpClient";
+import { IDataAdResponse, IDataBgResponse } from "@/types/orderTypes";
 import { getServerAccessToken, getClientAccessToken } from "@/utils";
 
 const isSSR = typeof window === "undefined";
 console.log('isSsr', isSSR);
 
-export async function getDataBg(queryParams: {
+export async function getDataAd(queryParams: {
     page: number;
     limit: number;
     name: string;
+    client: string;
     status: string;
-    timezone: string;
-    version: string;
-}): Promise<any> {
+    created_after: string;
+    created_before: string;
+    brc_type: string;
+}): Promise<IDataAdResponse> {
     let token;
     if (isSSR) {
         // Для SSR получаем токен с сервера
@@ -27,12 +31,17 @@ export async function getDataBg(queryParams: {
     const stringifiedQueryParams = {
         ...queryParams,
         page: queryParams.page.toString(),
-        limit: queryParams.limit.toString()
+        limit: queryParams.limit.toString(),
+        name: queryParams.name.toString(),
+        client: queryParams.client.toString(),
+        brc_type: queryParams.brc_type.toString(),
+        created_after: queryParams.created_after.toString(),
+        created_before: queryParams.created_before.toString(),
     };
 
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/bgorders`;
+    const url = `${API_URL}adorders`;
 
-    const res = await client.get<any>(url, {
+    const res = await client.get<IDataAdResponse>(url, {
         params: stringifiedQueryParams,
         headers: {
             Authorization: `access_token ${token}`,
