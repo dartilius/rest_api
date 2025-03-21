@@ -1,26 +1,27 @@
-export interface INomenclaturesResponse {
-  count: number;
-  next: string;
-  previous: string;
-  results: INomenclatureResults[];
+export interface NomenclaturesListProps {
+    page?: number | string;
+    limit?: number | string;
+    name?: string;
+    status?: string;
+    timezone?: string;
+    version?: string;
+    openModalFilters?: boolean;
 }
 
-export interface INomenclatureResults {
-  id: number;
-  name: string;
-  timezone: string;
-  version: string;
-  last_answer: string;
-  status: number;
+export interface NomenclaturesDataList {
+    id: string;
+    article: string;
+    name: string;
+    timezone: string;
+    status: string;
+    last_answer: string;
+    version: string;
 }
-
-export interface INomenclaturesService {
-  page: number;
-  limit: number;
-  timezone?: string;
-  status?: string;
-  search?: string;
-  version?: string;
+export interface fetchNomenclaturesResponse {
+    count: number;
+    next: string;
+    previous: string;
+    results: NomenclaturesDataList[];
 }
 
 export interface DayConfig {

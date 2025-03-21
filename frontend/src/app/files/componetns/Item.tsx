@@ -1,30 +1,49 @@
-import {Button, Card, CardActions, CardContent, CardMedia, Typography} from "@mui/material";
+import {Button, Card, CardActions, CardContent, CardMedia, Tooltip, Typography} from "@mui/material";
 import {FilesDataList} from "@/services/FilesService";
+import {convertSizeFile, convertTypeFile} from "@/utils";
+import Page from "@/app/files/[id]/page";
 
-export async function Item(props: FilesDataList) {
+type Props = {
+    item: FilesDataList
+}
 
-    const {name,size,type,length,id} = props
+export function Item(props: Props) {
+
+    const {item} = props
+    const {name, id, type, length, size} = item
         
     return (
-        <Card sx={{ maxWidth: 345 }}>
-            <CardMedia
-                sx={{ height: 140 }}
-                image="/static/images/cards/contemplative-reptile.jpg"
-                title="green iguana"
-            />
+        <Card sx={{
+            maxWidth: 360,
+            color: 'black',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            height: 272 // Фиксированная высота карточки
+        }}>
             <CardContent>
-                <Typography gutterBottom variant="h5" component="div">
-                    Lizard
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Lizards are a widespread group of squamate reptiles, with over 6,000
-                    species, ranging across all continents except Antarctica
-                </Typography>
+                <div>
+                    {convertTypeFile(type.toString())}
+                </div>
+
+            </CardContent>
+            <CardContent>
+                    <Page params={{id}}/>
+
+            </CardContent>
+            <CardContent>
+                <div>
+                    {length && (length)}
+                </div>
+                <div>
+                    {size && (convertSizeFile(size))}
+                </div>
             </CardContent>
             <CardActions>
                 <Button size="small">Share</Button>
                 <Button size="small">Learn More</Button>
             </CardActions>
+
         </Card>
     );
 }
