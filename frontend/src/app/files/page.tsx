@@ -1,5 +1,8 @@
 import {Metadata} from "next";
 import {List} from "@/app/files/componetns/List";
+import {fetchFilesList} from "@/services/FilesService";
+import {ModalWrapper} from "@/app/files/componetns/Modal";
+import SearchForm from "@/app/files/componetns/SearchForm";
 
 export const metadata: Metadata = {
         title: 'Файлы',
@@ -23,7 +26,16 @@ export default async function Page(props: {
     const limit = Number(searchParams?.limit) || 10
     const fileType = searchParams?.file_type || '';
     const tags = searchParams?.tags || '';
+
+    const listFiles = await fetchFilesList({page: currentPage,limit, name})
+    const dataFiles =  typeof listFiles !== 'string' ? listFiles.results : []
+    const countFiles =  typeof listFiles !== 'string' ? listFiles.count : 0
     return (
-        <List limit={limit} currentPage={currentPage} file_type={fileType} name={name} tags={tags}/>
+        <div>
+            <ModalWrapper />
+            <SearchForm />
+
+            <List limit={limit} currentPage={currentPage} data={dataFiles} count={countFiles}/>
+        </div>
     );
 }

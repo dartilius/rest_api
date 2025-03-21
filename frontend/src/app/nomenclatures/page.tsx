@@ -19,6 +19,7 @@ type NomenclaturesListProps = {
     openModalFilters?: boolean;
 }
 
+
 export default async function Page(props: {
     searchParams?: Promise<NomenclaturesListProps>
 }) {

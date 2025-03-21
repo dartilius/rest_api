@@ -10,7 +10,7 @@ class HttpError extends Error {
     }
   }
   
-  class HttpClient {
+  export class HttpClient {
     async request<T>(
       method: string,
       url: string,
@@ -24,7 +24,7 @@ class HttpError extends Error {
   
       const response = await fetch(urlWithParams, {
         method,
-        credentials: "include",
+        // credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(options?.headers || {}),
@@ -35,6 +35,10 @@ class HttpError extends Error {
       if (!response.ok) {
         const errorMessage = `Error: ${response.status} - ${response.statusText}`;
         throw new HttpError(errorMessage, response.status, urlWithParams);
+      }
+
+      if (response.status === 204) {
+        return response.status as unknown as T;
       }
   
       return (await response.json()) as T;
