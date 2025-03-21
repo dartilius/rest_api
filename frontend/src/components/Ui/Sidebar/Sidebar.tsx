@@ -75,8 +75,6 @@ import useIdFromParams from '@/hooks/useIdFromParam'
 import { ActionButtons } from '@/app/nomenclatures/[id]/components/ActionButtons'
 import { Divider } from '@mui/material'
 import { useState } from 'react'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 
 const menuItems = [
   { href: '/nomenclatures', label: 'Номенклатуры' },
@@ -160,7 +158,7 @@ const Sidebar = ({ isOpen }: ISideBarProps) => {
           )
         })}
 
-        {isNomenclaturePage && id && (
+        {isNomenclaturePage && id && isOpen &&(
           <div style={{
             color: 'black',
             display: 'flex',
@@ -170,7 +168,7 @@ const Sidebar = ({ isOpen }: ISideBarProps) => {
             padding: '0.8rem 1rem',
           }}>
             <Divider color='black' />
-            Админ действия
+              Админ действия
             <ActionButtons id={id} />
           </div>
         )}

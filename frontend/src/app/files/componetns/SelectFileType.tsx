@@ -5,7 +5,6 @@ type Props = {
 }
 
 function SelectFileType() {
-    const
     return (
         <div></div>
     );

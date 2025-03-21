@@ -1,5 +1,5 @@
 import React from 'react';
-import {fetchFilesList, fetchFilesResponse, FilesDataList} from "@/services/FilesService";
+import {FilesDataList} from "@/services/FilesService";
 import {Item} from "@/app/files/componetns/Item";
 import {Pagination} from "@/app/files/componetns/Pagination";
 
