@@ -22,7 +22,7 @@ export type FilesDataList = {
     name: string,
     length: string,
     size: number,
-    type: number
+    type: string
 }
 
 export async function fetchFilesList(props: fetchFilesListQuery): Promise<fetchFilesResponse> {
