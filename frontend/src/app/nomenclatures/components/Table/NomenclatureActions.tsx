@@ -3,7 +3,6 @@
 import { IconButton } from "@mui/material";
 import Image from "next/image";
 import {useState} from "react";
-import {deleteNomenclatures} from "@/services/NomenclaturesService";
 import {useRouter} from "next/navigation";
 import {gifDelete, gifEdit, staticDelete, staticEdit} from "@/styles";
 import {nomenclaturesService} from "@/app/nomenclatures/api";

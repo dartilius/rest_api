@@ -9,7 +9,6 @@ import Sidebar from '@/components/Ui/Sidebar/Sidebar'
 import Providers from './providers'
 import Head from 'next/head'
 import Navbar from '@/components/Ui/navbar/Navbar'
-import useIdFromParams from '@/hooks/useIdFromParam'
 
 const fonts = localFont({
   src: [

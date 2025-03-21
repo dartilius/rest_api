@@ -1,4 +1,4 @@
-import {Button, Card, CardActions, CardContent, CardMedia, Tooltip, Typography} from "@mui/material";
+import {Button, Card, CardActions, CardContent} from "@mui/material";
 import {FilesDataList} from "@/services/FilesService";
 import {convertSizeFile, convertTypeFile} from "@/utils";
 import Page from "@/app/files/[id]/page";

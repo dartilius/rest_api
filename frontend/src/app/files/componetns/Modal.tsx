@@ -1,14 +1,11 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import {Modal, Box, Button, Typography, Input, Alert, Snackbar, Select, MenuItem, FormControl} from "@mui/material";
+import {Modal, Box, Button, Alert, Snackbar, Select, MenuItem, FormControl} from "@mui/material";
 import "./Modal.scss";
 import {ChangeEvent, useState} from "react";
 import {sendFile} from "@/services/FilesService";
 import {convertTypeForSendFile} from "@/utils/convertTypeFile";
-import {convertStatus} from "@/types/checkStatus";
-import selectFileType from "@/app/files/componetns/SelectFileType";
-
 function convertBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const fileReader = new FileReader();

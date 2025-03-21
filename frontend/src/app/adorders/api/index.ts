@@ -1,6 +1,6 @@
 import { API_URL } from "@/config/api.config";
 import { client } from "@/services/httpClient";
-import { IDataAdResponse, IDataBgResponse } from "@/types/orderTypes";
+import { IDataAdResponse } from "@/types/orderTypes";
 import { getServerAccessToken, getClientAccessToken } from "@/utils";
 
 const isSSR = typeof window === "undefined";
