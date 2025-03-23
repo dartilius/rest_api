@@ -1,6 +1,6 @@
 import { API_URL } from "@/config/api.config";
 import { client } from "@/services/httpClient";
-import {IDataBgResponse } from "@/types/orderTypes";
+import {IBgOrderDetail, IDataBgResponse } from "@/types/orderTypes";
 import { getServerAccessToken, getClientAccessToken } from "@/utils";
 
 const isSSR = typeof window === "undefined";
@@ -52,3 +52,26 @@ console.log(res);
 
     return res; 
 }
+
+
+export async function getBgOrderDetail(id: string): Promise<IBgOrderDetail> {
+    try {
+      const token = await getServerAccessToken();
+      const url = `${API_URL}bgorders/${id}`;
+  
+      const res = await client.get<IBgOrderDetail>(url, {
+        headers: {
+          Authorization: `access_token ${token}`,
+        }
+      });
+  
+      if (!res) {
+        throw new Error('Order not found');
+      }
+  
+      return res;
+    } catch (error) {
+      console.error('Error fetching order detail:', error);
+      throw error;
+    }
+  }

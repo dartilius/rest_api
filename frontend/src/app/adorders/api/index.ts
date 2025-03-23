@@ -1,6 +1,6 @@
 import { API_URL } from "@/config/api.config";
 import { client } from "@/services/httpClient";
-import { IDataAdResponse, IDataBgResponse } from "@/types/orderTypes";
+import { IAdOrderDetail, IDataAdResponse } from "@/types/orderTypes";
 import { getServerAccessToken, getClientAccessToken } from "@/utils";
 
 const isSSR = typeof window === "undefined";
@@ -50,3 +50,26 @@ export async function getDataAd(queryParams: {
 
     return res; 
 }
+
+
+export async function getAdOrderDetail(id: string): Promise<IAdOrderDetail> {
+    try {
+      const token = await getServerAccessToken();
+      const url = `${API_URL}adorders/${id}`;
+  
+      const res = await client.get<IAdOrderDetail>(url, {
+        headers: {
+          Authorization: `access_token ${token}`,
+        }
+      });
+  
+      if (!res) {
+        throw new Error('Order not found');
+      }
+  
+      return res;
+    } catch (error) {
+      console.error('Error fetching order detail:', error);
+      throw error;
+    }
+  }
