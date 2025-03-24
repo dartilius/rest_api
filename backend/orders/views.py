@@ -1,14 +1,10 @@
-from django.core import serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.status import (
-    HTTP_400_BAD_REQUEST,
-    HTTP_200_OK
-)
+from rest_framework.status import HTTP_200_OK
 
-from api.constants import Constants
+from api.constants import restricted_update
 from orders.filters import AdOrderFilter, BgOrderFilter
 from orders.serializers import (
     AdOrderSerializer,
@@ -17,14 +13,15 @@ from orders.serializers import (
     BgOrderListSerializer
 )
 from orders.models import AdOrder, BgOrder
-from tasks.tasks import (
+from orders.tasks import (
     create_ad_order_task,
+    update_ad_order_task,
     cancel_ad_order_task,
-    resend_ad_order_task,
     create_bg_order_task,
-    cancel_bg_order_task,
-    resend_bg_order_task
+    update_bg_order_task,
+    cancel_bg_order_task
 )
+from users.permissions import StaffCUDAuthRetrieve
 
 
 class NoDeleteViewSet(mixins.CreateModelMixin,
@@ -32,8 +29,7 @@ class NoDeleteViewSet(mixins.CreateModelMixin,
                       mixins.UpdateModelMixin,
                       mixins.ListModelMixin,
                       viewsets.GenericViewSet):
-    """Вьюсет без предустановленного метода DELETE."""
-    pass
+    """Вьюсет без поддержки метода DELETE."""
 
 
 class AdOrderViewSet(NoDeleteViewSet):
@@ -44,6 +40,7 @@ class AdOrderViewSet(NoDeleteViewSet):
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
+    permission_classes = [StaffCUDAuthRetrieve]
 
     def perform_create(self, serializer):
         """
@@ -54,77 +51,47 @@ class AdOrderViewSet(NoDeleteViewSet):
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
+        # 0
+        serializer.is_valid(raise_exception=True)
+        # 1
         orders_list = serializer.save(owner=self.request.user)
         orders_ids = []
+        # 2
         for orders in orders_list:
             orders_ids.append(
-                [
-                    order.id for order in orders
-                ] if isinstance(orders, list) else orders.id
+                [str(order.id) for order in orders]
+                if len(orders) > 1 else str(orders[0].id)
             )
+        # 3
         create_ad_order_task.delay(orders_ids)
 
-    @action(detail=False, methods=['DELETE'])
-    def cancel(self, request):
-        """
-        Отмена заказов.
+    def update(self, request, *args, **kwargs):
+        error_message = (
+            'Изменить можно только название, описание, '
+            'плейлист и слайды. Лишние ключи: {keys}.'
+        )
+        updatable_fields = (
+            'name',
+            'description',
+            'playlist',
+            'slides'
+        )
+        kwargs.update(updatable_fields=updatable_fields,
+                      error_message=error_message)
+        response = restricted_update(self, request, *args, **kwargs)
+        if 'playlist' in request.data or 'slides' in request.data:
+            instance = self.get_object()
+            update_ad_order_task.delay(order_id=str(instance.id))
+        return response
 
-        0. Получаем список заказов на отмену.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в целери
-            для отмены и создания соответствующих репликаций в фоне.
-        1.2. Заказы, которые нельзя отменить, записываются в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут отменены
-            и которые отменить нельзя.
-        """
-        cancel_list = request.data['orders']
-        orders = AdOrder.objects.filter(pk__in=cancel_list, status__in=[0, 1])
-        bad_result = 'Данные заказы отменить невозможно'
-        if orders not in Constants.empty_values:
-            active_order_ids = [order.id for order in orders]
-            orders_json = serializers.serialize('json', orders)
-            bad_orders = list(set(cancel_list) - set(active_order_ids))
-            good_orders = list(set(cancel_list) - set(bad_orders))
-        else:
-            return Response(data=bad_result, status=HTTP_400_BAD_REQUEST)
-
-        cancel_ad_order_task.delay(orders_json)
-        result_text = f'Запрос на отмену заказов {good_orders} принят.'
-        if bad_orders:
-            result_text += f' {bad_result}: {bad_orders}'
-        return Response(data=result_text, status=HTTP_200_OK)
-
-    @action(detail=False, methods=['POST'])
-    def resend(self, request):
-        """
-        Переотправка заказов.
-
-        0. Получаем список заказов на переотпарвку.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в целери
-            для создания соответствующих репликаций в фоне.
-        1.2. Заказы, которые нельзя переотправить,
-            записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут
-            переотправленны и которые переотправить нельзя.
-        """
-        resend_list = request.data['orders']
-        orders = AdOrder.objects.filter(pk__in=resend_list, status__in=[0, 1])
-        bad_result = 'Данные заказы переотправить невозможно'
-        if orders not in Constants.empty_values:
-            active_order_ids = [order.id for order in orders]
-            orders_json = serializers.serialize('json', orders)
-            bad_orders = list(set(resend_list) - set(active_order_ids))
-            good_orders = list(set(resend_list) - set(bad_orders))
-        else:
-            return Response(data=f'{bad_result}: {resend_list}',
-                            status=HTTP_400_BAD_REQUEST)
-
-        resend_ad_order_task.delay(orders_json)
-        result_text = f'Запрос на переотправку заказов {good_orders} принят.'
-        if bad_orders:
-            result_text += f' {bad_result}: {bad_orders}'
-        return Response(data=result_text, status=HTTP_200_OK)
+    @action(detail=True, methods=['DELETE'])
+    def cancel(self, request, pk):
+        """Отмена заказа."""
+        cancel_ad_order_task.delay(str(pk))
+        return Response(
+            data={'message': 'Запрос на отмену заказа принят.'},
+            status=HTTP_200_OK
+        )
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
@@ -148,6 +115,7 @@ class BgOrderViewSet(NoDeleteViewSet):
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
+    permission_classes = [StaffCUDAuthRetrieve]
 
     def perform_create(self, serializer):
         """
@@ -158,84 +126,46 @@ class BgOrderViewSet(NoDeleteViewSet):
         2. Собираем айди заказов.
         3. Передаём список айди в целери для создания репликаций в фоне.
         """
+        # 0
+        serializer.is_valid(raise_exception=True)
+        # 1
         orders_list = serializer.save(owner=self.request.user)
         orders_ids = []
+        # 2
         for orders in orders_list:
             orders_ids.append(
-                [
-                    order.id for order in orders
-                ] if isinstance(orders, list) else orders.id
+                [str(order.id) for order in orders]
+                if len(orders) > 1 else str(orders[0].id)
             )
+        # 3
         create_bg_order_task.delay(orders_ids)
 
-    def perform_update(self, serializer):
-        """Запрет на обновление типа заказа."""
-        if 'order_type' in serializer.data:
-            return Response(data='Нельзя менять тип заказа.', status=400)
-        super().perform_update(serializer)
+    def update(self, request, *args, **kwargs):
+        error_message = (
+            'Изменить можно только название, описание и '
+            'плейлист. Лишние ключи: {keys}.'
+        )
+        updatable_fields = (
+            'name',
+            'description',
+            'playlist'
+        )
+        kwargs.update(updatable_fields=updatable_fields,
+                      error_message=error_message)
+        response = restricted_update(self, request, *args, **kwargs)
+        if 'playlist' in request.data:
+            instance = self.get_object()
+            update_bg_order_task.delay(order_id=str(instance.id))
+        return response
 
-    @action(detail=False, methods=['DELETE'])
-    def cancel(self, request):
-        """
-        Отмена заказов.
-
-        0. Получаем список заказов на отмену.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в целери
-            для отмены и создания соответствующих репликаций в фоне.
-        1.2. Заказы, которые нельзя отменить, записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут отменены
-            и которые отменить нельзя.
-        """
-        cancel_list = request.data['orders']
-        orders = BgOrder.objects.filter(pk__in=cancel_list, status__in=[0, 1])
-        bad_result = 'Данные заказы отменить невозможно'
-        if orders not in Constants.empty_values:
-            active_order_ids = [order.id for order in orders]
-            orders_json = serializers.serialize('json', orders)
-            bad_orders = list(set(cancel_list) - set(active_order_ids))
-            good_orders = list(set(cancel_list) - set(bad_orders))
-        else:
-            return Response(data=f'{bad_result}: {cancel_list}',
-                            status=HTTP_400_BAD_REQUEST)
-
-        cancel_bg_order_task.delay(orders_json)
-        result_text = f'Запрос на отмену заказов {good_orders} принят.'
-        if bad_orders:
-            result_text += f' {bad_result}: {bad_orders}'
-        return Response(data=result_text, status=HTTP_200_OK)
-
-    @action(detail=False, methods=['POST'])
-    def resend(self, request):
-        """
-        Переотправка заказов.
-
-        0. Получаем список заказов на переотпарвку.
-        1. Проверяем, что заказы в списке активны.
-        1.1. Активные заказы сериализуются в JSON и отправляются в celery
-            для создания соответствующих репликаций на фоне.
-        1.2. Заказы, которые нельзя переотправить,
-            записываем в отдельный список.
-        2. В ответ отдаём сообщение со списком заказов, которые будут
-            переотправленны и которые переотправить нельзя.
-        """
-        resend_list = request.data['orders']
-        orders = BgOrder.objects.filter(pk__in=resend_list, status__in=[0, 1])
-        bad_result = 'Данные заказы переотправить невозможно'
-        if orders not in Constants.empty_values:
-            active_order_ids = [order.id for order in orders]
-            orders_json = serializers.serialize('json', orders)
-            bad_orders = list(set(resend_list) - set(active_order_ids))
-            good_orders = list(set(resend_list) - set(bad_orders))
-        else:
-            return Response(data=f'{bad_result}: {resend_list}',
-                            status=HTTP_400_BAD_REQUEST)
-
-        resend_bg_order_task.delay(orders_json)
-        result_text = f'Запрос на переотправку заказов {good_orders} принят.'
-        if bad_orders:
-            result_text += f' {bad_result}: {bad_orders}'
-        return Response(data=result_text, status=HTTP_200_OK)
+    @action(detail=True, methods=['DELETE'])
+    def cancel(self, request, pk):
+        """Отмена заказа."""
+        cancel_bg_order_task.delay(str(pk))
+        return Response(
+            data={'message': 'Запрос на отмену заказа принят.'},
+            status=HTTP_200_OK
+        )
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':

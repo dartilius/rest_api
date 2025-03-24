@@ -8,12 +8,7 @@ from files.models import File, Playlist, Tag, TYPES
 
 
 class Base64FileField(serializers.FileField):
-    """
-    Поле для получения и декодирования base64 строки в файл.
-
-    Сделано на основе:
-    https://github.com/Hipo/drf-extra-fields/
-    """
+    """Поле для получения и декодирования base64 строки в файл."""
 
     default_error_messages = {
         'invalid_file': 'Файл невозможно декодировать, либо он повреждён.',
@@ -73,7 +68,7 @@ class FileSourceSerializer(serializers.ModelSerializer):
     class Meta:
         fields = (
             'id',
-            'file_type',
+            'type',
             'source'
         )
         read_only_fields = (
@@ -94,7 +89,7 @@ class FileSerializer(serializers.ModelSerializer):
             'id',
             'length',
             'size',
-            'file_type',
+            'type',
             'source',
             'tags',
             'url'
@@ -102,42 +97,31 @@ class FileSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'id',
             'length',
-            'size'
+            'size',
+            'url'
         )
         model = File
 
     def get_url(self, instance):
-        return instance.get_url()
+        return instance.url
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_['name'] = value.name
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
-        repr_['hash'] = {
-            'md5': value.md5hash,
-            'sha256': value.sha256hash,
-            'concat_hash': value.hash
-        }
-        repr_['file_type'] = TYPES[value.file_type]
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['owner'] = value.owner.full_name
+        repr_['hash'] = value.hash
+        repr_['type'] = TYPES[value.type]
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
 
     def create(self, validated_data):
-        tags = validated_data.pop('tags')
-        instance = File.objects.create(**validated_data)
-        tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
-        instance.tags.set(tag_ids)
-        return instance
-
-    def update(self, instance, validated_data):
-        tags = validated_data.pop('tags')
-        tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
-        instance.tags.set(tag_ids)
-        super(self.__class__, self).update(instance, validated_data)
-        instance.save()
+        try:
+            tags = validated_data.pop('tags')
+            tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
+            instance = File.objects.create(**validated_data)
+            instance.tags.set(tag_ids)
+        except KeyError:
+            instance = File.objects.create(**validated_data)
         return instance
 
 
@@ -150,14 +134,14 @@ class FileListSerializer(serializers.ModelSerializer):
             'name',
             'length',
             'size',
-            'file_type'
+            'type'
         )
         read_only_fields = fields
         model = File
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['file_type'] = TYPES[value.file_type]
+        repr_['type'] = TYPES[value.type]
         repr_['tags'] = [
             tag.name for tag in value.tags.all()
         ] if value.tags.exists() else None
@@ -169,7 +153,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
     files = serializers.SlugRelatedField(
         slug_field='id',
-        queryset=File.objects.all(),
+        queryset=File.active.all(),
         write_only=True,
         many=True
     )
@@ -190,18 +174,35 @@ class PlaylistSerializer(serializers.ModelSerializer):
         )
         model = Playlist
 
+    def validate(self, data):
+        """Проверяем, что все файлы в плейлисте актуальны и одного типа."""
+        if 'files' in self.initial_data:
+            files_ids: list = self.initial_data.get('files')
+            all_files_count = File.objects.filter(id__in=files_ids).count()
+            active_files_count = File.active.filter(id__in=files_ids).count()
+            if all_files_count != active_files_count:
+                raise serializers.ValidationError(
+                    'Плейлист не должен содержать удалённых файлов'
+                )
+            files = File.active.filter(id__in=files_ids)
+            playlist_files_types = {TYPES[file.type] for file in files}
+            if len(playlist_files_types) > 1:
+                raise serializers.ValidationError(
+                    'Плейлист не должен содержать файлы разных типов: '
+                    f'{playlist_files_types}'
+                )
+        return data
+
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
+        repr_['owner'] = value.owner.full_name
+        repr_['files_count'] = value.files.count()
         repr_['files'] = [
             {'id': file.id,
              'name': file.name,
-             'url': file.get_url()} for file in value.files.all()
+             'url': file.url} for file in value.files.all()
         ]
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
 
 
@@ -219,10 +220,7 @@ class PlaylistListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = {
-            'full_name': f'{value.owner.last_name} '
-                         f'{value.owner.first_name}'
-        }
-        repr_['files_count'] = len(value.files.all())
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['owner'] = value.owner.full_name
+        repr_['files_count'] = value.files.count()
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_

@@ -64,8 +64,6 @@ services:
     build: ./backend
     container_name: backend
     env_file: .env
-    volumes:
-      - ./scripts/backend:/app/scripts
     healthcheck:
       test: curl --fail ${BACKEND_HC} || exit 1
       interval: 10s
@@ -73,7 +71,6 @@ services:
       retries: 5
     ports:
       - 8000:8000
-    command: gunicorn --bind 0:8000 --workers 8 --threads 2 --timeout 90 rmc_rest_api.wsgi
     depends_on:
       files:
         condition: service_healthy
@@ -87,21 +84,17 @@ services:
   worker:
     build: ./backend
     env_file: .env
-    volumes:
-      - ./scripts/backend:/app/scripts
     depends_on:
       backend:
         condition: service_healthy
     command: celery -A rmc_rest_api worker
     deploy:
-      replicas: 8
+      replicas: 2
 
   beat:
     build: ./backend
     container_name: celery_beat
     env_file: .env
-    volumes:
-      - ./scripts/backend:/app/scripts
     depends_on:
       backend:
         condition: service_healthy

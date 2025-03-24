@@ -1,10 +1,10 @@
-import fetchNomenclatures from "@/services/NomenclaturesService";
 import {Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
 import Link from "next/link";
 import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
 import {getStatusColor} from "@/utils";
 import {convertStatus} from "@/types/checkStatus";
 import {NomenclatureActions} from "@/app/nomenclatures/components";
+import {nomenclaturesService} from "@/app/nomenclatures/api";
 
 const columns = [
     {id: "name", label: "Название", minWidth: 170},
@@ -28,7 +28,16 @@ type Props = {
 export async function TableNomenclatures(props: Props) {
     const { name, currentPage, limit, version, status, timezone } = props
 
-    const listNomenclatures = await fetchNomenclatures({page: currentPage, limit, name, version, status, timezone})
+    const listNomenclatures =  await nomenclaturesService.getNomenclaturesList({
+                searchParams: Promise.resolve({
+                    page: currentPage,
+                    limit: limit,
+                    name,
+                    status,
+                    timezone,
+                    version
+                })
+            })
 
     return (
         <TableContainer style={{borderRadius: '8px'}}>

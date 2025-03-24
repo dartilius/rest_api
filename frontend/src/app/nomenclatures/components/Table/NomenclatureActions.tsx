@@ -3,9 +3,9 @@
 import { IconButton } from "@mui/material";
 import Image from "next/image";
 import {useState} from "react";
-import {deleteNomenclatures} from "@/services/NomenclaturesService";
 import {useRouter} from "next/navigation";
 import {gifDelete, gifEdit, staticDelete, staticEdit} from "@/styles";
+import {nomenclaturesService} from "@/app/nomenclatures/api";
 
 type NomenclatureActionsProps = {
     id: string;
@@ -18,15 +18,24 @@ export function NomenclatureActions({ id }: NomenclatureActionsProps) {
     const router = useRouter()
 
     async function handleDelete() {
-        console.log("Delete:", id);
-        const res = await deleteNomenclatures(id)
-        // console.log(res)
-        if (res === 204) {
-            router.refresh()
+        try {
+            console.log("Delete:", id);
+            const res = await nomenclaturesService.deleteNomenclature(id);
+            console.log(res);
+
+            if (res === 204) {
+                router.refresh(); // обновить страницу после успешного удаления
+            } else {
+                console.error('Error during deletion:', res);
+                // Можно здесь добавить отображение уведомления для пользователя
+            }
+        } catch (error) {
+            console.error("Error deleting nomenclature:", error);
+            // Можно здесь обработать ошибки, например, через UI уведомление
         }
     }
 
-    async function handleEdit() {
+        async function handleEdit() {
         router.push(`/nomenclatures/edit/${id}`);
     }
 

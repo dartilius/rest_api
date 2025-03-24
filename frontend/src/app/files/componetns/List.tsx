@@ -1,22 +1,37 @@
 import React from 'react';
-import {fetchFilesList, fetchFilesResponse} from "@/services/FilesService";
+import {FilesDataList} from "@/services/FilesService";
+import {Item} from "@/app/files/componetns/Item";
+import {Pagination} from "@/app/files/componetns/Pagination";
 
 type FiltersWrapperProps = {
-    name: string;
-    currentPage: number
-    limit: number
-    file_type: string;
-    tags: string;
+    data: FilesDataList[]
+    count: number;
+    limit: number;
+    currentPage: number;
 }
 
 export async function List(props: FiltersWrapperProps) {
-    const {tags,file_type,name,currentPage,limit} = props
-
-    const listFiles = await fetchFilesList({page: currentPage,limit})
-
-    // console.log(listFiles)
-
+    const {data, count, limit, currentPage} = props
+    const totalPages = Math.ceil(count / limit);
+    console.log(data)
     return (
-        <div></div>
+        <div>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',  // 4 колонки по умолчанию
+                gap: '16px',
+                paddingLeft: '24px',
+                // '@media (max-width: 768px)': {
+                //     gridTemplateColumns: 'repeat(1, 1fr)',  // 2 колонки на мобильных устройствах
+                // }
+            }}>
+                {data?.map((item) => (
+                    <div key={item.id}>
+                        <Item item={item} />
+                    </div>
+                ))}
+            </div>
+            <Pagination currentPage={currentPage} totalPages={totalPages} />
+        </div>
     );
 }

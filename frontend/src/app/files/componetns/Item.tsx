@@ -1,30 +1,70 @@
-import {Button, Card, CardActions, CardContent, CardMedia, Typography} from "@mui/material";
+import {Button, Card, CardActions, CardContent} from "@mui/material";
 import {FilesDataList} from "@/services/FilesService";
+import {convertSizeFile} from "@/utils";
+import Page from "@/app/files/[id]/page";
+import AudiotrackTwoToneIcon from '@mui/icons-material/AudiotrackTwoTone';
+import ImageTwoToneIcon from '@mui/icons-material/ImageTwoTone';
+import VideoFileTwoToneIcon from '@mui/icons-material/VideoFileTwoTone';
 
-export async function Item(props: FilesDataList) {
+type Props = {
+    item: FilesDataList
+}
 
-    const {name,size,type,length,id} = props
-        
+export function Item(props: Props) {
+
+    const {item} = props
+    const {name, id, type, length, size} = item
+    console.log(type)
     return (
-        <Card sx={{ maxWidth: 345 }}>
-            <CardMedia
-                sx={{ height: 140 }}
-                image="/static/images/cards/contemplative-reptile.jpg"
-                title="green iguana"
-            />
+        <Card sx={{
+            maxWidth: 360,
+            color: 'black',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            maxHeight: 390,
+            height: '100%',
+            width: '100%',
+        }}>
             <CardContent>
-                <Typography gutterBottom variant="h5" component="div">
-                    Lizard
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Lizards are a widespread group of squamate reptiles, with over 6,000
-                    species, ranging across all continents except Antarctica
-                </Typography>
+                <div>
+                    {type === 'music' && (
+                        <div style={{display: 'flex', flexDirection: 'row', gap: '12px'}}>
+                            <AudiotrackTwoToneIcon />
+                            {name}
+                        </div>
+
+                    )}
+                    {type === 'image' && (
+                        <div style={{display: 'flex', flexDirection: 'row', gap: '12px'}}>
+                            <ImageTwoToneIcon />
+                            {name}
+                        </div>
+                    )}
+                    {type === 'video' && (
+                        <div style={{display: 'flex', flexDirection: 'row', gap: '12px'}}>
+                            <VideoFileTwoToneIcon />
+                            {name}
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+            <CardContent>
+                    <Page params={{id}}/>
+            </CardContent>
+            <CardContent>
+                <div>
+                    {length && (length)}
+                </div>
+                <div>
+                    {size && (convertSizeFile(size))}
+                </div>
             </CardContent>
             <CardActions>
                 <Button size="small">Share</Button>
                 <Button size="small">Learn More</Button>
             </CardActions>
+
         </Card>
     );
 }

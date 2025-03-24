@@ -1,6 +1,6 @@
-from django.db.models import Q
 from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
+from api.constants import filter_by_owner_name
 from .models import CustomUser
 
 
@@ -25,25 +25,4 @@ class CustomUserFilter(FilterSet):
         fields = ('id', 'role', 'created', 'name')
 
     def filter_by_name(self, queryset, name, value):
-        """
-        Специальный метод для фильтрации по имени и фамилии.
-
-        Поддерживает поиск по фамилии и имени, указанным
-        вместе в любом порядке либо отдельно по фамилии или имени.
-        При не совпадении или указании более двух аргументов
-        возвращает список всех пользователей.
-        """
-        if len(value.split()) == 2:
-            first_name, last_name = value.split()
-            return queryset.filter(
-                (Q(last_name__icontains=last_name) &
-                 Q(first_name__icontains=first_name)) |
-                (Q(last_name__icontains=first_name) &
-                 Q(first_name__icontains=last_name))
-            )
-        elif len(value.split()) == 1:
-            return queryset.filter(
-                Q(last_name__icontains=value) |
-                Q(first_name__icontains=value)
-            )
-        return queryset
+        return filter_by_owner_name(queryset, name, value)

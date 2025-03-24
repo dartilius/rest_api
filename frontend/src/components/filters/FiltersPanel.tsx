@@ -1,18 +1,13 @@
-import { useState } from 'react'
+import {FC, useState} from 'react'
 import { Box, IconButton, Paper } from '@mui/material'
 import FilterListIcon from '@mui/icons-material/FilterList'
-import TextField from '@mui/material/TextField'
-import Autocomplete from '@mui/material/Autocomplete'
-import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
-import CheckBoxIcon from '@mui/icons-material/CheckBox'
 import DateRangesPickerFilter from './DateRangesPickerFilter'
 import { useStore } from '@/providers/mobx-provider/MobxProvider'
-import Checkbox from '@mui/material/Checkbox'
 import { Search } from '@/app/nomenclatures/components'
 import { BrcTypeFilter } from './BrcTypeFilter'
 import { OrderTypeFilter } from './OrderTypeFilter'
 
-const FiltersPanel: React.FC = () => {
+const FiltersPanel: FC = () => {
   const { ordersStore } = useStore()
   const activeTab = ordersStore.activeTab
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState(false)

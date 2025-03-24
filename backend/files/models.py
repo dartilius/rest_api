@@ -1,15 +1,17 @@
 from django.db import models
 from django_minio_backend import MinioBackend
+from rest_framework.exceptions import ValidationError
 
 from api import APIBaseObjectModel
+from api.constants import get_minio_client
 from files.file_info import GetFileInfo
 
 TYPES = {
-    0: 'ad',
-    1: 'music',
+    0: 'music',
+    1: 'video',
     2: 'image',
-    3: 'video',
-    4: 'ticker'
+    3: 'ticker',
+    4: 'ad'
 }
 
 
@@ -33,7 +35,7 @@ class Tag(models.Model):
 
 
 def media_path(instance, filename):
-    return f'{TYPES[instance.file_type]}/{filename}'
+    return f'{TYPES[instance.type]}/{filename}'
 
 
 class File(APIBaseObjectModel):
@@ -50,13 +52,13 @@ class File(APIBaseObjectModel):
         verbose_name='MD5'
     )
     sha256hash = models.CharField(
-        max_length=256,
+        max_length=64,
         editable=False,
         verbose_name='SHA256'
     )
     hash = models.CharField(
         editable=False,
-        max_length=288,
+        max_length=96,
         unique=True
     )
     length = models.TimeField(
@@ -70,7 +72,7 @@ class File(APIBaseObjectModel):
         verbose_name='Размер',
         default=0
     )
-    file_type = models.PositiveSmallIntegerField(
+    type = models.PositiveSmallIntegerField(
         choices=TYPES,
         verbose_name='Тип'
     )
@@ -86,7 +88,7 @@ class File(APIBaseObjectModel):
         ordering = ('-created',)
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
-        # добавляем это после фикса в джанге
+        # TODO: добавляем это после фикса в джанге
         # https://github.com/django/django/pull/17723
         # constraints = [
         #     models.UniqueConstraint(
@@ -111,8 +113,20 @@ class File(APIBaseObjectModel):
         Хэш суммы, размер и продолжительность вычисляются в отдельной функции.
         Суммированный хэш получается сложением md5 и sha256 хешей.
         """
+        from api.constants import get_list_of_file_types
+        types = get_list_of_file_types()
+        file_type = TYPES[self.type]
+        allowed_types: set = types[file_type]
         file = self.source.file
         self.name = file.name.split('/')[-1]
+        extension = self.name.split('.')[-1]
+        if extension not in allowed_types:
+            self.delete()
+            raise ValidationError(
+                'Выбранный тип файла не соответствует его формату.\n'
+                f'Для типа {file_type} допустимы следующие форматы:'
+                f'{allowed_types}'
+            )
         self.md5hash = GetFileInfo.get_md5(file)
         self.sha256hash = GetFileInfo.get_sha256(file)
         self.hash = f'{self.md5hash}{self.sha256hash}'
@@ -122,21 +136,20 @@ class File(APIBaseObjectModel):
 
     def delete(self, *args, **kwargs):
         """При удалении файла с базы удаляем его также и в Минио."""
-        from api.constants import Constants
         from django.conf import settings
 
-        minio_client = Constants.get_minio_client()
+        minio_client = get_minio_client()
         minio_client.remove_object(
             settings.MINIO_MEDIA_FILES_BUCKET,
-            f'{TYPES[self.file_type]}/{self.name}'
+            f'{TYPES[self.type]}/{self.name}'
         )
         super().delete(*args, **kwargs)
 
-    def get_url(self):
-        from api.constants import Constants
+    @property
+    def url(self):
+        """Ссылка для скачивания файла."""
         from datetime import timedelta as td
-
-        client = Constants.get_minio_client(external=True)
+        client = get_minio_client(external=True)
         url = client.get_presigned_url(
             'GET',
             'local-media',
@@ -165,3 +178,11 @@ class Playlist(APIBaseObjectModel):
         ordering = ('-created',)
         verbose_name = 'Плейлист'
         verbose_name_plural = 'Плейлисты'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name'],
+                name='unique_playlist_name',
+                violation_error_message='Плейлист с таким названием '
+                                        'уже существует'
+            )
+        ]

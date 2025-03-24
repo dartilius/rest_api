@@ -26,6 +26,7 @@ FILTER_LIST = (
     'file'
 )
 
+
 @admin.register(ADStat)
 class AdStatAdmin(admin.ModelAdmin):
     """Статистики рекламы."""

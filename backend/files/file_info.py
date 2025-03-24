@@ -43,7 +43,7 @@ class GetFileInfo:
     @staticmethod
     def get_length(file) -> str | None:
         """
-        Вычисление продолжительности файла с помощью ffmpeg.
+        Вычисление продолжительности файла с помощью mediainfo.
 
         1. Из полученных данных создаётся временный файл
         2. Временный файл проходит команду для вычисления продолжительности
@@ -60,7 +60,11 @@ class GetFileInfo:
         command = ['mediainfo',
                    '--Inform=General;%Duration%',
                    temp_file_path]
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
         os.remove(temp_file_path)
         try:
             microseconds = int(result.stdout.decode().strip())

@@ -59,6 +59,9 @@ class BaseOrder(APIBaseObjectModel):
         verbose_name='Плейлист',
         on_delete=models.DO_NOTHING
     )
+    parameters = models.JSONField(
+        verbose_name='Параметры заказа'
+    )
 
     class Meta:
         abstract = True
@@ -77,19 +80,14 @@ class AdOrder(BaseOrder):
     )
     broadcast_type = models.PositiveSmallIntegerField(
         choices=BROADCAST_TYPES,
-        verbose_name='Тип вещания',
-        default=0
-    )
-    parameters = models.JSONField(
-        verbose_name='Параметры заказа',
-        default=dict
+        verbose_name='Тип вещания'
     )
 
     class Meta:
         db_table = 'adorder'
         ordering = ('-created',)
         verbose_name = 'Рекламный заказ'
-        verbose_name_plural = 'Реклама'
+        verbose_name_plural = 'Рекламные заказы'
 
 
 class BgOrder(BaseOrder):
@@ -104,4 +102,4 @@ class BgOrder(BaseOrder):
         db_table = 'bgorder'
         ordering = ('-created',)
         verbose_name = 'Фоновый заказ'
-        verbose_name_plural = 'Фон'
+        verbose_name_plural = 'Фоновые заказы'

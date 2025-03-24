@@ -13,7 +13,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'email',
             'phone_number',
             'first_name',
-            'last_name'
+            'last_name',
+            'middle_name'
         )
         read_only_fields = (
             'id',
@@ -23,17 +24,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['full_name'] = {
-            'last_name': value.last_name,
-            'first_name': value.first_name,
-            'middle_name': value.middle_name
-        } if value.middle_name is not None else {
-            'last_name': value.last_name,
-            'first_name': value.first_name,
-        }
-        for field in repr_['full_name']:
-            repr_.pop(field)
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
 
 
@@ -51,13 +42,5 @@ class CustomUserListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['full_name'] = (
-            f'{value.last_name} '
-            f'{value.first_name} '
-            f'{value.middle_name}'
-        ) if value.middle_name is not None else (
-            f'{value.last_name} '
-            f'{value.first_name}'
-        )
-        repr_['created'] = value.created.strftime('%Y-%m-%d %H:%M:%S')
+        repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_

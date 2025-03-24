@@ -13,7 +13,7 @@ class IntegrityMiddleware:
 
     file с таким hash уже существует
 
-    Иначе ошибка выгдядит так:
+    Иначе ошибка выглядит так:
     django.db.utils.IntegrityError:
     duplicate key value violates unique constraint "unique_file_hash"
     Key (hash)=(<hash>) already exists.

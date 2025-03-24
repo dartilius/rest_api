@@ -1,6 +1,6 @@
 from django_filters import AllValuesMultipleFilter, CharFilter, FilterSet
 
-from .models import Nomenclature
+from nomenclatures.models import Nomenclature
 
 
 class NomenclatureFilter(FilterSet):

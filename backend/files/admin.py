@@ -10,8 +10,8 @@ class FileAdmin(admin.ModelAdmin):
     @admin.display(description='Продолжительность')
     def full_length(self, obj):
         try:
-            return obj.length.strftime('%H:%M:%S')
-        except AttributeError:
+            return f'{obj.length:%H:%M:%S}'
+        except TypeError:
             return obj.length
 
     @admin.display(description='Размер')
@@ -28,13 +28,10 @@ class FileAdmin(admin.ModelAdmin):
         'owner',
         'full_length',
         'formatted_size',
+        'is_active',
         'created'
     )
-    search_fields = (
-        'id',
-        'name',
-        'owner'
-    )
+    search_fields = ('name',)
 
     def get_queryset(self, request):
         return File.objects.all().select_related(
@@ -55,11 +52,7 @@ class PlaylistAdmin(admin.ModelAdmin):
         'name',
         'owner'
     )
-    search_fields = (
-        'id',
-        'name',
-        'owner',
-    )
+    search_fields = ('name',)
 
     def get_queryset(self, request):
         return Playlist.objects.all().select_related(
