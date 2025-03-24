@@ -57,7 +57,7 @@ const AdOrders = ({ ...props }: IProps) => {
   })
   const handleRowClick = (id: string) => {
     // Переход на страницу с расшифровкой
-    router.push(`bgorders/${id}`)
+    router.push(`adorders/${id}`)
   }
   const goToPage = (newPage: number) => {
     // ordersStore.setPage(newPage)
