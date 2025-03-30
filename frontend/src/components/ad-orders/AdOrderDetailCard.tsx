@@ -1,3 +1,4 @@
+'use client'
 import { IAdOrderDetail } from '@/types/orderTypes'
 import StatusBadge from '../data-display/StatusBadge'
 import { BroadcastInterval } from '../data-display/BroadcastInterval'
@@ -7,6 +8,12 @@ import { PlaylistInfo } from '../data-display/PlaylistInfo'
 import { Label } from '../data-display/Label'
 import { OwnerInfo } from '../data-display/OwnerInfo'
 import { ParametersDisplayAd } from '../data-display/ParametersDisplayAd'
+import TypeBadge from '../data-display/TypeBadge'
+import { useNotification } from '@/hooks/useNotification'
+import { Description } from '../data-display/Description'
+import ActionButton from '../Ui/button/ActionButton'
+import { Cancel } from '@mui/icons-material'
+import { Name } from '../data-display/Name'
 
 interface AdOrderDetailCardProps {
   data: IAdOrderDetail
@@ -17,25 +24,51 @@ const AdOrderDetailCard = ({
   data,
   className = '',
 }: AdOrderDetailCardProps) => {
+  const { showNotification } = useNotification()
+
+  const handleButtonCancel = () => {
+    showNotification('Заказ отменен!', 'success')
+    showNotification('Ошибка отмены заказа', 'error', {
+      autoClose: 7000,
+      theme: 'dark',
+    })
+  }
+console.log(data.status);
+
   return (
     <div
       className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-6 ${className}`}
     >
       {/* Заголовок */}
-      <div className='flex flex-col sm:flex-row justify-between items-start gap-4 mb-6'>
+      <div className='flex flex-col sm:flex-row justify-between items-start gap-4'>
         <div>
-          <h1 className='text-2xl font-bold'>{data.name}</h1>
-          {data.description && (
-            <p className='text-gray-600 mt-2'>{data.description}</p>
-          )}
+          <Name name={data.name} />
+          {data.description && <Description description={data.description} />}
         </div>
         <div className='flex flex-col items-end gap-2'>
+          <TypeBadge
+            type={data.broadcast_type}
+            className='font-bold'
+            iconClassName='w-5 h-5'
+            size='lg'
+            mode='ad'
+          />
           <StatusBadge
             status={data.status}
             iconClassName='w-5 h-5'
             className='font-bold'
             size='lg'
           />
+         {/* отображаем кнопку только если статус заказа в эфире или ожидает эфира */}
+          {data.status === 0 || data.status === 1 ?
+          <ActionButton
+            variant='warning'
+            size='md'
+            onClick={handleButtonCancel}
+            icon={Cancel} // Импортировать из MUI или любой другой библиотеки
+          >
+            Отменить заказ
+          </ActionButton> : null}
         </div>
       </div>
 
@@ -49,12 +82,15 @@ const AdOrderDetailCard = ({
 
           <div>
             <Label>Плейлист:</Label>
-            <PlaylistInfo playlist={data.playlist} />
+            <PlaylistInfo playlist={[data.playlist]} />
           </div>
 
           <div>
             <Label>Параметры трансляции:</Label>
-            <ParametersDisplayAd parameters={data.parameters} />
+            <ParametersDisplayAd
+              broadcast_type={data.broadcast_type}
+              parameters={data.parameters}
+            />
           </div>
         </div>
 

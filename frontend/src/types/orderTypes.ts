@@ -1,4 +1,5 @@
 import {
+  AccessTime,
   MusicNote,
   Videocam,
   Image,
@@ -8,7 +9,19 @@ import {
   CheckCircle,
   Cancel,
   Error,
+  AvTimer,
+  TimerOff,
+  HourglassTop,
+  HourglassBottom,
+  EventAvailable,
 } from '@mui/icons-material'
+import { SvgIconTypeMap } from '@mui/material'
+import { OverridableComponent } from '@mui/material/OverridableComponent'
+
+type IconType = OverridableComponent<SvgIconTypeMap<object, 'svg'>> & {
+  muiName: string
+}
+
 export interface IClient {
   id: string
   name: string
@@ -17,7 +30,7 @@ export interface IBroadcastInterval {
   lower: string
   upper: string
 }
-// Enum для типа фона
+
 export enum BgOrderType {
   MUSIC = 0,
   VIDEO = 1,
@@ -31,14 +44,53 @@ export enum BgOrderStatus {
   CANCELLED = 3,
   ERROR = 4,
 }
-
-import { SvgIconTypeMap } from '@mui/material'
-import { OverridableComponent } from '@mui/material/OverridableComponent'
-
-type IconType = OverridableComponent<SvgIconTypeMap<object, 'svg'>> & {
-  muiName: string
+export enum AdOrderType{
+  POINT_TIME = 0,
+  START_OFFSET = 1,
+  END_OFFSET = 2,
+  SPECIFIC_HOURS = 3, // Новый тип
+  OPEN_TO_HOUR = 4,
+  FIXED_TO_CLOSE = 5,
+  EVENT_START = 6,
 }
 
+export const ORDER_TYPE_AD_CONFIG: Record<AdOrderType, TypeConfig> = {
+  [AdOrderType.POINT_TIME]: {
+    label: 'По времени работы точки',
+    icon: Schedule,
+    className: 'bg-blue-100 text-blue-800',
+  },
+  [AdOrderType.START_OFFSET]: {
+    label: 'Начало работы + смещение по времени',
+    icon: AvTimer,
+    className: 'bg-green-100 text-green-800',
+  },
+  [AdOrderType.END_OFFSET]: {
+    label: 'Конец работы – смещение по времени',
+    icon: TimerOff,
+    className: 'bg-purple-100 text-purple-800',
+  },
+  [AdOrderType.SPECIFIC_HOURS]: { // Новый конфиг
+    label: 'По конкретным часам',
+    icon: AccessTime,
+    className: 'bg-cyan-100 text-cyan-800',
+  },
+  [AdOrderType.OPEN_TO_HOUR]: {
+    label: 'С открытия до конкретного часа',
+    icon: HourglassTop,
+    className: 'bg-orange-100 text-orange-800',
+  },
+  [AdOrderType.FIXED_TO_CLOSE]: {
+    label: 'С фиксированного часа до закрытия',
+    icon: HourglassBottom,
+    className: 'bg-pink-100 text-pink-800',
+  },
+  [AdOrderType.EVENT_START]: {
+    label: 'Старт по событию',
+    icon: EventAvailable,
+    className: 'bg-indigo-100 text-indigo-800',
+  },
+};
 export interface TypeConfig {
   label: string
   icon: IconType
@@ -52,7 +104,7 @@ export interface StatusConfig {
   backgroundColor: string
 }
 
-export const ORDER_TYPE_CONFIG: Record<BgOrderType, TypeConfig> = {
+export const ORDER_TYPE_BG_CONFIG: Record<BgOrderType, TypeConfig> = {
   [BgOrderType.MUSIC]: {
     label: 'Музыка',
     icon: MusicNote,
@@ -123,7 +175,7 @@ export interface IBgOrderDetail {
     full_name: string
   } // Создатель +
   client: IClient // Обязательное поле +
-  order_type: BgOrderType // Обязательное поле +
+  order_type: number // Обязательное поле +
   playlist: { files_count: number; id: string; name: string } // Плейлист, обязательное поле +
   broadcast_interval: IBroadcastInterval // Обязательное поле +
   status: BgOrderStatus // Статус +
@@ -147,6 +199,7 @@ export interface IAdOrderDetail {
   id: string // Уникальный идентификатор +
   name: string // Название, обязательное поле, 1-255 символов +
   description: string | null // Описание +
+  broadcast_type: number
   owner: {
     full_name: string
   } // Создатель +
@@ -154,14 +207,15 @@ export interface IAdOrderDetail {
   slides: any // TODO проверить что за тип
   broadcast_interval: IBroadcastInterval // Обязательное поле +
   parameters: {
-    end_time: []
+    end_time: any
+    timedelta: any
+    start_time: any
     times_in_hour: number
     weight: number
   }
   status: BgOrderStatus // Статус +
   created: string // Дата создания +
   client: IClient // Обязательное поле +
-  // order_type: BgOrderType // Обязательное поле +
 }
 
 export interface IDataBgResponse {

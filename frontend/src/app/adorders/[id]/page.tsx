@@ -8,9 +8,13 @@ interface Props {
 }
 
 const AdOrderDetail = async ({ params }: Props) => {
+  // Явное ожидание параметров
+  const { id } = await new Promise<{id: string}>(resolve => 
+    resolve(params)
+  )
+
   try {
-    const orderDetail = await getAdOrderDetail(params.id)
-    console.log(orderDetail)
+    const orderDetail = await getAdOrderDetail(id)
 
     return (
       <div className='container mx-auto p-4'>
@@ -22,7 +26,7 @@ const AdOrderDetail = async ({ params }: Props) => {
     console.error('Error loading order details:', error)
     return (
       <div className='container mx-auto p-4 text-red-500'>
-        Error loading order details
+        Ошибка загрузки деталей заказа
       </div>
     )
   }

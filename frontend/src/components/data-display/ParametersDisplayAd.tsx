@@ -1,38 +1,111 @@
 import { formatTime } from '@/utils/dateUtils'
-import dayjs from 'dayjs'
+import { AdOrderType } from '@/types/orderTypes'
 
 interface ParametersDisplayAdProps {
   parameters: {
-    end_time: []
+    end_time?: string | null
+    timedelta?: string | null
+    start_time?: string | null
     times_in_hour: number
     weight: number
   }
+  broadcast_type: AdOrderType
   className?: string
 }
 
 export const ParametersDisplayAd = ({
   parameters,
+  broadcast_type,
   className,
 }: ParametersDisplayAdProps) => {
+  const renderSpecificParameters = () => {
+    switch (broadcast_type) {
+      case AdOrderType.START_OFFSET:
+      case AdOrderType.END_OFFSET:
+        return parameters.timedelta && (
+          <div>
+            <span className='text-xl text-zinc-900'>Смещение по времени:</span>
+            <span className='ml-2 font-bold'>
+              {parameters.timedelta.toString()} минут
+            </span>
+          </div>
+        )
+
+      case AdOrderType.SPECIFIC_HOURS:
+        return (
+          <>
+            {parameters.start_time && (
+              <div>
+                <span className='text-xl text-zinc-900'>Начало:</span>
+                <span className='ml-2 font-bold'>
+                  {formatTime(parameters.start_time)}
+                </span>
+              </div>
+            )}
+            {parameters.end_time && (
+              <div>
+                <span className='text-xl text-zinc-900'>Окончание:</span>
+                <span className='ml-2 font-bold'>
+                  {formatTime(parameters.end_time)}
+                </span>
+              </div>
+            )}
+          </>
+        )
+
+      case AdOrderType.OPEN_TO_HOUR:
+        return parameters.end_time && (
+          <div>
+            <span className='text-xl text-zinc-900'>Окончание:</span>
+            <span className='ml-2 font-bold'>
+              {formatTime(parameters.end_time)}
+            </span>
+          </div>
+        )
+
+      case AdOrderType.FIXED_TO_CLOSE:
+        return parameters.end_time && (
+          <div>
+            <span className='text-xl text-zinc-900'>Фиксированный час:</span>
+            <span className='ml-2 font-bold'>
+              {formatTime(parameters.end_time)}
+            </span>
+          </div>
+        )
+
+      case AdOrderType.EVENT_START:
+        return parameters.start_time && (
+          <div>
+            <span className='text-xl text-zinc-900'>Время старта:</span>
+            <span className='ml-2 font-bold'>
+              {formatTime(parameters.start_time)}
+            </span>
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <div className={`grid grid-cols-2 gap-2 ${className}`}>
+      {/* Общие параметры для всех типов */}
       <div className='col-span-2'>
-        {/* <span className='text-xl text-zinc-900'>Режим работы:</span>
-        <div className='flex gap-2'>
-          <span>{formatTime(parameters.daily_start_time)}</span>
-          <span>-</span>
-          <span>{formatTime(parameters.daily_end_time)}</span>
+        <div>
+          <span className='text-xl text-zinc-900'>Трансляций в час:</span>
+          <span className='ml-2 font-bold'>{parameters.times_in_hour}</span>
         </div>
-      </div> */}
-      <div>
-        <span className='text-xl text-zinc-900 text-nowrap'>Трансляций в час:</span>
-        <span className='ml-2 font-bold'>{parameters.times_in_hour}</span>
+        <div>
+          <span className='text-xl text-zinc-900'>Приоритет файла:</span>
+          <span className='ml-2 font-bold'>{parameters.weight}</span>
+        </div>
       </div>
-      <div>
-        <span className='text-xl text-zinc-900 text-nowrap'>Вес файла:</span>
-        <span className='ml-2 font-bold'>{parameters.weight}</span>
+
+      {/* Специфические параметры */}
+      <div className='col-span-2'>
+        {renderSpecificParameters()}
       </div>
     </div>
-    </div> 
   )
 }

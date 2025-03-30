@@ -1,5 +1,4 @@
 'use client'
-
 import { useStore } from '@/providers/mobx-provider/MobxProvider'
 import { IBgData, IDataBgResponse } from '@/types/orderTypes'
 import Box from '@mui/material/Box'
@@ -42,9 +41,9 @@ const BgOrders = ({ ...props }: IProps) => {
     }
 
     setData(dataResponse.results)
-    ordersStore.totalCountBg = dataResponse.count
+    ordersStore.setTotalCountBg(dataResponse.count)
     ordersStore.setActiveTabs(0)
-  }, []) 
+  }, [])
 
   const table = useReactTable({
     data,

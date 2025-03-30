@@ -1,3 +1,4 @@
 import ordersStore from './OrdersStore';
+import playListsStore from './PlayListStore'
 
-export { ordersStore };
+export { ordersStore, playListsStore };

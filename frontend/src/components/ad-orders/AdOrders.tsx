@@ -23,7 +23,7 @@ interface IProps {
 }
 const AdOrders = ({ ...props }: IProps) => {
   const { dataResponse } = props
-  
+
   const { ordersStore } = useStore()
   const [data, setData] = useState<IAdData[]>([])
   const router = useRouter()
@@ -35,7 +35,6 @@ const AdOrders = ({ ...props }: IProps) => {
   const isNextButtonDisabled = Number(page) >= totalPagesBg
 
   useEffect(() => {
-
     const params = new URLSearchParams(searchParams)
     if (!params.has('page')) {
       params.set('page', '1')
@@ -43,11 +42,10 @@ const AdOrders = ({ ...props }: IProps) => {
     }
 
     setData(dataResponse.results)
-    ordersStore.totalCountBg = dataResponse.count
+    ordersStore.setTotalCountAd(dataResponse.count)
     ordersStore.setActiveTabs(1)
-  }, []) 
+  }, [])
 
-  
   const table = useReactTable({
     data,
     columns: adColumnsTable,
