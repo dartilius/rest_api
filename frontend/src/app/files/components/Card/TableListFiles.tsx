@@ -34,7 +34,7 @@ const TableListFiles = (props: Props) => {
 
     const {data} = props
 
-    const [fileData, setFileData] = useState<Record<string, FetchFileResponse | null>>({});
+    const [fileData, setFileData] = useState<Record<string, FetchFileResponse>>({});
 
     const handleMoreDetails = async (id: string) => {
         if (fileData[id]) {
@@ -112,10 +112,16 @@ const TableListFiles = (props: Props) => {
                                         <Collapse in={!!fileData[row.id]} timeout="auto" unmountOnExit>
                                             <Box sx={{ padding: 2, backgroundColor: "#f9f9f9", borderRadius: "4px" }}>
                                                 <div>Hash: {fileData[row.id]?.hash}</div>
-                                                {(fileData[row.id]?.tags ?? []).length > 1 && (
+                                                {(fileData[row.id]?.tags?.length ?? 0) > 1 && (
                                                     <div>Теги: {fileData[row.id]?.tags.map(tag => tag.name).join(", ")}</div>
                                                 )}
-                                                <Box mt={2}>{previewFile(fileData[row.id]!, fileData[row.id]?.name!)}</Box>
+
+                                                <Box mt={2}>
+                                                    {fileData[row.id] && fileData[row.id]?.name
+                                                        ? previewFile(fileData[row.id], fileData[row.id].name)
+                                                        : "Предпросмотр недоступен"}
+                                                </Box>
+
                                             </Box>
                                         </Collapse>
                                     </TableCell>
