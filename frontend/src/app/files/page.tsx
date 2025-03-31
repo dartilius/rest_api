@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { fetchFilesList } from "@/services/FilesService";
-import Card from "@/app/files/components/Card/Card";
+import TableListFiles from "@/app/files/components/Card/TableListFiles";
 import { Pagination } from "@/app/files/components/Pagination";
 
 export const metadata: Metadata = {
@@ -32,7 +32,7 @@ export default async function Page(props: { searchParams?: Promise<FilesListProp
     return (
         <>
             <div>
-                <Card data={dataFiles}/>
+                <TableListFiles data={dataFiles}/>
             </div>
             <Pagination currentPage={currentPage} totalPages={Math.ceil(countFiles / limit)} />
         </>
