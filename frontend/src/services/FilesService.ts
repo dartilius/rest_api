@@ -1,6 +1,7 @@
 import {API_URL} from "@/config/api.config";
 import {getServerAccessToken} from "@/utils";
 import {getAccessToken} from "@/services/accessToken";
+import {redirect} from "next/navigation";
 
 type fetchFilesListQuery = {
     page?: number;
@@ -40,9 +41,14 @@ export async function fetchFilesList(props: fetchFilesListQuery): Promise<fetchF
             method: 'GET',
         });
 
+        if (response.status === 401) {
+            redirect('/login')
+        }
         if (!response.ok) {
             return `Ошибка загрузки файлов: статус ${response.status}, текст: ${response.statusText}`;
         }
+
+
 
         return await response.json() as fetchFilesResponse;
 

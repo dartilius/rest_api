@@ -1,11 +1,7 @@
-// middleware.ts
-
 import { NextResponse, NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
     const token = request.cookies.get('access_token')?.value;
-
-    // console.log('token', token);
 
     if (!token) {
         return NextResponse.redirect(new URL('/login', request.url));
@@ -14,7 +10,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
 }
 
-
 export const config = {
-        matcher: ['/((?!_next).*)'], // Все страницы, кроме _next
+    matcher: ['/((?!_next|api/auth/login).*)'], // Исключаем статические файлы и API логина
 };
