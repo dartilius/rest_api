@@ -32,7 +32,17 @@ class AdOrderFilter(FilterSet):
 
     class Meta:
         model = AdOrder
-        fields = ('name', 'brc_type', 'id', 'client', 'owner', 'created')
+        fields = (
+            'name',
+            'brc_type',
+            'id',
+            'client',
+            'owner',
+            'created',
+            'status',
+            'since',
+            'until'
+        )
 
     def owner_filter(self, queryset, name, value):
         return filter_by_owner_name(queryset, name, value)
@@ -66,7 +76,17 @@ class BgOrderFilter(FilterSet):
 
     class Meta:
         model = BgOrder
-        fields = ('name', 'id', 'client', 'order_type', 'owner', 'created')
+        fields = (
+            'name',
+            'id',
+            'client',
+            'order_type',
+            'owner',
+            'created',
+            'status',
+            'since',
+            'until'
+        )
 
     def owner_filter(self, queryset, name, value):
         return filter_by_owner_name(queryset, name, value)
