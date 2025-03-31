@@ -14,107 +14,108 @@ import { Description } from '../data-display/Description'
 import ActionButton from '../Ui/button/ActionButton'
 import { Cancel } from '@mui/icons-material'
 import { Name } from '../data-display/Name'
-import {cancelAdOrder} from "@/app/adorders/api";
+import { cancelAdOrder } from '@/app/adorders/api'
+import { useRouter } from 'next/navigation'
 
 interface AdOrderDetailCardProps {
-  data: IAdOrderDetail
-  className?: string
+	data: IAdOrderDetail
+	className?: string
 }
 
-const AdOrderDetailCard = ({
-  data,
-  className = '',
-}: AdOrderDetailCardProps) => {
-  const { showNotification } = useNotification()
+const AdOrderDetailCard = ({ data, className = '' }: AdOrderDetailCardProps) => {
+	const { showNotification } = useNotification()
+  const router = useRouter()
+	const handleButtonCancel = async () => {
+		try {
+			await cancelAdOrder(data.id)
+			showNotification('Заказ отменен!', 'success')
+      router.refresh()
+		} catch (error) {
+      console.error(error);
+			showNotification('Не удалось отменить заказ', 'error')
+		}
+	}
+	console.log(data.status)
 
-  const handleButtonCancel = async () => {
-    try {
-      await cancelAdOrder(data.id)
-      showNotification('Заказ отменен!', 'success')
-    } catch (error) {
-      showNotification('Не удалось отменить заказ', 'error');
-    }
-  }
-console.log(data.status);
+	return (
+		<div
+			className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-6 ${className}`}
+		>
+			{/* Заголовок */}
+			<div className='flex flex-col sm:flex-row justify-between items-start gap-4'>
+				<div>
+					<Name name={data.name} />
+					{data.description && <Description description={data.description} />}
+				</div>
+				<div className='flex flex-col items-end gap-2'>
+					<TypeBadge
+						type={data.broadcast_type}
+						className='font-bold'
+						iconClassName='w-5 h-5'
+						size='lg'
+						mode='ad'
+					/>
+					<StatusBadge
+						status={data.status}
+						iconClassName='w-5 h-5'
+						className='font-bold'
+						size='lg'
+					/>
+					{/* отображаем кнопку только если статус заказа в эфире или ожидает эфира */}
+					{data.status === 0 || data.status === 1 ? (
+						<ActionButton
+							variant='warning'
+							size='md'
+							onClick={handleButtonCancel}
+							icon={Cancel} // Импортировать из MUI или любой другой библиотеки
+						>
+							Отменить заказ
+						</ActionButton>
+					) : null}
+				</div>
+			</div>
 
-  return (
-    <div
-      className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-6 ${className}`}
-    >
-      {/* Заголовок */}
-      <div className='flex flex-col sm:flex-row justify-between items-start gap-4'>
-        <div>
-          <Name name={data.name} />
-          {data.description && <Description description={data.description} />}
-        </div>
-        <div className='flex flex-col items-end gap-2'>
-          <TypeBadge
-            type={data.broadcast_type}
-            className='font-bold'
-            iconClassName='w-5 h-5'
-            size='lg'
-            mode='ad'
-          />
-          <StatusBadge
-            status={data.status}
-            iconClassName='w-5 h-5'
-            className='font-bold'
-            size='lg'
-          />
-         {/* отображаем кнопку только если статус заказа в эфире или ожидает эфира */}
-          {data.status === 0 || data.status === 1 ?
-          <ActionButton
-            variant='warning'
-            size='md'
-            onClick={handleButtonCancel}
-            icon={Cancel} // Импортировать из MUI или любой другой библиотеки
-          >
-            Отменить заказ
-          </ActionButton> : null}
-        </div>
-      </div>
+			{/* Основные данные */}
+			<div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-2xl'>
+				<div className='space-y-4'>
+					<div>
+						<Label>Клиент:</Label>
+						<ClientInfo client={data.client} />
+					</div>
 
-      {/* Основные данные */}
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-2xl'>
-        <div className='space-y-4'>
-          <div>
-            <Label>Клиент:</Label>
-            <ClientInfo client={data.client} />
-          </div>
+					<div>
+						<Label>Плейлист:</Label>
+						<PlaylistInfo playlist={[data.playlist]} />
+					</div>
 
-          <div>
-            <Label>Плейлист:</Label>
-            <PlaylistInfo playlist={[data.playlist]} />
-          </div>
+					<div>
+						<Label>Параметры трансляции:</Label>
+						<ParametersDisplayAd
+							broadcast_type={data.broadcast_type}
+							parameters={data.parameters}
+						/>
+					</div>
+				</div>
 
-          <div>
-            <Label>Параметры трансляции:</Label>
-            <ParametersDisplayAd
-              broadcast_type={data.broadcast_type}
-              parameters={data.parameters}
-            />
-          </div>
-        </div>
+				<div className='space-y-4'>
+					<div>
+						<Label>Период трансляции:</Label>
+						<BroadcastInterval interval={data.broadcast_interval} />
+					</div>
 
-        <div className='space-y-4'>
-          <div>
-            <Label>Период трансляции:</Label>
-            <BroadcastInterval interval={data.broadcast_interval} />
-          </div>
+					<div>
+						<Label>Дата создания:</Label>
+						<DateTime date={data.created} />
+					</div>
 
-          <div>
-            <Label>Дата создания:</Label>
-            <DateTime date={data.created} />
-          </div>
-
-          <div>
-            <Label>Владелец:</Label>
-            <OwnerInfo owner={data.owner} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+					<div>
+						<Label>Владелец:</Label>
+						<OwnerInfo owner={data.owner} />
+					</div>
+				</div>
+			</div>
+		</div>
+	)
 }
 
 export default AdOrderDetailCard
