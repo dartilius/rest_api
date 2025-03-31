@@ -68,6 +68,7 @@ type fetchFileResponse = {
         name: string;
     }>
     url: string;
+    hash: string;
 } | string
 
 export async function fetchFilesById(props: fetchFilesByIdQuery): Promise<fetchFileResponse> {
