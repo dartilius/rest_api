@@ -8,8 +8,13 @@ interface Props {
 }
 
 const BgOrderDetail = async ({ params }: Props) => {
+    // Явное ожидание параметров
+    const { id } = await new Promise<{id: string}>(resolve => 
+      resolve(params)
+    )
+  
   try {
-    const orderDetail = await getBgOrderDetail(params.id)
+    const orderDetail = await getBgOrderDetail(id)
     console.log(orderDetail)
 
     return (

@@ -75,3 +75,28 @@ export async function getBgOrderDetail(id: string): Promise<IBgOrderDetail> {
       throw error;
     }
   }
+  export interface ICancelResponse {
+    success: boolean;
+    message?: string;
+    error?: string;
+  }
+
+  export async function cancelBgOrder(id: string): Promise<ICancelResponse> {
+    try {
+      const token = getClientAccessToken();
+      const url = `${API_URL}bgorders/cancel/${id}`;
+  
+      const res = await client.delete<ICancelResponse>(url, {
+        headers: {
+          Authorization: `access_token ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+  console.log(res);
+  
+      return res;
+    } catch (error) {
+      console.error('Cancel error:', error);
+      throw new Error('Ошибка отмены заказа');
+    }
+  }

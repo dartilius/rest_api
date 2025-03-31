@@ -6,10 +6,11 @@ interface OwnerInfoProps {
 }
 
 export const OwnerInfo = ({ owner, className }: OwnerInfoProps) => {
-  
   return (
     <div className={`flex flex-col ${className}`}>
-      <span className='font-semibold text-xl text-zinc-900'>{owner.full_name !== '' ? owner.full_name : 'N/D'}</span>
+      <span className='font-semibold text-xl'>
+        {owner.full_name !== '' ? owner.full_name : 'N/D'}
+      </span>
     </div>
   )
 }
