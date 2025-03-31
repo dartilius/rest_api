@@ -19,6 +19,7 @@ class AdOrderFilter(FilterSet):
     owner = CharFilter(method='owner_filter')
     name = CharFilter(field_name='name', lookup_expr='icontains')
     brc_type = CharFilter(field_name='broadcast_type', lookup_expr='exact')
+    status = CharFilter(field_name='status', lookup_expr='exact')
     id = CharFilter(field_name='id', lookup_expr='exact')
     client = CharFilter(
         field_name='client__name',
@@ -26,6 +27,8 @@ class AdOrderFilter(FilterSet):
         label='Целевая рабочая станция'
     )
     created = DateFromToRangeFilter(field_name='created')
+    since = DateFromToRangeFilter(field_name='broadcast_interval__lower')
+    until = DateFromToRangeFilter(field_name='broadcast_interval__upper')
 
     class Meta:
         model = AdOrder
@@ -56,7 +59,10 @@ class BgOrderFilter(FilterSet):
         label='Целевая рабочая станция'
     )
     order_type = CharFilter(field_name='order_type', lookup_expr='exact')
+    status = CharFilter(field_name='status', lookup_expr='exact')
     created = DateFromToRangeFilter(field_name='created')
+    since = DateFromToRangeFilter(field_name='broadcast_interval__lower')
+    until = DateFromToRangeFilter(field_name='broadcast_interval__upper')
 
     class Meta:
         model = BgOrder
