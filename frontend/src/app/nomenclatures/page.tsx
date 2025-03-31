@@ -1,5 +1,6 @@
 import {FiltersWrapper, TableNomenclatures} from "@/app/nomenclatures/components";
 import {Metadata} from "next";
+import {nomenclaturesService} from "@/app/nomenclatures/api";
 
 export const metadata: Metadata = {
     title: 'Номенклатуры',
@@ -32,10 +33,21 @@ export default async function Page(props: {
     const status = searchParams?.status || '';
     const timezone = searchParams?.timezone || '';
 
+    const listNomenclature = await nomenclaturesService.getNomenclaturesList({
+        searchParams: Promise.resolve({
+            page: currentPage,
+            limit: limit,
+            name,
+            status,
+            timezone,
+            version
+        })
+    })
+
     return (
         <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
             <FiltersWrapper />
-            <TableNomenclatures name={name} currentPage={currentPage} limit={limit} version={version} status={status} timezone={timezone} />
+            <TableNomenclatures count={listNomenclature.count} data={listNomenclature.results} />
         </div>
     );
 }

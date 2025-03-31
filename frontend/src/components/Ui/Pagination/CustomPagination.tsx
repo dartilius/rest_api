@@ -1,11 +1,13 @@
 'use client';
 import './customPagination.scss';
 import { ChangeEvent } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 
 const CustomPagination = ({ totalItems }: { totalItems: number }) => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const router = useRouter();
+
     const currentPage = Number(searchParams.get('page')) || 1;
     const itemsPerPage = Number(searchParams.get('limit')) || 10;
 
@@ -21,6 +23,10 @@ const CustomPagination = ({ totalItems }: { totalItems: number }) => {
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
+    const handlePageChange = (pageNumber: number, limit?: number) => {
+        router.push(createPageURL(pageNumber, limit), { scroll: false });
+    };
+
     return (
         <div className="pagination-container">
             <div className="pagination-info">
@@ -31,7 +37,7 @@ const CustomPagination = ({ totalItems }: { totalItems: number }) => {
                     className="items-per-page-select"
                     value={itemsPerPage}
                     onChange={(event: ChangeEvent<HTMLSelectElement>) => {
-                        window.location.href = createPageURL(1, Number(event.target.value));
+                        handlePageChange(1, Number(event.target.value));
                     }}
                 >
                     <option value={5}>5</option>
@@ -42,17 +48,17 @@ const CustomPagination = ({ totalItems }: { totalItems: number }) => {
             <div className="pagination-controls">
                 <button
                     className="pagination-button"
-                    onClick={() => (window.location.href = createPageURL(currentPage - 1))}
+                    onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                 >
                     &#8592;
                 </button>
                 <button
                     className="pagination-button"
-                    onClick={() => (window.location.href = createPageURL(currentPage + 1))}
+                    onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
                 >
-                    &#8594; {/* Стрелка вправо */}
+                    &#8594;
                 </button>
             </div>
         </div>

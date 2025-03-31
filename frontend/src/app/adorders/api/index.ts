@@ -2,6 +2,7 @@ import { API_URL } from "@/config/api.config";
 import { client } from "@/services/httpClient";
 import { IAdOrderDetail, IDataAdResponse } from "@/types/orderTypes";
 import { getServerAccessToken, getClientAccessToken } from "@/utils";
+import {ICancelResponse} from "@/app/bgorders/api";
 
 const isSSR = typeof window === "undefined";
 console.log('isSsr', isSSR);
@@ -73,3 +74,23 @@ export async function getAdOrderDetail(id: string): Promise<IAdOrderDetail> {
       throw error;
     }
   }
+
+export async function cancelAdOrder(id: string): Promise<ICancelResponse> {
+    try {
+        const token = getClientAccessToken();
+        const url = `${API_URL}adorders/${id}/cancel/`;
+
+        const res = await client.delete<ICancelResponse>(url, {
+            headers: {
+                Authorization: `access_token ${token}`,
+                'Content-Type': 'application/json'
+            },
+        });
+        console.log(res);
+
+        return res;
+    } catch (error) {
+        console.error('Cancel error:', error);
+        throw new Error('Ошибка отмены заказа');
+    }
+}
