@@ -6,6 +6,8 @@ import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, Ta
 import { convertSizeFile } from "@/utils";
 import {guessType} from "@/utils/convertTypeFile";
 import Image from "next/image";
+import {useNotification} from "@/hooks/useNotification";
+import styles from './Card.module.scss'
 
 type Props = {
     data: any;
@@ -35,6 +37,7 @@ const TableListFiles = (props: Props) => {
     const {data} = props
 
     const [fileData, setFileData] = useState<Record<string, FetchFileResponse>>({});
+    const { showNotification } = useNotification()
 
     const handleMoreDetails = async (id: string) => {
         if (fileData[id]) {
@@ -67,6 +70,13 @@ const TableListFiles = (props: Props) => {
                 return <strong>Предпросмотр недоступен</strong>;
         }
     };
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+            .then(() => showNotification('Hash скопирован!', 'success'))
+            .catch(err =>  showNotification('Не удалось скопировать Hash!', 'error'));
+    };
+
 
     return (
         <TableContainer
@@ -111,7 +121,12 @@ const TableListFiles = (props: Props) => {
                                     <TableCell colSpan={columns.length}>
                                         <Collapse in={!!fileData[row.id]} timeout="auto" unmountOnExit>
                                             <Box sx={{ padding: 2, backgroundColor: "#f9f9f9", borderRadius: "4px" }}>
-                                                <div>Hash: {fileData[row.id]?.hash}</div>
+                                                <div
+                                                    onClick={() => copyToClipboard(fileData[row.id]?.hash)}
+                                                    className={styles.copy}
+                                                >
+                                                    Hash: <Button variant='contained' color='inherit'>{fileData[row.id]?.hash.slice(0, 25) + '...'}</Button>
+                                                </div>
                                                 {(fileData[row.id]?.tags?.length ?? 0) > 1 && (
                                                     <div>Теги: {fileData[row.id]?.tags.map(tag => tag.name).join(", ")}</div>
                                                 )}

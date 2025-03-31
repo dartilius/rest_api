@@ -1,3 +1,5 @@
+import {redirect} from "next/navigation";
+
 class HttpError extends Error {
     status: number;
     url: string;
@@ -31,6 +33,10 @@ class HttpError extends Error {
         },
         body: options?.body ? JSON.stringify(options.body) : undefined,
       });
+
+      if (response.status === 401) {
+        redirect('login')
+      }
   
       if (!response.ok) {
         const errorMessage = `Error: ${response.status} - ${response.statusText}`;
