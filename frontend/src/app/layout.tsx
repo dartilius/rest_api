@@ -81,7 +81,7 @@ export default function RootLayout({
               <Navbar toggleSidebar={toggleSidebar} />
               <div className='flex_sidebar_and_main'>
                 <Sidebar isOpen={openSideBar}/>
-                <main onClick={() => setOpenSideBar(false)} className='content'>
+                <main className='content'>
                   {children}
                 </main>
               </div>
