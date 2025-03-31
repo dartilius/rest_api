@@ -84,7 +84,7 @@ export async function getBgOrderDetail(id: string): Promise<IBgOrderDetail> {
   export async function cancelBgOrder(id: string): Promise<ICancelResponse> {
     try {
       const token = getClientAccessToken();
-      const url = `${API_URL}bgorders/cancel/${id}`;
+      const url = `${API_URL}bgorders/${id}/cancel/`;
   
       const res = await client.delete<ICancelResponse>(url, {
         headers: {
@@ -92,7 +92,7 @@ export async function getBgOrderDetail(id: string): Promise<IBgOrderDetail> {
           'Content-Type': 'application/json'
         },
       });
-  console.log(res);
+      console.log(res);
   
       return res;
     } catch (error) {

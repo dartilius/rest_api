@@ -14,6 +14,7 @@ import { Description } from '../data-display/Description'
 import ActionButton from '../Ui/button/ActionButton'
 import { Cancel } from '@mui/icons-material'
 import { Name } from '../data-display/Name'
+import {cancelAdOrder} from "@/app/adorders/api";
 
 interface AdOrderDetailCardProps {
   data: IAdOrderDetail
@@ -26,12 +27,13 @@ const AdOrderDetailCard = ({
 }: AdOrderDetailCardProps) => {
   const { showNotification } = useNotification()
 
-  const handleButtonCancel = () => {
-    showNotification('Заказ отменен!', 'success')
-    showNotification('Ошибка отмены заказа', 'error', {
-      autoClose: 7000,
-      theme: 'dark',
-    })
+  const handleButtonCancel = async () => {
+    try {
+      await cancelAdOrder(data.id)
+      showNotification('Заказ отменен!', 'success')
+    } catch (error) {
+      showNotification('Не удалось отменить заказ', 'error');
+    }
   }
 console.log(data.status);
 
