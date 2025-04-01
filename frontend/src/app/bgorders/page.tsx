@@ -13,8 +13,10 @@ const BgOrdersPage = async ({
     created_after: string;
     created_before: string;
     order_type: string
-
-
+    since_after: string,
+    since_before: string,
+    until_after: string,
+    until_before: string
   }
 }) => {
   const {
@@ -26,6 +28,10 @@ const BgOrdersPage = async ({
     created_after = '',
     created_before ='',
     order_type = '',
+    since_after = '',
+    since_before = '',
+    until_after = '',
+    until_before = ''
   } = (await searchParams) ?? {}
   const dataBgResponse = await getDataBg({
     page,
@@ -35,7 +41,11 @@ const BgOrdersPage = async ({
     created_after,
     created_before,
     order_type,
-    client
+    client,
+    since_after,
+    since_before,
+    until_after,
+    until_before,
   })
   
   return (

@@ -15,6 +15,10 @@ export async function getDataBg(queryParams: {
     created_after: string;
     created_before: string;
     order_type: string;
+    since_after: string,
+    since_before: string,
+    until_after: string,
+    until_before: string
 }): Promise<IDataBgResponse> {
     let token;
     if (isSSR) {

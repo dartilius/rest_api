@@ -4,10 +4,10 @@ import { IBgData, IDataBgResponse } from '@/types/orderTypes'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import {
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
+	flexRender,
+	getCoreRowModel,
+	getSortedRowModel,
+	useReactTable,
 } from '@tanstack/react-table'
 import { observer } from 'mobx-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -16,196 +16,217 @@ import FiltersPanel from '../filters/FiltersPanel'
 import AppBar from '@mui/material/AppBar'
 import { Typography } from '@mui/material'
 import { bgColumnsTable } from './bgColumnsTable'
+import ActionButton from '../Ui/button/ActionButton'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 
 interface IProps {
-  dataResponse: IDataBgResponse
+	dataResponse: IDataBgResponse
 }
 const BgOrders = ({ ...props }: IProps) => {
-  const { dataResponse } = props
+	const { dataResponse } = props
 
-  const { ordersStore } = useStore()
-  const [data, setData] = useState<IBgData[]>([])
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const { totalPagesBg } = ordersStore
-  const page = searchParams.get('page')
+	const { ordersStore } = useStore()
+	const [data, setData] = useState<IBgData[]>([])
+	const router = useRouter()
+	const pathname = usePathname()
+	const searchParams = useSearchParams()
+	const { totalPagesBg } = ordersStore
+	const page = searchParams.get('page')
 
-  const isNextButtonDisabled = Number(page) >= totalPagesBg
+	const isNextButtonDisabled = Number(page) >= totalPagesBg
 
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    if (!params.has('page')) {
-      params.set('page', '1')
-      router.replace(`${pathname}?${params.toString()}`)
-    }
+	useEffect(() => {
+		const params = new URLSearchParams(searchParams)
+		if (!params.has('page')) {
+			params.set('page', '1')
+			router.replace(`${pathname}?${params.toString()}`)
+		}
 
-    setData(dataResponse.results)
-    ordersStore.setTotalCountBg(dataResponse.count)
-    ordersStore.setActiveTabs(0)
-  }, [])
+		setData(dataResponse.results)
+		ordersStore.setTotalCountBg(dataResponse.count)
+		ordersStore.setActiveTabs(0)
+	}, [])
 
-  const table = useReactTable({
-    data,
-    columns: bgColumnsTable,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    enableSorting: true,
-  })
-  const handleRowClick = (id: string) => {
-    // Переход на страницу с расшифровкой
-    router.push(`bgorders/${id}`)
-  }
+	const table = useReactTable({
+		data,
+		columns: bgColumnsTable,
+		getCoreRowModel: getCoreRowModel(),
+		getSortedRowModel: getSortedRowModel(),
+		enableSorting: true,
+	})
+	const handleRowClick = (id: string) => {
+		// Переход на страницу с расшифровкой
+		router.push(`bgorders/${id}`)
+	}
 
-  const goToPage = (newPage: number) => {
-    const params = new URLSearchParams(searchParams)
-    params.set('page', newPage.toString())
-    router.push(`${pathname}?${params.toString()}`)
-  }
+	const goToPage = (newPage: number) => {
+		const params = new URLSearchParams(searchParams)
+		params.set('page', newPage.toString())
+		router.push(`${pathname}?${params.toString()}`)
+	}
 
-  return (
-    <Paper
-      elevation={4}
-      sx={{ width: '100%', height: '100%' }}
-      className='relative overflow-y-auto'
-    >
-      <AppBar position='static' color='transparent'>
-        <Box
-          display={'flex'}
-          justifyContent={'center'}
-          width={'100%'}
-          padding={1}
-          gap={2}
-        >
-          <Typography
-            variant='h5'
-            noWrap
-            component='div'
-            fontStyle={'uppercase'}
-            sx={{
-              flexGrow: 1,
-              alignSelf: 'center',
-              justifyContent: 'center',
-              alignItems: 'center',
-              textAlign: 'center',
-              fontSize: '2rem',
-              fontStyle: 'oblique',
-              fontVariantCaps: 'all-small-caps',
-              color: '#152c4d',
-            }}
-          >
-            Фоновые
-          </Typography>
-          <Box sx={{ width: 2 / 3 }}>
-            <FiltersPanel />
-          </Box>
-        </Box>
-      </AppBar>
-      <div className='p-2 w-full'>
-        {data.length < 1 ? (
-          <p>loading</p>
-        ) : (
-          <table className='w-full '>
-            <thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr
-                  key={headerGroup.id}
-                  className='h-16 border-2 border-slate-300'
-                >
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      style={{
-                        width: header.id === 'status' ? '160px' : 'auto',
-                      }}
-                    >
-                      {header.isPlaceholder ? null : (
-                        <div
-                          className='cursor-pointer'
-                          {...{
-                            onClick: header.column.getToggleSortingHandler(),
-                          }}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {/* Индикатор сортировки */}
-                          <span>
-                            {header.column.getIsSorted()
-                              ? header.column.getIsSorted() === 'asc'
-                                ? ' 🔼'
-                                : ' 🔽'
-                              : ''}
-                          </span>
-                        </div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className='border-2 border-slate-300 text-center h-16'
-                  onClick={() => handleRowClick(row.original.id)}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className='text-center text-nowrap cursor-pointer p-2'
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              {table.getFooterGroups().map((footerGroup) => (
-                <tr key={footerGroup.id}>
-                  {footerGroup.headers.map((header) => (
-                    <th key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.footer,
-                            header.getContext()
-                          )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </tfoot>
-          </table>
-        )}
-        <div className='w-full flex items-center justify-center gap-2 p-4'>
-          <button
-            onClick={() => goToPage(Number(page) - 1)}
-            disabled={Number(page) === 1}
-            className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
-          >
-            Предыдущая
-          </button>
-          <span>
-            Страница: {Number(page)} из {totalPagesBg}
-          </span>
-          <button
-            onClick={() => goToPage(Number(page) + 1)}
-            disabled={isNextButtonDisabled}
-            className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
-          >
-            Следующая
-          </button>
-        </div>
-      </div>
-    </Paper>
-  )
+	return (
+		<Paper
+			elevation={4}
+			sx={{
+				width: '100%',
+				height: '100%',
+				display: 'flex',
+				flexDirection: 'column',
+			}}
+		>
+			<AppBar
+				position='sticky'
+				sx={{
+					zIndex: (theme) => theme.zIndex.drawer + 1,
+					top: 0,
+					backgroundColor: 'background.paper',
+				}}
+			>
+				<Box
+					display={'flex'}
+					justifyContent={'center'}
+					alignItems={'center'}
+					width={'100%'}
+					padding={1}
+					gap={2}
+				>
+					<Box width={'20%'}>
+						<Typography
+							variant='h5'
+							noWrap
+							component='div'
+							fontStyle={'uppercase'}
+							sx={{
+								// flexGrow: 1,
+								alignSelf: 'center',
+								justifyContent: 'center',
+								alignItems: 'center',
+								textAlign: 'center',
+								fontSize: '2rem',
+								fontStyle: 'oblique',
+								fontVariantCaps: 'all-small-caps',
+								color: '#152c4d',
+							}}
+						>
+							Фоновые
+						</Typography>
+					</Box>
+
+					<FiltersPanel />
+
+					<Box
+						display={'flex'}
+						width={'20%'}
+						justifyContent={'center'}
+						alignItems={'center'}
+					>
+						<ActionButton
+							variant='primary'
+							size='lg'
+							icon={AddCircleOutlineIcon}
+						>
+							Создать
+						</ActionButton>
+					</Box>
+				</Box>
+			</AppBar>
+			<div className='p-2 w-full flex-1 overflow-auto'>
+				{data.length < 1 ? (
+					<p>loading</p>
+				) : (
+					<table className='w-full '>
+						<thead>
+							{table.getHeaderGroups().map((headerGroup) => (
+								<tr
+									key={headerGroup.id}
+									className='h-16 border-2 border-slate-300'
+								>
+									{headerGroup.headers.map((header) => (
+										<th
+											key={header.id}
+											style={{
+												width: header.id === 'status' ? '160px' : 'auto',
+											}}
+										>
+											{header.isPlaceholder ? null : (
+												<div
+													className='cursor-pointer'
+													{...{
+														onClick: header.column.getToggleSortingHandler(),
+													}}
+												>
+													{flexRender(header.column.columnDef.header, header.getContext())}
+													{/* Индикатор сортировки */}
+													<span>
+														{header.column.getIsSorted()
+															? header.column.getIsSorted() === 'asc'
+																? ' 🔼'
+																: ' 🔽'
+															: ''}
+													</span>
+												</div>
+											)}
+										</th>
+									))}
+								</tr>
+							))}
+						</thead>
+						<tbody>
+							{table.getRowModel().rows.map((row) => (
+								<tr
+									key={row.id}
+									className='border-2 border-slate-300 text-center h-16'
+									onClick={() => handleRowClick(row.original.id)}
+								>
+									{row.getVisibleCells().map((cell) => (
+										<td
+											key={cell.id}
+											className='text-center text-nowrap cursor-pointer p-2'
+										>
+											{flexRender(cell.column.columnDef.cell, cell.getContext())}
+										</td>
+									))}
+								</tr>
+							))}
+						</tbody>
+						<tfoot>
+							{table.getFooterGroups().map((footerGroup) => (
+								<tr key={footerGroup.id}>
+									{footerGroup.headers.map((header) => (
+										<th key={header.id}>
+											{header.isPlaceholder
+												? null
+												: flexRender(header.column.columnDef.footer, header.getContext())}
+										</th>
+									))}
+								</tr>
+							))}
+						</tfoot>
+					</table>
+				)}
+				<div className='w-full flex items-center justify-center gap-2 p-4'>
+					<button
+						onClick={() => goToPage(Number(page) - 1)}
+						disabled={Number(page) === 1}
+						className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+					>
+						Предыдущая
+					</button>
+					<span>
+						Страница: {Number(page)} из {totalPagesBg}
+					</span>
+					<button
+						onClick={() => goToPage(Number(page) + 1)}
+						disabled={isNextButtonDisabled}
+						className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+					>
+						Следующая
+					</button>
+				</div>
+			</div>
+		</Paper>
+	)
 }
 
 export default observer(BgOrders)

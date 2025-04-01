@@ -8,23 +8,31 @@ import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
 import CheckBoxIcon from '@mui/icons-material/CheckBox'
 import { useStore } from '@/providers/mobx-provider/MobxProvider'
 import { handleQueryParamChange } from '@/utils'
+import { OrderStatus } from '@/types/orderTypes'
+
 
 const icon = <CheckBoxOutlineBlankIcon fontSize='small' />
 const checkedIcon = <CheckBoxIcon fontSize='small' />
 
-const FILTER_OPTIONS = [
-  { queryParams: '0', label: 'Музыка' },
-  { queryParams: '1', label: 'Видео' },
-  { queryParams: '2', label: 'Картинки' },
-  { queryParams: '3', label: 'Бегущая строка' },
-]
+const STATUS_OPTIONS = Object.entries(OrderStatus)
+  .filter(([key]) => isNaN(Number(key)))
+  .map(([_key, value]) => ({
+    queryParams: String(value),
+    label: {
+      [OrderStatus.PENDING]: 'В ожидании',
+      [OrderStatus.LIVE]: 'В эфире',
+      [OrderStatus.COMPLETED]: 'Завершено',
+      [OrderStatus.CANCELLED]: 'Отменён',
+      [OrderStatus.ERROR]: 'Ошибка',
+    }[value as OrderStatus]
+  }))
 
-export function OrderTypeFilter() {
+export function StatusOrderFilters() {
   const { ordersStore } = useStore()
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
-  const currentValue = searchParams?.get('order_type') || ''
+  const currentValue = searchParams?.get('status') || ''
   const [selectedValue, setSelectedValue] = useState<string>(currentValue)
 
   useEffect(() => {
@@ -37,18 +45,18 @@ export function OrderTypeFilter() {
   ) => {
     const value = newValue?.queryParams || ''
     setSelectedValue(value)
-    handleQueryParamChange(router, pathname, searchParams, 'order_type', value)
+    handleQueryParamChange(router, pathname, searchParams, 'status', value)
     ordersStore.setPage(1)
   }
 
   return (
     <Autocomplete
       fullWidth
-      options={FILTER_OPTIONS}
+      options={STATUS_OPTIONS}
       getOptionLabel={(option) => option.label}
       disableCloseOnSelect
       value={
-        FILTER_OPTIONS.find((option) => option.queryParams === selectedValue) ||
+        STATUS_OPTIONS.find((option) => option.queryParams === selectedValue) ||
         null
       }
       onChange={handleChange}
@@ -69,7 +77,7 @@ export function OrderTypeFilter() {
           </li>
         )
       }}
-      renderInput={(params) => <TextField {...params} label='Тип' />}
+      renderInput={(params) => <TextField {...params} label='Статус' />}
     />
   )
 }

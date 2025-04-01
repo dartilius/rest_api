@@ -1,8 +1,8 @@
 // components/StatusBadge.tsx
-import { BgOrderStatus, STATUS_CONFIG } from '@/types/orderTypes'
+import { OrderStatus, STATUS_CONFIG } from '@/types/orderTypes'
 
 interface StatusBadgeProps {
-  status: BgOrderStatus
+  status: OrderStatus
   className?: string
   iconClassName?: string
   size?: 'sm' | 'md' | 'lg'

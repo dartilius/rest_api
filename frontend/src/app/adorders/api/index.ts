@@ -16,6 +16,10 @@ export async function getDataAd(queryParams: {
     created_after: string;
     created_before: string;
     brc_type: string;
+    since_after: string;
+    since_before: string;
+    until_after: string;
+    until_before: string;
 }): Promise<IDataAdResponse> {
     let token;
     if (isSSR) {
