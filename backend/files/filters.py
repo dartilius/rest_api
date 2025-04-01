@@ -18,7 +18,7 @@ class FileFilter(FilterSet):
     hash = CharFilter(field_name='hash', lookup_expr='iexact', label='Хэш')
     name = CharFilter(field_name='name', lookup_expr='icontains')
     id = CharFilter(field_name='id', lookup_expr='exact')
-    file_type = CharFilter(field_name='file_type', lookup_expr='exact')
+    file_type = CharFilter(field_name='type', lookup_expr='exact')
     tags = AllValuesMultipleFilter(field_name='tags__name')
 
     class Meta:
