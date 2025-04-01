@@ -37,7 +37,7 @@ export function Search({...props}: IPropsSearch) {
                     handleSearch(e.target.value);
                 }}
                 value={searchValue}
-                style={{backgroundColor: 'white', borderRadius: '4px'}}
+                style={{backgroundColor: 'white', borderRadius: '4px', maxHeight: '52px'}}
             />
     );
 }

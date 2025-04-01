@@ -24,14 +24,12 @@ export function NomenclatureActions({ id }: NomenclatureActionsProps) {
             console.log(res);
 
             if (res === 204) {
-                router.refresh(); // обновить страницу после успешного удаления
+                router.refresh();
             } else {
                 console.error('Error during deletion:', res);
-                // Можно здесь добавить отображение уведомления для пользователя
             }
         } catch (error) {
             console.error("Error deleting nomenclature:", error);
-            // Можно здесь обработать ошибки, например, через UI уведомление
         }
     }
 

@@ -1,13 +1,26 @@
 'use client'
 
 import React, { useState } from "react";
-import { fetchFilesById } from "@/services/FilesService";
-import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse } from "@mui/material";
+import {deleteFile, fetchFilesById} from "@/services/FilesService";
+import {
+    Box,
+    Button,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Collapse,
+    IconButton
+} from "@mui/material";
 import { convertSizeFile } from "@/utils";
 import {guessType} from "@/utils/convertTypeFile";
 import Image from "next/image";
 import {useNotification} from "@/hooks/useNotification";
-import styles from './Card.module.scss'
+import styles from './TableListFile.module.scss'
+import {gifDelete, gifEdit, gifView, staticDelete, staticEdit, staticView} from "@/styles";
+import {useRouter} from "next/navigation";
 
 type Props = {
     data: any;
@@ -23,6 +36,7 @@ type FetchFileResponse = {
     tags: { id: string; name: string }[];
     url: string;
     hash: string;
+    created: string;
 };
 
 const columns = [
@@ -37,7 +51,10 @@ const TableListFiles = (props: Props) => {
     const {data} = props
 
     const [fileData, setFileData] = useState<Record<string, FetchFileResponse>>({});
+    const [hoveredImages, setHoveredImages] = useState<Record<string, { edit: string; delete: string; view: string }>>({});
+
     const { showNotification } = useNotification()
+    const router = useRouter();
 
     const handleMoreDetails = async (id: string) => {
         if (fileData[id]) {
@@ -52,6 +69,26 @@ const TableListFiles = (props: Props) => {
                 setFileData(prev => ({ ...prev, [id]: res }));
             }
         }
+    };
+
+    const handleMouseEnter = (id: string, type: "edit" | "delete" | "view") => {
+        setHoveredImages(prev => ({
+            ...prev,
+            [id]: {
+                ...prev[id],
+                [type]: type === "edit" ? gifEdit : type === "delete" ? gifDelete : gifView
+            }
+        }));
+    };
+
+    const handleMouseLeave = (id: string, type: "edit" | "delete" | "view") => {
+        setHoveredImages(prev => ({
+            ...prev,
+            [id]: {
+                ...prev[id],
+                [type]: type === "edit" ? staticEdit : type === "delete" ? staticDelete : staticView
+            }
+        }));
     };
 
     const previewFile = (file: FetchFileResponse, fileType: string) => {
@@ -76,6 +113,17 @@ const TableListFiles = (props: Props) => {
             .then(() => showNotification('Hash скопирован!', 'success'))
             .catch(err =>  showNotification('Не удалось скопировать Hash!', 'error'));
     };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await deleteFile(id)
+            showNotification('Файл удален!', 'success')
+            router.refresh()
+        } catch (error) {
+            console.log(error);
+            showNotification('Не удалось удалить фалй', 'error')
+        }
+    }
 
 
     return (
@@ -105,12 +153,37 @@ const TableListFiles = (props: Props) => {
                                         <TableCell key={column.id}>
                                             {value}
                                             {column.id === "action" && (
-                                                <Button
-                                                    onClick={() => handleMoreDetails(row.id)}
-                                                    sx={{ textTransform: "none" }}
-                                                >
-                                                    {fileData[row.id] ? "Скрыть" : "Подробнее"}
-                                                </Button>
+                                                <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between', maxHeight: '24px'}} key={row.id}>
+
+                                                    <Image
+                                                        src={hoveredImages[row.id]?.edit || staticEdit}
+                                                        alt='edit'
+                                                        width={24}
+                                                        height={24}
+                                                        onMouseEnter={() => handleMouseEnter(row.id, "edit")}
+                                                        onMouseLeave={() => handleMouseLeave(row.id, "edit")}
+                                                    />
+                                                    <IconButton onClick={() => handleDelete(row.id)}>
+                                                        <Image
+                                                            src={hoveredImages[row.id]?.delete || staticDelete}
+                                                            alt='delete'
+                                                            width={24}
+                                                            height={24}
+                                                            onMouseEnter={() => handleMouseEnter(row.id, "delete")}
+                                                            onMouseLeave={() => handleMouseLeave(row.id, "delete")}
+                                                        />
+                                                    </IconButton>
+                                                    <IconButton onClick={() => handleMoreDetails(row.id)}>
+                                                        <Image
+                                                            src={hoveredImages[row.id]?.view || staticView}
+                                                            alt='view'
+                                                            width={24}
+                                                            height={24}
+                                                            onMouseEnter={() => handleMouseEnter(row.id, "view")}
+                                                            onMouseLeave={() => handleMouseLeave(row.id, "view")}
+                                                        />
+                                                    </IconButton>
+                                                </div>
                                             )}
                                         </TableCell>
                                     );
@@ -121,17 +194,20 @@ const TableListFiles = (props: Props) => {
                                     <TableCell colSpan={columns.length}>
                                         <Collapse in={!!fileData[row.id]} timeout="auto" unmountOnExit>
                                             <Box sx={{ padding: 2, backgroundColor: "#f9f9f9", borderRadius: "4px" }}>
-                                                <div
-                                                    onClick={() => copyToClipboard(fileData[row.id]?.hash)}
-                                                    className={styles.copy}
-                                                >
-                                                    Hash: <Button variant='contained' color='inherit'>{fileData[row.id]?.hash.slice(0, 25) + '...'}</Button>
+                                                <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+                                                    <div
+                                                        onClick={() => copyToClipboard(fileData[row.id]?.hash)}
+                                                        className={styles.copy}
+                                                    >
+                                                        Hash: <Button variant='contained' color='inherit'>{fileData[row.id]?.hash.slice(0, 25) + '...'}</Button>
+                                                    </div>
+                                                    <div>Дата создания: {fileData[row.id].created}</div>
                                                 </div>
                                                 {(fileData[row.id]?.tags?.length ?? 0) > 1 && (
                                                     <div>Теги: {fileData[row.id]?.tags.map(tag => tag.name).join(", ")}</div>
                                                 )}
 
-                                                <Box mt={2}>
+                                                <Box mt={2} display='flex' flexDirection='row' justifyContent='center'>
                                                     {fileData[row.id] && fileData[row.id]?.name
                                                         ? previewFile(fileData[row.id], fileData[row.id].name)
                                                         : "Предпросмотр недоступен"}
