@@ -53,18 +53,12 @@ export async function getFilesList(queryParams: {
 
     const url = `${API_URL}files`
 
-    console.log(url)
-
-    const res = await client.get<IFilesListResponse>(url, {
+    return await client.get<IFilesListResponse>(url, {
         params: stringifiedQueryParams,
         headers: {
             Authorization: `access_token ${token}`
         }
     })
-
-    console.log(res)
-
-    return res
 }
 
 type fetchFilesByIdQuery = {

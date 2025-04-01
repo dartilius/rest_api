@@ -29,8 +29,6 @@ const FilesListPage = async ({ searchParams,}: {
     const listFiles = await getFilesList({ page, limit, name, file_type });
     const dataFiles = listFiles.results ? listFiles.results : [];
     const countFiles = listFiles.count ? listFiles.count : 0;
-    console.log(dataFiles)
-
     return (
         <>
             <div>
