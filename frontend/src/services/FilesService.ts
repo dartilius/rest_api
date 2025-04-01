@@ -1,7 +1,9 @@
 import {API_URL} from "@/config/api.config";
-import {getServerAccessToken} from "@/utils";
+import {getClientAccessToken, getServerAccessToken} from "@/utils";
 import {getAccessToken} from "@/services/accessToken";
 import {redirect} from "next/navigation";
+import {IFilesListResponse} from "@/types/fileTypes";
+import {client} from "@/services/httpClient";
 
 type fetchFilesListQuery = {
     page?: number;
@@ -26,36 +28,43 @@ export type FilesDataList = {
     type: string
 }
 
-export async function fetchFilesList(props: fetchFilesListQuery): Promise<fetchFilesResponse> {
-    const token = await getServerAccessToken();
-    const {file_type, page, tags, name, limit} = props;
-    // console.log('token', token)
-    console.log('url', `${API_URL}files/?page=${page}&limit=${limit}&name=${name}`)
-    try {
-        const response = await fetch(`${API_URL}files/?page=${page}&limit=${limit}&name=${name}`, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': `access_token ${token}`,
-            },
-            method: 'GET',
-        });
+const isSSR = typeof window === "undefined";
 
-        if (response.status === 401) {
-            redirect('/login')
-        }
-        if (!response.ok) {
-            return `Ошибка загрузки файлов: статус ${response.status}, текст: ${response.statusText}`;
-        }
-
-
-
-        return await response.json() as fetchFilesResponse;
-
-    } catch (error) {
-        console.error('Ошибка при запросе файлов:', error);
-        throw error;
+export async function getFilesList(queryParams: {
+    page: number;
+    limit: number;
+    name: string;
+    file_type: string;
+}): Promise<IFilesListResponse> {
+    let token;
+    if (isSSR) {
+        token = await getServerAccessToken();
+    } else {
+        token = getClientAccessToken()
     }
+
+    const stringifiedQueryParams = {
+        ...queryParams,
+        page: queryParams.page.toString(),
+        limit: queryParams.limit.toString(),
+        name: queryParams.name.toString(),
+        file_type: queryParams.file_type.toString(),
+    }
+
+    const url = `${API_URL}files`
+
+    console.log(url)
+
+    const res = await client.get<IFilesListResponse>(url, {
+        params: stringifiedQueryParams,
+        headers: {
+            Authorization: `access_token ${token}`
+        }
+    })
+
+    console.log(res)
+
+    return res
 }
 
 type fetchFilesByIdQuery = {
@@ -75,6 +84,7 @@ type fetchFileResponse = {
     }>
     url: string;
     hash: string;
+    created: string;
 } | string
 
 export async function fetchFilesById(props: fetchFilesByIdQuery): Promise<fetchFileResponse> {
@@ -159,6 +169,40 @@ export async function sendFile(body: SendFile): Promise<SendFileResponse> {
 
     } catch (error: any) {
         console.error('Ошибка при создании файла:', error);
+        throw error;
+    }
+}
+
+export async function deleteFile(id: string): Promise<any> {
+    const token = getAccessToken()
+    try {
+        const response = await fetch(`${API_URL}files/${id}/`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `access_token ${token}`,
+            },
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            let errorMessage = `Ошибка при удалении файла: статус ${response.status}`;
+
+            try {
+                const errorData: ErrorResponse = await response.json();
+                if (errorData.source && errorData.source.length > 0) {
+                    errorMessage += `, источник ошибки: ${errorData.source.join(', ')}`;
+                }
+            } catch (jsonError) {
+                errorMessage += ', не удалось распарсить ошибку';
+            }
+
+            throw new Error(errorMessage);
+        }
+        return response;
+
+    } catch (error: any) {
+        console.error('Ошибка при удалении файла:', error);
         throw error;
     }
 }
