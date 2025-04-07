@@ -17,8 +17,8 @@ import FiltersPanel from '../filters/FiltersPanel'
 import AppBar from '@mui/material/AppBar'
 import { Typography } from '@mui/material'
 import { adColumnsTable } from './adColumnsTable'
-import ActionButton from '../Ui/button/ActionButton'
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import CreateAdOrderModal from './CreateAdOrderModal'
+
 
 interface IProps {
 	dataResponse: IDataAdResponse
@@ -115,21 +115,7 @@ const AdOrders = ({ ...props }: IProps) => {
 					</Box>
 
 					<FiltersPanel />
-
-					<Box
-						display={'flex'}
-						width={'20%'}
-						justifyContent={'center'}
-						alignItems={'center'}
-					>
-						<ActionButton
-							variant='primary'
-							size='lg'
-							icon={AddCircleOutlineIcon}
-						>
-							Создать
-						</ActionButton>
-					</Box>
+					<CreateAdOrderModal />
 				</Box>
 			</AppBar>
 			<div className='p-2 w-full flex-1 overflow-auto'>

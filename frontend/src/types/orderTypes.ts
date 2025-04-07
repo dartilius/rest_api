@@ -48,7 +48,7 @@ export enum AdOrderType{
   POINT_TIME = 0,
   START_OFFSET = 1,
   END_OFFSET = 2,
-  SPECIFIC_HOURS = 3, // Новый тип
+  SPECIFIC_HOURS = 3, 
   OPEN_TO_HOUR = 4,
   FIXED_TO_CLOSE = 5,
   EVENT_START = 6,
