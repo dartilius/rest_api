@@ -76,7 +76,7 @@ const TableListFiles = (props: Props) => {
 			component={Box}
 			sx={{
 				maxWidth: '100%',
-				maxHeight: '800px',
+				maxHeight: '760px',
 				height: '100%',
 				overflow: 'hidden',
 				overflowY: 'auto',
