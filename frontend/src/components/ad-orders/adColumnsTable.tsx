@@ -73,7 +73,7 @@ export const adColumnsTable = [
         },
         1: { label: 'В эфире', backgroundColor: 'rgba(0, 182, 155, 0.4)' },
         2: { label: 'Завершен', backgroundColor: 'rgba(128, 128, 128, 0.4)' },
-        3: { label: 'Отменен', backgroundColor: 'rgba(239, 56, 40, 0.4)' },
+        3: { label: 'Отменён', backgroundColor: 'rgba(239, 56, 40, 0.4)' },
         4: { label: 'Ошибка', backgroundColor: 'rgba(239, 56, 40, 0.4)' },
       }
       const status = statusMapping[

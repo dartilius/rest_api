@@ -37,7 +37,7 @@ export enum BgOrderType {
   IMAGES = 2,
   TICKER = 3,
 }
-export enum BgOrderStatus {
+export enum OrderStatus {
   PENDING = 0,
   LIVE = 1,
   COMPLETED = 2,
@@ -48,7 +48,7 @@ export enum AdOrderType{
   POINT_TIME = 0,
   START_OFFSET = 1,
   END_OFFSET = 2,
-  SPECIFIC_HOURS = 3, // Новый тип
+  SPECIFIC_HOURS = 3, 
   OPEN_TO_HOUR = 4,
   FIXED_TO_CLOSE = 5,
   EVENT_START = 6,
@@ -127,32 +127,32 @@ export const ORDER_TYPE_BG_CONFIG: Record<BgOrderType, TypeConfig> = {
   },
 }
 
-export const STATUS_CONFIG: Record<BgOrderStatus, StatusConfig> = {
-  [BgOrderStatus.PENDING]: {
+export const STATUS_CONFIG: Record<OrderStatus, StatusConfig> = {
+  [OrderStatus.PENDING]: {
     label: 'Ожидает эфира',
     icon: Schedule,
     className: 'text-amber-800',
     backgroundColor: 'rgba(255, 167, 86, 0.5)',
   },
-  [BgOrderStatus.LIVE]: {
+  [OrderStatus.LIVE]: {
     label: 'В эфире',
     icon: LiveTv,
     className: 'text-green-800 animate-pulse',
     backgroundColor: 'rgba(0, 182, 155, 0.5)',
   },
-  [BgOrderStatus.COMPLETED]: {
+  [OrderStatus.COMPLETED]: {
     label: 'Завершен',
     icon: CheckCircle,
     className: 'text-gray-800',
     backgroundColor: 'rgba(128, 128, 128, 0.5)',
   },
-  [BgOrderStatus.CANCELLED]: {
-    label: 'Отменен',
+  [OrderStatus.CANCELLED]: {
+    label: 'Отменён',
     icon: Cancel,
     className: 'text-red-800',
     backgroundColor: 'rgba(239, 56, 40, 0.5)',
   },
-  [BgOrderStatus.ERROR]: {
+  [OrderStatus.ERROR]: {
     label: 'Ошибка',
     icon: Error,
     className: 'text-red-800',
@@ -178,7 +178,7 @@ export interface IBgOrderDetail {
   order_type: number // Обязательное поле +
   playlist: { files_count: number; id: string; name: string } // Плейлист, обязательное поле +
   broadcast_interval: IBroadcastInterval // Обязательное поле +
-  status: BgOrderStatus // Статус +
+  status: OrderStatus // Статус +
   created: string // Дата создания +
   parameters: {
     daily_start_time: string
@@ -213,7 +213,7 @@ export interface IAdOrderDetail {
     times_in_hour: number
     weight: number
   }
-  status: BgOrderStatus // Статус +
+  status: OrderStatus // Статус +
   created: string // Дата создания +
   client: IClient // Обязательное поле +
 }

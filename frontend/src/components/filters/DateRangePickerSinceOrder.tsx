@@ -9,16 +9,16 @@ import { Label } from '../data-display/Label'
 const DATE_FORMAT = 'YYYY-MM-DD'
 const DISPLAY_FORMAT = 'DD-MM-YYYY'
 
-const DateRangesPickerFilter = () => {
+const DateRangePickerSinceOrder = () => {
 	const searchParams = useSearchParams()
 	const pathname = usePathname()
 	const router = useRouter()
 
-	const [createdAfter, setCreatedAfter] = useState<Dayjs | null>(null)
-	const [createdBefore, setCreatedBefore] = useState<Dayjs | null>(null)
+	const [sinceAfter, setSinceAfter] = useState<Dayjs | null>(null)
+	const [sinceBefore, setSinceBefore] = useState<Dayjs | null>(null)
 	const [errors, setErrors] = useState<Record<string, boolean>>({
-		created_after: false,
-		created_before: false,
+		since: false,
+		until: false,
 	})
 
 	// Валидация даты
@@ -33,11 +33,11 @@ const DateRangesPickerFilter = () => {
 			return date.isValid() ? date : null
 		}
 
-		setCreatedAfter(parseDate(searchParams?.get('created_after')))
-		setCreatedBefore(parseDate(searchParams?.get('created_before')))
+		setSinceAfter(parseDate(searchParams?.get('since_after')))
+		setSinceBefore(parseDate(searchParams?.get('since_before')))
 	}, [searchParams])
 
-	const handleDateChange = (type: 'created_after' | 'created_before', date: Dayjs | null) => {
+	const handleDateChange = (type: 'since_after' | 'since_before', date: Dayjs | null) => {
 		const isValid = isValidDate(date)
 		setErrors((prev) => ({ ...prev, [type]: !isValid }))
 
@@ -47,23 +47,23 @@ const DateRangesPickerFilter = () => {
 		}
 
 		// Обновление состояния только при валидных датах
-		if (type === 'created_after') {
-			setCreatedAfter(isValid ? date : null)
+		if (type === 'since_after') {
+			setSinceAfter(isValid ? date : null)
 		} else {
-			setCreatedBefore(isValid ? date : null)
+			setSinceBefore(isValid ? date : null)
 		}
 
 		handleQueryParamChange(router, pathname, searchParams, type, dateString)
 	}
 
 	return (
-		<div className='flex flex-row w-full justify-center items-center gap-2'>
-			<Label className='text-xl text-nowrap'>Дата создания</Label>
+		<div className='flex flex-row w-full justify-end items-center gap-2'>
+			<Label className='text-xl text-nowrap'>Начало Эфира</Label>
 			<div className='w-full flex flex-row flex-nowrap gap-1'>
 				<DatePicker
 					label='От'
-					value={createdAfter}
-					onChange={(date) => handleDateChange('created_after', date)}
+					value={sinceAfter}
+					onChange={(date) => handleDateChange('since_after', date)}
 					format={DISPLAY_FORMAT}
 					slotProps={{
 						textField: {
@@ -74,8 +74,8 @@ const DateRangesPickerFilter = () => {
 				/>
 				<DatePicker
 					label='До'
-					value={createdBefore}
-					onChange={(date) => handleDateChange('created_before', date)}
+					value={sinceBefore}
+					onChange={(date) => handleDateChange('since_before', date)}
 					format={DISPLAY_FORMAT}
 					slotProps={{
 						textField: {
@@ -89,4 +89,4 @@ const DateRangesPickerFilter = () => {
 	)
 }
 
-export default DateRangesPickerFilter
+export default DateRangePickerSinceOrder
