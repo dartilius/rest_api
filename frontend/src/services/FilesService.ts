@@ -2,7 +2,7 @@ import {API_URL} from "@/config/api.config";
 import {getClientAccessToken, getServerAccessToken} from "@/utils";
 import {getAccessToken} from "@/services/accessToken";
 import {redirect} from "next/navigation";
-import {IFilesListResponse} from "@/types/fileTypes";
+import {IFileDetailResponse, IFilesListResponse} from "@/types/fileTypes";
 import {client} from "@/services/httpClient";
 
 type fetchFilesListQuery = {
@@ -61,29 +61,13 @@ export async function getFilesList(queryParams: {
     })
 }
 
-type fetchFilesByIdQuery = {
-    id: string | undefined;
-}
-
-type fetchFileResponse = {
-    id: string;
-    length: string;
-    size: number;
-    name: string;
-    type: string;
-    source: string;
-    tags: Array<{
-        id: string;
-        name: string;
-    }>
-    url: string;
-    hash: string;
-    created: string;
-} | string
-
-export async function fetchFilesById(props: fetchFilesByIdQuery): Promise<fetchFileResponse> {
-    const token = await getServerAccessToken();
-    const {id} = props;
+export async function getFileDetail(id: string): Promise<IFileDetailResponse> {
+    let token;
+    if (isSSR) {
+        token = await getServerAccessToken();
+    } else {
+        token = getClientAccessToken()
+    }
     try {
         const response = await fetch(`${API_URL}files/${id}`, {
             headers: {
@@ -95,16 +79,18 @@ export async function fetchFilesById(props: fetchFilesByIdQuery): Promise<fetchF
         });
 
         if (!response.ok) {
-            return `Ошибка загрузки файлов: статус ${response.status}, текст: ${response.statusText}`;
+            throw new Error(`Ошибка загрузки файлов: статус ${response.status}, текст: ${response.statusText}`);
         }
 
-        return await response.json() as fetchFileResponse;
+        return await response.json() as IFileDetailResponse;
 
     } catch (error) {
         console.error('Ошибка при запросе файлов:', error);
         throw error;
     }
 }
+
+
 
 type SendFile = {
     type: number;
@@ -168,7 +154,12 @@ export async function sendFile(body: SendFile): Promise<SendFileResponse> {
 }
 
 export async function deleteFile(id: string): Promise<any> {
-    const token = getAccessToken()
+    let token;
+    if (isSSR) {
+        token = await getServerAccessToken();
+    } else {
+        token = getClientAccessToken()
+    }
     try {
         const response = await fetch(`${API_URL}files/${id}/`, {
             headers: {
