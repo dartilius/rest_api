@@ -12,6 +12,8 @@ import {
 	TableHead,
 	TableRow,
 	Collapse,
+	Fade,
+	Grow,
 } from '@mui/material'
 import { convertSizeFile } from '@/utils'
 import { useNotification } from '@/hooks/useNotification'
@@ -20,6 +22,7 @@ import { useRouter } from 'next/navigation'
 import IconActions from '@/app/files/components/TableListFile/IconActions'
 import { IFileDetailResponse, IFilesListResponse } from '@/types/fileTypes'
 import PreviewFile from '@/app/files/components/PreviewFile/PreviewFile'
+import { TransitionGroup } from 'react-transition-group'
 
 type Props = {
 	data: IFilesListResponse['results']
@@ -125,7 +128,7 @@ const TableListFiles = (props: Props) => {
 														justifyContent: 'space-between',
 														maxHeight: '24px',
 														alignItems: 'center',
-														marginLeft: '-24px'
+														marginLeft: '-24px',
 													}}
 													key={row.id}
 												>
@@ -143,54 +146,68 @@ const TableListFiles = (props: Props) => {
 							{fileData[row.id] && (
 								<TableRow>
 									<TableCell colSpan={columns.length}>
-										<Collapse
-											in={!!fileData[row.id]}
-											timeout='auto'
-											unmountOnExit
-										>
-											<Box sx={{ padding: 2, backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
-												<div
-													style={{
-														display: 'flex',
-														flexDirection: 'row',
-														alignItems: 'center',
-														justifyContent: 'space-between',
-													}}
+										<TransitionGroup>
+											{fileData[row.id] && (
+												<Collapse
+													key={row.id}
+													timeout={{ enter: 500, exit: 400 }}
 												>
-													<div
-														onClick={() => copyToClipboard(fileData[row.id]?.hash)}
-														className={styles.copy}
-													>
-														Hash:{' '}
-														<Button
-															variant='contained'
-															color='inherit'
-														>
-															{fileData[row.id]?.hash.slice(0, 25) + '...'}
-														</Button>
-													</div>
-													<div>Дата создания: {fileData[row.id].created}</div>
-												</div>
-												{(fileData[row.id]?.tags?.length ?? 0) > 1 && (
-													<div>
-														Теги: {fileData[row.id]?.tags.map((tag) => tag.name).join(', ')}
-													</div>
-												)}
+													<Grow in timeout={{ enter: 400, exit: 300 }}>
+														<Fade in timeout={{ enter: 400, exit: 300 }}>
+															<Box sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+																<div
+																	style={{
+																		display: 'flex',
+																		flexDirection: 'row',
+																		alignItems: 'center',
+																		justifyContent: 'space-between',
+																	}}
+																>
+																	<div
+																		onClick={() => copyToClipboard(fileData[row.id]?.hash)}
+																		className={styles.copy}
+																	>
+																		Hash:{' '}
+																		<Button
+																			variant='contained'
+																			color='inherit'
+																		>
+																			{fileData[row.id]?.hash.slice(0, 25) + '...'}
+																		</Button>
+																	</div>
+																	<div>Дата создания: {fileData[row.id].created}</div>
+																</div>
 
-												<Box
-													mt={2}
-													display='flex'
-													flexDirection='row'
-													justifyContent='center'
-												>
-													{fileData[row.id] && fileData[row.id]?.name
-														? <PreviewFile file={fileData[row.id]} fileType={fileData[row.id].name} />
-														: 'Предпросмотр недоступен'}
-												</Box>
-											</Box>
-										</Collapse>
+																{(fileData[row.id]?.tags?.length ?? 0) > 1 && (
+																	<div>
+																		Теги: {fileData[row.id]?.tags.map((tag) => tag.name).join(', ')}
+																	</div>
+																)}
+
+																<Box
+																	mt={2}
+																	display='flex'
+																	flexDirection='row'
+																	justifyContent='center'
+																>
+																	{fileData[row.id] && fileData[row.id]?.name ? (
+																		<PreviewFile
+																			file={fileData[row.id]}
+																			fileType={fileData[row.id].name}
+																		/>
+																	) : (
+																		'Предпросмотр недоступен'
+																	)}
+																</Box>
+															</Box>
+														</Fade>
+													</Grow>
+												</Collapse>
+											)}
+										</TransitionGroup>
 									</TableCell>
 								</TableRow>
+
 							)}
 						</React.Fragment>
 					))}
