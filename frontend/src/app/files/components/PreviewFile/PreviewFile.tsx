@@ -35,8 +35,8 @@ function PreviewFile({ file, fileType }: PreviewFileProps) {
 				<Image
 					src={file.url}
 					alt={file.name}
-					width={200}
-					height={200}
+					width={480}
+					height={480}
 					style={{ borderRadius: '8px', objectFit: 'cover' }}
 				/>
 			)
