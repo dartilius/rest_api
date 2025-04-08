@@ -61,7 +61,9 @@ export async function getAdOrderDetail(id: string): Promise<IAdOrderDetail> {
       const res = await client.get<IAdOrderDetail>(url, {
         headers: {
           Authorization: `access_token ${token}`,
-        }
+            'Accept': 'application/json'
+        },
+
       });
   
       if (!res) {

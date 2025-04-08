@@ -12,3 +12,19 @@ export interface IFilesListResponse {
     previous: string | null;
     results: IFiles[]
 }
+
+export interface IFileDetailResponse {
+    id: string;
+    length: string;
+    size: number;
+    name: string;
+    type: string;
+    source: string;
+    tags: Array<{
+        id: string;
+        name: string;
+    }>
+    url: string;
+    hash: string;
+    created: string;
+}

@@ -1,4 +1,3 @@
-'use client'
 import {Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
 import Link from "next/link";
 import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
