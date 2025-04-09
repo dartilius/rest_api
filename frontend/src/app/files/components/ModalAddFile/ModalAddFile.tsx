@@ -62,12 +62,12 @@ export function ModalAddFile() {
 	const isOpen = searchParams.get('modal') === 'open'
 
 	const handleOpen = () => {
-		const newUrl = `${pathname}?page=1&limit=12&modal=open`
+		const newUrl = `${pathname}?page=1&limit=20&modal=open`
 		router.push(newUrl, { scroll: false })
 	}
 
 	const handleClose = () => {
-		const newUrl = `${pathname}?page=1&limit=12`
+		const newUrl = `${pathname}?page=1&limit=20`
 		router.push(newUrl, { scroll: false })
 	}
 	const handleCloseAlert = () => {
