@@ -28,3 +28,15 @@ export interface IFileDetailResponse {
     hash: string;
     created: string;
 }
+
+export interface ITagsListResponse {
+    count: number;
+    next: string;
+    previous: string;
+    results: ITagResponse[];
+}
+
+export interface ITagResponse {
+    id: string;
+    name: string;
+}

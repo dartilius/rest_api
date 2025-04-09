@@ -20,9 +20,10 @@ import { useNotification } from '@/hooks/useNotification'
 import styles from './TableListFile.module.scss'
 import { useRouter } from 'next/navigation'
 import IconActions from '@/app/files/components/TableListFile/IconActions'
-import { IFileDetailResponse, IFilesListResponse } from '@/types/fileTypes'
+import { IFileDetailResponse, IFilesListResponse, ITagResponse } from '@/types/fileTypes'
 import PreviewFile from '@/app/files/components/PreviewFile/PreviewFile'
 import { TransitionGroup } from 'react-transition-group'
+import ModalEditFile from '@/app/files/components/ModalEditFile/ModalEditFile'
 
 type Props = {
 	data: IFilesListResponse['results']
@@ -39,6 +40,11 @@ const TableListFiles = (props: Props) => {
 	const { data } = props
 
 	const [fileData, setFileData] = useState<Record<string, IFileDetailResponse>>({})
+	const [loading, setLoading] = useState<Record<string, boolean>>({})
+	const [openModal, setOpenModal] = useState<boolean>(false)
+	const [fileName, setFileName] = useState<string>('')
+	const [fileTags, setFileTags] = useState<Array<ITagResponse>>([])
+	const [idFile, setIdFile] = useState<string>('')
 
 	const { showNotification } = useNotification()
 	const router = useRouter()
@@ -50,9 +56,17 @@ const TableListFiles = (props: Props) => {
 				delete newData[id]
 				return newData
 			})
+			setLoading((prev) => ({ ...prev, [id]: false }))
 		} else {
-			const res = await getFileDetail(id)
-			setFileData((prev) => ({ ...prev, [id]: res }))
+			try {
+				setLoading((prev) => ({ ...prev, [id]: true }))
+				const res = await getFileDetail(id)
+				setFileData((prev) => ({ ...prev, [id]: res }))
+				setLoading((prev) => ({ ...prev, [id]: false }))
+			} catch (err: any) {
+				setLoading((prev) => ({ ...prev, [id]: false }))
+				showNotification(err, 'error')
+			}
 		}
 	}
 
@@ -67,6 +81,7 @@ const TableListFiles = (props: Props) => {
 		try {
 			await deleteFile(id)
 			showNotification('Файл удален!', 'success')
+			// revalidatePath('/files')
 			router.refresh()
 		} catch (error) {
 			console.log(error)
@@ -74,146 +89,186 @@ const TableListFiles = (props: Props) => {
 		}
 	}
 
+	const handleOpenModal = async (id: string) => {
+		try {
+			const res = await getFileDetail(id)
+			setFileName(res.name)
+			setIdFile(res.id)
+			setFileTags(res.tags)
+			setOpenModal(true)
+		} catch (e: any) {
+			showNotification(`Не удалось открыть файл ${e}`, 'error')
+		}
+	}
+
+	const handleCloseModal = () => {
+		setFileName('')
+		setIdFile('')
+		setFileTags([])
+		setOpenModal(false)
+	}
+
 	return (
-		<TableContainer
-			component={Box}
-			sx={{
-				maxWidth: '100%',
-				maxHeight: '760px',
-				height: '100%',
-				overflow: 'hidden',
-				overflowY: 'auto',
-				overflowX: 'auto',
-				borderRadius: '8px',
-				backgroundColor: 'white',
-			}}
-		>
-			<Table stickyHeader>
-				<TableHead>
-					<TableRow>
-						{columns.map((column) => (
-							<TableCell
-								key={column.id}
-								align={column.id === 'action' ? 'left' : 'center'}
-								sx={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
-							>
-								{column.label}
-							</TableCell>
-						))}
-					</TableRow>
-				</TableHead>
-				<TableBody>
-					{data?.map((row: any) => (
-						<React.Fragment key={row.id}>
-							<TableRow
-								hover
-								role='checkbox'
-								tabIndex={-1}
-							>
-								{columns.map((column) => {
-									let value = row[column.id]
-									if (column.id === 'size') value = convertSizeFile(row.size)
+		<>
+			<TableContainer
+				component={Box}
+				className={styles.custom_scroll}
+				sx={(theme) => ({
+					maxWidth: '100%',
+					maxHeight: '760px',
+					height: '100%',
+					overflow: 'hidden',
+					overflowY: 'auto',
+					overflowX: 'auto',
+					borderRadius: '8px',
+					backgroundColor: 'white',
+					[theme.breakpoints.down('sm')]: {
+						maxHeight: '620px',
+					},
+				})}
+			>
+				<Table stickyHeader>
+					<TableHead>
+						<TableRow>
+							{columns.map((column) => (
+								<TableCell
+									key={column.id}
+									align={column.id === 'action' ? 'left' : 'center'}
+									sx={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
+								>
+									{column.label}
+								</TableCell>
+							))}
+						</TableRow>
+					</TableHead>
+					<TableBody>
+						{data?.map((row: any) => (
+							<React.Fragment key={row.id}>
+								<TableRow
+									hover
+									role='checkbox'
+									tabIndex={-1}
+								>
+									{columns.map((column) => {
+										let value = row[column.id]
+										if (column.id === 'size') value = convertSizeFile(row.size)
 
-									return (
-										<TableCell
-											key={column.id}
-											align={column.id === 'action' ? 'right' : 'center'}
-										>
-											{value}
-											{column.id === 'action' && (
-												<div
-													style={{
-														display: 'flex',
-														flexDirection: 'row',
-														justifyContent: 'space-between',
-														maxHeight: '24px',
-														alignItems: 'center',
-														marginLeft: '-24px',
-													}}
-													key={row.id}
-												>
-													<IconActions
-														toggleCollapse={handleMoreDetails}
-														id={row.id}
-														handleDelete={handleDelete}
-													/>
-												</div>
-											)}
-										</TableCell>
-									)
-								})}
-							</TableRow>
-							{fileData[row.id] && (
-								<TableRow>
-									<TableCell colSpan={columns.length}>
-										<TransitionGroup>
-											{fileData[row.id] && (
-												<Collapse
-													key={row.id}
-													timeout={{ enter: 500, exit: 400 }}
-												>
-													<Grow in timeout={{ enter: 400, exit: 300 }}>
-														<Fade in timeout={{ enter: 400, exit: 300 }}>
-															<Box sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
-																<div
-																	style={{
-																		display: 'flex',
-																		flexDirection: 'row',
-																		alignItems: 'center',
-																		justifyContent: 'space-between',
-																	}}
-																>
-																	<div
-																		onClick={() => copyToClipboard(fileData[row.id]?.hash)}
-																		className={styles.copy}
-																	>
-																		Hash:{' '}
-																		<Button
-																			variant='contained'
-																			color='inherit'
-																		>
-																			{fileData[row.id]?.hash.slice(0, 25) + '...'}
-																		</Button>
-																	</div>
-																	<div>Дата создания: {fileData[row.id].created}</div>
-																</div>
-
-																{(fileData[row.id]?.tags?.length ?? 0) > 1 && (
-																	<div>
-																		Теги: {fileData[row.id]?.tags.map((tag) => tag.name).join(', ')}
-																	</div>
-																)}
-
-																<Box
-																	mt={2}
-																	display='flex'
-																	flexDirection='row'
-																	justifyContent='center'
-																>
-																	{fileData[row.id] && fileData[row.id]?.name ? (
-																		<PreviewFile
-																			file={fileData[row.id]}
-																			fileType={fileData[row.id].name}
-																		/>
-																	) : (
-																		'Предпросмотр недоступен'
-																	)}
-																</Box>
-															</Box>
-														</Fade>
-													</Grow>
-												</Collapse>
-											)}
-										</TransitionGroup>
-									</TableCell>
+										return (
+											<TableCell
+												key={column.id}
+												align={column.id === 'action' ? 'right' : 'center'}
+											>
+												{value}
+												{column.id === 'action' && (
+													<div
+														style={{
+															display: 'flex',
+															flexDirection: 'row',
+															justifyContent: 'space-between',
+															maxHeight: '24px',
+															alignItems: 'center',
+															marginLeft: '-24px',
+														}}
+														key={row.id}
+													>
+														<IconActions
+															toggleCollapse={handleMoreDetails}
+															id={row.id}
+															handleDelete={handleDelete}
+															handleEdit={handleOpenModal}
+														/>
+													</div>
+												)}
+											</TableCell>
+										)
+									})}
 								</TableRow>
+								{fileData[row.id] && (
+									<TableRow>
+										<TableCell colSpan={columns.length}>
+											<TransitionGroup>
+												{fileData[row.id] && (
+													<Collapse
+														key={row.id}
+														timeout={{ enter: 500, exit: 400 }}
+													>
+														<Grow
+															in
+															timeout={{ enter: 400, exit: 300 }}
+														>
+															<Fade
+																in
+																timeout={{ enter: 400, exit: 300 }}
+															>
+																<Box sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+																	<div
+																		style={{
+																			display: 'flex',
+																			flexDirection: 'row',
+																			alignItems: 'center',
+																			justifyContent: 'space-between',
+																		}}
+																	>
+																		<div
+																			onClick={() => copyToClipboard(fileData[row.id]?.hash)}
+																			className={styles.copy}
+																		>
+																			Hash:{' '}
+																			<Button
+																				variant='contained'
+																				color='inherit'
+																			>
+																				{fileData[row.id]?.hash.slice(0, 25) + '...'}
+																			</Button>
+																		</div>
+																		<div>Дата создания: {fileData[row.id].created}</div>
+																	</div>
 
-							)}
-						</React.Fragment>
-					))}
-				</TableBody>
-			</Table>
-		</TableContainer>
+																	{(fileData[row.id]?.tags?.length ?? 0) > 1 && (
+																		<div>
+																			Теги:{' '}
+																			{fileData[row.id]?.tags.map((tag) => tag.name).join(', ')}
+																		</div>
+																	)}
+
+																	<Box
+																		mt={2}
+																		display='flex'
+																		flexDirection='row'
+																		justifyContent='center'
+																	>
+																		{fileData[row.id] && fileData[row.id]?.name ? (
+																			<PreviewFile
+																				file={fileData[row.id]}
+																				fileType={fileData[row.id]?.name ?? ''}
+																				loading={loading[row.id] ?? false}
+																			/>
+																		) : (
+																			'Предпросмотр недоступен'
+																		)}
+																	</Box>
+																</Box>
+															</Fade>
+														</Grow>
+													</Collapse>
+												)}
+											</TransitionGroup>
+										</TableCell>
+									</TableRow>
+								)}
+							</React.Fragment>
+						))}
+					</TableBody>
+				</Table>
+			</TableContainer>
+			<ModalEditFile
+				isOpen={openModal}
+				name={fileName}
+				tags={fileTags}
+				id={idFile}
+				handleClose={handleCloseModal}
+			/>
+		</>
 	)
 }
 

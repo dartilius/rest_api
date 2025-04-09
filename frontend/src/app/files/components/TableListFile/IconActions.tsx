@@ -7,11 +7,12 @@ import { staticDelete, staticEdit, staticView } from "@/styles";
 type Props = {
     handleDelete: (id: string) => void;
     toggleCollapse: (id: string) => void;
+    handleEdit: (id: string) => void;
     id: string;
 }
 
 function IconActions(props: Props) {
-    const { handleDelete, id, toggleCollapse } = props;
+    const { handleDelete, id, toggleCollapse, handleEdit } = props;
 
     return (
         <div style={{
@@ -26,7 +27,7 @@ function IconActions(props: Props) {
                 TransitionComponent={Zoom}
                 enterDelay={300}
             >
-                <IconButton aria-label="Редактировать файл">
+                <IconButton aria-label="Редактировать файл" onClick={() => handleEdit ? handleEdit(id) : console.log(2)}>
                     <Image
                         src={staticEdit}
                         alt="edit"
