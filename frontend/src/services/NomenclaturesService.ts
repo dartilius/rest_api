@@ -1,14 +1,13 @@
 import { API_URL } from "@/config/api.config";
 import {
   INomenclatureByIdResponse,
-  INomenclaturesResponse,
-  INomenclaturesService,
 } from "@/interfaces/Nomenclatures.interface";
 import axios from "axios";
 import { getAccessToken } from "./accessToken";
 import { IVersions } from "@/hooks/useFetchNomenclatures";
 import ApiRequest from "@/services/ApiRequest";
 import {getServerAccessToken} from "@/utils";
+import {redirect} from "next/navigation";
 
 export class NomenclaturesService extends ApiRequest{
   private URL = API_URL;
@@ -16,29 +15,6 @@ export class NomenclaturesService extends ApiRequest{
   constructor() {
     super('nomenclatures', API_URL);
   }
-
-  async getAll({page, limit}: INomenclaturesService): Promise<INomenclaturesResponse> {
-    const newQueryParams = `?page=${page}&limit=${limit}`;
-    return super.getAll(newQueryParams);
-  }
-
-  // async getAll({
-  //   limit,
-  //   page,
-  //   search,
-  //   status,
-  //   timezone,
-  //   version,
-  // }: INomenclaturesService) {
-  //   return axios.get<INomenclaturesResponse>(
-  //     `${this.URL}nomenclatures/?page=${page}&limit=${limit}&name=${search}&status=${status}&timezone=${timezone}&version=${version}`,
-  //     {
-  //       headers: {
-  //         Authorization: `access_token ${this.TOKEN}`,
-  //       },
-  //     }
-  //   );
-  // }
 
   async getById(id: string | undefined) {
     return axios.get<INomenclatureByIdResponse>(
@@ -52,12 +28,19 @@ export class NomenclaturesService extends ApiRequest{
   }
 
   async getVersions() {
-    return axios.get<IVersions>(`${this.URL}nomenclatures/versions/`, {
+    const res = await axios.get<IVersions>(`${this.URL}nomenclatures/versions/`, {
       headers: {
-        Authorization: `access_token ${this.TOKEN}`,
-        
+        Authorization: `access_token ${this.TOKEN}`
       },
     });
+
+    console.log('res.status', res.status)
+
+    if (res.status === 401) {
+      redirect('/login')
+    }
+
+    return res;
   }
 }
 

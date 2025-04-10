@@ -1,6 +1,6 @@
 import {getClientAccessToken, getServerAccessToken} from "@/utils";
 import {API_URL} from "@/config/api.config";
-import {HttpClient} from "@/services/httpClient";
+import {client, HttpClient} from "@/services/httpClient";
 import {
     fetchNomenclaturesResponse,
     INomenclatureByIdResponse, NomenclaturesDataList,
@@ -15,30 +15,45 @@ const defaultHeaders = {
 const isSSR = typeof window === "undefined";
 console.log('isSsr', isSSR);
 
+const getToken = async () => {
+    const isSSR = typeof window === 'undefined'
+    let token
+    if (isSSR) {
+        token = await getServerAccessToken()
+    } else {
+        token = getClientAccessToken()
+    }
+
+    return token
+}
+
+
+export async function  getNomenclaturesList(queryParams: { searchParams?: Promise<NomenclaturesListProps> }): Promise<fetchNomenclaturesResponse> {
+    const token = await getToken();
+    console.log('token', token)
+    const resolvedParams = await queryParams.searchParams || {};
+    const strQueryParams = {
+        ...resolvedParams,
+        page: Number(resolvedParams.page || 1),
+        limit: Number(resolvedParams.limit || 10),
+    };
+
+    const url = `${API_URL}nomenclatures/`;
+
+    return client.get<fetchNomenclaturesResponse>(url, {
+        params: strQueryParams,
+        headers: {
+            Authorization: `access_token ${token}`,
+        },
+    });
+}
+
 export class NomenclaturesService extends HttpClient {
     private async getAuthToken(): Promise<string | null> {
         return isSSR ? await getServerAccessToken() : getClientAccessToken();
     }
 
-    async getNomenclaturesList(queryParams: { searchParams?: Promise<NomenclaturesListProps> }): Promise<fetchNomenclaturesResponse> {
-        const token = await this.getAuthToken();
-        const resolvedParams = await queryParams.searchParams || {};
-        const strQueryParams = {
-            ...resolvedParams,
-            page: Number(resolvedParams.page || 1),
-            limit: Number(resolvedParams.limit || 10),
-        };
 
-        const url = `${API_URL}nomenclatures/`;
-
-        return this.get<fetchNomenclaturesResponse>(url, {
-            params: strQueryParams,
-            headers: {
-                ...defaultHeaders,
-                Authorization: `access_token ${token}`,
-            },
-        });
-    }
 
     async getNomenclatureById(id: string): Promise<INomenclatureByIdResponse> {
         const token = await this.getAuthToken();

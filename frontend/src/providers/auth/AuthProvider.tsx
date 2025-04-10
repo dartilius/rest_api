@@ -5,10 +5,12 @@ import { AuthContext } from './AuthContext';
 import AuthService from '@/services/AuthService';
 import { IAuth } from '@/interfaces/Auth.interface';
 import {deleteCookie, setCookie} from 'cookies-next';
+import {useNotification} from "@/hooks/useNotification";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
+    const { showNotification } = useNotification();
 
     const fetchUser = async () => {
         const accessToken = localStorage.getItem('accessToken');
@@ -28,14 +30,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const login = async ({ email, password }: IAuth) => {
         setLoading(true);
         try {
-            const { data } = await AuthService.login({ email, password });
-            setCookie('accessToken', data.access)
-            setCookie('refreshToken', data.refresh)
-            localStorage.setItem('accessToken', data.access);
-            localStorage.setItem('refreshToken', data.refresh);
+            const data = await AuthService.login({ email, password });
+            setCookie('accessToken', data.data.access);
+            setCookie('refreshToken', data.data.refresh);
+            localStorage.setItem('accessToken', data.data.access);
+            localStorage.setItem('refreshToken', data.data.refresh);
             setIsAuthenticated(true);
-        } catch (error) {
-            console.error('Ошибка при входе:', error);
+        } catch (error: any) {
+            if (error?.response?.data?.detail) {
+                showNotification(`Ошибка авторизации: ${error.response.data.detail}`, 'error'); // Показываем уведомление об ошибке
+            } else {
+                showNotification(`Ошибка авторизации: ${error.message || 'Неизвестная ошибка'}`, 'error');
+            }
+            throw new Error(error?.response?.data?.detail || error.message || 'Ошибка авторизации'); // Выбрасываем ошибку с детальной информацией
         } finally {
             setLoading(false);
         }
