@@ -24,6 +24,7 @@ import { IFileDetailResponse, IFilesListResponse, ITagResponse } from '@/types/f
 import PreviewFile from '@/app/files/components/PreviewFile/PreviewFile'
 import { TransitionGroup } from 'react-transition-group'
 import ModalEditFile from '@/app/files/components/ModalEditFile/ModalEditFile'
+import Link from "next/link";
 
 type Props = {
 	data: IFilesListResponse['results']
@@ -158,7 +159,7 @@ const TableListFiles = (props: Props) => {
 												key={column.id}
 												align={column.id === 'action' ? 'right' : 'center'}
 											>
-												{value}
+												<Link href={`/files/${row.id}`} target="_blank">{value}</Link>
 												{column.id === 'action' && (
 													<div
 														style={{
@@ -241,7 +242,6 @@ const TableListFiles = (props: Props) => {
 																			<PreviewFile
 																				file={fileData[row.id]}
 																				fileType={fileData[row.id]?.name ?? ''}
-																				loading={loading[row.id] ?? false}
 																			/>
 																		) : (
 																			'Предпросмотр недоступен'

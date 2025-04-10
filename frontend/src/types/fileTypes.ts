@@ -27,6 +27,9 @@ export interface IFileDetailResponse {
     url: string;
     hash: string;
     created: string;
+    owner: {
+        full_name: string;
+    }
 }
 
 export interface ITagsListResponse {

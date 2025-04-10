@@ -9,10 +9,9 @@ import styles from './PreviewFile.module.scss' // SCSS файл для стил�
 type PreviewFileProps = {
 	file: IFileDetailResponse
 	fileType: string
-	loading: boolean
 }
 
-function PreviewFile({ file, fileType, loading }: PreviewFileProps) {
+function PreviewFile({ file, fileType }: PreviewFileProps) {
 	const [aspectRatio, setAspectRatio] = useState<string>('16 / 9')
 	const [isVertical, setIsVertical] = useState(false)
 	const [isLoaded, setIsLoaded] = useState(false)
@@ -68,6 +67,7 @@ function PreviewFile({ file, fileType, loading }: PreviewFileProps) {
 					<video
 						controls
 						src={file.url}
+						preload='auto'
 						onLoadedMetadata={handleLoadedMetadata}
 						style={{
 							width: '100%',
