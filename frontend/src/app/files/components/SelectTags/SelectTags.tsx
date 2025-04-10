@@ -23,9 +23,10 @@ import { useNotification } from '@/hooks/useNotification'
 interface SelectTagsProps {
 	onChange: (tags: ITagResponse[]) => void
 	label: string
+	width?: number
 }
 
-function SelectTags({ onChange, label }: SelectTagsProps) {
+function SelectTags({ onChange, label, width }: SelectTagsProps) {
 	const [tags, setTags] = useState<ITagsListResponse['results']>([])
 	const [selectedTags, setSelectedTags] = useState<ITagResponse[]>([])
 	const [isOpenModal, setIsOpenModal] = useState(false)
@@ -120,7 +121,9 @@ function SelectTags({ onChange, label }: SelectTagsProps) {
 				}}
 				style={{
 					backgroundColor: 'white',
-					maxHeight: '52px'
+					maxHeight: '52px',
+					maxWidth: `${width}px`,
+					width: '100%',
 				}}
 			>
 				{tags.map(tag => (

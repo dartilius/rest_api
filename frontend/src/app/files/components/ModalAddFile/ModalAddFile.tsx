@@ -5,7 +5,11 @@ import { Modal, Box, Button, Alert, Snackbar, Select, MenuItem, FormControl } fr
 import './ModalAddFile.scss'
 import { ChangeEvent, useState } from 'react'
 import { sendFile } from '@/services/FilesService'
-import { convertTypeForSendFile } from '@/utils/convertTypeFile'
+import SelectTags from "@/app/files/components/SelectTags/SelectTags";
+import {ITagResponse} from "@/types/fileTypes";
+import {useNotification} from "@/hooks/useNotification";
+
+
 function convertBase64(file: File): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const fileReader = new FileReader()
@@ -41,9 +45,9 @@ export function ModalAddFile() {
 	const pathname = usePathname()
 	const [fileName, setFileName] = useState<string>('Файл не выбран')
 	const [fileBase64, setFileBase64] = useState<string>('')
-	const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-	const [openAlert, setOpenAlert] = useState(false)
 	const [convertedType, setConvertedType] = useState<number | string>('')
+	const [localTags, setLocalTags] = useState<ITagResponse[]>([])
+	const { showNotification } = useNotification()
 
 	const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0]
@@ -53,8 +57,7 @@ export function ModalAddFile() {
 			setFileBase64(base64)
 			setFileName(file.name)
 		} catch (error) {
-			setOpenAlert(true)
-			setAlert({ type: 'error', message: String(error) })
+			showNotification(`${String(error)}`, 'error')
 			console.error('Ошибка при обработке файла:', error)
 		}
 	}
@@ -70,66 +73,33 @@ export function ModalAddFile() {
 		const newUrl = `${pathname}?page=1&limit=20`
 		router.push(newUrl, { scroll: false })
 	}
-	const handleCloseAlert = () => {
-		setOpenAlert(false)
-	}
 
 	const handleSelectTypeFile = (selectedType: string | number) => {
-		console.log('selectedType', convertedType)
 		setConvertedType(selectedType)
 	}
 
 	const handleSendFile = async () => {
 		if (!fileBase64) {
-			setOpenAlert(true)
-			setAlert({ type: 'error', message: 'Файл не выбран' })
+			showNotification('Файл не выбран', 'error')
+			return
+		}
+		if (!convertedType) {
+			showNotification('Тип файла не выбран', 'error')
 			return
 		}
 
 		try {
-			console.log(convertedType)
-			const response = await sendFile({ source: fileBase64, type: Number(convertedType) })
-			console.log('Файл успешно отправлен:', response)
-
-			setOpenAlert(true)
-			setAlert({
-				type: 'success',
-				message:
-					typeof response !== 'string'
-						? `Файл: ${response.name}, успешно создан`
-						: 'Файл успешно создан',
-			})
+			const response = await sendFile({ source: fileBase64, type: Number(convertedType), tags: localTags })
+			showNotification(`Файл: ${response.name}, успешно создан`, 'success')
 			handleClose()
 		} catch (error: any) {
-			setOpenAlert(true)
-			setAlert({ type: 'error', message: error.message || 'Неизвестная ошибка' })
+			showNotification(`${error}`, 'error')
 			console.error('Ошибка при отправке файла:', error)
 		}
 	}
 
 	return (
 		<div>
-			<Snackbar
-				open={openAlert}
-				autoHideDuration={3000}
-				onClose={handleCloseAlert}
-				anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-			>
-				{alert ? (
-					<Alert
-						variant='filled'
-						severity={alert.type}
-						onClose={handleClose}
-						sx={{
-							transition: 'opacity 0.3s ease-in-out',
-						}}
-					>
-						{alert.message}
-					</Alert>
-				) : (
-					<div></div>
-				)}
-			</Snackbar>
 			<Button
 				variant='contained'
 				onClick={handleOpen}
@@ -184,21 +154,41 @@ export function ModalAddFile() {
 						</label>
 						{fileName}
 					</div>
+					<div style={{display: 'flex', flexDirection: 'column', gap: '.5rem'}}>
 					<FormControl fullWidth>
-                        <Select
-                            value={convertedType}
-                            onChange={(event) => handleSelectTypeFile(event.target.value)}
-                            displayEmpty
-                            style={{ color: 'black', backgroundColor: 'white', borderRadius: '4px' }}
-                        >
-                            <MenuItem value="" disabled>Выберите тип</MenuItem>
-                            {arrayOfTypesFile.map((item) => (
-                                <MenuItem key={item.id} value={item.id}>
-                                    {item.label}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+						<Select
+							value={convertedType}
+							onChange={(event) => handleSelectTypeFile(event.target.value)}
+							displayEmpty
+							style={{ color: 'black', backgroundColor: 'white', borderRadius: '4px' }}
+						>
+							<MenuItem
+								value=''
+								disabled
+							>
+								Выберите тип
+							</MenuItem>
+							{arrayOfTypesFile.map((item) => (
+								<MenuItem
+									key={item.id}
+									value={item.id}
+								>
+									{item.label}
+								</MenuItem>
+							))}
+						</Select>
+					</FormControl>
+						<SelectTags
+							onChange={(newTags) => {
+								setLocalTags((prev) => {
+									const existingIds = new Set(prev.map((tag) => tag.id))
+									return [...prev, ...newTags.filter((tag) => !existingIds.has(tag.id))]
+								})
+							}}
+							width={336}
+							label='Добавить'
+						/>
+					</div>
 					<div style={{ display: 'flex', justifyContent: 'space-between' }}>
 						<Button
 							variant='outlined'
