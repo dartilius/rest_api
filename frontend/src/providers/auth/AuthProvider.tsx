@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
 import AuthService from '@/services/AuthService';
 import { IAuth } from '@/interfaces/Auth.interface';
-import { setCookie } from 'cookies-next';
-import {getAccessToken} from "@/services/accessToken";
+import {deleteCookie, setCookie} from 'cookies-next';
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,6 +19,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setIsAuthenticated(true);
         } catch {
             localStorage.removeItem('accessToken'); // Удаляем невалидный токен
+            deleteCookie('accessToken');
         } finally {
             setLoading(false);
         }
@@ -45,6 +45,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsAuthenticated(false);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        deleteCookie('accessToken');
+        deleteCookie('refreshToken');
     };
 
     useEffect(() => {

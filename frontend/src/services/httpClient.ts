@@ -98,6 +98,25 @@ interface RequestOptions {
   errorHandlers?: Record<number, ErrorHandler>;
 }
 
+function serializeParams(params: Record<string, any>): string {
+  const query = new URLSearchParams();
+
+  for (const key in params) {
+    const value = params[key];
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item) query.append(key, item);
+      });
+    } else if (value !== undefined && value !== null && value !== '') {
+      query.append(key, value);
+    }
+  }
+
+  return query.toString();
+}
+
+
 export class HttpClient {
   private errorHandlers: Map<number, ErrorHandler> = new Map();
 
@@ -113,7 +132,7 @@ export class HttpClient {
     let urlWithParams = url;
 
     if (options?.params) {
-      urlWithParams += `?${new URLSearchParams(options.params).toString()}`;
+      urlWithParams += `?${serializeParams(options.params)}`;
     }
 
     const response = await fetch(urlWithParams, {

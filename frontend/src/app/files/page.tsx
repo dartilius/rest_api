@@ -5,6 +5,7 @@ import { Pagination } from "@/app/files/components/Pagination";
 import {ModalAddFile} from "@/app/files/components/ModalAddFile/ModalAddFile";
 import {Search} from "@/app/nomenclatures/components";
 import SelectType from "@/app/files/components/SelectType/SelectType";
+import SelectTagsFilterWrapper from "@/app/files/components/SelectTags/SelectTypeFilterWrapper";
 
 export const metadata: Metadata = {
     title: "Файлы",
@@ -17,6 +18,7 @@ const FilesListPage = async ({ searchParams,}: {
         limit: number
         name: string
         file_type: string
+        tags: string[]
     }
 }) => {
     const {
@@ -24,9 +26,10 @@ const FilesListPage = async ({ searchParams,}: {
         limit = 20,
         name = '',
         file_type = '',
+        tags = [],
     } = (await searchParams) ?? {}
 
-    const listFiles = await getFilesList({ page, limit, name, file_type });
+    const listFiles = await getFilesList({ page, limit, name, file_type, tags });
     const dataFiles = listFiles.results ? listFiles.results : [];
     const countFiles = listFiles.count ? listFiles.count : 0;
     return (
@@ -37,6 +40,7 @@ const FilesListPage = async ({ searchParams,}: {
                     <div style={{width: '45%'}}>
                         <Search nameQueryParams='name' label='Название' />
                     </div>
+                    <SelectTagsFilterWrapper />
                     <SelectType />
                 </div>
                 <TableListFiles data={dataFiles}/>
