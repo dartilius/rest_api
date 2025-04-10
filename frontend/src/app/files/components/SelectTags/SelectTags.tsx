@@ -1,84 +1,190 @@
 'use client'
 
-import { useState, useEffect } from "react";
-import { getTagList } from "@/services/FilesService";
-import { ITagResponse } from "@/types/fileTypes";
+import { useState, useEffect, ChangeEvent } from 'react'
+import { createTag, getTagList } from '@/services/FilesService'
+import { ITagResponse, ITagsListResponse } from '@/types/fileTypes'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import {
+	Box,
+	Button,
+	Modal,
+	TextField,
+	Tooltip,
+	Zoom,
+	Select,
+	MenuItem,
+	OutlinedInput,
+	Checkbox,
+	ListItemText,
+	CircularProgress
+} from '@mui/material'
+import { useNotification } from '@/hooks/useNotification'
 
 interface SelectTagsProps {
-    onChange: (tags: ITagResponse[]) => void;
+	onChange: (tags: ITagResponse[]) => void
+	label: string
 }
 
-function SelectTags({ onChange }: SelectTagsProps) {
-    const [tags, setTags] = useState<ITagResponse[]>([]);
-    const [selectedTags, setSelectedTags] = useState<ITagResponse[]>([]);
-    const [isOpen, setIsOpen] = useState(false);
+function SelectTags({ onChange, label }: SelectTagsProps) {
+	const [tags, setTags] = useState<ITagsListResponse['results']>([])
+	const [selectedTags, setSelectedTags] = useState<ITagResponse[]>([])
+	const [isOpenModal, setIsOpenModal] = useState(false)
+	const [nameValue, setNameValue] = useState('')
+	const [currentPage, setCurrentPage] = useState(1)
+	const [hasMore, setHasMore] = useState(true)
+	const [isLoading, setIsLoading] = useState(false)
+	const { showNotification } = useNotification()
 
-    useEffect(() => {
-        const fetchTags = async () => {
-            try {
-                const res = await getTagList();
-                console.log(res)
-                setTags(res.results);
-            } catch (e: any) {
-                console.error(e);
-            }
-        };
-        fetchTags();
-    }, []);
+	const fetchTags = async (page: number) => {
+		if (!hasMore || isLoading) return
+		setIsLoading(true)
+		try {
+			const res = await getTagList(page)
+			setTags(prev => {
+				const existingIds = new Set(prev.map(t => t.id))
+				const newUniqueTags = res.results.filter(t => !existingIds.has(t.id))
+				return [...prev, ...newUniqueTags]
+			})
+			setHasMore(res.next !== null)
+			setCurrentPage(page + 1)
+		} catch (e: any) {
+			showNotification(`Ошибка загрузки тегов: ${e.message}`, 'error')
+		} finally {
+			setIsLoading(false)
+		}
+	}
 
-    const toggleTag = (tag: ITagResponse) => {
-        const alreadySelected = selectedTags.some(t => t.id === tag.id);
-        const updated = alreadySelected
-            ? selectedTags.filter(t => t.id !== tag.id)
-            : [...selectedTags, tag];
+	const handleChange = (event: any) => {
+		const selectedIds = event.target.value as string[]
+		const updated = tags.filter(tag => selectedIds.includes(tag.id))
+		setSelectedTags(updated)
+		onChange(updated)
 
-        setSelectedTags(updated);
-        onChange(updated);
-    };
+		// Подгрузка, если выбрали последний тег
+		const lastSelectedId = selectedIds[selectedIds.length - 1]
+		if (tags.length && tags[tags.length - 1].id === lastSelectedId && hasMore && !isLoading) {
+			fetchTags(currentPage)
+		}
+	}
 
-    const isSelected = (tag: ITagResponse) =>
-        selectedTags.some(t => t.id === tag.id);
+	const handleSubmit = async () => {
+		try {
+			const res = await createTag(nameValue)
+			showNotification(`Тег ${res.name} с id ${res.id} успешно создан!`, 'success')
+			setIsOpenModal(false)
+			setNameValue('')
+			setTags(prev => {
+				const exists = prev.some(tag => tag.id === res.id)
+				return exists ? prev : [res, ...prev]
+			})
+		} catch (e: any) {
+			showNotification(`Ошибка создания: ${e.message}`, 'error')
+		}
+	}
 
-    console.log('tags', tags)
+	useEffect(() => {
+		fetchTags(1)
+	}, [])
 
-    return (
-        <div style={{ position: 'relative' }}>
-            <button onClick={() => setIsOpen(prev => !prev)}>
-                Выбрать теги
-            </button>
+	return (
+		<div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+			<Select
+				multiple
+				displayEmpty
+				value={selectedTags.map(tag => tag.id)}
+				onChange={handleChange}
+				input={<OutlinedInput />}
+				renderValue={(selected) => {
+					if (selected.length === 0) return `${label} теги`
+					return tags
+						.filter(tag => selected.includes(tag.id))
+						.map(tag => tag.name)
+						.join(', ')
+				}}
+				MenuProps={{
+					PaperProps: {
+						style: {
+							maxHeight: 300,
+							width: 'auto',
+						},
+					},
+					onScrollCapture: (event: any) => {
+						const listboxNode = event.currentTarget
+						if (
+							listboxNode.scrollTop + listboxNode.clientHeight >=
+							listboxNode.scrollHeight - 5
+						) {
+							fetchTags(currentPage)
+						}
+					},
+				}}
+				style={{
+					backgroundColor: 'white',
+					maxHeight: '52px'
+				}}
+			>
+				{tags.map(tag => (
+					<MenuItem key={tag.id} value={tag.id}>
+						<Checkbox checked={selectedTags.some(t => t.id === tag.id)} />
+						<ListItemText primary={tag.name} />
+					</MenuItem>
+				))}
+				{isLoading && (
+					<MenuItem disabled>
+						<CircularProgress size={20} />
+					</MenuItem>
+				)}
+				{!hasMore && tags.length > 0 && (
+					<MenuItem disabled>
+						<ListItemText primary='Больше тегов нет' />
+					</MenuItem>
+				)}
+			</Select>
 
-            {isOpen && (
-                <ul style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    background: 'white',
-                    border: '1px solid #ccc',
-                    listStyle: 'none',
-                    padding: 0,
-                    margin: 0,
-                    zIndex: 1000,
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    width: '200px',
-                }}>
-                    {tags?.map(tag => (
-                        <li
-                            key={tag.id}
-                            onClick={() => toggleTag(tag)}
-                            style={{
-                                padding: '8px',
-                                cursor: 'pointer',
-                                backgroundColor: isSelected(tag) ? '#e0f7fa' : 'white'
-                            }}
-                        >
-                            {tag.name}
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
+			<Tooltip
+				title='Создать тег'
+				TransitionComponent={Zoom}
+				enterDelay={300}
+				placement='right'
+			>
+				<AddCircleOutlineIcon
+					style={{ cursor: 'pointer' }}
+					onClick={() => setIsOpenModal(true)}
+				/>
+			</Tooltip>
+
+			<Modal open={isOpenModal} onClose={() => setIsOpenModal(false)}>
+				<Box
+					sx={{
+						position: 'absolute',
+						top: '50%',
+						left: '50%',
+						transform: 'translate(-50%, -50%)',
+						width: 500,
+						bgcolor: 'background.paper',
+						boxShadow: 24,
+						p: 4,
+						borderRadius: 2,
+						color: 'black',
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '.5rem',
+					}}
+				>
+					<div>Создать тег</div>
+					<TextField
+						variant='outlined'
+						fullWidth
+						label='Название'
+						onChange={(e: ChangeEvent<HTMLInputElement>) => setNameValue(e.target.value)}
+						value={nameValue}
+						style={{ backgroundColor: 'white', borderRadius: '4px' }}
+					/>
+					<Button onClick={handleSubmit}>Создать</Button>
+				</Box>
+			</Modal>
+		</div>
+	)
 }
 
-export default SelectTags;
+export default SelectTags

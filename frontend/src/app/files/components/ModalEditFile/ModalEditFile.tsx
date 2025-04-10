@@ -63,13 +63,15 @@ function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProp
 					p: 4,
 					borderRadius: 2,
 					color: 'black',
+					alignItems: 'center',
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '.5rem',
 				}}
 			>
-				<Button onClick={handleClose}>Закрыть</Button>
 				<div
 					style={{
 						display: 'flex',
-						justifyContent: 'space-between',
 						gap: '.5rem',
 						flexDirection: 'column',
 						alignItems: 'center',
@@ -83,6 +85,7 @@ function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProp
 							whiteSpace: 'nowrap',
 							overflow: 'hidden',
 							textOverflow: 'ellipsis',
+							textAlign: 'center',
 						}}
 					>
 						{name}
@@ -93,6 +96,8 @@ function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProp
 							flexDirection: 'row',
 							gap: '.5rem',
 							alignItems: 'center',
+							flexWrap: 'wrap', // добавлено
+							justifyContent: 'center'
 						}}
 					>
 						Теги:{' '}
@@ -108,7 +113,7 @@ function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProp
 									gap: '.5rem',
 								}}
 							>
-								{tag.name}
+								{tag.name.length > 4 ? `${tag.name.slice(0, 5)}...` : tag.name}
 								<CancelIcon
 									onClick={() => handleDeleteTag(tag.id)}
 									style={{ cursor: 'pointer' }}
@@ -124,6 +129,7 @@ function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProp
 							return [...prev, ...newTags.filter((tag) => !existingIds.has(tag.id))]
 						})
 					}}
+					label='Добавить'
 				/>
 
 				<Button onClick={handleSaveEdit}>Сохранить</Button>
