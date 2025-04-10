@@ -35,19 +35,34 @@ const FilesListPage = async ({ searchParams,}: {
     return (
         <>
             <div>
-                <div style={{display: "flex", flexDirection: 'row', justifyContent: 'space-between', gap: '.5rem', width: '100%', paddingBottom: '12px'}}>
-                    <ModalAddFile />
-                    <div style={{width: '45%'}}>
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: 'repeat(4, 1fr)', // 4 колонки с равной шириной
+                        gap: '.5rem',
+                        width: '100%',
+                        paddingBottom: '12px',
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <ModalAddFile />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
                         <Search nameQueryParams='name' label='Название' />
                     </div>
-                    <SelectTagsFilterWrapper />
-                    <SelectType />
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <SelectTagsFilterWrapper />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <SelectType />
+                    </div>
                 </div>
-                <TableListFiles data={dataFiles}/>
+                <TableListFiles data={dataFiles} />
             </div>
             <Pagination currentPage={page} totalPages={Math.ceil(countFiles / limit)} />
         </>
     );
+
 }
 
 export default FilesListPage;

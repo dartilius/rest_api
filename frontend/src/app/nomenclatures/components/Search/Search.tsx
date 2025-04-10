@@ -30,7 +30,6 @@ export function Search({...props}: IPropsSearch) {
     return (
             <TextField
                 variant="outlined"
-                fullWidth
                 label={label}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     setSearchValue(e.target.value);
