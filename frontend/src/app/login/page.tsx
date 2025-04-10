@@ -1,5 +1,7 @@
-'use client';
+'use client'
+
 import { useAuth } from "@/providers/auth/AuthContext";
+import { useNotification } from "@/hooks/useNotification"; // Импортируем хук для уведомлений
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -8,9 +10,10 @@ import logo from '../../../public/logo.jpg'
 
 export default function LoginPage() {
     const { login } = useAuth();
+    const { showNotification } = useNotification(); // Хук для уведомлений
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
-    const [error, setError] = useState<string | null>(null); // Для отображения ошибок
+    const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
     const handleSubmit = async (event: FormEvent) => {
@@ -19,7 +22,7 @@ export default function LoginPage() {
             await login({ email, password });
             router.push('/home');
         } catch (err: any) {
-            setError(err.message || 'Ошибка авторизации'); // Обработка ошибки
+            setError(err.message || 'Ошибка авторизации');
         }
     };
 
@@ -30,7 +33,6 @@ export default function LoginPage() {
                     <Image src={logo} alt="Логотип" width={640} height={480} />
                 </div>
                 <h1 className="title">Вход в систему</h1>
-                {error && <div className="error">{error}</div>}
                 <form onSubmit={handleSubmit} className="form">
                     <input
                         type="email"

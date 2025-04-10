@@ -122,6 +122,7 @@ export class HttpClient {
 
   registerErrorHandler(status: number, handler: ErrorHandler) {
     this.errorHandlers.set(status, handler);
+    console.log('errorHandlers', this.errorHandlers.set(status, handler))
   }
 
   async request<T>(
