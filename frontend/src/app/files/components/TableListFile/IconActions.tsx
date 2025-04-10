@@ -58,13 +58,13 @@ function IconActions(props: Props) {
             </Tooltip>
 
             <Tooltip
-                title={"Развернуть детали"}
+                title={"Превью файла"}
                 TransitionComponent={Zoom}
                 enterDelay={300}
             >
                 <IconButton
                     onClick={() => toggleCollapse(id)}
-                    aria-label="Показать детали файла"
+                    aria-label="Превью файла"
                     sx={{
                         transform:'rotate(180deg)',
                         transition: 'transform 0.3s ease-in-out',
