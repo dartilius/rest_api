@@ -81,6 +81,7 @@ export async function getFileDetail(id: string): Promise<IFileDetailResponse> {
 type SendFile = {
 	type: number
 	source: string
+	tags: ITagResponse[]
 }
 
 type SendFileResponse =
@@ -98,7 +99,6 @@ type SendFileResponse =
 			hash: string
 			created: string
 	  }
-	| string
 
 type ErrorResponse = {
 	source: string[]
@@ -119,18 +119,7 @@ export async function sendFile(body: SendFile): Promise<SendFileResponse> {
 		})
 
 		if (!response.ok) {
-			let errorMessage = `Ошибка при создании файла: статус ${response.status}`
-
-			try {
-				const errorData: ErrorResponse = await response.json()
-				if (errorData.source && errorData.source.length > 0) {
-					errorMessage += `, источник ошибки: ${errorData.source.join(', ')}`
-				}
-			} catch (jsonError) {
-				errorMessage += ', не удалось распарсить ошибку'
-			}
-
-			throw new Error(errorMessage)
+			throw new Error(await response.text())
 		}
 
 		return (await response.json()) as SendFileResponse
