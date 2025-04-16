@@ -53,23 +53,13 @@ export async function getFilesList(queryParams: {
 
 export async function getFileDetail(id: string): Promise<IFileDetailResponse> {
 	const token = await getToken()
+	const url = `${API_URL}files/${id}`
 	try {
-		const response = await fetch(`${API_URL}files/${id}`, {
+		return await client.get<IFileDetailResponse>(url, {
 			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json',
 				Authorization: `access_token ${token}`,
-			},
-			method: 'GET',
+			}
 		})
-
-		if (!response.ok) {
-			throw new Error(
-				`Ошибка загрузки файлов: статус ${response.status}, текст: ${response.statusText}`,
-			)
-		}
-
-		return (await response.json()) as IFileDetailResponse
 	} catch (error) {
 		console.error('Ошибка при запросе файлов:', error)
 		throw error
@@ -103,23 +93,15 @@ type ErrorResponse = {
 
 export async function sendFile(body: SendFile): Promise<SendFileResponse> {
 	const token = await getToken()
+	const url = `${API_URL}files/`
 
 	try {
-		const response = await fetch(`${API_URL}files/`, {
+				return await client.post<SendFileResponse>(url, {
 			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json',
 				Authorization: `access_token ${token}`,
 			},
-			method: 'POST',
-			body: JSON.stringify(body),
+			body: body
 		})
-
-		if (!response.ok) {
-			throw new Error(await response.text())
-		}
-
-		return (await response.json()) as SendFileResponse
 	} catch (error: any) {
 		console.error('Ошибка при создании файла:', error)
 		throw error
@@ -153,13 +135,11 @@ export async function addTags(id: string, tags: string[]) {
 
 	const url = `${API_URL}files/${id}/add_tags/`
 
-	return await fetch(url, {
-		method: 'POST',
+	return await client.post(url, {
 		headers: {
 			Authorization: `access_token ${token}`,
-			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({ tags }),
+		body: { tags },
 	})
 }
 
@@ -168,13 +148,11 @@ export async function removeTags(id: string, tags: string[]) {
 
 	const url = `${API_URL}files/${id}/remove_tags/`
 
-	return await fetch(url, {
-		method: 'POST',
+	return await client.post(url, {
 		headers: {
 			Authorization: `access_token ${token}`,
-			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({ tags }),
+		body: { tags },
 	})
 }
 
@@ -183,34 +161,21 @@ export async function getTagList(page: number): Promise<ITagsListResponse> {
 
 	const url = `${API_URL}tags/?page=${page}`
 
-	const response = await fetch(url, {
+	return await client.get<ITagsListResponse>(url, {
 		headers: {
-			Authorization: `access_token ${token}`,
-		},
+			Authorization: `access_token ${token}`
+		}
 	})
-
-	if (!response.ok) {
-		throw new Error(`Failed to fetch tags: ${response.statusText}`)
-	}
-
-	return (await response.json()) as ITagsListResponse
 }
 
 export async function createTag(name: string): Promise<ITagResponse> {
 	const token = await getToken()
 	const url = `${API_URL}tags/`
-	const res = await fetch(url, {
-		method: 'POST',
+
+	return client.post(url, {
 		headers: {
 			Authorization: `access_token ${token}`,
-			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({ name }),
+		body: {name}
 	})
-
-	if (!res.ok) {
-		throw new Error(`Failed to create tags: ${res.statusText}`)
-	}
-
-	return (await res.json()) as ITagResponse
 }
