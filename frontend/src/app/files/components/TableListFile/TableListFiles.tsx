@@ -34,6 +34,7 @@ const columns = [
 	{ id: 'name', label: 'Название', minWidth: 170, maxWidth: 170 },
 	{ id: 'size', label: 'Размер', maxWidth: 120, minWidth: 120 },
 	{ id: 'type', label: 'Тип', maxWidth: 120, minWidth: 120 },
+	{ id: 'tags', label: 'Теги', maxWidth: 120, minWidth: 120 },
 	{ id: 'action', label: 'Действие', maxWidth: 120, minWidth: 120 },
 ]
 
@@ -41,7 +42,6 @@ const TableListFiles = (props: Props) => {
 	const { data } = props
 
 	const [fileData, setFileData] = useState<Record<string, IFileDetailResponse>>({})
-	const [loading, setLoading] = useState<Record<string, boolean>>({})
 	const [openModal, setOpenModal] = useState<boolean>(false)
 	const [fileName, setFileName] = useState<string>('')
 	const [fileTags, setFileTags] = useState<Array<ITagResponse>>([])
@@ -57,15 +57,11 @@ const TableListFiles = (props: Props) => {
 				delete newData[id]
 				return newData
 			})
-			setLoading((prev) => ({ ...prev, [id]: false }))
 		} else {
 			try {
-				setLoading((prev) => ({ ...prev, [id]: true }))
 				const res = await getFileDetail(id)
 				setFileData((prev) => ({ ...prev, [id]: res }))
-				setLoading((prev) => ({ ...prev, [id]: false }))
 			} catch (err: any) {
-				setLoading((prev) => ({ ...prev, [id]: false }))
 				showNotification(err, 'error')
 			}
 		}
@@ -153,7 +149,7 @@ const TableListFiles = (props: Props) => {
 									{columns.map((column) => {
 										let value = row[column.id]
 										if (column.id === 'size') value = convertSizeFile(row.size)
-
+										if (column.id === 'tags') value = `${value?.lenght > 1 ? value.join(', ') : value}`
 										return (
 											<TableCell
 												key={column.id}
