@@ -4,6 +4,7 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import { addTags, removeTags } from '@/services/FilesService'
 import { ITagResponse } from '@/types/fileTypes'
 import SelectTags from '@/app/files/components/SelectTags/SelectTags'
+import {useRouter} from "next/navigation";
 
 type ModalAddFileProps = {
 	isOpen: boolean
@@ -15,6 +16,7 @@ type ModalAddFileProps = {
 
 function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProps) {
 	const [localTags, setLocalTags] = useState<ITagResponse[]>(tags)
+	const router = useRouter()
 
 	useEffect(() => {
 		if (isOpen) {
@@ -41,6 +43,7 @@ function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProp
 				await removeTags(id, tagsToRemove)
 			}
 			handleClose()
+			router.refresh()
 		} catch (error) {
 			console.error('Ошибка при сохранении тегов:', error)
 		}

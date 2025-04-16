@@ -1,10 +1,12 @@
 import { API_URL } from '@/config/api.config'
 import { getClientAccessToken, getServerAccessToken } from '@/utils'
-import { getAccessToken } from '@/services/accessToken'
-import {IFileDetailResponse, IFilesListResponse, ITagResponse, ITagsListResponse} from '@/types/fileTypes'
+import {
+	IFileDetailResponse,
+	IFilesListResponse,
+	ITagResponse,
+	ITagsListResponse,
+} from '@/types/fileTypes'
 import { client } from '@/services/httpClient'
-
-
 
 const getToken = async () => {
 	const isSSR = typeof window === 'undefined'
@@ -25,33 +27,29 @@ export async function getFilesList(queryParams: {
 	file_type: string
 	tags: string[]
 }): Promise<IFilesListResponse> {
-	const token = await getToken();
+	const token = await getToken()
 
 	const stringifiedQueryParams: Record<string, any> = {
 		page: queryParams.page.toString(),
 		limit: queryParams.limit.toString(),
 		name: queryParams.name.toString(),
 		file_type: queryParams.file_type.toString(),
-	};
+	}
 
 	// Добавляем tags только если массив не пуст
 	if (queryParams.tags.length > 0) {
-		stringifiedQueryParams.tags = queryParams.tags;
+		stringifiedQueryParams.tags = queryParams.tags
 	}
 
-	const url = `${API_URL}files`;
-
-	console.log('stringifiedQueryParams', stringifiedQueryParams);
+	const url = `${API_URL}files`
 
 	return await client.get<IFilesListResponse>(url, {
 		params: stringifiedQueryParams,
 		headers: {
 			Authorization: `access_token ${token}`,
 		},
-	});
+	})
 }
-
-
 
 export async function getFileDetail(id: string): Promise<IFileDetailResponse> {
 	const token = await getToken()
@@ -84,21 +82,20 @@ type SendFile = {
 	tags: ITagResponse[]
 }
 
-type SendFileResponse =
-	| {
-			id: string
-			length: string
-			size: number
-			type: string
-			tags: string[]
-			url: string
-			name: string
-			owner: {
-				full_name: string
-			}
-			hash: string
-			created: string
-	  }
+type SendFileResponse = {
+	id: string
+	length: string
+	size: number
+	type: string
+	tags: string[]
+	url: string
+	name: string
+	owner: {
+		full_name: string
+	}
+	hash: string
+	created: string
+}
 
 type ErrorResponse = {
 	source: string[]
@@ -129,33 +126,22 @@ export async function sendFile(body: SendFile): Promise<SendFileResponse> {
 	}
 }
 
-export async function deleteFile(id: string): Promise<any> {
+export interface IDeleteFileResponse {
+	success: boolean
+	message?: string
+	error?: string
+}
+
+export async function deleteFile(id: string): Promise<IDeleteFileResponse> {
 	const token = await getToken()
+	const url = `${API_URL}files/${id}`
 	try {
-		const response = await fetch(`${API_URL}files/${id}/`, {
+		return await client.delete<IDeleteFileResponse>(url, {
 			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json',
 				Authorization: `access_token ${token}`,
+				'Content-Type': 'application/json',
 			},
-			method: 'DELETE',
 		})
-
-		if (!response.ok) {
-			let errorMessage = `Ошибка при удалении файла: статус ${response.status}`
-
-			try {
-				const errorData: ErrorResponse = await response.json()
-				if (errorData.source && errorData.source.length > 0) {
-					errorMessage += `, источник ошибки: ${errorData.source.join(', ')}`
-				}
-			} catch (jsonError) {
-				errorMessage += ', не удалось распарсить ошибку'
-			}
-
-			throw new Error(errorMessage)
-		}
-		return response
 	} catch (error: any) {
 		console.error('Ошибка при удалении файла:', error)
 		throw error
@@ -207,13 +193,13 @@ export async function getTagList(page: number): Promise<ITagsListResponse> {
 		throw new Error(`Failed to fetch tags: ${response.statusText}`)
 	}
 
-    return await response.json() as ITagsListResponse
+	return (await response.json()) as ITagsListResponse
 }
 
 export async function createTag(name: string): Promise<ITagResponse> {
 	const token = await getToken()
 	const url = `${API_URL}tags/`
-	const res =  await fetch(url, {
+	const res = await fetch(url, {
 		method: 'POST',
 		headers: {
 			Authorization: `access_token ${token}`,
@@ -226,5 +212,5 @@ export async function createTag(name: string): Promise<ITagResponse> {
 		throw new Error(`Failed to create tags: ${res.statusText}`)
 	}
 
-	return await res.json() as ITagResponse
+	return (await res.json()) as ITagResponse
 }

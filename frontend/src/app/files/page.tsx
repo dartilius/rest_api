@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     description: "Список файлов",
 };
 
-const FilesListPage = async ({ searchParams,}: {
+const FilesListPage = async ({ searchParams}: {
     searchParams?: {
         page: number
         limit: number
