@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 interface Props {
     mainTab: ReactNode;
@@ -8,10 +9,23 @@ interface Props {
     hardwareTab: ReactNode;
 }
 
-export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab }: Props) {
-    const [activeTab, setActiveTab] = useState<'main' | 'settings' | 'hardware'>('main');
+type Tab = 'main' | 'settings' | 'hardware';
 
-    const tabClass = (tab: 'main' | 'settings' | 'hardware') =>
+export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab }: Props) {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    const initialTab = (searchParams.get('tab') as Tab) || 'main';
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+
+    useEffect(() => {
+        const current = new URLSearchParams(Array.from(searchParams.entries()));
+        current.set('tab', activeTab);
+        const newUrl = `?${current.toString()}`;
+        router.replace(newUrl);
+    }, [activeTab]);
+
+    const tabClass = (tab: Tab) =>
         `px-4 py-2 rounded-t-md transition-colors ${
             activeTab === tab
                 ? 'bg-white text-blue-600 font-semibold'
