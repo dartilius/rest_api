@@ -2,6 +2,7 @@ import { INomenclatureResponse } from '@/types/nomeclaturesType'
 import MainInfoCard from '@/components/nomenclatures/MainInfoCard'
 import SettingsInfoCard from '@/components/nomenclatures/SettingsInfoCard'
 import TabsSwitcher from '@/components/nomenclatures/TabsSwitcher'
+import HardwareCard from '@/components/nomenclatures/HardwareCard'
 
 interface INomenclatureDetail {
 	data: INomenclatureResponse
@@ -21,7 +22,20 @@ function NomenclatureDetailCard({ data, className = '' }: INomenclatureDetail) {
                                    rounded-lg shadow p-4 md:p-6 gap-3 flex flex-col'
 					/>
 				}
-				settingsTab={<SettingsInfoCard settingsInfo={data['settings']} />}
+				settingsTab={
+					<SettingsInfoCard
+						settingsInfo={data['settings']}
+						className='bg-gradient-to-r from-rose-400 via-orange-300 to-yellow-200
+             					   rounded-lg shadow p-4 md:p-6 gap-3 flex flex-col'
+					/>
+				}
+				hardwareTab={
+					<HardwareCard
+						hardwareInfo={data['hw_info']}
+						className='bg-gradient-to-r from-purple-500 via-violet-400 to-fuchsia-300
+           						   rounded-lg shadow p-4 md:p-6 gap-3 flex flex-col'
+					/>
+				}
 			/>
 		</div>
 	)

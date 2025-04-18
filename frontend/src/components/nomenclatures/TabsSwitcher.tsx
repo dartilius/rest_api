@@ -5,12 +5,13 @@ import { useState, ReactNode } from 'react';
 interface Props {
     mainTab: ReactNode;
     settingsTab: ReactNode;
+    hardwareTab: ReactNode;
 }
 
-export default function TabsSwitcher({ mainTab, settingsTab }: Props) {
-    const [activeTab, setActiveTab] = useState<'main' | 'settings'>('main');
+export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab }: Props) {
+    const [activeTab, setActiveTab] = useState<'main' | 'settings' | 'hardware'>('main');
 
-    const tabClass = (tab: 'main' | 'settings') =>
+    const tabClass = (tab: 'main' | 'settings' | 'hardware') =>
         `px-4 py-2 rounded-t-md transition-colors ${
             activeTab === tab
                 ? 'bg-white text-blue-600 font-semibold'
@@ -26,10 +27,14 @@ export default function TabsSwitcher({ mainTab, settingsTab }: Props) {
                 <button onClick={() => setActiveTab('settings')} className={tabClass('settings')}>
                     Настройки
                 </button>
+                <button onClick={() => setActiveTab('hardware')} className={tabClass('hardware')}>
+                    Информация о железе
+                </button>
             </div>
 
             {activeTab === 'main' && mainTab}
             {activeTab === 'settings' && settingsTab}
+            {activeTab === 'hardware' && hardwareTab}
         </div>
     );
 }
