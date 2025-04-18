@@ -11,12 +11,12 @@ export const handleSendCommand = async (
 ) => {
     try {
         const res = await sendActions(id, type, parameters);
-        if (res.status === 200) {
+        if (res) {
             setAlert({ type: 'success', message: res.message || 'Команда успешна отправлена!' });
             handleCloseModal()
             setCommand('')
         } else {
-            setAlert({ type: 'error', message: `Ошибка: статус ${res.status}, сообщение: ${res.detail}` });
+            setAlert({ type: 'error', message: `Неизвестная ошибка` });
         }
         setOpen(true);
     } catch (error) {

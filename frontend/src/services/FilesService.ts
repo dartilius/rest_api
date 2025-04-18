@@ -1,5 +1,5 @@
 import { API_URL } from '@/config/api.config'
-import { getClientAccessToken, getServerAccessToken } from '@/utils'
+import {getToken} from '@/utils'
 import {
 	IFileDetailResponse,
 	IFilesListResponse,
@@ -7,18 +7,6 @@ import {
 	ITagsListResponse,
 } from '@/types/fileTypes'
 import { client } from '@/services/httpClient'
-
-const getToken = async () => {
-	const isSSR = typeof window === 'undefined'
-	let token
-	if (isSSR) {
-		token = await getServerAccessToken()
-	} else {
-		token = getClientAccessToken()
-	}
-
-	return token
-}
 
 export async function getFilesList(queryParams: {
 	page: number
@@ -36,7 +24,6 @@ export async function getFilesList(queryParams: {
 		file_type: queryParams.file_type.toString(),
 	}
 
-	// Добавляем tags только если массив не пуст
 	if (queryParams.tags.length > 0) {
 		stringifiedQueryParams.tags = queryParams.tags
 	}

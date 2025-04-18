@@ -61,6 +61,8 @@ export async function getAdOrderDetail(id: string): Promise<IAdOrderDetail> {
     try {
       const token = await getServerAccessToken();
       const url = `${API_URL}adorders/${id}`;
+
+        console.log(token)
   
       const res = await client.get<IAdOrderDetail>(url, {
         headers: {

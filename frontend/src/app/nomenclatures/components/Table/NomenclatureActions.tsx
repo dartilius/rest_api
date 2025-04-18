@@ -5,7 +5,7 @@ import Image from "next/image";
 import {useState} from "react";
 import {useRouter} from "next/navigation";
 import {gifDelete, gifEdit, staticDelete, staticEdit} from "@/styles";
-import {nomenclaturesService} from "@/app/nomenclatures/api";
+import {deleteNomenclatures} from "@/services/NomenclaturesService";
 
 type NomenclatureActionsProps = {
     id: string;
@@ -19,9 +19,7 @@ export function NomenclatureActions({ id }: NomenclatureActionsProps) {
 
     async function handleDelete() {
         try {
-            console.log("Delete:", id);
-            const res = await nomenclaturesService.deleteNomenclature(id);
-            console.log(res);
+            const res = await deleteNomenclatures(id);
 
             if (res === 204) {
                 router.refresh();
@@ -29,7 +27,7 @@ export function NomenclatureActions({ id }: NomenclatureActionsProps) {
                 console.error('Error during deletion:', res);
             }
         } catch (error) {
-            console.error("Error deleting nomenclature:", error);
+            console.error("Error deleting nomenclatures:", error);
         }
     }
 

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import SelectTags from '@/app/files/components/SelectTags/SelectTags'
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -12,15 +11,12 @@ function SelectTagsFilterWrapper() {
     const handleSelectTagsFile = (selectedTags: string[]) => {
         const params = new URLSearchParams(searchParams);
 
-        // Удаляем все текущие теги
         params.delete('tags');
 
-        // Добавляем новые теги
         selectedTags.forEach(tag => {
             params.append('tags', tag);
         });
 
-        // Сброс страницы при фильтрации
         params.set('page', '1');
 
         router.push(`${pathname}?${params.toString()}`);

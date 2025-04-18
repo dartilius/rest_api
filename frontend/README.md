@@ -1,36 +1,237 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Запросы
 
-## Getting Started
+- ### Номенклатура
 
-First, run the development server:
+#### Общий список
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+url = 'http://.../nomenclature/'
+queryParams = {
+    page: number,
+    limit: number,
+    name: string,
+    status: string,
+    timezone: string,
+    version: string,
+}
+метод: getNomenclatureList(queryParams)
+путь до метода: project/frontend/src/services/NomenclatureService.ts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+#### Расшифровка номенклатуры по id
+```
+url = 'http://.../nomenclature/{id}'
+метод: getNomenclatureDetail(id)
+путь до метода: project/frontend/src/services/NomenclatureService.ts
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+#### Экшены номенклатуры в расшифровке
+```
+    - Переотправка заказа
+        url = 'http://.../nomenclatures/${id}/resend_orders/'
+        метод: resendOrders(id)
+        путь до метода: project/frontend/src/services/NomenclatureService.ts
+        
+    - отправить экшены
+        url = 'http://.../nomenclatures/${id}/actions/'
+        метод: sendActions(id, type, parameters('not required') )
+        путь до метода: project/frontend/src/services/NomenclatureService.ts
+        что включает: 
+            type - 'update', 'reboot', 'command' (string)
+            parameters - это сама команда bash, если выбран type 'command' (string)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+#### Удаление номенклатуры
+```
+url = 'http://.../nomenclature/{id}'
+метод: deleteNomenclatures(id)
+путь до метода: project/frontend/src/services/NomenclatureService.ts
+```
 
-## Learn More
+#### Создание номенклатуры
+```
+url = 'http://.../nomenclature/{id}/'
+метод: 
+путь до метода: project/frontend/src/services/NomenclatureService.ts
+```
 
-To learn more about Next.js, take a look at the following resources:
+- ### Файлы
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+#### Список файлов
+```
+url = 'http://.../files'
+queryParams = {
+    page: number,
+    limit: number,
+    name: string,
+    file_type: string,
+    tags: string[],
+}
+метод: getFilesList(queryParams)
+- теги в query добавляются через &tags=tags1&tags=tags2...
+путь до метода: project/frontend/src/services/FilesService.ts
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+#### Расшифровка файла по id
+```
+url = 'http://.../files/{id}'
+метод: getFileDetail(id)
+путь до метода: project/frontend/src/services/FilesService.ts
+```
 
-## Deploy on Vercel
+#### Добавить файл
+```
+url = 'http://.../files/'
+метод: sendFile(body)
+body = {
+    type: number
+    source: string
+    tags: ITagResponse[]
+}
+путь до метода: project/frontend/src/services/FilesService.ts
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### Удалить фалй
+```
+url = 'http://.../files/{id}'
+метод: deleteFile(id)
+путь до метода: project/frontend/src/services/FilesService.ts
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+#### Редактировать файл (добавить тег(-и), открепить тег(-и))
+```
+url = 'http://.../files/${id}/add_tags/'
+метод: addTags(id, tags)
+    id: string
+    tags: string[] (массив имен тегов)
+путь до метода: project/frontend/src/services/FilesService.ts
+```
+```
+url = 'http://.../files/${id}/remove_tags/'
+метод: removeTags(id, tags)
+    id: string
+    tags: string[] (массив имен тегов)
+путь до метода: project/frontend/src/services/FilesService.ts
+```
+
+#### Список тегов
+```
+url = 'http://.../tags'
+queryParams = {
+    page: number
+}
+метод: getTagList(queryParams)
+путь до метода: project/frontend/src/services/FilesService.ts
+```
+
+#### Создать тег
+```
+url = 'http://.../tags/'
+метод: createTag(name)
+name: string
+путь до метода: project/frontend/src/services/FilesService.ts
+```
+
+- ### Рекламные заказы
+
+#### Список заказов
+```
+url = 'http://.../adorders'
+queryParams = {
+    page: number;
+    limit: number;
+    name: string;
+    client: string;
+    status: string;
+    created_after: string;
+    created_before: string;
+    brc_type: string;
+    since_after: string;
+    since_before: string;
+    until_after: string;
+    until_before: string;
+}
+метод: getDataAd(queryParams)
+путь до метода: project/frontend/src/app/adorders/api/index.ts
+```
+
+#### Расшифровка заказа по id
+```
+url = 'http://.../adorders/{id}'
+метод: getAdOrderDetail(id)
+путь до метода: project/frontend/src/app/adorders/api/index.ts
+```
+
+#### Отменить заказ
+```
+url = 'http://.../adorders/{id}/cancel/'
+метод: cancelAdOrder(id)
+путь до метода: project/frontend/src/app/adorders/api/index.ts
+```
+
+- ### Фоновые заказы
+
+#### Список заказов
+```
+url = 'http://.../bgorders'
+queryParams = {
+    page: number;
+    limit: number;
+    name: string;
+    client: string;
+    status: string;
+    created_after: string;
+    created_before: string;
+    order_type: string;
+    since_after: string,
+    since_before: string,
+    until_after: string,
+    until_before: string
+}
+метод: getDataBg(queryParams)
+путь до метода: project/frontend/src/app/bgorders/api/index.ts
+```
+
+#### Расшифровка заказа по id
+```
+url = 'http://.../bgorders/{id}'
+метод: getBgOrderDetail(id)
+путь до метода: project/frontend/src/app/bgorders/api/index.ts
+```
+
+#### Отменить заказ
+```
+url = 'http://.../bgorders/{id}/cancel/'
+метод: cancelBgOrder(id)
+путь до метода: project/frontend/src/app/bgorders/api/index.ts
+```
+
+- ### Плейлисты
+
+#### Список плейлистов
+```
+url = 'http://.../playlists'
+queryParams = {
+    id: string
+    page: number;
+    limit: number;
+    name: string;
+}
+метод: getPlayLists(queryParams)
+путь до метода: project/frontend/src/app/playlists/api/index.ts
+```
+
+#### Расшифровка плейлиста по id
+```
+url = 'http://.../playlists/{id}'
+метод: getPlayListDetail(id)
+путь до метода: project/frontend/src/app/playlists/api/index.ts
+```
+
+
+### Получить токен из куки
+```
+метод: getToken()
+путь до метода: project/frontend/src/app/utils/getToken.ts
+В зависимости от типа ренедера вызывается либо getClientAccessToken(), либо getServerAccessToken()
+```

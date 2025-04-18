@@ -8,10 +8,10 @@ export const handleSendAction = async (
 ) => {
     try {
         const res = await sendActions(id, type);
-        if (res.status === 200) {
+        if (res) {
             setAlert({ type: 'success', message: res.message || 'Действие успешно отправлено!' });
         } else {
-            setAlert({ type: 'error', message: `Ошибка: статус ${res.status}, сообщение: ${res.detail}` });
+            setAlert({ type: 'error', message: `Неизвестная ошибка` });
         }
         setOpen(true);
     } catch (error) {
