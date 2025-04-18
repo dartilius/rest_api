@@ -7,10 +7,10 @@ export const handleResend = async (
 ) => {
     try {
         const res = await resendOrders(id);
-        if (res.status === 200 || res.status === 201) {
+        if (res) {
             setAlert({ type: 'success', message: res.message || 'Заказ успешно переотправлен!' });
         } else {
-            setAlert({ type: 'error', message: `Ошибка: статус ${res.status}, сообщение: ${res.detail}` });
+            setAlert({ type: 'error', message: `Неизвестная ошибка` });
         }
         setOpen(true);
     } catch (error) {

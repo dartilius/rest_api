@@ -1,12 +1,4 @@
-export interface NomenclaturesListProps {
-    page?: number | string;
-    limit?: number | string;
-    name?: string;
-    status?: string;
-    timezone?: string;
-    version?: string;
-    openModalFilters?: boolean;
-}
+
 
 export interface NomenclaturesDataList {
     id: string;
