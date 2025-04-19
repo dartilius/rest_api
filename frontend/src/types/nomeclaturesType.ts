@@ -78,3 +78,22 @@ export interface INomenclatureResponse {
     main_info: INomenclatureMainInfo;
     settings: INomenclatureSettings;
 }
+
+interface ICreateNomenclatureSettings {
+    [day: string]: {
+        worktime: string;
+        default_volume: [number, number, number, number];
+        custom_volume?: {
+            [timeRange: string]: [number, number, number, number];
+        }
+
+    }
+}
+
+export interface ICreateNomenclature {
+    name: string;
+    description: string;
+    status: number;
+    version: string;
+    settings: ICreateNomenclatureSettings;
+}
