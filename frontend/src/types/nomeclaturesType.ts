@@ -93,7 +93,6 @@ interface ICreateNomenclatureSettings {
 export interface ICreateNomenclature {
     name: string;
     description: string;
-    status: number;
     version: string;
     settings: ICreateNomenclatureSettings;
 }
