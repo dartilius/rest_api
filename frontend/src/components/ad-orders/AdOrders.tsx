@@ -19,7 +19,6 @@ import { Typography } from '@mui/material'
 import { adColumnsTable } from './adColumnsTable'
 import CreateAdOrderModal from './CreateAdOrderModal'
 
-
 interface IProps {
 	dataResponse: IDataAdResponse
 }

@@ -1,6 +1,7 @@
 import AdOrders from '@/components/ad-orders/AdOrders'
 import { getDataAd } from './api'
 
+
 const AdOrdersPage = async ({
   searchParams,
 }: {
