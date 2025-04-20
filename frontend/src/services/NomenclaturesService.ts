@@ -122,16 +122,16 @@ export async function getNomenclatureList(queryParams: {
 	}
 }
 
-export async function createNomenclature(body: ICreateNomenclature) {
+export async function createNomenclature(body: ICreateNomenclature): Promise<INomenclatureResponse> {
 	const token = await getToken()
 	const url = `${API_URL}nomenclatures/`
 
 	try {
-		return await client.post(url, {
+		return await client.post<INomenclatureResponse>(url, {
 			headers: {
 				Authorization: `access_token ${token}`,
 			},
-			body: {body}
+			body: body
 		})
 	} catch (error) {
 		console.error('Ошибка при запросе номенклатуры:', error)

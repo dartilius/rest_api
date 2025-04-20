@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import {ChangeEvent, useState} from 'react'
 import { client } from '@/services/httpClient'
 import {
 	Button,
@@ -75,7 +75,7 @@ const CreateAdOrderModal = () => {
 	}
 
 	// Общий обработчик для полей с ограничением
-	const handleTextChange = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleTextChange = (field: keyof FormState) => (e: ChangeEvent<HTMLInputElement>) => {
 		const value = e.target.value.slice(0, 250)
 		setFormData((prev) => ({ ...prev, [field]: value }))
 	}
