@@ -195,6 +195,16 @@ export interface IAdData {
   broadcast_interval: IBroadcastInterval
 }
 
+export interface IParamsCreateAd {
+  weight: number;
+  times_in_hour: number;
+  timedelta?: string;
+  start_time?: string;
+  end_time?: string;
+  event?: string;
+  active_ad?: string;
+}
+
 export interface IAdOrderDetail {
   id: string // Уникальный идентификатор +
   name: string // Название, обязательное поле, 1-255 символов +
