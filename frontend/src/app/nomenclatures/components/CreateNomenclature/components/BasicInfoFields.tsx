@@ -2,7 +2,7 @@ import {ICreateNomenclature} from "@/types/nomeclaturesType";
 import {ChangeEvent} from "react";
 import {TextField, Typography} from "@mui/material";
 
-const BasicInfoFields = ({
+export const BasicInfoFields = ({
 	formState,
 	handleTextChange,
 }: {
@@ -45,5 +45,3 @@ const BasicInfoFields = ({
 		</Typography>
 	</>
 )
-
-export default BasicInfoFields;

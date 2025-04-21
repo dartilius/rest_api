@@ -11,16 +11,16 @@ import {
 	DialogActions,
 } from '@mui/material'
 import styles from '@/app/nomenclatures/Nomenclatures.module.scss'
-import ActionButton from "@/components/Ui/button/ActionButton"
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
-import {useNomenclatureForm} from "@/app/nomenclatures/components/CreateNomenclature/hooks/useNomenclature";
+import ActionButton from '@/components/Ui/button/ActionButton'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import { useNomenclatureForm } from '@/app/nomenclatures/components/CreateNomenclature/hooks/useNomenclature'
+import { DAY_KEYS } from '@/app/nomenclatures/components/CreateNomenclature/constans/constants'
 import {
+	BasicInfoFields,
+	DaySettingsAccordion,
 	DaySettingsGrid,
-	DaySettingsHeader
-} from "@/app/nomenclatures/components/CreateNomenclature/components/DaySettings";
-import {DAY_KEYS} from "@/app/nomenclatures/components/CreateNomenclature/constans/constants";
-import {DaySettingsAccordion} from "@/app/nomenclatures/components/CreateNomenclature/components/DaySettingsAccordion";
-import BasicInfoFields from "@/app/nomenclatures/components/CreateNomenclature/components/BasicInfoFields";
+	DaySettingsHeader,
+} from '@/app/nomenclatures/components/CreateNomenclature/components'
 
 interface CreateNomenclatureProps {
 	onSuccess?: () => void
@@ -41,7 +41,7 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 		handleCopyMondaySettings,
 		handleVolumeChange,
 		setExpandedDay,
-		resetForm
+		resetForm,
 	} = useNomenclatureForm()
 
 	const handleClose = () => {
@@ -73,15 +73,16 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 			>
 				<DialogTitle>Создание новой номенклатуры</DialogTitle>
 
-				<DialogContent dividers className={styles.custom_scroll}>
+				<DialogContent
+					dividers
+					className={styles.custom_scroll}
+				>
 					<BasicInfoFields
 						formState={formState}
 						handleTextChange={handleTextChange}
 					/>
 
-					<DaySettingsHeader
-						onCopyMondaySettings={handleCopyMondaySettings}
-					/>
+					<DaySettingsHeader onCopyMondaySettings={handleCopyMondaySettings} />
 
 					<DaySettingsGrid>
 						{DAY_KEYS.map((day) => (
@@ -93,7 +94,7 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 								settings={formState.settings[day]}
 								errors={{
 									worktime: formErrors[`${day}-worktime`],
-									volume: formErrors[`${day}-volume`]
+									volume: formErrors[`${day}-volume`],
 								}}
 								onWorktimeChange={handleDaySettingChange(day, 'worktime')}
 								onVolumeChange={(newVolume) => handleVolumeChange(day, newVolume)}
@@ -103,7 +104,10 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 				</DialogContent>
 
 				<DialogActions>
-					<Button onClick={handleClose} color='primary'>
+					<Button
+						onClick={handleClose}
+						color='primary'
+					>
 						Отмена
 					</Button>
 					<Button
