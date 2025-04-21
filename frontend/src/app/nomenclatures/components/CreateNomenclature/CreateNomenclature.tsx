@@ -84,7 +84,7 @@ function CreateNomenclature() {
 			key: keyof ICreateNomenclature['settings'][keyof ICreateNomenclature['settings']],
 		) =>
 		(e: ChangeEvent<HTMLInputElement>) => {
-			let value = e.target.value
+			const value = e.target.value
 
 			if (key === 'worktime') {
 				// Оставляем только цифры
