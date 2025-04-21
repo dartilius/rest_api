@@ -1,6 +1,7 @@
 import { API_URL } from '@/config/api.config'
 import { getToken } from '@/utils'
 import {
+	ICreateNomenclature,
 	INomenclatureResponse,
 	INomenclaturesListResponse,
 	NomenclaturesListProps,
@@ -114,6 +115,23 @@ export async function getNomenclatureList(queryParams: {
 			headers: {
 				Authorization: `access_token ${token}`,
 			},
+		})
+	} catch (error) {
+		console.error('Ошибка при запросе номенклатуры:', error)
+		throw error
+	}
+}
+
+export async function createNomenclature(body: ICreateNomenclature): Promise<INomenclatureResponse> {
+	const token = await getToken()
+	const url = `${API_URL}nomenclatures/`
+
+	try {
+		return await client.post<INomenclatureResponse>(url, {
+			headers: {
+				Authorization: `access_token ${token}`,
+			},
+			body: body
 		})
 	} catch (error) {
 		console.error('Ошибка при запросе номенклатуры:', error)

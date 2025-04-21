@@ -4,6 +4,7 @@ import CustomPagination from "@/components/Ui/Pagination/CustomPagination";
 import {getStatusColor} from "@/utils";
 import {convertStatus} from "@/types/checkStatus";
 import {NomenclatureActions} from "@/app/nomenclatures/components";
+import styles from '@/app/nomenclatures/Nomenclatures.module.scss'
 
 const columns = [
     {id: "name", label: "Название", minWidth: 170, maxWidth: 170},
@@ -24,14 +25,17 @@ export function TableNomenclatures(props: Props) {
 
     return (
         <TableContainer
-            style={{borderRadius: '8px'}}
             component={Box}
+            className={styles.custom_scroll}
             sx={{
-                maxWidth: "100%",
-                maxHeight: "1200px",
-                overflowX: "auto",
-                overflowY: "auto",
-                borderRadius: "8px",
+                maxWidth: '100%',
+                maxHeight: '760px',
+                height: '100%',
+                overflow: 'hidden',
+                overflowY: 'auto',
+                overflowX: 'auto',
+                borderRadius: '8px',
+                backgroundColor: 'white',
             }}
         >
             <Table stickyHeader aria-label="sticky table" className="rounded">

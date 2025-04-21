@@ -51,7 +51,7 @@ url = 'http://.../nomenclature/{id}'
 #### Создание номенклатуры
 ```
 url = 'http://.../nomenclature/{id}/'
-метод: 
+метод: createNomenclature(body)
 путь до метода: project/frontend/src/services/NomenclatureService.ts
 ```
 

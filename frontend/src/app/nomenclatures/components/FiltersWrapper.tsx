@@ -5,6 +5,7 @@ import {Search} from "@/app/nomenclatures/components/Search/Search";
 import {VersionSelect} from "@/app/nomenclatures/components/Version/VersionSelect";
 import {StatusSelect} from "@/app/nomenclatures/components/Status/StatusSelect";
 import {TimezoneSelect} from "@/app/nomenclatures/components/TimeZone/TimezoneSelect";
+import CreateNomenclature from "@/app/nomenclatures/components/CreateNomenclature/CreateNomenclature";
 
 export const FiltersWrapper = () => {
 
@@ -25,6 +26,9 @@ export const FiltersWrapper = () => {
             <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                 <Typography variant="subtitle1">Часовой пояс</Typography>
                 <TimezoneSelect />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                <CreateNomenclature />
             </div>
         </Box>
     );

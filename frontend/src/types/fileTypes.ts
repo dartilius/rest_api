@@ -44,3 +44,5 @@ export interface ITagResponse {
     name: string;
 }
 
+//Без точек, не русское название
+

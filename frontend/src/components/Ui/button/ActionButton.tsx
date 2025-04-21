@@ -1,13 +1,13 @@
 'use client'
 
-import { ReactNode } from 'react'
+import {ComponentType, ReactNode} from 'react'
 import { cn } from '@/utils/utils'
 
 interface ActionButtonProps {
   variant?: 'primary' | 'secondary' | 'error' | 'transparent' | 'warning'
   size?: 'sm' | 'md' | 'lg'
   className?: string
-  icon?: React.ComponentType<{ className?: string }>
+  icon?: ComponentType<{ className?: string }>
   iconClassName?: string
   onClick?: () => void
   children: ReactNode
