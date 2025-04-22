@@ -22,9 +22,9 @@ import {
 	BasicInfoFields,
 	DaySettingsAccordion,
 	DaySettingsGrid,
-	CopyButton,
 } from '@/app/nomenclatures/components/CreateNomenclature/components'
 import { NomenclatureVolume } from '@/components/nomenclatures/NomenclatureVolume/NomenclatureVolume'
+import { CopyButton } from '@/components/Ui/button/CoppyButton'
 
 export default function CreateNomenclature() {
 	const [open, setOpen] = useState<boolean>(false)
@@ -59,7 +59,7 @@ export default function CreateNomenclature() {
 			<ActionButton
 				onClick={() => setOpen(true)}
 				icon={AddCircleOutlineIcon}
-				className='mt-5'
+				style={{ maxHeight: '56px', height: '100%' }}
 			>
 				Создать номенклатуру
 			</ActionButton>
@@ -119,7 +119,7 @@ export default function CreateNomenclature() {
 								/>
 							</div>
 						) : (
-							<div className='flex flex-col gap-4 item'>
+							<div className='flex flex-col gap-4 items-center'>
 								<CopyButton
 									onCopy={handleCopyMondaySettings}
 									label='Применить настройки для всех дней'
