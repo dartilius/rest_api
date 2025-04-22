@@ -1,4 +1,4 @@
-import { FiltersWrapper, TableNomenclatures } from '@/app/nomenclatures/components'
+import { TableNomenclatures } from '@/app/nomenclatures/components'
 import { Metadata } from 'next'
 import { getNomenclatureList } from '@/services/NomenclaturesService'
 
@@ -24,7 +24,7 @@ export default async function Page(props: { searchParams?: Promise<Nomenclatures
 	const searchParams = await props.searchParams
 	const name = searchParams?.name || ''
 	const currentPage = Number(searchParams?.page) || 1
-	const limit = Number(searchParams?.limit) || 10
+	const limit = Number(searchParams?.limit) || 9
 	const version = searchParams?.version || ''
 	const status = searchParams?.status || ''
 	const timezone = searchParams?.timezone || ''
