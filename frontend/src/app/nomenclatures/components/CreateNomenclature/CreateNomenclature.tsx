@@ -9,6 +9,9 @@ import {
 	useTheme,
 	Button,
 	DialogActions,
+	Typography,
+	Switch,
+	TextField,
 } from '@mui/material'
 import styles from '@/app/nomenclatures/Nomenclatures.module.scss'
 import ActionButton from '@/components/Ui/button/ActionButton'
@@ -19,15 +22,17 @@ import {
 	BasicInfoFields,
 	DaySettingsAccordion,
 	DaySettingsGrid,
-	DaySettingsHeader,
+	CopyButton,
 } from '@/app/nomenclatures/components/CreateNomenclature/components'
+import { NomenclatureVolume } from '@/components/nomenclatures/NomenclatureVolume/NomenclatureVolume'
 
 interface CreateNomenclatureProps {
 	onSuccess?: () => void
 }
 
 export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProps) {
-	const [open, setOpen] = useState(false)
+	const [open, setOpen] = useState<boolean>(false)
+	const [isDaySettings, setIsDaySettings] = useState<boolean>(false)
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -82,25 +87,68 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 						handleTextChange={handleTextChange}
 					/>
 
-					<DaySettingsHeader onCopyMondaySettings={handleCopyMondaySettings} />
+					<Typography
+						variant='h6'
+						sx={{ mt: 2, mb: 1 }}
+					>
+						Настройки по дням недели
+					</Typography>
 
-					<DaySettingsGrid>
-						{DAY_KEYS.map((day) => (
-							<DaySettingsAccordion
-								key={day}
-								day={day}
-								expanded={expandedDay === day}
-								onExpandChange={() => setExpandedDay(expandedDay === day ? false : day)}
-								settings={formState.settings[day]}
-								errors={{
-									worktime: formErrors[`${day}-worktime`],
-									volume: formErrors[`${day}-volume`],
-								}}
-								onWorktimeChange={handleDaySettingChange(day, 'worktime')}
-								onVolumeChange={(newVolume) => handleVolumeChange(day, newVolume)}
+					<div className='flex flex-col gap-4 items-center'>
+						<div className='flex items-center gap-1'>
+							<span>Общая настройка</span>
+							<Switch
+								checked={isDaySettings}
+								onChange={() => setIsDaySettings(!isDaySettings)}
+								color='secondary'
 							/>
-						))}
-					</DaySettingsGrid>
+
+							<span>Настройка для каждого дня</span>
+						</div>
+						{!isDaySettings ? (
+							<div className='flex flex-col gap-1 items-center'>
+								<CopyButton
+									onCopy={handleCopyMondaySettings}
+									label='Применить настройки для всех дней'
+								/>
+								<TextField
+									label='Рабочее время'
+									fullWidth
+									margin='dense'
+									value={formState.settings.mon.worktime}
+									onChange={handleDaySettingChange('mon', 'worktime')}
+									error={!!formErrors['mon-worktime']}
+									helperText={formErrors['mon-worktime'] || ''}
+								/>
+								<NomenclatureVolume
+									value={formState.settings.mon.default_volume}
+									onChange={(newVolume) => handleVolumeChange('mon', newVolume)}
+									error={!!formErrors['mon-volume']}
+									helperText={formErrors['mon-volume'] || ''}
+								/>
+							</div>
+						) : (
+							<div className='flex flex-row gap-4'>
+								<DaySettingsGrid>
+									{DAY_KEYS.map((day) => (
+										<DaySettingsAccordion
+											key={day}
+											day={day}
+											expanded={expandedDay === day}
+											onExpandChange={() => setExpandedDay(expandedDay === day ? false : day)}
+											settings={formState.settings[day]}
+											errors={{
+												worktime: formErrors[`${day}-worktime`],
+												volume: formErrors[`${day}-volume`],
+											}}
+											onWorktimeChange={handleDaySettingChange(day, 'worktime')}
+											onVolumeChange={(newVolume) => handleVolumeChange(day, newVolume)}
+										/>
+									))}
+								</DaySettingsGrid>
+							</div>
+						)}
+					</div>
 				</DialogContent>
 
 				<DialogActions>

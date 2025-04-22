@@ -1,10 +1,10 @@
 import { Accordion, AccordionSummary, AccordionDetails, Typography, TextField } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import NomenclatureVolume from '@/components/nomenclatures/NomenclatureVolume/NomenclatureVolume'
-import {ChangeEvent} from "react";
-import {DAY_LABELS} from "@/app/nomenclatures/components/CreateNomenclature/constans/constants";
+import { ChangeEvent } from 'react'
+import { DAY_LABELS } from '@/app/nomenclatures/components/CreateNomenclature/constans/constants'
 
-interface DaySettingsAccordionProps {
+export interface DaySettingsAccordionProps {
 	day: string
 	expanded: boolean
 	onExpandChange: () => void
