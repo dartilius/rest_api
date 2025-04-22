@@ -44,7 +44,8 @@ export const useNomenclatureForm = () => {
 
     const handleDaySettingChange = (
         day: keyof ICreateNomenclature['settings'],
-        key: keyof ICreateNomenclature['settings'][typeof DAY_KEYS[number]]
+        key: keyof ICreateNomenclature['settings'][typeof DAY_KEYS[number]],
+        isDaySettings: boolean
     ) => (e: ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
 
@@ -53,17 +54,41 @@ export const useNomenclatureForm = () => {
 
             if (key === 'worktime') {
                 const digits = value.replace(/\D/g, '').slice(0, 8);
-                newSettings[day] = {
-                    ...newSettings[day],
-                    worktime: formatWorktimeString(digits)
-                };
+                const formattedValue = formatWorktimeString(digits);
+                
+                if (isDaySettings) {
+                    newSettings[day] = {
+                        ...newSettings[day],
+                        worktime: formattedValue
+                    };
+                } else {
+                    // Применяем настройки ко всем дням
+                    DAY_KEYS.forEach(dayKey => {
+                        newSettings[dayKey] = {
+                            ...newSettings[dayKey],
+                            worktime: formattedValue
+                        };
+                    });
+                }
             }
 
             if (key === 'default_volume') {
-                newSettings[day] = {
-                    ...newSettings[day],
-                    default_volume: parseVolumeString(value)
-                };
+                const parsedValue = parseVolumeString(value);
+                
+                if (isDaySettings) {
+                    newSettings[day] = {
+                        ...newSettings[day],
+                        default_volume: parsedValue
+                    };
+                } else {
+                    // Применяем настройки ко всем дням
+                    DAY_KEYS.forEach(dayKey => {
+                        newSettings[dayKey] = {
+                            ...newSettings[dayKey],
+                            default_volume: parsedValue
+                        };
+                    });
+                }
             }
 
             return { ...prev, settings: newSettings };
@@ -166,17 +191,27 @@ export const useNomenclatureForm = () => {
         setExpandedDay(false);
     };
 
-    const handleVolumeChange = (day: keyof ICreateNomenclature['settings'], newVolume: number[]) => {
-        setFormState(prev => ({
-            ...prev,
-            settings: {
-                ...prev.settings,
-                [day]: {
-                    ...prev.settings[day],
+    const handleVolumeChange = (day: keyof ICreateNomenclature['settings'], newVolume: number[], isDaySettings: boolean) => {
+        setFormState(prev => {
+            const newSettings = { ...prev.settings };
+            
+            if (isDaySettings) {
+                newSettings[day] = {
+                    ...newSettings[day],
                     default_volume: newVolume.slice(0, 4) as [number, number, number, number]
-                }
+                };
+            } else {
+                // Применяем настройки ко всем дням
+                DAY_KEYS.forEach(dayKey => {
+                    newSettings[dayKey] = {
+                        ...newSettings[dayKey],
+                        default_volume: newVolume.slice(0, 4) as [number, number, number, number]
+                    };
+                });
             }
-        }));
+
+            return { ...prev, settings: newSettings };
+        });
     };
 
     return {

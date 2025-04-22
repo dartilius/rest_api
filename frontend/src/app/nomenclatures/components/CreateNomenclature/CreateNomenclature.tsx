@@ -107,29 +107,29 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 						</div>
 						{!isDaySettings ? (
 							<div className='flex flex-col gap-1 items-center'>
-								<CopyButton
-									onCopy={handleCopyMondaySettings}
-									label='Применить настройки для всех дней'
-									disabled={!formState.settings.mon.worktime}
-								/>
 								<TextField
 									label='Рабочее время'
 									fullWidth
 									margin='dense'
 									value={formState.settings.mon.worktime}
-									onChange={handleDaySettingChange('mon', 'worktime')}
+									onChange={handleDaySettingChange('mon', 'worktime', isDaySettings)}
 									error={!!formErrors['mon-worktime']}
 									helperText={formErrors['mon-worktime'] || ''}
 								/>
 								<NomenclatureVolume
 									value={formState.settings.mon.default_volume}
-									onChange={(newVolume) => handleVolumeChange('mon', newVolume)}
+									onChange={(newVolume) => handleVolumeChange('mon', newVolume, isDaySettings)}
 									error={!!formErrors['mon-volume']}
 									helperText={formErrors['mon-volume'] || ''}
 								/>
 							</div>
 						) : (
-							<div className='flex flex-row gap-4'>
+							<div className='flex flex-col gap-4 items-center'>
+								<CopyButton
+									onCopy={handleCopyMondaySettings}
+									label='Применить настройки для всех дней'
+									disabled={!formState.settings.mon.worktime}
+								/>
 								<DaySettingsGrid>
 									{DAY_KEYS.map((day) => (
 										<DaySettingsAccordion
@@ -142,8 +142,10 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 												worktime: formErrors[`${day}-worktime`],
 												volume: formErrors[`${day}-volume`],
 											}}
-											onWorktimeChange={handleDaySettingChange(day, 'worktime')}
-											onVolumeChange={(newVolume) => handleVolumeChange(day, newVolume)}
+											onWorktimeChange={handleDaySettingChange(day, 'worktime', isDaySettings)}
+											onVolumeChange={(newVolume) =>
+												handleVolumeChange(day, newVolume, isDaySettings)
+											}
 										/>
 									))}
 								</DaySettingsGrid>
