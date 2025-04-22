@@ -110,6 +110,7 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 								<CopyButton
 									onCopy={handleCopyMondaySettings}
 									label='Применить настройки для всех дней'
+									disabled={!formState.settings.mon.worktime}
 								/>
 								<TextField
 									label='Рабочее время'
