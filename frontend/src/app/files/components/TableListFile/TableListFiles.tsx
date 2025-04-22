@@ -112,7 +112,7 @@ const TableListFiles = ({ data, count }: Props) => {
 				className={styles.custom_scroll}
 				sx={{
 					maxWidth: '100%',
-					maxHeight: '876px',
+					maxHeight: '872px',
 					height: '100%',
 					borderRadius: '8px',
 					backgroundColor: 'white',
