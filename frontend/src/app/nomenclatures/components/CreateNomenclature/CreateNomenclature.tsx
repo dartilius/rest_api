@@ -59,7 +59,7 @@ export default function CreateNomenclature() {
 			<ActionButton
 				onClick={() => setOpen(true)}
 				icon={AddCircleOutlineIcon}
-				className='mt-5'
+				style={{ maxHeight: '56px', height: '100%' }}
 			>
 				Создать номенклатуру
 			</ActionButton>
