@@ -26,11 +26,7 @@ import {
 } from '@/app/nomenclatures/components/CreateNomenclature/components'
 import { NomenclatureVolume } from '@/components/nomenclatures/NomenclatureVolume/NomenclatureVolume'
 
-interface CreateNomenclatureProps {
-	onSuccess?: () => void
-}
-
-export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProps) {
+export default function CreateNomenclature() {
 	const [open, setOpen] = useState<boolean>(false)
 	const [isDaySettings, setIsDaySettings] = useState<boolean>(false)
 	const theme = useTheme()
@@ -56,7 +52,6 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 
 	const handleSuccess = () => {
 		setOpen(false)
-		onSuccess?.()
 	}
 
 	return (
@@ -124,7 +119,7 @@ export default function CreateNomenclature({ onSuccess }: CreateNomenclatureProp
 								/>
 							</div>
 						) : (
-							<div className='flex flex-col gap-4 items-center'>
+							<div className='flex flex-col gap-4 item'>
 								<CopyButton
 									onCopy={handleCopyMondaySettings}
 									label='Применить настройки для всех дней'
