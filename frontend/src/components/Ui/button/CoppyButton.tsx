@@ -13,7 +13,6 @@ export const CopyButton = ({
 		<ActionButton
 			variant='warning'
 			onClick={onCopy}
-			className='mb-4'
 			disabled={disabled}
 		>
 			{label}

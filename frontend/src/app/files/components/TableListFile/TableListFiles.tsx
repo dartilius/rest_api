@@ -27,6 +27,8 @@ import ModalEditFile from '@/app/files/components/ModalEditFile/ModalEditFile'
 import Link from 'next/link'
 import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
 import FiltersWrapper from '../FilterWrapper/FiltersWrapper'
+import { Label } from '@/components/data-display/Label'
+import { CopyButton } from '@/components/Ui/button/CoppyButton'
 
 type Props = {
 	data: IFilesListResponse['results']
@@ -211,17 +213,12 @@ const TableListFiles = ({ data, count }: Props) => {
 																			justifyContent: 'space-between',
 																		}}
 																	>
-																		<div
-																			onClick={() => copyToClipboard(fileData[row.id]?.hash)}
-																			className={styles.copy}
-																		>
+																		<div className={styles.copy}>
 																			Hash:{' '}
-																			<Button
-																				variant='contained'
-																				color='inherit'
-																			>
-																				{fileData[row.id]?.hash.slice(0, 25) + '...'}
-																			</Button>
+																			<CopyButton
+																				onCopy={() => copyToClipboard(fileData[row.id]?.hash)}
+																				label={fileData[row.id]?.hash.slice(0, 20) + '...'}
+																			/>
 																		</div>
 																		<div>Дата создания: {fileData[row.id].created}</div>
 																	</div>
