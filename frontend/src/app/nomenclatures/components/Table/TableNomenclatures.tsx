@@ -36,7 +36,7 @@ export function TableNomenclatures(props: Props) {
 			className={styles.custom_scroll}
 			sx={{
 				maxWidth: '100%',
-				maxHeight: '884px',
+				maxHeight: '880px',
 				height: '100%',
 				borderRadius: '8px',
 				backgroundColor: 'white',
