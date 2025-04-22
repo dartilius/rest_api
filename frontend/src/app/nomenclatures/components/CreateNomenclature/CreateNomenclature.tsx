@@ -119,7 +119,7 @@ export default function CreateNomenclature() {
 								/>
 							</div>
 						) : (
-							<div className='flex flex-col gap-4 item'>
+							<div className='flex flex-col gap-4 items-center'>
 								<CopyButton
 									onCopy={handleCopyMondaySettings}
 									label='Применить настройки для всех дней'
