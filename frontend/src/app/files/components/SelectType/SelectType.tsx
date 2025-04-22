@@ -30,7 +30,13 @@ function SelectType() {
 				const selectedType = event.target.value as string
 				handleSelectTypeFile(selectedType)
 			}}
-			style={{ color: 'black', backgroundColor: 'white', borderRadius: '4px', maxHeight: '52px' }}
+			style={{
+				color: 'black',
+				backgroundColor: 'white',
+				borderRadius: '4px',
+				// maxHeight: '52px',
+				width: '100%',
+			}}
 			displayEmpty
 		>
 			{arrayOfTypesFile.map((item) => (

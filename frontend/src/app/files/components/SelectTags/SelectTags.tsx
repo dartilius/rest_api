@@ -16,17 +16,17 @@ import {
 	OutlinedInput,
 	Checkbox,
 	ListItemText,
-	CircularProgress
+	CircularProgress,
 } from '@mui/material'
 import { useNotification } from '@/hooks/useNotification'
 
 interface SelectTagsProps {
 	onChange: (tags: ITagResponse[]) => void
 	label: string
-	width?: number
+	style?: React.CSSProperties
 }
 
-function SelectTags({ onChange, label, width }: SelectTagsProps) {
+function SelectTags({ onChange, label, style }: SelectTagsProps) {
 	const [tags, setTags] = useState<ITagsListResponse['results']>([])
 	const [selectedTags, setSelectedTags] = useState<ITagResponse[]>([])
 	const [isOpenModal, setIsOpenModal] = useState(false)
@@ -41,9 +41,9 @@ function SelectTags({ onChange, label, width }: SelectTagsProps) {
 		setIsLoading(true)
 		try {
 			const res = await getTagList(page)
-			setTags(prev => {
-				const existingIds = new Set(prev.map(t => t.id))
-				const newUniqueTags = res.results.filter(t => !existingIds.has(t.id))
+			setTags((prev) => {
+				const existingIds = new Set(prev.map((t) => t.id))
+				const newUniqueTags = res.results.filter((t) => !existingIds.has(t.id))
 				return [...prev, ...newUniqueTags]
 			})
 			setHasMore(res.next !== null)
@@ -57,7 +57,7 @@ function SelectTags({ onChange, label, width }: SelectTagsProps) {
 
 	const handleChange = (event: any) => {
 		const selectedIds = event.target.value as string[]
-		const updated = tags.filter(tag => selectedIds.includes(tag.id))
+		const updated = tags.filter((tag) => selectedIds.includes(tag.id))
 		setSelectedTags(updated)
 		onChange(updated)
 
@@ -74,8 +74,8 @@ function SelectTags({ onChange, label, width }: SelectTagsProps) {
 			showNotification(`Тег ${res.name} с id ${res.id} успешно создан!`, 'success')
 			setIsOpenModal(false)
 			setNameValue('')
-			setTags(prev => {
-				const exists = prev.some(tag => tag.id === res.id)
+			setTags((prev) => {
+				const exists = prev.some((tag) => tag.id === res.id)
 				return exists ? prev : [res, ...prev]
 			})
 		} catch (e: any) {
@@ -88,18 +88,18 @@ function SelectTags({ onChange, label, width }: SelectTagsProps) {
 	}, [])
 
 	return (
-		<div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+		<div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', width: '100%' }}>
 			<Select
 				multiple
 				displayEmpty
-				value={selectedTags.map(tag => tag.id)}
+				value={selectedTags.map((tag) => tag.id)}
 				onChange={handleChange}
 				input={<OutlinedInput />}
 				renderValue={(selected) => {
 					if (selected.length === 0) return `${label} теги`
 					return tags
-						.filter(tag => selected.includes(tag.id))
-						.map(tag => tag.name)
+						.filter((tag) => selected.includes(tag.id))
+						.map((tag) => tag.name)
 						.join(', ')
 				}}
 				MenuProps={{
@@ -111,24 +111,19 @@ function SelectTags({ onChange, label, width }: SelectTagsProps) {
 					},
 					onScrollCapture: (event: any) => {
 						const listboxNode = event.currentTarget
-						if (
-							listboxNode.scrollTop + listboxNode.clientHeight >=
-							listboxNode.scrollHeight - 5
-						) {
+						if (listboxNode.scrollTop + listboxNode.clientHeight >= listboxNode.scrollHeight - 5) {
 							fetchTags(currentPage)
 						}
 					},
 				}}
-				style={{
-					backgroundColor: 'white',
-					maxHeight: '52px',
-					maxWidth: `${width}px`,
-					width: '100%',
-				}}
+				style={style}
 			>
-				{tags.map(tag => (
-					<MenuItem key={tag.id} value={tag.id}>
-						<Checkbox checked={selectedTags.some(t => t.id === tag.id)} />
+				{tags.map((tag) => (
+					<MenuItem
+						key={tag.id}
+						value={tag.id}
+					>
+						<Checkbox checked={selectedTags.some((t) => t.id === tag.id)} />
 						<ListItemText primary={tag.name} />
 					</MenuItem>
 				))}
@@ -156,7 +151,10 @@ function SelectTags({ onChange, label, width }: SelectTagsProps) {
 				/>
 			</Tooltip>
 
-			<Modal open={isOpenModal} onClose={() => setIsOpenModal(false)}>
+			<Modal
+				open={isOpenModal}
+				onClose={() => setIsOpenModal(false)}
+			>
 				<Box
 					sx={{
 						position: 'absolute',

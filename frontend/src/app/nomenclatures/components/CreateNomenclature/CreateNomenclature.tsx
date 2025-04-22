@@ -22,9 +22,9 @@ import {
 	BasicInfoFields,
 	DaySettingsAccordion,
 	DaySettingsGrid,
-	CopyButton,
 } from '@/app/nomenclatures/components/CreateNomenclature/components'
 import { NomenclatureVolume } from '@/components/nomenclatures/NomenclatureVolume/NomenclatureVolume'
+import { CopyButton } from '@/components/Ui/button/CoppyButton'
 
 export default function CreateNomenclature() {
 	const [open, setOpen] = useState<boolean>(false)
