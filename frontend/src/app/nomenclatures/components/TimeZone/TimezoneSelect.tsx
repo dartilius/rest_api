@@ -1,6 +1,6 @@
 'use client'
 
-import { timezonesArray } from '@/types/timeZone'
+import { timezonesArray, getTimezoneLabel } from '@/types/timeZone'
 import { FormControl, MenuItem, Select } from '@mui/material'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -34,8 +34,7 @@ export const TimezoneSelect = () => {
 				displayEmpty
 				renderValue={(value) => {
 					if (!value) return 'Выберите часовой пояс'
-					const selectedTimezone = timezonesArray.find((tz) => tz.value === value)
-					return selectedTimezone?.label || value
+					return getTimezoneLabel(value)
 				}}
 			>
 				{timezonesArray.map((item, key) => (
