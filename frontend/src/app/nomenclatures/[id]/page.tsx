@@ -12,7 +12,6 @@ export default async function NomenclatureDetail({ params }: Props) {
 
 	try {
 		const res = await getNomenclatureDetail(id)
-		console.log(res)
 		return (
 			<div className='container mx-auto p-4'>
 				<NomenclatureDetailCard data={res} />

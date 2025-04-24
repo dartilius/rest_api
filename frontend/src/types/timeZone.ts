@@ -60,3 +60,20 @@ export function convertZone(statusId: string): string {
     throw new Error(`Unknown status ID: ${statusId}`);
   }
 }
+
+export const getTimezoneLabel = (timezone: string): string => {
+	if (timezone.startsWith('Etc/GMT')) {
+		const offset = timezone.split('-')[1] || timezone.split('+')[1]
+		return `UTC ${offset ? `+${offset}` : '+0'}`
+	}
+	return timezone
+}
+
+export const convertToEtcFormat = (timezone: string): string => {
+	if (timezone.startsWith('UTC')) {
+		const offset = timezone.split('+')[1] || '0'
+		return `Etc/GMT-${offset}`
+	}
+	return timezone
+}
+

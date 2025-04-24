@@ -1,6 +1,6 @@
 import { INomenclatureResponse } from '@/types/nomeclaturesType'
-import {Name} from "@/components/data-display/Name";
-import {Description} from "@/components/data-display/Description";
+import { Name } from '@/components/data-display/Name'
+import { Description } from '@/components/data-display/Description'
 
 interface ISettingsInfoCard {
 	settingsInfo: INomenclatureResponse['settings']
@@ -20,7 +20,10 @@ const DAYS_OF_WEEK = [
 function SettingsInfoCard({ settingsInfo, className }: ISettingsInfoCard) {
 	return (
 		<div className={`${className}`}>
-			<Name name='Настройки' className={`font-bold text-2xl text-zinc-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]`}/>
+			<Name
+				name='Настройки'
+				className={`font-bold text-2xl text-zinc-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]`}
+			/>
 			{DAYS_OF_WEEK.map((day) => (
 				<div
 					key={day.id}
