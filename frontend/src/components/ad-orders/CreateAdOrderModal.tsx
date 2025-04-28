@@ -1,8 +1,7 @@
 'use client'
 
-import { createAdOrder, loadClients } from '@/app/adorders/api'
+import { createAdOrder, getClients } from '@/app/adorders/api'
 import { getPlayLists } from '@/app/playlists/api'
-import { useDebounce } from '@/hooks/useDebounce'
 import { AdOrderType, IBroadcastInterval, ORDER_TYPE_AD_CONFIG } from '@/types/orderTypes'
 import { IPlayList } from '@/types/playListsTypes'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
@@ -10,24 +9,21 @@ import {
 	Autocomplete,
 	Box,
 	Button,
-	Checkbox,
-	Chip,
-	CircularProgress,
 	Dialog,
 	DialogActions,
 	DialogContent,
 	DialogTitle,
 	TextField,
-	Typography,
 	useMediaQuery,
 	useTheme,
 } from '@mui/material'
 import { DateTimePicker } from '@mui/x-date-pickers'
 import dayjs, { Dayjs } from 'dayjs'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import ActionButton from '../Ui/button/ActionButton'
 import ParametersBlock from './ParametersBlock'
+import AsyncAutocomplete from '../../components/AutocompleteComponent'
 
 interface Client {
 	id: string
@@ -55,7 +51,7 @@ export interface FormState {
 const CreateAdOrderModal = () => {
 	const router = useRouter()
 	const theme = useTheme()
-	const [open, setOpen] = useState(false)
+	const [open, setOpen] = useState<boolean>(false)
 	const [formData, setFormData] = useState<FormState>({
 		name: '',
 		description: '',
@@ -70,132 +66,7 @@ const CreateAdOrderModal = () => {
 	})
 
 	const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-	// Состояния для клиентов
-	const [clientsSearch, setClientsSearch] = useState('')
-	const debouncedClientsSearch = useDebounce(clientsSearch, 500)
-	const [clients, setClients] = useState<Client[]>([])
-	const [isLoadingClients, setIsLoadingClients] = useState(false)
-	const [clientsPagination, setClientsPagination] = useState({
-		page: 1,
-		hasMore: true,
-		totalCount: 0,
-	})
 
-	// Состояния для плейлистов
-	const [playlistsSearch, setPlaylistsSearch] = useState('')
-	const debouncedPlaylistsSearch = useDebounce(playlistsSearch, 500)
-	const [playlists, setPlaylists] = useState<IPlayList[]>([])
-	const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false)
-	const [playlistsPagination, setPlaylistsPagination] = useState({
-		page: 1,
-		hasMore: true,
-		totalCount: 0,
-	})
-	// Загрузка клиентов
-	const loadClientsData = useCallback(
-		async (page: number, search: string, reset: boolean = false) => {
-			try {
-				setIsLoadingClients(true)
-				const response = await loadClients(page, search)
-				setClients((prev) => (reset ? response.results : [...prev, ...response.results]))
-				setClientsPagination({
-					page,
-					hasMore: response.next !== null,
-					totalCount: response.count,
-				})
-			} catch (error) {
-				console.error('Failed to load clients:', error)
-			} finally {
-				setIsLoadingClients(false)
-			}
-		},
-		[],
-	)
-
-	// Загрузка плейлистов
-	const loadPlaylistsData = useCallback(
-		async (page: number, search: string, reset: boolean = false) => {
-			try {
-				setIsLoadingPlaylists(true)
-				const response = await getPlayLists({
-					id: '',
-					page,
-					limit: 25,
-					name: search,
-				})
-				setPlaylists((prev) => (reset ? response.results : [...prev, ...response.results]))
-				setPlaylistsPagination({
-					page,
-					hasMore: response.next !== null,
-					totalCount: response.count,
-				})
-			} catch (error) {
-				console.error('Failed to load playlists:', error)
-			} finally {
-				setIsLoadingPlaylists(false)
-			}
-		},
-		[],
-	)
-
-	// Эффекты для загрузки данных
-	useEffect(() => {
-		let isMounted = true
-		const controller = new AbortController()
-
-		const fetchData = async () => {
-			if (!isMounted) return
-			await loadClientsData(1, debouncedClientsSearch, true)
-			await loadPlaylistsData(1, debouncedPlaylistsSearch, true)
-		}
-
-		fetchData()
-		return () => {
-			isMounted = false
-			controller.abort()
-		}
-	}, [debouncedClientsSearch, debouncedPlaylistsSearch])
-
-	// Обработчики скролла
-	const handleClientsScroll = useCallback(
-		async (event: React.UIEvent<HTMLElement>) => {
-			const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
-			if (
-				scrollHeight - scrollTop <= clientHeight + 100 &&
-				clientsPagination.hasMore &&
-				!isLoadingClients
-			) {
-				await loadClientsData(clientsPagination.page + 1, debouncedClientsSearch)
-			}
-		},
-		[
-			clientsPagination.hasMore,
-			clientsPagination.page,
-			debouncedClientsSearch,
-			isLoadingClients,
-			loadClientsData,
-		],
-	)
-
-	const handlePlaylistsScroll = useCallback(
-		async (event: React.UIEvent<HTMLElement>) => {
-			const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
-			if (
-				scrollHeight - scrollTop <= clientHeight + 100 &&
-				playlistsPagination.hasMore &&
-				!isLoadingPlaylists
-			) {
-				await loadPlaylistsData(playlistsPagination.page + 1, debouncedPlaylistsSearch)
-			}
-		},
-		[
-			playlistsPagination.hasMore,
-			playlistsPagination.page,
-			isLoadingPlaylists,
-			loadPlaylistsData,
-			debouncedPlaylistsSearch,
-		],
-	)
 	const handleDateChange = (field: keyof IBroadcastInterval) => (value: Dayjs | null) => {
 		setFormData((prev) => ({
 			...prev,
@@ -225,20 +96,13 @@ const CreateAdOrderModal = () => {
 		try {
 			const payload = {
 				...formData,
-				parameters: {
-					...formData.parameters,
-					// Конвертация времени при необходимости
-					// start_time: formData.parameters.start_time ? `${formData.parameters.start_time}:00` : null,
-					// end_time: formData.parameters.end_time ? `${formData.parameters.end_time}:00` : null,
-				},
 				clients: formData.clients.map((c) => c.id),
+				playlist: formData.playlist.map((p) => p.id),
 				broadcast_interval: {
 					lower: formData.broadcast_interval.lower,
 					upper: formData.broadcast_interval.upper,
 				},
-				playlist: formData.playlist.map((v) => v.id),
 			}
-
 			await createAdOrder(payload)
 			setOpen(false)
 			router.refresh()
@@ -278,8 +142,7 @@ const CreateAdOrderModal = () => {
 				maxWidth='md'
 				fullWidth
 			>
-				<DialogTitle textAlign='center'>Создание нового рекламного заказа</DialogTitle>
-
+				<DialogTitle textAlign='center'>Создание рекламного заказа</DialogTitle>
 				<DialogContent
 					dividers
 					sx={{ padding: 1 }}
@@ -288,19 +151,9 @@ const CreateAdOrderModal = () => {
 						<TextField
 							label='Название'
 							fullWidth
-							multiline
-							rows={3}
 							margin='normal'
 							value={formData.name}
 							onChange={handleTextChange('name')}
-							slotProps={{
-								htmlInput: {
-									maxLength: 250,
-								},
-								formHelperText: {
-									sx: { textAlign: 'right' },
-								},
-							}}
 							helperText={`${formData.name.length}/250`}
 						/>
 
@@ -312,14 +165,6 @@ const CreateAdOrderModal = () => {
 							margin='normal'
 							value={formData.description}
 							onChange={handleTextChange('description')}
-							slotProps={{
-								htmlInput: {
-									maxLength: 250,
-								},
-								formHelperText: {
-									sx: { textAlign: 'right' },
-								},
-							}}
 							helperText={`${formData.description.length}/250`}
 						/>
 
@@ -327,7 +172,7 @@ const CreateAdOrderModal = () => {
 							options={
 								Object.values(AdOrderType).filter((v) => typeof v === 'number') as AdOrderType[]
 							}
-							getOptionLabel={(option) =>
+							getOptionLabel={(option: AdOrderType) =>
 								ORDER_TYPE_AD_CONFIG[option as AdOrderType]?.label || 'Unknown'
 							}
 							value={formData.broadcast_type}
@@ -418,195 +263,34 @@ const CreateAdOrderModal = () => {
 								}}
 							/>
 						</Box>
-						<Autocomplete
-							multiple
-							options={clients}
-							getOptionLabel={(option) => option.name}
-							filterOptions={(x) => x}
+						<AsyncAutocomplete<Client>
+							loadOptions={getClients}
 							value={formData.clients}
-							onChange={(_, newValue) => {
-								setFormData((prev) => ({
-									...prev,
-									clients: newValue,
-								}))
-							}}
-							onInputChange={(_, value) => {
-								requestAnimationFrame(() => {
-									setClientsSearch(value)
-								})
-							}}
-							isOptionEqualToValue={(option, value) => option.id === value.id}
-							loading={isLoadingClients}
-							slotProps={{
-								listbox: {
-									onScroll: handleClientsScroll,
-									style: { maxHeight: 300, overflow: 'auto' },
-								},
-							}}
-							renderInput={(params) => (
-								<TextField
-									{...params}
-									label='Клиенты'
-									margin='normal'
-									helperText='Начните вводить для поиска клиентов'
-									slotProps={{
-										root: {
-											// Для кастомизации корневого элемента TextField
-										},
-										htmlInput: {
-											...params.inputProps,
-											endadornment: (
-												<>
-													{isLoadingClients && (
-														<CircularProgress
-															color='inherit'
-															size={20}
-															sx={{ position: 'absolute', right: 50 }}
-														/>
-													)}
-													{params.InputProps.endAdornment}
-												</>
-											),
-										},
-									}}
-								/>
-							)}
-							renderTags={(value, getTagProps) =>
-								value.map((option, index) => (
-									<Chip
-										{...getTagProps({ index })}
-										key={option.id}
-										label={option.name}
-									/>
-								))
-							}
-							renderOption={(props, option, { selected }) => {
-								const { key, ...restProps } = props
-								return (
-									<li
-										key={key}
-										{...restProps}
-									>
-										<Box
-											display='flex'
-											justifyContent='space-between'
-											alignItems='center'
-											width='100%'
-											sx={{
-												'&:hover': {
-													backgroundColor: 'rgba(141,202,246,0.3)',
-													cursor: 'pointer',
-												},
-												padding: '8px 16px',
-											}}
-										>
-											<Typography>{option.name}</Typography>
-											<Checkbox checked={selected} />
-										</Box>
-									</li>
-								)
-							}}
-							noOptionsText={isLoadingClients ? 'Загрузка...' : 'Ничего не найдено'}
-						/>
-						<Autocomplete
+							onChange={(newValue) => setFormData((prev) => ({ ...prev, clients: newValue }))}
+							label='Клиенты'
 							multiple
-							options={playlists}
 							getOptionLabel={(option) => option.name}
-							filterOptions={(x) => x}
-							value={formData.playlist}
-							onChange={(_, newValue) => {
-								setFormData((prev) => ({
-									...prev,
-									playlist: newValue,
-								}))
-							}}
-							onInputChange={(_, value) => {
-								requestAnimationFrame(() => {
-									setPlaylistsSearch(value)
-								})
-							}}
 							isOptionEqualToValue={(option, value) => option.id === value.id}
-							loading={isLoadingPlaylists}
-							slotProps={{
-								listbox: {
-									onScroll: handlePlaylistsScroll,
-									style: { maxHeight: 300, overflow: 'auto' },
-								},
-							}}
-							renderInput={(params) => (
-								<TextField
-									{...params}
-									label='Плейлисты'
-									margin='normal'
-									helperText='Начните вводить для поиска плейлистов'
-									slotProps={{
-										root: {
-											// Для кастомизации корневого элемента TextField
-										},
-										htmlInput: {
-											...params.inputProps,
-											endadornment: (
-												<>
-													{isLoadingPlaylists && (
-														<CircularProgress
-															color='inherit'
-															size={20}
-															sx={{ position: 'absolute', right: 50 }}
-														/>
-													)}
-													{params.InputProps.endAdornment}
-												</>
-											),
-										},
-									}}
-								/>
-							)}
-							renderTags={(value, getTagProps) =>
-								value.map((option, index) => (
-									<Chip
-										{...getTagProps({ index })}
-										key={option.id}
-										label={option.name}
-									/>
-								))
-							}
-							renderOption={(props, option, { selected }) => {
-								const { key, ...restProps } = props
-								return (
-									<li
-										key={key}
-										{...restProps}
-									>
-										<Box
-											display='flex'
-											justifyContent='space-between'
-											alignItems='center'
-											width='100%'
-											sx={{
-												'&:hover': {
-													backgroundColor: 'rgba(141,202,246,0.3)',
-													cursor: 'pointer',
-												},
-												padding: '8px 16px',
-											}}
-										>
-											<Typography>{option.name}</Typography>
-											<Checkbox checked={selected} />
-										</Box>
-									</li>
-								)
-							}}
-							noOptionsText={isLoadingPlaylists ? 'Загрузка...' : 'Ничего не найдено'}
+							helperText='Начните вводить для поиска клиентов'
+						/>
+
+						<AsyncAutocomplete<IPlayList>
+							loadOptions={getPlayLists}
+							value={formData.playlist}
+							onChange={(newValue) => setFormData((prev) => ({ ...prev, playlist: newValue }))}
+							label='Плейлисты'
+							multiple
+							getOptionLabel={(option) => option.name}
+							isOptionEqualToValue={(option, value) => option.id === value.id}
+							helperText='Начните вводить для поиска плейлистов'
 						/>
 					</div>
 				</DialogContent>
-
 				<DialogActions>
 					<Button onClick={() => setOpen(false)}>Отмена</Button>
 					<Button
 						variant='contained'
 						onClick={handleSubmit}
-						disabled={!formData.name}
 					>
 						Создать
 					</Button>
