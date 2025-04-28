@@ -1,4 +1,5 @@
 import clickhouse_backend.models
+from django.conf import settings
 import django.db.models.manager
 from django.db import migrations, models
 
@@ -8,6 +9,8 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ('ch_statistic', '0001_initial'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
