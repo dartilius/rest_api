@@ -252,14 +252,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     )
                 custom_task.delay(pk, parameters, owner)
             case 'settings':
-                settings = request.data.get('parameters')
-                if not settings:
-                    return Response(
-                        {'detail': 'Не переданы настройки вещания.'},
-                        status=HTTP_400_BAD_REQUEST
-                    )
-                settings = NomenclatureSerializer().validate_settings(settings)
-                settings_task.delay(pk, settings, owner)
+                settings_task.delay(pk, owner)
             case _:
                 return Response(
                     {'detail': 'Недопустимое действие.'},

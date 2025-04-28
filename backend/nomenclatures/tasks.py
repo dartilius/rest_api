@@ -183,13 +183,13 @@ def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
 
 
 @shared_task
-def settings_task(nomenclature_id: str, settings: dict, owner_id: str):
+def settings_task(nomenclature_id: str, owner_id: str):
     nomenclature = get_nomenclature(nomenclature_id)
     owner = get_owner(owner_id)
     Task.objects.create(
         owner=owner,
         client=nomenclature,
         type=18,
-        parameters=settings
+        parameters=nomenclature.settings
     )
     return f'Настройки вещания отправлены на {nomenclature.name}'
