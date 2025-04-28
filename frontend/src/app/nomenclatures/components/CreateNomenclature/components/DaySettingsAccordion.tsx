@@ -1,10 +1,10 @@
 import { Accordion, AccordionSummary, AccordionDetails, Typography, TextField } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import NomenclatureVolume from '@/components/nomenclatures/NomenclatureVolume/NomenclatureVolume'
-import {ChangeEvent} from "react";
-import {DAY_LABELS} from "@/app/nomenclatures/components/CreateNomenclature/constans/constants";
+import { ChangeEvent } from 'react'
+import { DAY_LABELS } from '@/app/nomenclatures/components/CreateNomenclature/constans/constants'
 
-interface DaySettingsAccordionProps {
+export interface DaySettingsAccordionProps {
 	day: string
 	expanded: boolean
 	onExpandChange: () => void
@@ -18,6 +18,7 @@ interface DaySettingsAccordionProps {
 	}
 	onWorktimeChange: (e: ChangeEvent<HTMLInputElement>) => void
 	onVolumeChange: (newVolume: [number, number, number, number]) => void
+	handleWorktimeBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
 }
 
 export const DaySettingsAccordion = ({
@@ -28,6 +29,7 @@ export const DaySettingsAccordion = ({
 	errors,
 	onWorktimeChange,
 	onVolumeChange,
+	handleWorktimeBlur,
 }: DaySettingsAccordionProps) => (
 	<div style={{ maxWidth: 320, width: '100%' }}>
 		<Accordion
@@ -45,8 +47,13 @@ export const DaySettingsAccordion = ({
 						margin='dense'
 						value={settings.worktime}
 						onChange={onWorktimeChange}
+						onBlur={handleWorktimeBlur}
 						error={!!errors.worktime}
-						helperText={errors.worktime || ''}
+						helperText={
+							errors.worktime ||
+							'Введите время в формате hh:mm-hh:mm или просто цифры (например: 10002100)'
+						}
+						placeholder='Например: 10002100 или 10:00-21:00'
 					/>
 					<NomenclatureVolume
 						value={settings.default_volume}

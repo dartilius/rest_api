@@ -122,7 +122,6 @@ export class HttpClient {
 
   registerErrorHandler(status: number, handler: ErrorHandler) {
     this.errorHandlers.set(status, handler);
-    console.log('errorHandlers', this.errorHandlers.set(status, handler))
   }
 
   async request<T>(
@@ -184,6 +183,10 @@ export class HttpClient {
 
   post<T>(url: string, options?: Omit<RequestOptions, "params">) {
     return this.request<T>("POST", url, options);
+  }
+
+  patch<T>(url: string, options?: Omit<RequestOptions, "params">) {
+    return this.request<T>("PATCH", url, options);
   }
 
   put<T>(url: string, options?: Omit<RequestOptions, "params">) {

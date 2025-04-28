@@ -5,10 +5,10 @@ import { Modal, Box, Button, Alert, Snackbar, Select, MenuItem, FormControl } fr
 import './ModalAddFile.scss'
 import { ChangeEvent, useState } from 'react'
 import { sendFile } from '@/services/FilesService'
-import SelectTags from "@/app/files/components/SelectTags/SelectTags";
-import {ITagResponse} from "@/types/fileTypes";
-import {useNotification} from "@/hooks/useNotification";
-
+import SelectTags from '@/app/files/components/SelectTags/SelectTags'
+import { ITagResponse } from '@/types/fileTypes'
+import { useNotification } from '@/hooks/useNotification'
+import ActionButton from '@/components/Ui/button/ActionButton'
 
 function convertBase64(file: File): Promise<string> {
 	return new Promise((resolve, reject) => {
@@ -89,7 +89,11 @@ export function ModalAddFile() {
 		}
 
 		try {
-			const response = await sendFile({ source: fileBase64, type: Number(convertedType), tags: localTags })
+			const response = await sendFile({
+				source: fileBase64,
+				type: Number(convertedType),
+				tags: localTags,
+			})
 			showNotification(`Файл: ${response.name}, успешно создан`, 'success')
 			handleClose()
 		} catch (error: any) {
@@ -99,14 +103,14 @@ export function ModalAddFile() {
 	}
 
 	return (
-		<div>
-			<Button
-				variant='contained'
+		<div className='flex w-full items-center justify-center'>
+			<ActionButton
+				variant='primary'
 				onClick={handleOpen}
 				style={{ maxHeight: '52px', height: '100%' }}
 			>
 				Добавить файл
-			</Button>
+			</ActionButton>
 
 			<Modal
 				open={isOpen}
@@ -154,30 +158,30 @@ export function ModalAddFile() {
 						</label>
 						{fileName}
 					</div>
-					<div style={{display: 'flex', flexDirection: 'column', gap: '.5rem'}}>
-					<FormControl fullWidth>
-						<Select
-							value={convertedType}
-							onChange={(event) => handleSelectTypeFile(event.target.value)}
-							displayEmpty
-							style={{ color: 'black', backgroundColor: 'white', borderRadius: '4px' }}
-						>
-							<MenuItem
-								value=''
-								disabled
+					<div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+						<FormControl fullWidth>
+							<Select
+								value={convertedType}
+								onChange={(event) => handleSelectTypeFile(event.target.value)}
+								displayEmpty
+								style={{ color: 'black', backgroundColor: 'white', borderRadius: '4px' }}
 							>
-								Выберите тип
-							</MenuItem>
-							{arrayOfTypesFile.map((item) => (
 								<MenuItem
-									key={item.id}
-									value={item.id}
+									value=''
+									disabled
 								>
-									{item.label}
+									Выберите тип
 								</MenuItem>
-							))}
-						</Select>
-					</FormControl>
+								{arrayOfTypesFile.map((item) => (
+									<MenuItem
+										key={item.id}
+										value={item.id}
+									>
+										{item.label}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
 						<SelectTags
 							onChange={(newTags) => {
 								setLocalTags((prev) => {

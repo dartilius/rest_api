@@ -5,6 +5,7 @@ import {
 	INomenclatureResponse,
 	INomenclaturesListResponse,
 	NomenclaturesListProps,
+	IUpdateNomenclature,
 } from '@/types/nomeclaturesType'
 import { client } from '@/services/httpClient'
 
@@ -83,8 +84,6 @@ export async function sendActions(
 export async function getNomenclatureDetail(id: string): Promise<INomenclatureResponse> {
 	const token = await getToken()
 	const url = `${API_URL}nomenclatures/${id}`
-	console.log(url)
-
 	try {
 		return await client.get<INomenclatureResponse>(url, {
 			headers: {
@@ -135,6 +134,23 @@ export async function createNomenclature(body: ICreateNomenclature): Promise<INo
 		})
 	} catch (error) {
 		console.error('Ошибка при запросе номенклатуры:', error)
+		throw error
+	}
+}
+
+export async function updateNomenclature(id: string, body: IUpdateNomenclature): Promise<INomenclatureResponse> {
+	const token = await getToken()
+	const url = `${API_URL}nomenclatures/${id}/`
+
+	try {
+		return await client.patch<INomenclatureResponse>(url, {
+			headers: {
+				Authorization: `access_token ${token}`,
+			},
+			body: body,
+		})
+	} catch (error) {
+		console.error('Ошибка при обновлении номенклатуры:', error)
 		throw error
 	}
 }

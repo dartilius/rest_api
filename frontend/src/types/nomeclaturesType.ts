@@ -96,3 +96,10 @@ export interface ICreateNomenclature {
     version: string;
     settings: ICreateNomenclatureSettings;
 }
+
+export interface IUpdateNomenclature {
+    name: string;
+    description: string;
+    timezone: string;
+    settings: INomenclatureSettings;
+}

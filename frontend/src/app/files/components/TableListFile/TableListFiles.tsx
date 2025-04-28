@@ -24,10 +24,15 @@ import { IFileDetailResponse, IFilesListResponse, ITagResponse } from '@/types/f
 import PreviewFile from '@/app/files/components/PreviewFile/PreviewFile'
 import { TransitionGroup } from 'react-transition-group'
 import ModalEditFile from '@/app/files/components/ModalEditFile/ModalEditFile'
-import Link from "next/link";
+import Link from 'next/link'
+import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
+import FiltersWrapper from '../FilterWrapper/FiltersWrapper'
+import { Label } from '@/components/data-display/Label'
+import { CopyButton } from '@/components/Ui/button/CoppyButton'
 
 type Props = {
 	data: IFilesListResponse['results']
+	count: number
 }
 
 const columns = [
@@ -38,9 +43,7 @@ const columns = [
 	{ id: 'action', label: 'Действие', maxWidth: 120, minWidth: 120 },
 ]
 
-const TableListFiles = (props: Props) => {
-	const { data } = props
-
+const TableListFiles = ({ data, count }: Props) => {
 	const [fileData, setFileData] = useState<Record<string, IFileDetailResponse>>({})
 	const [openModal, setOpenModal] = useState<boolean>(false)
 	const [fileName, setFileName] = useState<string>('')
@@ -108,36 +111,34 @@ const TableListFiles = (props: Props) => {
 	return (
 		<>
 			<TableContainer
-				component={Box}
 				className={styles.custom_scroll}
-				sx={(theme) => ({
+				sx={{
 					maxWidth: '100%',
-					maxHeight: '760px',
+					maxHeight: '874px',
 					height: '100%',
-					overflow: 'hidden',
-					overflowY: 'auto',
-					overflowX: 'auto',
 					borderRadius: '8px',
 					backgroundColor: 'white',
-					[theme.breakpoints.down('sm')]: {
-						maxHeight: '620px',
-					},
-				})}
+				}}
 			>
-				<Table stickyHeader>
-					<TableHead>
-						<TableRow>
-							{columns.map((column) => (
-								<TableCell
-									key={column.id}
-									align={column.id === 'action' ? 'left' : 'center'}
-									sx={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
-								>
-									{column.label}
-								</TableCell>
-							))}
-						</TableRow>
-					</TableHead>
+				<Box sx={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'white' }}>
+					<FiltersWrapper />
+					<Table stickyHeader>
+						<TableHead>
+							<TableRow>
+								{columns.map((column) => (
+									<TableCell
+										key={column.id}
+										align={column.id === 'action' ? 'left' : 'center'}
+										sx={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
+									>
+										{column.label}
+									</TableCell>
+								))}
+							</TableRow>
+						</TableHead>
+					</Table>
+				</Box>
+				<Table>
 					<TableBody>
 						{data?.map((row: any) => (
 							<React.Fragment key={row.id}>
@@ -149,13 +150,19 @@ const TableListFiles = (props: Props) => {
 									{columns.map((column) => {
 										let value = row[column.id]
 										if (column.id === 'size') value = convertSizeFile(row.size)
-										if (column.id === 'tags') value = `${value?.lenght > 1 ? value.join(', ') : value}`
+										if (column.id === 'tags')
+											value = `${value?.lenght > 1 ? value.join(', ') : value}`
 										return (
 											<TableCell
 												key={column.id}
 												align={column.id === 'action' ? 'right' : 'center'}
 											>
-												<Link href={`/files/${row.id}`} target="_blank">{value}</Link>
+												<Link
+													href={`/files/${row.id}`}
+													target='_blank'
+												>
+													{value}
+												</Link>
 												{column.id === 'action' && (
 													<div
 														style={{
@@ -206,17 +213,12 @@ const TableListFiles = (props: Props) => {
 																			justifyContent: 'space-between',
 																		}}
 																	>
-																		<div
-																			onClick={() => copyToClipboard(fileData[row.id]?.hash)}
-																			className={styles.copy}
-																		>
+																		<div className={styles.copy}>
 																			Hash:{' '}
-																			<Button
-																				variant='contained'
-																				color='inherit'
-																			>
-																				{fileData[row.id]?.hash.slice(0, 25) + '...'}
-																			</Button>
+																			<CopyButton
+																				onCopy={() => copyToClipboard(fileData[row.id]?.hash)}
+																				label={fileData[row.id]?.hash.slice(0, 20) + '...'}
+																			/>
 																		</div>
 																		<div>Дата создания: {fileData[row.id].created}</div>
 																	</div>
@@ -256,6 +258,7 @@ const TableListFiles = (props: Props) => {
 						))}
 					</TableBody>
 				</Table>
+				<CustomPagination totalItems={count} />
 			</TableContainer>
 			<ModalEditFile
 				isOpen={openModal}
