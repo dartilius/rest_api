@@ -24,7 +24,7 @@ export default async function Page(props: { searchParams?: Promise<Nomenclatures
 	const searchParams = await props.searchParams
 	const name = searchParams?.name || ''
 	const currentPage = Number(searchParams?.page) || 1
-	const limit = Number(searchParams?.limit) || 9
+	const limit = Number(searchParams?.limit) || 20
 	const version = searchParams?.version || ''
 	const status = searchParams?.status || ''
 	const timezone = searchParams?.timezone || ''
@@ -41,7 +41,7 @@ export default async function Page(props: { searchParams?: Promise<Nomenclatures
 	})
 
 	return (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+		<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
 			<TableNomenclatures
 				count={listNomenclature.count}
 				data={listNomenclature.results}

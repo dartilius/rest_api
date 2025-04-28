@@ -8,7 +8,7 @@ const CustomPagination = ({ totalItems }: { totalItems: number }) => {
 	const router = useRouter()
 
 	const page = searchParams.get('page') || 1
-	const itemsPerPage = Number(searchParams.get('limit')) || 10
+	const itemsPerPage = Number(searchParams.get('limit')) || 20
 
 	const totalPages = Math.ceil(totalItems / itemsPerPage)
 

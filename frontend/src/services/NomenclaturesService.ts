@@ -105,7 +105,7 @@ export async function getNomenclatureList(queryParams: {
 	const strQueryParams = {
 		...resolvedParams,
 		page: Number(resolvedParams.page || 1),
-		limit: Number(resolvedParams.limit || 10),
+		limit: Number(resolvedParams.limit || 20),
 	}
 
 	try {

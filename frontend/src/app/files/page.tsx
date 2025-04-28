@@ -24,12 +24,10 @@ const FilesListPage = async ({
 	const dataFiles = listFiles.results ? listFiles.results : []
 	const countFiles = listFiles.count ? listFiles.count : 0
 	return (
-		<div>
-			<TableListFiles
-				data={dataFiles}
-				count={countFiles}
-			/>
-		</div>
+		<TableListFiles
+			data={dataFiles}
+			count={countFiles}
+		/>
 	)
 }
 
