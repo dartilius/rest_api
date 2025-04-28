@@ -2,7 +2,6 @@ import os
 
 from rmc_rest_api import settings
 from celery import Celery
-from celery.schedules import crontab
 
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", 'rmc_rest_api.settings')
@@ -21,9 +20,5 @@ app.conf.beat_schedule = {
     'update_order_statuses_30_sec': {
         'task': 'orders.tasks.update_order_status',
         'schedule': 30.0,
-    },
-    'backup_image_stat_every_day': {
-        'task': 'ch_statistic.tasks.backup_image_stat',
-        'schedule': crontab(minute=0, hour=2),
     }
 }
