@@ -18,7 +18,7 @@ app.conf.beat_schedule = {
         'schedule': 5.0,
     },
     'update_order_statuses_30_sec': {
-            'task': 'orders.tasks.update_order_status',
-            'schedule': 30.0,
-        }
+        'task': 'orders.tasks.update_order_status',
+        'schedule': 30.0,
+    }
 }
