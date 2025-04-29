@@ -1,4 +1,4 @@
-import {resendOrders} from "@/services/NomenclaturesService";
+import { resendOrders } from "../../api";
 
 export const handleResend = async (
     id: string,

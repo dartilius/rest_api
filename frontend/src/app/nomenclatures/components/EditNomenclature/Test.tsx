@@ -23,7 +23,7 @@ import { DAY_KEYS } from '../CreateNomenclature/constans/constants'
 import { DaySettingsAccordion } from '../CreateNomenclature/components'
 import { useNotification } from '@/hooks/useNotification'
 import ActionButton from '@/components/Ui/button/ActionButton'
-import { updateNomenclature } from '@/services/NomenclaturesService'
+import { updateNomenclature } from '../../api'
 
 interface TestProps {
 	id: string

@@ -1,8 +1,8 @@
 'use client'
-import { getNomenclatureDetail } from '@/services/NomenclaturesService'
 import Test from './Test'
 import { useEffect, useState, useRef } from 'react'
 import { INomenclatureResponse } from '@/types/nomeclaturesType'
+import { getNomenclatureDetail } from '../../api'
 
 interface EditNomenclatureProps {
 	id: string

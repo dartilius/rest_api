@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, ChangeEvent } from 'react'
-import { createTag, getTagList } from '@/services/FilesService'
 import { ITagResponse, ITagsListResponse } from '@/types/fileTypes'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import {
@@ -19,6 +18,7 @@ import {
 	CircularProgress,
 } from '@mui/material'
 import { useNotification } from '@/hooks/useNotification'
+import { createTag, getTagList } from '../../api'
 
 interface SelectTagsProps {
 	onChange: (tags: ITagResponse[]) => void

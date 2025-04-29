@@ -1,6 +1,6 @@
 import { TableNomenclatures } from '@/app/nomenclatures/components'
 import { Metadata } from 'next'
-import { getNomenclatureList } from '@/services/NomenclaturesService'
+import { getNomenclatureList } from './api'
 
 export const metadata: Metadata = {
 	title: 'Номенклатуры',
@@ -9,35 +9,34 @@ export const metadata: Metadata = {
 		icon: '/favicon.svg',
 	},
 }
-
-type NomenclaturesListProps = {
-	page?: number | string
-	limit?: number | string
-	name?: string
-	status?: string
-	timezone?: string
-	version?: string
-	openModalFilters?: boolean
-}
-
-export default async function Page(props: { searchParams?: Promise<NomenclaturesListProps> }) {
-	const searchParams = await props.searchParams
-	const name = searchParams?.name || ''
-	const currentPage = Number(searchParams?.page) || 1
-	const limit = Number(searchParams?.limit) || 9
-	const version = searchParams?.version || ''
-	const status = searchParams?.status || ''
-	const timezone = searchParams?.timezone || ''
+const Nomenclatures = async ({
+	searchParams,
+}: {
+	searchParams?: {
+		page: number
+		limit: number
+		name: string
+		status: string
+		timezone: string
+		version: string
+	}
+}) => {
+	const {
+		page = 1,
+		limit = 10,
+		name = '',
+		status = '',
+		timezone = '',
+		version = '',
+	} = (await searchParams) ?? {}
 
 	const listNomenclature = await getNomenclatureList({
-		searchParams: Promise.resolve({
-			page: currentPage,
-			limit: limit,
-			name,
-			status,
-			timezone,
-			version,
-		}),
+		limit,
+		name,
+		page,
+		status,
+		timezone,
+		version,
 	})
 
 	return (
@@ -45,7 +44,11 @@ export default async function Page(props: { searchParams?: Promise<Nomenclatures
 			<TableNomenclatures
 				count={listNomenclature.count}
 				data={listNomenclature.results}
+				limit={limit}
+				page={page}
 			/>
 		</div>
 	)
 }
+
+export default Nomenclatures
