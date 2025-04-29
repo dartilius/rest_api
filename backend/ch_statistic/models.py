@@ -52,27 +52,22 @@ class MusicStat(Stat):
         verbose_name_plural = 'Статистика музыки'
 
 
-class BaseImageStat(Stat):
-    """Абстрактный класс статистики фоновых картинок."""
-
-    class Meta:
-        ordering = ['-played']
-
-
-class ImageStat(BaseImageStat):
+class ImageStat(Stat):
     """Статистика фоновых картинок."""
 
     class Meta:
         db_table = 'image_stat'
+        ordering = ['-played']
         verbose_name = 'Статистика изображений'
         verbose_name_plural = 'Статистика изображений'
 
 
-class BackupImageStat(BaseImageStat):
+class BackupImageStat(Stat):
     """Бэкап статистики фоновых картинок."""
 
     class Meta:
         db_table = 'image_stat_backup'
+        ordering = ['-played']
         verbose_name = 'Бэкап статистики изображений'
         verbose_name_plural = 'Бэкапы статистики изображений'
 
