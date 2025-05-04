@@ -14,7 +14,6 @@ import { useCallback, useEffect, useState } from 'react'
 export interface PaginatedResponse<T> {
 	results: T[]
 	count: number
-	next: string | null
 }
 
 interface AsyncAutocompleteProps<T> {
@@ -29,7 +28,7 @@ interface AsyncAutocompleteProps<T> {
 	label: string
 	multiple?: boolean
 	getOptionLabel: (option: T) => string
-	isOptionEqualToValue: (option: T, value: T) => boolean
+	isOptionEqualToValue?: (option: T, value: T) => boolean
 	helperText?: string
 }
 
@@ -40,31 +39,39 @@ const AsyncAutocomplete = <T,>({
 	label,
 	multiple = false,
 	getOptionLabel,
-	isOptionEqualToValue,
+	isOptionEqualToValue = (option, val) => option === val,
 	helperText,
 }: AsyncAutocompleteProps<T>) => {
 	const [inputValue, setInputValue] = useState<string>('')
 	const debouncedSearch = useDebounce(inputValue, 500)
 	const [options, setOptions] = useState<T[]>([])
-	const [loading, setLoading] = useState<boolean>(false)
-	const [pagination, setPagination] = useState({ page: 1, hasMore: true })
-	const [isOpen, setIsOpen] = useState<boolean>(false)
+	const [loading, setLoading] = useState(false)
+	const [page, setPage] = useState(1)
+	const [totalCount, setTotalCount] = useState(0)
+	const [isOpen, setIsOpen] = useState(false)
+
+	const hasMore = options.length < totalCount
+
 	const loadData = useCallback(
-		async (page: number, search: string, reset: boolean = false) => {
+		async (pageNumber: number, search: string, reset: boolean = false) => {
 			try {
 				setLoading(true)
 				const response = await loadOptions({
-					page,
+					page: pageNumber,
 					search,
 					limit: 25,
 				})
 
 				setOptions((prev) => (reset ? response.results : [...prev, ...response.results]))
 
-				setPagination({
-					page,
-					hasMore: !!response.next,
-				})
+				setTotalCount(response.count)
+
+				// Всегда обновляем номер страницы после успешной загрузки
+				if (!reset) {
+					setPage(pageNumber)
+				} else {
+					setPage(1) // Сбрасываем страницу при поиске/открытии
+				}
 			} catch (error) {
 				console.error('Error loading options:', error)
 			} finally {
@@ -75,20 +82,29 @@ const AsyncAutocomplete = <T,>({
 	)
 
 	useEffect(() => {
-		if (isOpen && debouncedSearch !== null) {
+		if (isOpen || debouncedSearch !== '') {
+			// При изменении поиска или открытии списка:
+			// 1. Сбрасываем страницу
+			// 2. Загружаем с первой страницы
+			// 3. Полностью заменяем данные (reset=true)
 			loadData(1, debouncedSearch, true)
 		}
-	}, [debouncedSearch, isOpen, loadData])
+	}, [debouncedSearch, isOpen])
 
 	const handleScroll = useCallback(
 		async (event: React.UIEvent<HTMLElement>) => {
 			const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
-			if (scrollHeight - scrollTop <= clientHeight + 100 && pagination.hasMore && !loading) {
-				await loadData(pagination.page + 1, debouncedSearch)
+			const isNearBottom = scrollHeight - scrollTop <= clientHeight + 100
+
+			if (isNearBottom && hasMore && !loading) {
+				// Всегда запрашиваем следующую страницу
+				const nextPage = page + 1
+				await loadData(nextPage, debouncedSearch)
 			}
 		},
-		[pagination, debouncedSearch, loading, loadData],
+		[hasMore, loading, debouncedSearch, page, loadData],
 	)
+	const autocompleteValue = multiple ? value : value.length > 0 ? value[0] : null
 
 	return (
 		<Autocomplete
@@ -96,10 +112,19 @@ const AsyncAutocomplete = <T,>({
 			onClose={() => setIsOpen(false)}
 			multiple={multiple}
 			options={options}
-			getOptionLabel={getOptionLabel}
-			value={value}
-			onChange={(_, newValue) => onChange(newValue as T[])}
+			getOptionLabel={(option) => {
+				if (option === null || option === undefined) return ''
+				return getOptionLabel(option)
+			}}
 			onInputChange={(_, value) => setInputValue(value)}
+			value={autocompleteValue}
+			onChange={(_, newValue) => {
+				if (multiple) {
+					onChange(newValue as T[])
+				} else {
+					onChange(newValue ? [newValue as T] : [])
+				}
+			}}
 			isOptionEqualToValue={isOptionEqualToValue}
 			loading={loading}
 			filterOptions={(x) => x}
@@ -138,6 +163,7 @@ const AsyncAutocomplete = <T,>({
 				/>
 			)}
 			renderTags={(value, getTagProps) =>
+				multiple &&
 				value.map((option, index) => (
 					<Chip
 						{...getTagProps({ index })}

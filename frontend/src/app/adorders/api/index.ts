@@ -3,7 +3,7 @@ import { client } from "@/services/httpClient";
 import { AdOrderType, IAdOrderDetail, IDataAdResponse, IParamsCreateAd } from "@/types/orderTypes";
 import { getToken } from "@/utils";
 import {ICancelResponse} from "@/app/bgorders/api";
-import { PaginatedResponse } from "@/components/AutocompleteComponent";
+import { PaginatedResponse } from "@/components/Ui/AsyncAutocomplete";
 
 
 export async function getDataAd(queryParams: {
@@ -148,7 +148,6 @@ export async function getClients(params: {
     return {
       results: response.results,
       count: response.count,
-      next: response.next
     };
   } catch (error) {
     console.error('Load clients error:', error);
@@ -157,18 +156,18 @@ export async function getClients(params: {
 }
 
 
-interface AdOrderPayload {
+export type AdOrderPayload = Array<{
   name: string;
   description: string;
   broadcast_type: AdOrderType;
   parameters: IParamsCreateAd;
-  playlist: string[];
+  playlist: string;
   clients: string[];
   broadcast_interval: {
     lower: string;
     upper: string;
   };
-}
+}>
 
 export async function createAdOrder(payload: AdOrderPayload) {
   const token = await getToken();
@@ -179,7 +178,7 @@ export async function createAdOrder(payload: AdOrderPayload) {
         Authorization: `access_token ${token}`
       }
     });
-    
+    console.log(response);
     return response;
   } catch (error) {
     console.error('Create order error:', error);

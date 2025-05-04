@@ -1,4 +1,4 @@
-import { PaginatedResponse } from "@/components/AutocompleteComponent";
+import { PaginatedResponse } from "@/components/Ui/AsyncAutocomplete";
 import { API_URL } from "@/config/api.config";
 import { client } from "@/services/httpClient";
 import { IDataPlayListsResponse, IPlayList, IPlayListsDetail} from "@/types/playListsTypes";
@@ -30,7 +30,6 @@ export async function getPlayLists(params: {
   return {
     results: response.results,
     count: response.count,
-    next: response.next
   };
 }
 
