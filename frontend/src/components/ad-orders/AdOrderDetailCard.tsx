@@ -36,7 +36,6 @@ const AdOrderDetailCard = ({ data, className = '' }: AdOrderDetailCardProps) => 
 		}
 	}
 	console.log(data.status)
-
 	return (
 		<div
 			className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-6 ${className}`}
