@@ -17,7 +17,7 @@ export const ParametersDisplay = ({
   return (
     <div className={`grid grid-cols-2 gap-2 ${className}`}>
       <div className='col-span-2'>
-        <span className='text-xl text-zinc-900'>Режим работы:</span>
+        <span className='text-xl ext-blue-100'>Режим работы:</span>
         <div className='flex gap-2'>
           <span>{formatTime(parameters.daily_start_time)}</span>
           <span>-</span>
@@ -25,7 +25,7 @@ export const ParametersDisplay = ({
         </div>
       </div>
       <div>
-        <span className='text-xl text-zinc-900 text-nowrap'>Трансляций в час:</span>
+        <span className='text-xl ext-blue-100 text-nowrap'>Трансляций в час:</span>
         <span className='ml-2 font-bold'>{parameters.times_in_hour}</span>
       </div>
     </div>
