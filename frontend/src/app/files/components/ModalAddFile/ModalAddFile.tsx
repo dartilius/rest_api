@@ -1,14 +1,14 @@
 'use client'
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { Modal, Box, Button, Alert, Snackbar, Select, MenuItem, FormControl } from '@mui/material'
+import { Modal, Box, Button, Select, MenuItem, FormControl } from '@mui/material'
 import './ModalAddFile.scss'
 import { ChangeEvent, useState } from 'react'
-import { sendFile } from '@/services/FilesService'
 import SelectTags from '@/app/files/components/SelectTags/SelectTags'
 import { ITagResponse } from '@/types/fileTypes'
 import { useNotification } from '@/hooks/useNotification'
 import ActionButton from '@/components/Ui/button/ActionButton'
+import { sendFile } from '../../api'
 
 function convertBase64(file: File): Promise<string> {
 	return new Promise((resolve, reject) => {
@@ -189,7 +189,7 @@ export function ModalAddFile() {
 									return [...prev, ...newTags.filter((tag) => !existingIds.has(tag.id))]
 								})
 							}}
-							width={336}
+							style={{ width: '336px' }}
 							label='Добавить'
 						/>
 					</div>

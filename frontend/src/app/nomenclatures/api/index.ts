@@ -1,13 +1,33 @@
-import { API_URL } from '@/config/api.config'
-import { getToken } from '@/utils'
-import {
-	ICreateNomenclature,
-	INomenclatureResponse,
-	INomenclaturesListResponse,
-	NomenclaturesListProps,
-	IUpdateNomenclature,
-} from '@/types/nomeclaturesType'
-import { client } from '@/services/httpClient'
+import { API_URL } from "@/config/api.config"
+import { client } from "@/services/httpClient"
+import { ICreateNomenclature, INomenclatureResponse, INomenclaturesListResponse, IUpdateNomenclature, NomenclaturesListProps } from "@/types/nomeclaturesType"
+import { getToken } from "@/utils"
+
+export async function getNomenclatureList(queryParams: NomenclaturesListProps): Promise<INomenclaturesListResponse> {
+	const token = await getToken()
+	const url = `${API_URL}nomenclatures`
+    const stringifiedQueryParams: Record<string, any> = {
+        page: queryParams.page?.toString(),
+        limit: queryParams.limit?.toString(),
+        name: queryParams.name?.toString(),
+        status: queryParams.status?.toString(),
+        timezone: queryParams.timezone?.toString(),
+        version: queryParams.version?.toString()
+
+    }
+
+	try {
+		return await client.get<INomenclaturesListResponse>(url, {
+			params: stringifiedQueryParams,
+			headers: {
+				Authorization: `access_token ${token}`,
+			},
+		})
+	} catch (error) {
+		console.error('Ошибка при запросе номенклатуры:', error)
+		throw error
+	}
+}
 
 export async function deleteNomenclatures(id: string): Promise<number> {
 	const token = await getToken()
@@ -86,31 +106,6 @@ export async function getNomenclatureDetail(id: string): Promise<INomenclatureRe
 	const url = `${API_URL}nomenclatures/${id}`
 	try {
 		return await client.get<INomenclatureResponse>(url, {
-			headers: {
-				Authorization: `access_token ${token}`,
-			},
-		})
-	} catch (error) {
-		console.error('Ошибка при запросе номенклатуры:', error)
-		throw error
-	}
-}
-
-export async function getNomenclatureList(queryParams: {
-	searchParams?: Promise<NomenclaturesListProps>
-}): Promise<INomenclaturesListResponse> {
-	const token = await getToken()
-	const url = `${API_URL}nomenclatures`
-	const resolvedParams = (await queryParams.searchParams) || {}
-	const strQueryParams = {
-		...resolvedParams,
-		page: Number(resolvedParams.page || 1),
-		limit: Number(resolvedParams.limit || 10),
-	}
-
-	try {
-		return await client.get<INomenclaturesListResponse>(url, {
-			params: strQueryParams,
 			headers: {
 				Authorization: `access_token ${token}`,
 			},

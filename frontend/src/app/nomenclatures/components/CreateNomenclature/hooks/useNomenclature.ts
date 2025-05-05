@@ -1,9 +1,9 @@
 import { ChangeEvent, useState } from 'react';
 import { ICreateNomenclature } from '@/types/nomeclaturesType';
-import { createNomenclature } from '@/services/NomenclaturesService';
 import { useRouter } from 'next/navigation';
 import { useNotification } from '@/hooks/useNotification';
 import {DAY_KEYS} from "@/app/nomenclatures/components/CreateNomenclature/constans/constants";
+import { createNomenclature } from '@/app/nomenclatures/api';
 
 // Валидационные функции вынесены за пределы хука для переиспользования
 const isValidWorktime = (value: string): boolean => {

@@ -26,10 +26,12 @@ const columns = [
 type Props = {
 	data: any
 	count: any
+	limit: number
+	page: number
 }
 
 export function TableNomenclatures(props: Props) {
-	const { data, count } = props
+	const { data, count, limit, page } = props
 
 	return (
 		<TableContainer
@@ -115,7 +117,11 @@ export function TableNomenclatures(props: Props) {
 					))}
 				</TableBody>
 			</Table>
-			<CustomPagination totalItems={count} />
+			<CustomPagination
+				totalItems={count}
+				limit={limit}
+				page={page}
+			/>
 		</TableContainer>
 	)
 }

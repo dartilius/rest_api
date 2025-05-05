@@ -5,8 +5,8 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { staticDelete, staticEdit } from '@/styles'
-import { deleteNomenclatures } from '@/services/NomenclaturesService'
 import EditNomenclature from '../EditNomenclature/EditNomenclature'
+import { deleteNomenclatures } from '../../api'
 
 type NomenclatureActionsProps = {
 	id: string

@@ -1,10 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
-import { deleteFile, getFileDetail } from '@/services/FilesService'
 import {
 	Box,
-	Button,
 	Table,
 	TableBody,
 	TableCell,
@@ -27,12 +25,14 @@ import ModalEditFile from '@/app/files/components/ModalEditFile/ModalEditFile'
 import Link from 'next/link'
 import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
 import FiltersWrapper from '../FilterWrapper/FiltersWrapper'
-import { Label } from '@/components/data-display/Label'
 import { CopyButton } from '@/components/Ui/button/CoppyButton'
+import { deleteFile, getFileDetail } from '../../api'
 
 type Props = {
 	data: IFilesListResponse['results']
 	count: number
+	limit: number
+	page: number
 }
 
 const columns = [
@@ -43,7 +43,7 @@ const columns = [
 	{ id: 'action', label: 'Действие', maxWidth: 120, minWidth: 120 },
 ]
 
-const TableListFiles = ({ data, count }: Props) => {
+const TableListFiles = ({ data, count, limit, page }: Props) => {
 	const [fileData, setFileData] = useState<Record<string, IFileDetailResponse>>({})
 	const [openModal, setOpenModal] = useState<boolean>(false)
 	const [fileName, setFileName] = useState<string>('')
@@ -157,12 +157,7 @@ const TableListFiles = ({ data, count }: Props) => {
 												key={column.id}
 												align={column.id === 'action' ? 'right' : 'center'}
 											>
-												<Link
-													href={`/files/${row.id}`}
-													target='_blank'
-												>
-													{value}
-												</Link>
+												<Link href={`/files/${row.id}`}>{value}</Link>
 												{column.id === 'action' && (
 													<div
 														style={{
@@ -258,7 +253,11 @@ const TableListFiles = ({ data, count }: Props) => {
 						))}
 					</TableBody>
 				</Table>
-				<CustomPagination totalItems={count} />
+				<CustomPagination
+					totalItems={count}
+					limit={limit}
+					page={page}
+				/>
 			</TableContainer>
 			<ModalEditFile
 				isOpen={openModal}

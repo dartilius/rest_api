@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Box, Button, Modal } from '@mui/material'
 import CancelIcon from '@mui/icons-material/Cancel'
-import { addTags, removeTags } from '@/services/FilesService'
 import { ITagResponse } from '@/types/fileTypes'
 import SelectTags from '@/app/files/components/SelectTags/SelectTags'
-import {useRouter} from "next/navigation";
+import { useRouter } from 'next/navigation'
+import { addTags, removeTags } from '../../api'
 
 type ModalAddFileProps = {
 	isOpen: boolean
@@ -100,7 +100,7 @@ function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProp
 							gap: '.5rem',
 							alignItems: 'center',
 							flexWrap: 'wrap', // добавлено
-							justifyContent: 'center'
+							justifyContent: 'center',
 						}}
 					>
 						Теги:{' '}
@@ -133,6 +133,7 @@ function ModalEditFile({ tags, name, isOpen, handleClose, id }: ModalAddFileProp
 						})
 					}}
 					label='Добавить'
+					style={{ width: '100%' }}
 				/>
 
 				<Button onClick={handleSaveEdit}>Сохранить</Button>
