@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
-import { getFilesList } from '@/services/FilesService'
 import TableListFiles from '@/app/files/components/TableListFile/TableListFiles'
+import { getFilesList } from './api'
 
 export const metadata: Metadata = {
 	title: 'Файлы',
@@ -18,7 +18,7 @@ const FilesListPage = async ({
 		tags: string[]
 	}
 }) => {
-	const { page = 1, limit = 11, name = '', file_type = '', tags = [] } = (await searchParams) ?? {}
+	const { page = 1, limit = 10, name = '', file_type = '', tags = [] } = (await searchParams) ?? {}
 
 	const listFiles = await getFilesList({ page, limit, name, file_type, tags })
 	const dataFiles = listFiles.results ? listFiles.results : []
@@ -28,6 +28,8 @@ const FilesListPage = async ({
 			<TableListFiles
 				data={dataFiles}
 				count={countFiles}
+				limit={limit}
+				page={page}
 			/>
 		</div>
 	)

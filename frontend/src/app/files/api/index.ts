@@ -1,6 +1,8 @@
 import { API_URL } from '@/config/api.config'
 import {getToken} from '@/utils'
 import {
+    ICreateFile,
+	ICreateFileResponse,
 	IFileDetailResponse,
 	IFilesListResponse,
 	ITagResponse,
@@ -52,38 +54,12 @@ export async function getFileDetail(id: string): Promise<IFileDetailResponse> {
 		throw error
 	}
 }
-
-type SendFile = {
-	type: number
-	source: string
-	tags: ITagResponse[]
-}
-
-type SendFileResponse = {
-	id: string
-	length: string
-	size: number
-	type: string
-	tags: string[]
-	url: string
-	name: string
-	owner: {
-		full_name: string
-	}
-	hash: string
-	created: string
-}
-
-type ErrorResponse = {
-	source: string[]
-}
-
-export async function sendFile(body: SendFile): Promise<SendFileResponse> {
+export async function sendFile(body: ICreateFile): Promise<ICreateFileResponse> {
 	const token = await getToken()
 	const url = `${API_URL}files/`
 
 	try {
-				return await client.post<SendFileResponse>(url, {
+				return await client.post<ICreateFileResponse>(url, {
 			headers: {
 				Authorization: `access_token ${token}`,
 			},

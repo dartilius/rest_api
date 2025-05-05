@@ -44,5 +44,23 @@ export interface ITagResponse {
     name: string;
 }
 
-//Без точек, не русское название
+export interface ICreateFile {
+    type: number
+	source: string
+	tags: ITagResponse[]
+}
 
+export interface ICreateFileResponse {
+    id: string
+	length: string
+	size: number
+	type: string
+	tags: string[]
+	url: string
+	name: string
+	owner: {
+		full_name: string
+	}
+	hash: string
+	created: string
+}

@@ -1,4 +1,4 @@
-import {sendActions} from "@/services/NomenclaturesService";
+import { sendActions } from "../../api";
 
 export const handleSendAction = async (
     id: string,

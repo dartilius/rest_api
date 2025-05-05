@@ -1,5 +1,5 @@
-import { getNomenclatureDetail } from '@/services/NomenclaturesService'
 import NomenclatureDetailCard from '@/components/nomenclatures/NomenclatureDetailCard'
+import { getNomenclatureDetail } from '../api'
 
 interface Props {
 	params: {

@@ -13,6 +13,7 @@ export const CopyButton = ({
 		<ActionButton
 			variant='warning'
 			onClick={onCopy}
+			style={{ width: '100%' }}
 			disabled={disabled}
 		>
 			{label}

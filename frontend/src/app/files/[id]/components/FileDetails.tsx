@@ -5,7 +5,6 @@ import { Label } from '@/components/data-display/Label'
 import { Name } from '@/components/data-display/Name'
 import { DateTime } from '@/components/data-display/DateTime'
 import { OwnerInfo } from '@/components/data-display/OwnerInfo'
-import { Button } from '@mui/material'
 import React from 'react'
 import { useNotification } from '@/hooks/useNotification'
 import dynamic from 'next/dynamic'
@@ -72,7 +71,7 @@ function FileDetails({ data, className }: FileDetailsProps) {
 						<Label className='text-sm md:text-base'>Hash:</Label>
 						<CopyButton
 							onCopy={() => copyToClipboard(data.hash)}
-							label={data.hash.slice(0, 20) + '...'}
+							label={data.hash.slice(0, 70) + '...'}
 						/>
 					</div>
 				</div>

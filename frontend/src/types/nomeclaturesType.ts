@@ -5,7 +5,6 @@ export interface NomenclaturesListProps {
     status?: string;
     timezone?: string;
     version?: string;
-    openModalFilters?: boolean;
 }
 
 interface INomenclatures {

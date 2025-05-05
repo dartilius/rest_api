@@ -1,7 +1,7 @@
-import { getFileDetail } from '@/services/FilesService'
 import FileDetails from '@/app/files/[id]/components/FileDetails'
-import Head from "next/head";
-import {Metadata} from "next";
+import Head from 'next/head'
+import { Metadata } from 'next'
+import { getFileDetail } from '../api'
 
 interface Props {
 	params: {
@@ -9,31 +9,29 @@ interface Props {
 	}
 }
 
-export async function generateMetadata(
-    { params }: Props
-): Promise<Metadata> {
-    const { id } = params;
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+	const { id } = params
 
-    try {
-        const fileDetail = await getFileDetail(id);
+	try {
+		const fileDetail = await getFileDetail(id)
 
-        // Возвращаем мета-данные на основе данных файла
-        return {
-            title: fileDetail ? `Файл ${fileDetail.name}` : "Ошибка загрузки файла",
-            openGraph: {
-                title: fileDetail ? `Файл ${fileDetail.name}` : "Ошибка загрузки файла",
-            },
-        };
-    } catch (error) {
-        // В случае ошибки возвращаем дефолтные мета-данные
-        console.error("Error loading file details:", error);
-        return {
-            title: "Ошибка загрузки файла",
-            openGraph: {
-                title: "Ошибка загрузки файла",
-            },
-        };
-    }
+		// Возвращаем мета-данные на основе данных файла
+		return {
+			title: fileDetail ? `Файл ${fileDetail.name}` : 'Ошибка загрузки файла',
+			openGraph: {
+				title: fileDetail ? `Файл ${fileDetail.name}` : 'Ошибка загрузки файла',
+			},
+		}
+	} catch (error) {
+		// В случае ошибки возвращаем дефолтные мета-данные
+		console.error('Error loading file details:', error)
+		return {
+			title: 'Ошибка загрузки файла',
+			openGraph: {
+				title: 'Ошибка загрузки файла',
+			},
+		}
+	}
 }
 
 const FileDetail = async ({ params }: Props) => {
