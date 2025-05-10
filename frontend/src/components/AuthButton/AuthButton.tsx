@@ -21,7 +21,7 @@ const AuthButton = () => {
     };
 
     // console.log('contextAuth.isAuthenticated', contextAuth.isAuthenticated);
-
+    // test
     return (
         <Button
             color={contextAuth.isAuthenticated ? "error" : "primary"}
