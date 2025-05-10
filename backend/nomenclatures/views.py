@@ -1,5 +1,6 @@
 from datetime import datetime as dt
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -49,6 +50,7 @@ from tasks.serializers import TaskListSerializer
 from users.permissions import StaffCUDAuthRetrieve
 
 
+@extend_schema(tags=['Номенклатуры'])
 class NomenclatureViewSet(viewsets.ModelViewSet):
     """Работа с номенклатурами."""
 
