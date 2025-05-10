@@ -1,4 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -32,6 +33,7 @@ class NoDeleteViewSet(mixins.CreateModelMixin,
     """Вьюсет без поддержки метода DELETE."""
 
 
+@extend_schema(tags=['AD Orders'])
 class AdOrderViewSet(NoDeleteViewSet):
     """Работа с рекламными заказами."""
 
@@ -107,6 +109,7 @@ class AdOrderViewSet(NoDeleteViewSet):
         return serializer(*args, **kwargs)
 
 
+@extend_schema(tags=['BG Orders'])
 class BgOrderViewSet(NoDeleteViewSet):
     """Работа с фоновыми заказами."""
 

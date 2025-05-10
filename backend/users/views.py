@@ -1,4 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -13,6 +14,7 @@ from users.permissions import SuperuserCUDAuthRetrieve
 from users.serializers import CustomUserSerializer, CustomUserListSerializer
 
 
+@extend_schema(tags=['users'])
 class CustomUserViewSet(viewsets.ModelViewSet):
     """Работа с пользователями."""
 
@@ -60,6 +62,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
 
+@extend_schema(tags=['users'])
 @api_view(['POST'])
 def logout(request):
     """Выход из системы."""
