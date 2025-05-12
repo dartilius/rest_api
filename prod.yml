@@ -13,6 +13,13 @@ volumes:
       type: none
       device: /file/pg_data
 
+  pgadmin:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/pgadmin
+
   static:
     driver: local
     driver_opts:
@@ -77,6 +84,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    ports:
+      - 5432:5432
     volumes:
       - ./scripts/postgres:/docker-entrypoint-initdb.d
       - pg_data:/var/lib/postgresql/data
@@ -223,3 +232,16 @@ services:
           cpus: '4'
           memory: 4096M
 
+  pgadmin:
+    image: dpage/pgadmin4:4.23
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${DJANGO_SUPERUSER_NAME}
+      PGADMIN_DEFAULT_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
+      PGADMIN_LISTEN_PORT: 15432
+    ports:
+      - 15432:15432
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      - db
