@@ -54,6 +54,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     ulimits:
@@ -75,6 +76,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     volumes:
       - ./scripts/postgres:/docker-entrypoint-initdb.d
       - pg_data:/var/lib/postgresql/data
@@ -84,6 +86,7 @@ services:
     container_name: files
     env_file: .env
     command: server /data --console-address ":9001"
+    restart: unless-stopped
     healthcheck:
       test: curl -I ${MINIO_EXTERNAL_ENDPOINT}/minio/health/live
       interval: 5s
@@ -109,6 +112,7 @@ services:
     ports:
       - 8000:8000
     command: gunicorn --bind 0:8000 --workers 8 --threads 2 --timeout 90 rmc_rest_api.wsgi
+    restart: unless-stopped
     depends_on:
       files:
         condition: service_healthy
@@ -124,6 +128,7 @@ services:
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -137,6 +142,7 @@ services:
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -148,6 +154,7 @@ services:
     build: ./frontend
     ports:
       - 3000:3000
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -162,6 +169,7 @@ services:
       - static:/staticfiles
     ports:
       - 80:80
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -178,6 +186,7 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+    restart: unless-stopped
     volumes:
       - rabbitdata:/var/lib/rabbitmq
     ports:
@@ -193,6 +202,7 @@ services:
       - celery:/app
     ports:
       - 5555:5555
+    restart: unless-stopped
     depends_on:
       gateway:
         condition: service_started
@@ -201,3 +211,4 @@ services:
     image: redis:7.0.5-alpine
     container_name: redis
     hostname: redis
+    restart: unless-stopped
