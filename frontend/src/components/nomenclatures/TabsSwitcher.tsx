@@ -7,11 +7,12 @@ interface Props {
 	mainTab: ReactNode
 	settingsTab: ReactNode
 	hardwareTab: ReactNode
+	statisticsTab: ReactNode
 }
 
-type Tab = 'main' | 'settings' | 'hardware'
+type Tab = 'main' | 'settings' | 'hardware' | 'statistics'
 
-export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab }: Props) {
+export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab, statisticsTab }: Props) {
 	const searchParams = useSearchParams()
 	const router = useRouter()
 
@@ -53,11 +54,18 @@ export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab }: Prop
 				>
 					Информация о железе
 				</button>
+				<button
+					onClick={() => setActiveTab('statistics')}
+					className={tabClass('statistics')}
+				>
+					Статистика
+				</button>
 			</div>
 
 			{activeTab === 'main' && mainTab}
 			{activeTab === 'settings' && settingsTab}
 			{activeTab === 'hardware' && hardwareTab}
+			{activeTab === 'statistics' && statisticsTab}
 		</div>
 	)
 }
