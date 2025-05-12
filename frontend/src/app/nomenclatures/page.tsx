@@ -20,7 +20,9 @@ type NomenclaturesListProps = {
 	openModalFilters?: boolean
 }
 
-export default async function Page(props: { searchParams?: Promise<NomenclaturesListProps> }) {
+export default async function NomenclaturesPage(props: {
+	searchParams?: Promise<NomenclaturesListProps>
+}) {
 	const searchParams = await props.searchParams
 	const name = searchParams?.name || ''
 	const currentPage = Number(searchParams?.page) || 1
@@ -32,7 +34,7 @@ export default async function Page(props: { searchParams?: Promise<Nomenclatures
 	const listNomenclature = await getNomenclatureList({
 		limit,
 		name,
-		page,
+		page: currentPage,
 		status,
 		timezone,
 		version,
@@ -44,10 +46,8 @@ export default async function Page(props: { searchParams?: Promise<Nomenclatures
 				count={listNomenclature.count}
 				data={listNomenclature.results}
 				limit={limit}
-				page={page}
+				page={currentPage}
 			/>
 		</div>
 	)
 }
-
-export default Nomenclatures
