@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
-import { getFilesList } from '@/services/FilesService'
 import TableListFiles from '@/app/files/components/TableListFile/TableListFiles'
+import { getFilesList } from './api'
 
 export const metadata: Metadata = {
 	title: 'Файлы',
