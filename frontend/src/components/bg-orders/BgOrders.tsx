@@ -18,6 +18,7 @@ import { Typography } from '@mui/material'
 import { bgColumnsTable } from './bgColumnsTable'
 import ActionButton from '../Ui/button/ActionButton'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import CreateBgOrderModal from './CreateBgOrderModal'
 
 interface IProps {
 	dataResponse: IDataBgResponse
@@ -114,21 +115,7 @@ const BgOrders = ({ ...props }: IProps) => {
 					</Box>
 
 					<FiltersPanel />
-
-					<Box
-						display={'flex'}
-						width={'20%'}
-						justifyContent={'center'}
-						alignItems={'center'}
-					>
-						<ActionButton
-							variant='primary'
-							size='lg'
-							icon={AddCircleOutlineIcon}
-						>
-							Создать
-						</ActionButton>
-					</Box>
+					<CreateBgOrderModal />
 				</Box>
 			</AppBar>
 			<div className='p-2 w-full flex-1 overflow-auto'>

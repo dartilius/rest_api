@@ -38,7 +38,6 @@ export function TableNomenclatures(props: Props) {
 			className={styles.custom_scroll}
 			sx={{
 				maxWidth: '100%',
-				maxHeight: '874px',
 				height: '100%',
 				borderRadius: '8px',
 				backgroundColor: 'white',
@@ -60,6 +59,7 @@ export function TableNomenclatures(props: Props) {
 										minWidth: column.minWidth,
 										maxWidth: column.maxWidth,
 										whiteSpace: 'nowrap',
+										textAlign: 'center'
 									}}
 									className='font-title'
 								>
@@ -90,6 +90,7 @@ export function TableNomenclatures(props: Props) {
 											whiteSpace: 'nowrap',
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
+											textAlign: 'center'
 										}}
 										className='font-subtitle'
 									>

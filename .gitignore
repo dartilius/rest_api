@@ -169,3 +169,4 @@ downloaded_files/
 .next
 .vscode
 /node_modules
+.DS_Store

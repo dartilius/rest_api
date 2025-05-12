@@ -1,56 +1,42 @@
+import { PaginatedResponse } from "@/components/Ui/AsyncAutocomplete";
 import { API_URL } from "@/config/api.config";
 import { client } from "@/services/httpClient";
-import { IDataPlayListsResponse, IPlayListsDetail} from "@/types/playListsTypes";
+import { IDataPlayListsResponse, IPlayList, IPlayListsDetail} from "@/types/playListsTypes";
+import { getToken } from "@/utils";
 
-import { getServerAccessToken, getClientAccessToken } from "@/utils";
-
-const isSSR = typeof window === "undefined";
-console.log('isSsr', isSSR);
-
-
-export async function getPlayLists(queryParams: {
-    id: string
-    page: number;
-    limit: number;
-    name: string;
-}): Promise<IDataPlayListsResponse> {
-    let token;
-    if (isSSR) {
-        // Для SSR получаем токен с сервера
-        token = await getServerAccessToken();
-        console.log('token isSsr', token);
-    } else {
-        // Для клиента получаем токен с клиента
-        token = getClientAccessToken();
-        console.log('token !isSsr', token);
+export async function getPlayLists(params: {
+  page: number;
+  search: string;
+  id?: string;
+  limit?: number;
+}): Promise<PaginatedResponse<IPlayList>> {
+  const token = await getToken();
+  
+  const response = await client.get<IDataPlayListsResponse>(
+    `${API_URL}playlists`, 
+    {
+      params: {
+        page: params.page,
+        limit: params.limit,
+        name: params.search,
+        id: params.id || ''
+      },
+      headers: {
+        Authorization: `access_token ${token}`,
+      }
     }
+  );
 
-
-    const stringifiedQueryParams = {
-        ...queryParams,
-        id: queryParams.id.toString(),
-        page: queryParams.page.toString(),
-        limit: queryParams.limit.toString(),
-        name: queryParams.name.toString(),
-    };
-
-    const url = `${API_URL}playlists`;
-
-    const res = await client.get<IDataPlayListsResponse>(url, {
-        params: stringifiedQueryParams,
-        headers: {
-            Authorization: `access_token ${token}`,
-        }
-    });
-console.log(res);
-
-    return res; 
+  return {
+    results: response.results,
+    count: response.count,
+  };
 }
 
 
 export async function getPlayListDetail(id: string): Promise<IPlayListsDetail> {
     try {
-      const token = await getServerAccessToken();
+      const token = await getToken()
       const url = `${API_URL}playlists/${id}`;
   
       const res = await client.get<IPlayListsDetail>(url, {

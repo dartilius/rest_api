@@ -1,6 +1,5 @@
 'use client'
 
-import { Typography } from '@mui/material'
 import { Search } from '@/app/nomenclatures/components/Search/Search'
 import { VersionSelect } from '@/app/nomenclatures/components/Version/VersionSelect'
 import { StatusSelect } from '@/app/nomenclatures/components/Status/StatusSelect'

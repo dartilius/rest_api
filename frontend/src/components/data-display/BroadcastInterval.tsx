@@ -13,11 +13,11 @@ export const BroadcastInterval = ({ interval, className }: BroadcastIntervalProp
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       <div className="flex items-center gap-2">
-        <span className="text-xl text-zinc-900">С:</span>
+        <span className="text-xl text-zinc-700">С:</span>
         <DateTime date={interval.lower} />
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xl text-zinc-900">По:</span>
+        <span className="text-xl text-zinc-700">По:</span>
         <DateTime date={interval.upper} />
       </div>
     </div>

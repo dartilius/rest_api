@@ -9,26 +9,25 @@ export const metadata: Metadata = {
 		icon: '/favicon.svg',
 	},
 }
-const Nomenclatures = async ({
-	searchParams,
-}: {
-	searchParams?: {
-		page: number
-		limit: number
-		name: string
-		status: string
-		timezone: string
-		version: string
-	}
-}) => {
-	const {
-		page = 1,
-		limit = 10,
-		name = '',
-		status = '',
-		timezone = '',
-		version = '',
-	} = (await searchParams) ?? {}
+
+type NomenclaturesListProps = {
+	page?: number | string
+	limit?: number | string
+	name?: string
+	status?: string
+	timezone?: string
+	version?: string
+	openModalFilters?: boolean
+}
+
+export default async function Page(props: { searchParams?: Promise<NomenclaturesListProps> }) {
+	const searchParams = await props.searchParams
+	const name = searchParams?.name || ''
+	const currentPage = Number(searchParams?.page) || 1
+	const limit = Number(searchParams?.limit) || 20
+	const version = searchParams?.version || ''
+	const status = searchParams?.status || ''
+	const timezone = searchParams?.timezone || ''
 
 	const listNomenclature = await getNomenclatureList({
 		limit,
@@ -40,7 +39,7 @@ const Nomenclatures = async ({
 	})
 
 	return (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+		<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
 			<TableNomenclatures
 				count={listNomenclature.count}
 				data={listNomenclature.results}

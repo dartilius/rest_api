@@ -204,6 +204,15 @@ export interface IParamsCreateAd {
   event?: string;
   active_ad?: string;
 }
+export interface IParamsCreateBg {
+  weight: number;
+  times_in_hour: number;
+  timedelta?: string;
+  start_time?: string;
+  end_time?: string;
+  event?: string;
+  active_ad?: string;
+}
 
 export interface IAdOrderDetail {
   id: string // Уникальный идентификатор +
@@ -230,14 +239,11 @@ export interface IAdOrderDetail {
 
 export interface IDataBgResponse {
   count: number
-  next: string | null
-  previous: string | null
+
   results: IBgData[]
 }
 
 export interface IDataAdResponse {
   count: number
-  next: string | null
-  previous: string | null
   results: IAdData[]
 }

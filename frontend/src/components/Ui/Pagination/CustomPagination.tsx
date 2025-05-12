@@ -15,8 +15,8 @@ const CustomPagination = ({
 	const searchParams = useSearchParams()
 	const router = useRouter()
 
-	const currentPage = searchParams.get('page') || page
-	const itemsPerPage = Number(searchParams.get('limit')) || limit
+	const page = searchParams.get('page') || 1
+	const itemsPerPage = Number(searchParams.get('limit')) || 20
 
 	const totalPages = Math.ceil(totalItems / itemsPerPage)
 
