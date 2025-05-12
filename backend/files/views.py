@@ -3,6 +3,7 @@ import copy
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import QuerySet
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from http import HTTPStatus
 from itertools import chain
 from rest_framework import viewsets, mixins
@@ -55,6 +56,7 @@ class NoUpdateViewSet(
     """Вьюсет без поддержки методов PUT и PATCH."""
 
 
+@extend_schema(tags=['Тэги файлов'])
 class TagViewSet(NoUpdateViewSet):
     """
     Работа с тегами файлов.
@@ -68,6 +70,7 @@ class TagViewSet(NoUpdateViewSet):
     permission_classes = [StaffCUDAuthRetrieve]
 
 
+@extend_schema(tags=['Файлы'])
 class FileViewSet(NoUpdateViewSet):
     """Работа с файлами."""
 
@@ -231,6 +234,7 @@ class FileViewSet(NoUpdateViewSet):
         return Response(data, status=HTTPStatus.OK)
 
 
+@extend_schema(tags=['Плейлисты'])
 class PlaylistViewSet(viewsets.ModelViewSet):
     """Работа с плейлистами."""
 
@@ -516,6 +520,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         return Response(data={'message': 'Файлы успешно убраны из плейлиста.'})
 
 
+@extend_schema(tags=['Файлы'], deprecated=True)
 class UploadFilesViewSet(viewsets.ModelViewSet):
     """Для загрузки файлов из старой админки."""
 

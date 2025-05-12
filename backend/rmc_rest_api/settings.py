@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'debug_toolbar',
-    'drf_yasg',
+    'drf_spectacular',
     'djoser',
     'phonenumber_field',
     'docs',
@@ -125,6 +125,7 @@ USE_TZ = False
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -133,6 +134,13 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
     'PAGE_SIZE': 25,
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'RMC REST API',
+    'DESCRIPTION': 'API',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 # ---------------------------------- MINIO ---------------------------------- #
