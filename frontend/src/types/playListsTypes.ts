@@ -6,8 +6,6 @@ export interface IPlayList {
 
 export interface IDataPlayListsResponse {
   count: number
-  next: string | null
-  previous: string | null
   results: IPlayList[]
 }
 

@@ -116,6 +116,31 @@ export async function getNomenclatureDetail(id: string): Promise<INomenclatureRe
 	}
 }
 
+export async function getNomenclatureList(queryParams: {
+	searchParams?: Promise<NomenclaturesListProps>
+}): Promise<INomenclaturesListResponse> {
+	const token = await getToken()
+	const url = `${API_URL}nomenclatures`
+	const resolvedParams = (await queryParams.searchParams) || {}
+	const strQueryParams = {
+		...resolvedParams,
+		page: Number(resolvedParams.page || 1),
+		limit: Number(resolvedParams.limit || 20),
+	}
+
+	try {
+		return await client.get<INomenclaturesListResponse>(url, {
+			params: strQueryParams,
+			headers: {
+				Authorization: `access_token ${token}`,
+			},
+		})
+	} catch (error) {
+		console.error('Ошибка при запросе номенклатуры:', error)
+		throw error
+	}
+}
+
 export async function createNomenclature(body: ICreateNomenclature): Promise<INomenclatureResponse> {
 	const token = await getToken()
 	const url = `${API_URL}nomenclatures/`

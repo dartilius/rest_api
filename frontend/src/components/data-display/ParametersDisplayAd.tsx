@@ -93,11 +93,11 @@ export const ParametersDisplayAd = ({
       {/* Общие параметры для всех типов */}
       <div className='col-span-2'>
         <div>
-          <span className='text-xl text-zinc-900'>Трансляций в час:</span>
+          <span className='text-xl text-blue-100'>Трансляций в час:</span>
           <span className='ml-2 font-bold'>{parameters.times_in_hour}</span>
         </div>
         <div>
-          <span className='text-xl text-zinc-900'>Приоритет файла:</span>
+          <span className='text-xl text-blue-100'>Приоритет файла:</span>
           <span className='ml-2 font-bold'>{parameters.weight}</span>
         </div>
       </div>

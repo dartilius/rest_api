@@ -1,11 +1,10 @@
 import { API_URL } from "@/config/api.config";
 import { client } from "@/services/httpClient";
 import { AdOrderType, IAdOrderDetail, IDataAdResponse, IParamsCreateAd } from "@/types/orderTypes";
-import { getServerAccessToken, getClientAccessToken } from "@/utils";
+import { getToken } from "@/utils";
 import {ICancelResponse} from "@/app/bgorders/api";
+import { PaginatedResponse } from "@/components/Ui/AsyncAutocomplete";
 
-const isSSR = typeof window === "undefined";
-console.log('isSsr', isSSR);
 
 export async function getDataAd(queryParams: {
     page: number;
@@ -21,16 +20,7 @@ export async function getDataAd(queryParams: {
     until_after: string;
     until_before: string;
 }): Promise<IDataAdResponse> {
-    let token;
-    if (isSSR) {
-        // Для SSR получаем токен с сервера
-        token = await getServerAccessToken();
-        console.log('token isSsr', token);
-    } else {
-        // Для клиента получаем токен с клиента
-        token = getClientAccessToken();
-        console.log('token !isSsr', token);
-    }
+  const token = await getToken();
 
 
     const stringifiedQueryParams = {
@@ -59,7 +49,7 @@ export async function getDataAd(queryParams: {
 
 export async function getAdOrderDetail(id: string): Promise<IAdOrderDetail> {
     try {
-      const token = await getServerAccessToken();
+      const token = await getToken();
       const url = `${API_URL}adorders/${id}`;
 
         console.log(token)
@@ -85,7 +75,7 @@ export async function getAdOrderDetail(id: string): Promise<IAdOrderDetail> {
 
 export async function cancelAdOrder(id: string): Promise<ICancelResponse> {
     try {
-        const token = getClientAccessToken();
+      const token = await getToken();
         const url = `${API_URL}adorders/${id}/cancel/`;
 
         const res = await client.delete<ICancelResponse>(url, {
@@ -104,17 +94,7 @@ export async function cancelAdOrder(id: string): Promise<ICancelResponse> {
 }
 
 export async function getSelects() {
-    let token;
-    if (isSSR) {
-        // Для SSR получаем токен с сервера
-        token = await getServerAccessToken();
-        console.log('token isSsr', token);
-    } else {
-        // Для клиента получаем токен с клиента
-        token = getClientAccessToken();
-        console.log('token !isSsr', token);
-    }
-
+  const token = await getToken();
     try {
       const clients = await 
         client.get<{ clients: any }>(`${API_URL}nomenclatures/`,{
@@ -142,20 +122,33 @@ interface ClientsResponse {
   previous: string | null
   results: Client[]
 }
-export async function loadClients(page: number, name: string): Promise<ClientsResponse> {
+export async function getClients(params: {
+  page: number;
+  search: string;
+  id?: string;
+  limit?: number;
+}): Promise<PaginatedResponse<Client>> {
   try {
-    const token = await getServerAccessToken();
-    const response: ClientsResponse = await client.get(`${API_URL}nomenclatures/`, {
-      params: {
-        page: page.toString(),
-        limit: '25', // Укажите нужное количество элементов на странице
-        name: name.toString() || '',
-      },
-      headers: {
-        Authorization: `access_token ${token}`
+    const token = await getToken();
+    
+    const response = await client.get<ClientsResponse>(
+      `${API_URL}nomenclatures/`, 
+      {
+        params: {
+          page: params.page,
+          limit: params.limit,
+          name: params.search
+        },
+        headers: {
+          Authorization: `access_token ${token}`
+        }
       }
-    });
-    return response;
+    );
+
+    return {
+      results: response.results,
+      count: response.count,
+    };
   } catch (error) {
     console.error('Load clients error:', error);
     throw new Error('Ошибка получения клиентов/номенклатуры');
@@ -163,25 +156,21 @@ export async function loadClients(page: number, name: string): Promise<ClientsRe
 }
 
 
-
-interface AdOrderPayload {
+export type AdOrderPayload = Array<{
   name: string;
   description: string;
   broadcast_type: AdOrderType;
   parameters: IParamsCreateAd;
-  playlist: string[];
+  playlist: string;
   clients: string[];
   broadcast_interval: {
     lower: string;
     upper: string;
   };
-}
+}>
 
 export async function createAdOrder(payload: AdOrderPayload) {
-
-   const token = await getServerAccessToken();
-
-
+  const token = await getToken();
   try {
     const response = await client.post(`${API_URL}adorders/`, {
       body: payload,
@@ -189,7 +178,7 @@ export async function createAdOrder(payload: AdOrderPayload) {
         Authorization: `access_token ${token}`
       }
     });
-    
+    console.log(response);
     return response;
   } catch (error) {
     console.error('Create order error:', error);

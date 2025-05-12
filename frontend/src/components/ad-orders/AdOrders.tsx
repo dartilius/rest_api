@@ -24,16 +24,17 @@ interface IProps {
 }
 const AdOrders = ({ ...props }: IProps) => {
 	const { dataResponse } = props
+console.log(props);
 
 	const { ordersStore } = useStore()
 	const [data, setData] = useState<IAdData[]>([])
 	const router = useRouter()
 	const pathname = usePathname()
 	const searchParams = useSearchParams()
-	const { totalPagesBg } = ordersStore
+	const { totalPagesAd } = ordersStore
 	const page = searchParams.get('page')
 
-	const isNextButtonDisabled = Number(page) >= totalPagesBg
+	const isNextButtonDisabled = Number(page) >= totalPagesAd
 
 	useEffect(() => {
 		const params = new URLSearchParams(searchParams)
@@ -200,7 +201,7 @@ const AdOrders = ({ ...props }: IProps) => {
 						Предыдущая
 					</button>
 					<span>
-						Страница: {Number(page)} из {totalPagesBg}
+						Страница: {Number(page)} из {totalPagesAd}
 					</span>
 					<button
 						onClick={() => goToPage(Number(page) + 1)}

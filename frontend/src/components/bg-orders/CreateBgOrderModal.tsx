@@ -1,8 +1,8 @@
 'use client'
 
-import { AdOrderPayload, createAdOrder, getClients } from '@/app/adorders/api'
+import { getClients } from '@/app/adorders/api'
 import { getPlayLists } from '@/app/playlists/api'
-import { AdOrderType, IBroadcastInterval, ORDER_TYPE_AD_CONFIG } from '@/types/orderTypes'
+import { BgOrderType, IBroadcastInterval, ORDER_TYPE_BG_CONFIG } from '@/types/orderTypes'
 import { IPlayList } from '@/types/playListsTypes'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import {
@@ -22,19 +22,21 @@ import dayjs, { Dayjs } from 'dayjs'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import ActionButton from '../Ui/button/ActionButton'
-import ParametersBlock from './ParametersBlock'
+
 import AsyncAutocomplete from '../Ui/AsyncAutocomplete'
 import { useNotification } from '@/hooks/useNotification'
+import ParametersBlockBg from './ParametersBlockBg'
+import { BgOrderPayload, createBgOrder } from '@/app/bgorders/api'
 
 interface Client {
 	id: string
 	name: string
 }
 
-export interface FormState {
+export interface FormStateBg {
 	name: string
 	description: string
-	broadcast_type: AdOrderType
+	order_type: BgOrderType
 	parameters: {
 		weight: number
 		times_in_hour: number
@@ -49,15 +51,15 @@ export interface FormState {
 	broadcast_interval: IBroadcastInterval
 }
 
-const CreateAdOrderModal = () => {
+const CreateBgOrderModal = () => {
 	const router = useRouter()
 	const theme = useTheme()
 	const { showNotification } = useNotification()
 	const [open, setOpen] = useState<boolean>(false)
-	const [formData, setFormData] = useState<FormState>({
+	const [formData, setFormData] = useState<FormStateBg>({
 		name: '',
 		description: '',
-		broadcast_type: AdOrderType.POINT_TIME,
+		order_type: BgOrderType.MUSIC,
 		parameters: {
 			weight: 50,
 			times_in_hour: 1,
@@ -96,7 +98,7 @@ const CreateAdOrderModal = () => {
 		}
 
 		try {
-			const payload: AdOrderPayload = [
+			const payload: BgOrderPayload = [
 				{
 					...formData,
 					clients: formData.clients.map((c) => c.id),
@@ -107,7 +109,7 @@ const CreateAdOrderModal = () => {
 					},
 				},
 			]
-			const resp = await createAdOrder(payload)
+			const resp = await createBgOrder(payload)
 			console.log(resp)
 			showNotification('Заказ успешно создан', 'success')
 			setOpen(false)
@@ -118,10 +120,11 @@ const CreateAdOrderModal = () => {
 		}
 	}
 
-	const handleTextChange = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
-		const value = e.target.value.slice(0, 250)
-		setFormData((prev) => ({ ...prev, [field]: value }))
-	}
+	const handleTextChange =
+		(field: keyof FormStateBg) => (e: React.ChangeEvent<HTMLInputElement>) => {
+			const value = e.target.value.slice(0, 250)
+			setFormData((prev) => ({ ...prev, [field]: value }))
+		}
 
 	return (
 		<>
@@ -148,7 +151,7 @@ const CreateAdOrderModal = () => {
 				maxWidth='md'
 				fullWidth
 			>
-				<DialogTitle textAlign='center'>Создание рекламного заказа</DialogTitle>
+				<DialogTitle textAlign='center'>Создание фонового заказа</DialogTitle>
 				<DialogContent
 					dividers
 					sx={{ padding: 1 }}
@@ -176,16 +179,16 @@ const CreateAdOrderModal = () => {
 
 						<Autocomplete
 							options={
-								Object.values(AdOrderType).filter((v) => typeof v === 'number') as AdOrderType[]
+								Object.values(BgOrderType).filter((v) => typeof v === 'number') as BgOrderType[]
 							}
-							getOptionLabel={(option: AdOrderType) =>
-								ORDER_TYPE_AD_CONFIG[option as AdOrderType]?.label || 'Unknown'
+							getOptionLabel={(option: BgOrderType) =>
+								ORDER_TYPE_BG_CONFIG[option as BgOrderType]?.label || 'Unknown'
 							}
-							value={formData.broadcast_type}
+							value={formData.order_type}
 							onChange={(_, newValue) => {
 								setFormData((prev) => ({
 									...prev,
-									broadcast_type: newValue as AdOrderType,
+									broadcast_type: newValue as BgOrderType,
 								}))
 							}}
 							renderInput={(params) => (
@@ -196,7 +199,7 @@ const CreateAdOrderModal = () => {
 								/>
 							)}
 							renderOption={(props, option) => {
-								const config = ORDER_TYPE_AD_CONFIG[option as AdOrderType]
+								const config = ORDER_TYPE_BG_CONFIG[option as BgOrderType]
 								const { key, ...restProps } = props
 								return (
 									<li
@@ -223,8 +226,8 @@ const CreateAdOrderModal = () => {
 								)
 							}}
 						/>
-						<ParametersBlock
-							type={formData.broadcast_type}
+						<ParametersBlockBg
+							type={formData.order_type}
 							parameters={formData.parameters}
 							onChange={(params) => setFormData((prev) => ({ ...prev, parameters: params }))}
 						/>
@@ -305,4 +308,4 @@ const CreateAdOrderModal = () => {
 	)
 }
 
-export default CreateAdOrderModal
+export default CreateBgOrderModal
