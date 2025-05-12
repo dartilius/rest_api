@@ -122,6 +122,11 @@ services:
         condition: service_healthy
       rabbit:
         condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          cpus: '8'
+          memory: 16384M
 
   worker:
     build: ./backend
@@ -212,3 +217,9 @@ services:
     container_name: redis
     hostname: redis
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          cpus: '4'
+          memory: 4096M
+
