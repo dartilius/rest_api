@@ -275,7 +275,6 @@
 'use client'
 
 import React, { useState } from 'react'
-import { deleteFile, getFileDetail } from '@/services/FilesService'
 import {
 	Box,
 	Table,
@@ -303,6 +302,7 @@ import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
 import FiltersWrapper from '../FilterWrapper/FiltersWrapper'
 import { Label } from '@/components/data-display/Label'
 import { CopyButton } from '@/components/Ui/button/CoppyButton'
+import { deleteFile, getFileDetail } from '../../api'
 
 type Props = {
 	data: IFilesListResponse['results']
