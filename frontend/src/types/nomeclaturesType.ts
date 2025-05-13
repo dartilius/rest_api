@@ -108,16 +108,17 @@ export interface INomenclatureStatusHistoryResponse {
     status: number;
 }
 
-export interface INomenclatureMusicStatistics {
+//типы для статистики видео и музыки, ответ у них одинаковый
+export interface INomenclatureStatistics {
     length: number;
     file: string;
     played: string;
 }
 
-export interface INomenclatureMusicStatisticsResponse {
+export interface INomenclatureStatisticsResponse {
     count: number;
     next: string;
     previous: string;
-    results: INomenclatureMusicStatistics[]
+    results: INomenclatureStatistics[]
 }
 

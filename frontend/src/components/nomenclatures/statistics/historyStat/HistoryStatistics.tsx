@@ -68,22 +68,33 @@ export default function HistoryStatistics({ id, className }: { id: string; class
 								</tr>
 							))}
 						</thead>
-						<tbody>
-							{table.getRowModel().rows.map((row) => (
-								<tr
-									key={row.id}
-									className='border-b border-slate-200'
-								>
-									{row.getVisibleCells().map((cell) => (
-										<td
-											key={cell.id}
-											className='px-4 py-2'
-										>
-											{flexRender(cell.column.columnDef.cell, cell.getContext())}
-										</td>
-									))}
+						<tbody className='text-sm sm:text-base'>
+							{statistics.length < 1 ? (
+								<tr>
+									<td
+										colSpan={3}
+										className='text-center py-4 text-white/80'
+									>
+										Нет данных
+									</td>
 								</tr>
-							))}
+							) : (
+								table.getRowModel().rows.map((row) => (
+									<tr
+										key={row.id}
+										className='border-b border-slate-200 hover:bg-white/5'
+									>
+										{row.getVisibleCells().map((cell) => (
+											<td
+												key={cell.id}
+												className='px-2 sm:px-4 py-2 whitespace-nowrap overflow-hidden text-ellipsis'
+											>
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+											</td>
+										))}
+									</tr>
+								))
+							)}
 						</tbody>
 					</table>
 				)}

@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import HistoryStatistics from './historyStat/HistoryStatistics'
 import MusicStatistics from './musicStat/MusicStatistics'
+import VideoStatistics from './videoStat/VideoStatistics'
 
 const statisticsTabs = [
 	{ id: 'history', label: 'История статусов' },
 	{ id: 'music', label: 'Музыка' },
+	{ id: 'video', label: 'Видео' },
 	{ id: 'ad', label: 'Реклама' },
 	{ id: 'image', label: 'Картинки' },
 ]
@@ -42,6 +44,7 @@ export default function StatisticsWrapper({
 			<div className='p-4'>
 				{activeTab === 'history' && <HistoryStatistics id={id} />}
 				{activeTab === 'music' && <MusicStatistics id={id} />}
+				{activeTab === 'video' && <VideoStatistics id={id} />}
 				{/* Здесь будут добавляться другие компоненты статистики */}
 			</div>
 		</div>
