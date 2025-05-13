@@ -1,8 +1,8 @@
-import { INomenclatureMusicStatistics } from '@/types/nomeclaturesType'
+import { INomenclatureStatistics } from '@/types/nomeclaturesType'
 import { createColumnHelper } from '@tanstack/react-table'
 import Link from 'next/link'
 
-const columnHelper = createColumnHelper<INomenclatureMusicStatistics>()
+const columnHelper = createColumnHelper<INomenclatureStatistics>()
 
 const formatTime = (seconds: number): string => {
 	const minutes = Math.floor(seconds / 60)
@@ -10,7 +10,7 @@ const formatTime = (seconds: number): string => {
 	return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 
-export const MusicStatisticsColumnsTable = [
+export const StatisticsColumnsTable = [
 	columnHelper.accessor('file', {
 		header: () => <span>Файл</span>,
 		cell: (info) => {
