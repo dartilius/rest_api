@@ -3,7 +3,7 @@ import MainInfoCard from '@/components/nomenclatures/MainInfoCard'
 import SettingsInfoCard from '@/components/nomenclatures/SettingsInfoCard'
 import TabsSwitcher from '@/components/nomenclatures/TabsSwitcher'
 import HardwareCard from '@/components/nomenclatures/HardwareCard'
-import ResponseStatistics from './statistics/ResponseStatistics'
+import ResponseStatistics from './statistics/ResponseStatisticsWrapper'
 
 interface INomenclatureDetail {
 	data: INomenclatureResponse
@@ -37,7 +37,7 @@ function NomenclatureDetailCard({ data, className = '' }: INomenclatureDetail) {
            						   rounded-lg shadow p-4 md:p-6 gap-3 flex flex-col'
 					/>
 				}
-				statisticsTab={<ResponseStatistics />}
+				statisticsTab={<ResponseStatistics id={data.id} />}
 			/>
 		</div>
 	)
