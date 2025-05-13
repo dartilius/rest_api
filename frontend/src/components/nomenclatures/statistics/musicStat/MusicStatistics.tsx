@@ -84,7 +84,7 @@ export default function MusicStatistics({ id, className }: { id: string; classNa
 				ref={containerRef}
 				className='max-h-[400px] overflow-auto'
 			>
-				<table className='w-full'>
+				<table className='w-full min-w-[640px]'>
 					<thead className='sticky top-0 bg-fuchsia-700'>
 						{table.getHeaderGroups().map((headerGroup) => (
 							<tr
@@ -94,7 +94,7 @@ export default function MusicStatistics({ id, className }: { id: string; classNa
 								{headerGroup.headers.map((header) => (
 									<th
 										key={header.id}
-										className='px-4 py-2 text-white text-sm font-medium'
+										className='px-2 sm:px-4 py-2 text-white text-xs sm:text-sm font-medium'
 									>
 										{header.isPlaceholder
 											? null
@@ -104,16 +104,16 @@ export default function MusicStatistics({ id, className }: { id: string; classNa
 							</tr>
 						))}
 					</thead>
-					<tbody>
+					<tbody className='text-sm sm:text-base'>
 						{table.getRowModel().rows.map((row) => (
 							<tr
 								key={row.id}
-								className='border-b border-slate-200'
+								className='border-b border-slate-200 hover:bg-white/5'
 							>
 								{row.getVisibleCells().map((cell) => (
 									<td
 										key={cell.id}
-										className='px-4 py-2'
+										className='px-2 sm:px-4 py-2 whitespace-nowrap overflow-hidden text-ellipsis'
 									>
 										{flexRender(cell.column.columnDef.cell, cell.getContext())}
 									</td>

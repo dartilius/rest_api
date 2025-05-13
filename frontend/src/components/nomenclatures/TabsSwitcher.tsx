@@ -27,7 +27,7 @@ export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab, statis
 	}, [activeTab])
 
 	const tabClass = (tab: Tab) =>
-		`px-4 py-2 rounded-t-md transition-colors ${
+		`px-3 sm:px-4 py-2.5 sm:py-2 text-base sm:text-base rounded-t-md transition-colors whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] sm:max-w-none ${
 			activeTab === tab
 				? 'bg-white text-blue-600 font-semibold'
 				: 'bg-blue-700 text-white hover:bg-blue-600'
@@ -35,28 +35,32 @@ export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab, statis
 
 	return (
 		<div>
-			<div className='flex mb-4 space-x-2'>
+			<div className='flex mb-2 sm:mb-4 space-x-2 overflow-x-auto custom_scroll pb-2 px-1'>
 				<button
 					onClick={() => setActiveTab('main')}
 					className={tabClass('main')}
+					title='Основная информация'
 				>
 					Основная информация
 				</button>
 				<button
 					onClick={() => setActiveTab('settings')}
 					className={tabClass('settings')}
+					title='Настройки'
 				>
 					Настройки
 				</button>
 				<button
 					onClick={() => setActiveTab('hardware')}
 					className={tabClass('hardware')}
+					title='Информация о железе'
 				>
 					Информация о железе
 				</button>
 				<button
 					onClick={() => setActiveTab('statistics')}
 					className={tabClass('statistics')}
+					title='Статистика'
 				>
 					Статистика
 				</button>
