@@ -107,3 +107,17 @@ export interface INomenclatureStatusHistoryResponse {
     change_time: string;
     status: number;
 }
+
+export interface INomenclatureMusicStatistics {
+    length: number;
+    file: string;
+    played: string;
+}
+
+export interface INomenclatureMusicStatisticsResponse {
+    count: number;
+    next: string;
+    previous: string;
+    results: INomenclatureMusicStatistics[]
+}
+

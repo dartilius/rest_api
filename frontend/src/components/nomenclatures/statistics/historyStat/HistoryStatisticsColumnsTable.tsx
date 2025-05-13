@@ -4,7 +4,7 @@ import { createColumnHelper } from '@tanstack/react-table'
 
 const columnHelper = createColumnHelper<INomenclatureStatusHistoryResponse>()
 
-export const StatColumnsTable = [
+export const HistoryStatisticsColumnsTable = [
 	columnHelper.accessor('change_time', {
 		header: () => <span>Время изменения</span>,
 		cell: (info) => <div className='flex justify-center'>{info.getValue()}</div>,
