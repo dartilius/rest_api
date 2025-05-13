@@ -102,3 +102,8 @@ export interface IUpdateNomenclature {
     timezone: string;
     settings: INomenclatureSettings;
 }
+
+export interface INomenclatureStatusHistoryResponse {
+    change_time: string;
+    status: number;
+}

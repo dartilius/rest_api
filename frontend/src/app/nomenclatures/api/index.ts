@@ -1,6 +1,6 @@
 import { API_URL } from "@/config/api.config"
 import { client } from "@/services/httpClient"
-import { ICreateNomenclature, INomenclatureResponse, INomenclaturesListResponse, IUpdateNomenclature, NomenclaturesListProps } from "@/types/nomeclaturesType"
+import { ICreateNomenclature, INomenclatureResponse, INomenclaturesListResponse, INomenclatureStatusHistoryResponse, IUpdateNomenclature, NomenclaturesListProps } from "@/types/nomeclaturesType"
 import { getToken } from "@/utils"
 
 export async function getNomenclatureList(queryParams: NomenclaturesListProps): Promise<INomenclaturesListResponse> {
@@ -149,3 +149,19 @@ export async function updateNomenclature(id: string, body: IUpdateNomenclature):
 		throw error
 	}
 }
+
+export async function getNomenclatureStatistics(id: string): Promise<any> {
+	const token = await getToken()
+	const url = `${API_URL}nomenclatures/${id}/status_history/`
+
+	try {
+		return await client.get<any>(url, {
+			headers: {
+				Authorization: `access_token ${token}`,
+			},
+		})
+	} catch (error) {
+		console.error('Ошибка при запросе статистики номенклатуры:', error)
+		throw error
+	}
+}	

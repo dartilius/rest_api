@@ -9,32 +9,31 @@ export const metadata: Metadata = {
 		icon: '/favicon.svg',
 	},
 }
-
-type NomenclaturesListProps = {
-	page?: number | string
-	limit?: number | string
-	name?: string
-	status?: string
-	timezone?: string
-	version?: string
-	openModalFilters?: boolean
-}
-
-export default async function NomenclaturesPage(props: {
-	searchParams?: Promise<NomenclaturesListProps>
-}) {
-	const searchParams = await props.searchParams
-	const name = searchParams?.name || ''
-	const currentPage = Number(searchParams?.page) || 1
-	const limit = Number(searchParams?.limit) || 20
-	const version = searchParams?.version || ''
-	const status = searchParams?.status || ''
-	const timezone = searchParams?.timezone || ''
+const NomenclaturesPage = async ({
+	searchParams,
+}: {
+	searchParams?: {
+		name: string
+		page: number
+		limit: number
+		version: string
+		status: string
+		timezone: string
+	}
+}) => {
+	const {
+		page = 1,
+		limit = 20,
+		name = '',
+		version = '',
+		status = '',
+		timezone = '',
+	} = (await searchParams) ?? {}
 
 	const listNomenclature = await getNomenclatureList({
 		limit,
 		name,
-		page: currentPage,
+		page,
 		status,
 		timezone,
 		version,
@@ -46,8 +45,10 @@ export default async function NomenclaturesPage(props: {
 				count={listNomenclature.count}
 				data={listNomenclature.results}
 				limit={limit}
-				page={currentPage}
+				page={page}
 			/>
 		</div>
 	)
 }
+
+export default NomenclaturesPage

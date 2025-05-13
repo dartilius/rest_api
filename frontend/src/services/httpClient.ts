@@ -137,7 +137,7 @@ export class HttpClient {
 
     const response = await fetch(urlWithParams, {
       method,
-      credentials: "include",
+      // credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...(options?.headers || {}),
