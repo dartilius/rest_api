@@ -10,6 +10,7 @@ import {
 import { useState, useEffect, useRef } from 'react'
 import { INomenclatureStatistics } from '@/types/nomeclaturesType'
 import { StatisticsColumnsTable } from '../StatisticsColumnsTable'
+import { useNotification } from '@/hooks/useNotification'
 
 export default function PlayedStatistics({
 	id,
@@ -25,6 +26,7 @@ export default function PlayedStatistics({
 	const [page, setPage] = useState(1)
 	const [hasMore, setHasMore] = useState(true)
 	const containerRef = useRef<HTMLDivElement>(null)
+	const { showNotification } = useNotification()
 
 	// Загрузка данных
 	const loadData = async (pageNum: number) => {
@@ -39,7 +41,8 @@ export default function PlayedStatistics({
 			}
 
 			setHasMore(!!res.next)
-		} catch (error) {
+		} catch (error: any) {
+			showNotification(error.message, 'error')
 			console.error('Error fetching statistics:', error)
 		} finally {
 			setIsLoading(false)
