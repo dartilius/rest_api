@@ -1,6 +1,6 @@
 import { API_URL } from "@/config/api.config"
 import { client } from "@/services/httpClient"
-import { ICreateNomenclature, INomenclatureResponse, INomenclaturesListResponse, INomenclatureStatusHistoryResponse, IUpdateNomenclature, NomenclaturesListProps } from "@/types/nomeclaturesType"
+import { ICreateNomenclature, INomenclatureMusicStatisticsResponse, INomenclatureResponse, INomenclaturesListResponse, INomenclatureStatusHistoryResponse, IUpdateNomenclature, NomenclaturesListProps } from "@/types/nomeclaturesType"
 import { getToken } from "@/utils"
 
 export async function getNomenclatureList(queryParams: NomenclaturesListProps): Promise<INomenclaturesListResponse> {
@@ -165,3 +165,20 @@ export async function getNomenclatureStatistics(id: string): Promise<INomenclatu
 		throw error
 	}
 }	
+
+export async function getNomenclatureMusicStatistics(id: string, page: number): Promise<INomenclatureMusicStatisticsResponse> {
+	const token = await getToken()
+	//тут лимит по приколу установлен 100, надо будет поменять
+	const url = `${API_URL}nomenclatures/${id}/music_stat/?page=${page}&limit=100`
+
+	try {
+		return await client.get<INomenclatureMusicStatisticsResponse>(url, {
+			headers: {
+				Authorization: `access_token ${token}`,
+			},
+		})
+	} catch (error) {
+		console.error('Ошибка при запросе статистики номенклатуры:', error)
+		throw error
+	}
+}

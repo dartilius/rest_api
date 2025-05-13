@@ -8,10 +8,10 @@ import {
 	flexRender,
 } from '@tanstack/react-table'
 import { useState, useEffect } from 'react'
-import { StatColumnsTable } from './StatColumnsTable'
 import { INomenclatureStatusHistoryResponse } from '@/types/nomeclaturesType'
+import { HistoryStatisticsColumnsTable } from './HistoryStatisticsColumnsTable'
 
-export default function ResponseStatistics({ id, className }: { id: string; className?: string }) {
+export default function HistoryStatistics({ id, className }: { id: string; className?: string }) {
 	const [statistics, setStatistics] = useState<INomenclatureStatusHistoryResponse[]>([])
 	const [isLoading, setIsLoading] = useState(true)
 
@@ -32,7 +32,7 @@ export default function ResponseStatistics({ id, className }: { id: string; clas
 
 	const table = useReactTable<INomenclatureStatusHistoryResponse>({
 		data: statistics,
-		columns: StatColumnsTable,
+		columns: HistoryStatisticsColumnsTable,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		enableSorting: true,
