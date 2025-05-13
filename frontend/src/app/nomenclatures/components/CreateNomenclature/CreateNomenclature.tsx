@@ -75,7 +75,7 @@ export default function CreateNomenclature() {
 
 				<DialogContent
 					dividers
-					className={styles.custom_scroll}
+					className='custom_scroll'
 				>
 					<BasicInfoFields
 						formState={formState}

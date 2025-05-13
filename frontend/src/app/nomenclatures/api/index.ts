@@ -150,12 +150,12 @@ export async function updateNomenclature(id: string, body: IUpdateNomenclature):
 	}
 }
 
-export async function getNomenclatureStatistics(id: string): Promise<any> {
+export async function getNomenclatureStatistics(id: string): Promise<INomenclatureStatusHistoryResponse[]> {
 	const token = await getToken()
 	const url = `${API_URL}nomenclatures/${id}/status_history/`
 
 	try {
-		return await client.get<any>(url, {
+		return await client.get<INomenclatureStatusHistoryResponse[]>(url, {
 			headers: {
 				Authorization: `access_token ${token}`,
 			},

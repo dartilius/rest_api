@@ -35,7 +35,7 @@ export function TableNomenclatures(props: Props) {
 
 	return (
 		<TableContainer
-			className={styles.custom_scroll}
+			className='custom_scroll'
 			sx={{
 				maxWidth: '100%',
 				height: '100%',
@@ -59,7 +59,7 @@ export function TableNomenclatures(props: Props) {
 										minWidth: column.minWidth,
 										maxWidth: column.maxWidth,
 										whiteSpace: 'nowrap',
-										textAlign: 'center'
+										textAlign: 'center',
 									}}
 									className='font-title'
 								>
@@ -90,7 +90,7 @@ export function TableNomenclatures(props: Props) {
 											whiteSpace: 'nowrap',
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
-											textAlign: 'center'
+											textAlign: 'center',
 										}}
 										className='font-subtitle'
 									>
