@@ -13,14 +13,18 @@ const formatTime = (seconds: number): string => {
 export const MusicStatisticsColumnsTable = [
 	columnHelper.accessor('file', {
 		header: () => <span>Файл</span>,
-		cell: (info) => (
-			<Link
-				className='flex justify-center'
-				href={`/files/${info.getValue()}`}
-			>
-				{info.getValue()}
-			</Link>
-		),
+		cell: (info) => {
+			const fileName = info.getValue()
+			return (
+				<Link
+					className='block max-w-[120px] truncate sm:max-w-none sm:truncate-none sm:flex sm:justify-center mx-auto hover:text-blue-200'
+					href={`/files/${fileName}`}
+					title={fileName}
+				>
+					{fileName}
+				</Link>
+			)
+		},
 		// footer: (info) => info.column.id,
 		enableSorting: true,
 	}),
