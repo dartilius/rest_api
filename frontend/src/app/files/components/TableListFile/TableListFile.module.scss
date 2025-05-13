@@ -43,18 +43,3 @@
   gap: .5rem;
   align-items: center;
 }
-
-.custom_scroll::-webkit-scrollbar {
-  width: 0.5rem;
-}
-
-.custom_scroll::-webkit-scrollbar-thumb {
-  background-color: $second-color;
-  border-radius: 0.2rem;
-}
-
-/* Firefox */
-.custom_scroll {
-  scrollbar-width: thin;
-  scrollbar-color: $second-color transparent;
-}

@@ -9,18 +9,3 @@
   font-family: "Montserrat", sans-serif;
   font-weight: 500;
 }
-
-.custom_scroll::-webkit-scrollbar {
-  width: 0.5rem;
-}
-
-.custom_scroll::-webkit-scrollbar-thumb {
-  background-color: $second-color;
-  border-radius: 0.2rem;
-}
-
-/* Firefox */
-.custom_scroll {
-  scrollbar-width: thin;
-  scrollbar-color: $second-color transparent;
-}

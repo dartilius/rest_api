@@ -1,5 +1,5 @@
-import NomenclatureDetailWrapper from '@/components/nomenclatures/NomenclatureDetailWrapper'
-
+import NomenclatureDetailCard from '@/components/nomenclatures/NomenclatureDetailCard'
+import { getNomenclatureDetail } from '../api'
 interface Props {
 	params: {
 		id: string
@@ -7,11 +7,22 @@ interface Props {
 }
 
 export default async function NomenclatureDetail({ params }: Props) {
-	const { id } = await params
+	const { id } = await new Promise<{ id: string }>((resolve) => resolve(params))
 
-	return (
-		<div className='container mx-auto p-4'>
-			<NomenclatureDetailWrapper id={id} />
-		</div>
-	)
+	try {
+		const res = await getNomenclatureDetail(id)
+		return (
+			<div className='container mx-auto p-4'>
+				<NomenclatureDetailCard
+					data={res}
+					className={`custom_scroll`}
+				/>
+			</div>
+		)
+	} catch (error) {
+		console.error('Error loading Nomenclature details:', error)
+		return (
+			<div className='container mx-auto p-4 text-red-500'>Ошибка загрузки деталей номенклатуры</div>
+		)
+	}
 }

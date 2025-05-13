@@ -398,7 +398,7 @@ const TableListFiles = ({ data, count }: Props) => {
 			</Box>
 
 			<TableContainer
-				className={styles.custom_scroll}
+				className='custom_scroll'
 				sx={{
 					maxWidth: '100%',
 
