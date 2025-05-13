@@ -1,6 +1,6 @@
 'use client'
 
-import { getNomenclatureMusicStatistics } from '@/app/nomenclatures/api'
+import { getNomenclaturePlayedStatistics } from '@/app/nomenclatures/api'
 import {
 	getCoreRowModel,
 	getSortedRowModel,
@@ -11,7 +11,15 @@ import { useState, useEffect, useRef } from 'react'
 import { INomenclatureStatistics } from '@/types/nomeclaturesType'
 import { StatisticsColumnsTable } from '../StatisticsColumnsTable'
 
-export default function MusicStatistics({ id, className }: { id: string; className?: string }) {
+export default function PlayedStatistics({
+	id,
+	type,
+	className,
+}: {
+	id: string
+	type: string
+	className?: string
+}) {
 	const [statistics, setStatistics] = useState<INomenclatureStatistics[]>([])
 	const [isLoading, setIsLoading] = useState(false)
 	const [page, setPage] = useState(1)
@@ -22,7 +30,7 @@ export default function MusicStatistics({ id, className }: { id: string; classNa
 	const loadData = async (pageNum: number) => {
 		try {
 			setIsLoading(true)
-			const res = await getNomenclatureMusicStatistics(id, pageNum)
+			const res = await getNomenclaturePlayedStatistics(id, pageNum, type)
 
 			if (pageNum === 1) {
 				setStatistics(res.results)
