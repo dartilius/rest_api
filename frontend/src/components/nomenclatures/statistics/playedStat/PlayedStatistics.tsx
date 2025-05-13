@@ -1,6 +1,6 @@
 'use client'
 
-import { getNomenclatureMusicStatistics } from '@/app/nomenclatures/api'
+import { getNomenclaturePlayedStatistics } from '@/app/nomenclatures/api'
 import {
 	getCoreRowModel,
 	getSortedRowModel,
@@ -10,19 +10,29 @@ import {
 import { useState, useEffect, useRef } from 'react'
 import { INomenclatureStatistics } from '@/types/nomeclaturesType'
 import { StatisticsColumnsTable } from '../StatisticsColumnsTable'
+import { useNotification } from '@/hooks/useNotification'
 
-export default function MusicStatistics({ id, className }: { id: string; className?: string }) {
+export default function PlayedStatistics({
+	id,
+	type,
+	className,
+}: {
+	id: string
+	type: string
+	className?: string
+}) {
 	const [statistics, setStatistics] = useState<INomenclatureStatistics[]>([])
 	const [isLoading, setIsLoading] = useState(false)
 	const [page, setPage] = useState(1)
 	const [hasMore, setHasMore] = useState(true)
 	const containerRef = useRef<HTMLDivElement>(null)
+	const { showNotification } = useNotification()
 
 	// Загрузка данных
 	const loadData = async (pageNum: number) => {
 		try {
 			setIsLoading(true)
-			const res = await getNomenclatureMusicStatistics(id, pageNum)
+			const res = await getNomenclaturePlayedStatistics(id, pageNum, type)
 
 			if (pageNum === 1) {
 				setStatistics(res.results)
@@ -31,7 +41,8 @@ export default function MusicStatistics({ id, className }: { id: string; classNa
 			}
 
 			setHasMore(!!res.next)
-		} catch (error) {
+		} catch (error: any) {
+			showNotification(error.message, 'error')
 			console.error('Error fetching statistics:', error)
 		} finally {
 			setIsLoading(false)

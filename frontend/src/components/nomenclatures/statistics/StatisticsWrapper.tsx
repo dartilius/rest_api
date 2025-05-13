@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import HistoryStatistics from './historyStat/HistoryStatistics'
-import MusicStatistics from './musicStat/MusicStatistics'
-import VideoStatistics from './videoStat/VideoStatistics'
+import PlayedStatistics from './playedStat/PlayedStatistics'
 
 const statisticsTabs = [
 	{ id: 'history', label: 'История статусов' },
@@ -11,6 +10,7 @@ const statisticsTabs = [
 	{ id: 'video', label: 'Видео' },
 	{ id: 'ad', label: 'Реклама' },
 	{ id: 'image', label: 'Картинки' },
+	{ id: 'ticker', label: 'Бегущая строка' },
 ]
 
 export default function StatisticsWrapper({
@@ -43,9 +43,38 @@ export default function StatisticsWrapper({
 			</div>
 			<div className='p-4'>
 				{activeTab === 'history' && <HistoryStatistics id={id} />}
-				{activeTab === 'music' && <MusicStatistics id={id} />}
-				{activeTab === 'video' && <VideoStatistics id={id} />}
-				{/* Здесь будут добавляться другие компоненты статистики */}
+				{activeTab === 'music' && (
+					<PlayedStatistics
+						id={id}
+						type='music'
+					/>
+				)}
+				{activeTab === 'video' && (
+					<PlayedStatistics
+						id={id}
+						type='video'
+					/>
+				)}
+				{/* ну фурычит от бэка 500 ошибка */}
+				{activeTab === 'ad' && (
+					<PlayedStatistics
+						id={id}
+						type='ad'
+					/>
+				)}
+				{/* ну фурычит от бэка 500 ошибка */}
+				{activeTab === 'image' && (
+					<PlayedStatistics
+						id={id}
+						type='image'
+					/>
+				)}
+				{activeTab === 'ticker' && (
+					<PlayedStatistics
+						id={id}
+						type='ticker'
+					/>
+				)}
 			</div>
 		</div>
 	)

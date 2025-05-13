@@ -166,27 +166,10 @@ export async function getNomenclatureStatistics(id: string): Promise<INomenclatu
 	}
 }	
 
-export async function getNomenclatureMusicStatistics(id: string, page: number): Promise<INomenclatureStatisticsResponse> {
+export async function getNomenclaturePlayedStatistics(id: string, page: number, type: string): Promise<INomenclatureStatisticsResponse> {
 	const token = await getToken()
 	//тут лимит по приколу установлен 100, надо будет поменять
-	const url = `${API_URL}nomenclatures/${id}/music_stat/?page=${page}&limit=100`
-
-	try {
-		return await client.get<INomenclatureStatisticsResponse>(url, {
-			headers: {
-				Authorization: `access_token ${token}`,
-			},
-		})
-	} catch (error) {
-		console.error('Ошибка при запросе статистики номенклатуры:', error)
-		throw error
-	}
-}
-
-export async function getNomenclatureVideoStatistics(id: string, page: number): Promise<INomenclatureStatisticsResponse> {
-	const token = await getToken()
-	//тут лимит по приколу установлен 100, надо будет поменять
-	const url = `${API_URL}nomenclatures/${id}/video_stat/?page=${page}&limit=100`
+	const url = `${API_URL}nomenclatures/${id}/${type}_stat/?page=${page}&limit=100`
 
 	try {
 		return await client.get<INomenclatureStatisticsResponse>(url, {
