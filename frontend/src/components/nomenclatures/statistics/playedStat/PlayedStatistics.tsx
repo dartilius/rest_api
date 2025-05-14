@@ -89,18 +89,18 @@ export default function PlayedStatistics({
 
 	return (
 		<div
-			className={`bg-gradient-to-r from-fuchsia-600 to-pink-500 rounded-lg shadow h-full overflow-hidden ${className}`}
+			className={`bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 rounded-lg shadow h-full overflow-hidden ${className}`}
 		>
 			<div
 				ref={containerRef}
 				className='max-h-[400px] overflow-auto'
 			>
 				<table className='w-full min-w-[640px]'>
-					<thead className='sticky top-0 bg-fuchsia-700'>
+					<thead className='sticky top-0 bg-blue-900'>
 						{table.getHeaderGroups().map((headerGroup) => (
 							<tr
 								key={headerGroup.id}
-								className='h-10 border-b border-slate-300'
+								className='h-10 border-b border-blue-700'
 							>
 								{headerGroup.headers.map((header) => (
 									<th
@@ -116,16 +116,7 @@ export default function PlayedStatistics({
 						))}
 					</thead>
 					<tbody className='text-sm sm:text-base'>
-						{statistics.length < 1 ? (
-							<tr>
-								<td
-									colSpan={3}
-									className='text-center py-4 text-white/80'
-								>
-									Нет данных
-								</td>
-							</tr>
-						) : (
+						{statistics.length > 0 &&
 							table.getRowModel().rows.map((row) => (
 								<tr
 									key={row.id}
@@ -140,13 +131,17 @@ export default function PlayedStatistics({
 										</td>
 									))}
 								</tr>
-							))
-						)}
+							))}
 					</tbody>
 				</table>
 				{isLoading && (
 					<div className='flex items-center justify-center h-16'>
 						<div className='animate-spin rounded-full h-6 w-6 border-b-2 border-white'></div>
+					</div>
+				)}
+				{statistics.length === 0 && !isLoading && (
+					<div className='flex items-center justify-center h-16'>
+						<div className='text-white'>Нет данных</div>
 					</div>
 				)}
 			</div>

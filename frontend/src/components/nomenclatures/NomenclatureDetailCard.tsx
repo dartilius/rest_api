@@ -13,34 +13,34 @@ interface INomenclatureDetail {
 function NomenclatureDetailCard({ data, className = '' }: INomenclatureDetail) {
 	return (
 		<div
-			className={`bg-gradient-to-r from-purple-700 to-pink-600 rounded-lg shadow p-2 sm:p-4 md:p-6 ${className}`}
+			className={`bg-gradient-to-r from-blue-950 to-indigo-900 rounded-lg shadow p-2 sm:p-4 md:p-6 ${className}`}
 		>
 			<TabsSwitcher
 				mainTab={
 					<MainInfoCard
 						mainInfo={data['main_info']}
-						className='bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
+						className='bg-gradient-to-br from-blue-900 via-indigo-900 to-blue-800
 								 rounded-lg shadow p-2 sm:p-4 md:p-6 gap-2 sm:gap-3 flex flex-col overflow-auto'
 					/>
 				}
 				settingsTab={
 					<SettingsInfoCard
 						settingsInfo={data['settings']}
-						className='bg-gradient-to-r from-rose-400 via-orange-300 to-yellow-200
-								 rounded-lg shadow p-2 sm:p-4 md:p-6 gap-2 sm:gap-3 flex flex-col overflow-auto'
+						className='max-h-[400px] overflow-auto bg-gradient-to-bl from-indigo-900 via-blue-900 to-indigo-800
+								 rounded-lg shadow p-2 sm:p-4 md:p-6 gap-2 sm:gap-3 flex flex-col'
 					/>
 				}
 				hardwareTab={
 					<HardwareCard
 						hardwareInfo={data['hw_info']}
-						className='bg-gradient-to-r from-purple-500 via-violet-400 to-fuchsia-300
-								 rounded-lg shadow p-2 sm:p-4 md:p-6 gap-2 sm:gap-3 flex flex-col overflow-auto'
+						className='max-h-[400px] overflow-auto bg-gradient-to-tr from-blue-900 via-indigo-900 to-blue-800
+								 rounded-lg shadow p-2 sm:p-4 md:p-6 gap-2 sm:gap-3 flex flex-col'
 					/>
 				}
 				statisticsTab={
 					<StatisticsWrapper
 						id={data.id}
-						className='h-full'
+						className='bg-gradient-to-r from-indigo-900 via-blue-900 to-indigo-800 rounded-lg shadow p-2 sm:p-4 md:p-6'
 					/>
 				}
 			/>

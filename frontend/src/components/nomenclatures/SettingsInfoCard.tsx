@@ -18,27 +18,72 @@ const DAYS_OF_WEEK = [
 ]
 
 function SettingsInfoCard({ settingsInfo, className }: ISettingsInfoCard) {
+	const formatVolume = (volume: number[]) => {
+		return `[${volume.join(', ')}]`
+	}
+
+	const formatCustomVolume = (customVolume?: { [key: string]: number[] }) => {
+		if (!customVolume || Object.keys(customVolume).length === 0) {
+			return (
+				<Description
+					description='Не настроено'
+					className='text-sm text-zinc-500 italic'
+				/>
+			)
+		}
+		return Object.entries(customVolume).map(([timeRange, volume]) => (
+			<div
+				key={timeRange}
+				className='text-sm'
+			>
+				<Description
+					description={`${timeRange}: ${formatVolume(volume)}`}
+					className='text-zinc-400'
+				/>
+			</div>
+		))
+	}
+
 	return (
 		<div className={`${className}`}>
-			<Name
-				name='Настройки'
-				className={`font-bold text-2xl text-zinc-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]`}
-			/>
-			{DAYS_OF_WEEK.map((day) => (
-				<div
-					key={day.id}
-					className='flex items-baseline text-center gap-3'
-				>
-					<Name
-						name={`${day.name}:`}
-						className='font-bold text-lg leading-[1.2]'
-					/>
-					<Description
-						description={settingsInfo[day.key].worktime}
-						className='text-base leading-[1.2]'
-					/>
-				</div>
-			))}
+			<div className='grid gap-4'>
+				{DAYS_OF_WEEK.map((day) => (
+					<div
+						key={day.id}
+						className='bg-white/5 rounded-lg p-4'
+					>
+						<div className='flex items-center justify-between'>
+							<Name
+								name={day.name}
+								className='font-bold text-lg'
+							/>
+							<Description
+								description={settingsInfo[day.key].worktime}
+								className='text-zinc-300'
+							/>
+						</div>
+						<div className='flex flex-col gap-1'>
+							<div className='flex gap-1 items-baseline'>
+								<Name
+									className='text-zinc-400'
+									name='Громкость по умолчанию:'
+								/>
+								<Description
+									description={formatVolume(settingsInfo[day.key].default_volume)}
+									className='text-zinc-300'
+								/>
+							</div>
+							<div className='flex gap-1 items-baseline'>
+								<Name
+									className='text-zinc-400'
+									name='Настраиваемая громкость:'
+								/>
+								{formatCustomVolume(settingsInfo[day.key].custom_volume)}
+							</div>
+						</div>
+					</div>
+				))}
+			</div>
 		</div>
 	)
 }
