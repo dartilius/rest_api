@@ -50,30 +50,30 @@ function SettingsInfoCard({ settingsInfo, className }: ISettingsInfoCard) {
 				{DAYS_OF_WEEK.map((day) => (
 					<div
 						key={day.id}
-						className='bg-white/5 rounded-lg p-4'
+						className='bg-white/5 rounded-lg p-4 w-full overflow-hidden'
 					>
-						<div className='flex items-center justify-between'>
+						<div className='flex items-center justify-between flex-wrap gap-2'>
 							<Name
 								name={day.name}
 								className='font-bold text-lg'
 							/>
 							<Description
 								description={settingsInfo[day.key].worktime}
-								className='text-zinc-300'
+								className='text-zinc-300 break-all'
 							/>
 						</div>
 						<div className='flex flex-col gap-1'>
-							<div className='flex gap-1 items-baseline'>
+							<div className='flex gap-1 items-baseline flex-wrap'>
 								<Name
 									className='text-zinc-400'
 									name='Громкость по умолчанию:'
 								/>
 								<Description
 									description={formatVolume(settingsInfo[day.key].default_volume)}
-									className='text-zinc-300'
+									className='text-zinc-300 break-all'
 								/>
 							</div>
-							<div className='flex gap-1 items-baseline'>
+							<div className='flex gap-1 items-baseline flex-wrap'>
 								<Name
 									className='text-zinc-400'
 									name='Настраиваемая громкость:'
