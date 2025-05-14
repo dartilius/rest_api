@@ -40,7 +40,7 @@ export default function HistoryStatistics({ id, className }: { id: string; class
 
 	return (
 		<div
-			className={`bg-gradient-to-r from-fuchsia-600 to-pink-500 rounded-lg shadow h-full overflow-hidden ${className}`}
+			className={`bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 rounded-lg shadow h-full overflow-hidden ${className}`}
 		>
 			<div className='max-h-[400px] overflow-auto'>
 				{isLoading ? (
@@ -49,11 +49,11 @@ export default function HistoryStatistics({ id, className }: { id: string; class
 					</div>
 				) : (
 					<table className='w-full'>
-						<thead className='sticky top-0 bg-fuchsia-700'>
+						<thead className='sticky top-0 bg-blue-900'>
 							{table.getHeaderGroups().map((headerGroup) => (
 								<tr
 									key={headerGroup.id}
-									className='h-10 border-b border-slate-300'
+									className='h-10 border-b border-blue-700'
 								>
 									{headerGroup.headers.map((header) => (
 										<th
