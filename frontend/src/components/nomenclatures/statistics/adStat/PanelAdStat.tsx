@@ -1,3 +1,4 @@
+import ActionButton from '@/components/Ui/button/ActionButton'
 import { ThemeProvider } from '@emotion/react'
 import { createTheme } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers'
@@ -67,36 +68,34 @@ export default function PanelAdStat({
 	date: string
 }) {
 	return (
-		<div className='sticky top-0 z-10'>
-			<div className='flex flex-col sm:flex-row items-center gap-4 p-4 bg-blue-900 border-b border-blue-700'>
-				<button
-					className='w-24 h-6 sm:w-auto bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 hover:from-blue-500 hover:via-blue-400 hover:to-blue-300'
-					onClick={() => setDate('')}
-				>
-					Просмотреть всю статистику
-				</button>
+		<div className='flex flex-row w-full items-center justify-between gap-4 p-4 bg-blue-900 border-b border-blue-700'>
+			<ActionButton
+				className='sm:w-auto bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 hover:from-blue-500 hover:via-blue-400 hover:to-blue-300'
+				onClick={() => setDate('')}
+			>
+				Просмотреть всю статистику
+			</ActionButton>
 
-				<ThemeProvider theme={darkTheme}>
-					<DatePicker
-						value={dayjs(date)}
-						onChange={(newValue) => newValue && setDate(newValue.format('YYYY-MM-DD'))}
-						format='YYYY-MM-DD'
-						slotProps={{
-							textField: {
-								size: 'small',
-								sx: {
-									'.MuiInputBase-root': {
-										background:
-											'linear-gradient(to right, rgb(30, 58, 138), rgb(49, 46, 129), rgb(30, 64, 175))',
-										fontSize: '0.875rem',
-										width: '100%',
-									},
+			<ThemeProvider theme={darkTheme}>
+				<DatePicker
+					value={dayjs(date)}
+					onChange={(newValue) => newValue && setDate(newValue.format('YYYY-MM-DD'))}
+					format='YYYY-MM-DD'
+					slotProps={{
+						textField: {
+							size: 'small',
+							sx: {
+								'.MuiInputBase-root': {
+									background:
+										'linear-gradient(to right, rgb(30, 58, 138), rgb(49, 46, 129), rgb(30, 64, 175))',
+									fontSize: '0.875rem',
+									width: '100%',
 								},
 							},
-						}}
-					/>
-				</ThemeProvider>
-			</div>
+						},
+					}}
+				/>
+			</ThemeProvider>
 		</div>
 	)
 }

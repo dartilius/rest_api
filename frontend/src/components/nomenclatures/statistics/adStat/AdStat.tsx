@@ -38,10 +38,12 @@ export function AdStat({ id, className }: { id: string; className?: string }) {
 			className={`bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 rounded-lg shadow h-full overflow-hidden w-full ${className}`}
 		>
 			<div className='max-h-[400px] overflow-auto w-full'>
-				<PanelAdStat
-					setDate={setDate}
-					date={date}
-				/>
+				<div className='sticky top-0 w-[640px] md:w-full'>
+					<PanelAdStat
+						setDate={setDate}
+						date={date}
+					/>
+				</div>
 				{isLoading ? (
 					<div className='flex items-center justify-center h-32'>
 						<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white'></div>
