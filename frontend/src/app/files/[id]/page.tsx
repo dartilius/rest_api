@@ -1,6 +1,6 @@
 import FileDetails from '@/app/files/[id]/components/FileDetails'
+import { Metadata, ResolvingMetadata } from 'next'
 import Head from 'next/head'
-import { Metadata } from 'next'
 import { getFileDetail } from '../api'
 
 interface Props {
@@ -9,28 +9,17 @@ interface Props {
 	}
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-	const { id } = params
+export async function generateMetadata(
+	{ params }: Props,
+	parent: ResolvingMetadata,
+): Promise<Metadata> {
+	const { id } = await new Promise<{ id: string }>((resolve) => resolve(params))
 
-	try {
-		const fileDetail = await getFileDetail(id)
+	const res = await getFileDetail(id)
 
-		// Возвращаем мета-данные на основе данных файла
-		return {
-			title: fileDetail ? `Файл ${fileDetail.name}` : 'Ошибка загрузки файла',
-			openGraph: {
-				title: fileDetail ? `Файл ${fileDetail.name}` : 'Ошибка загрузки файла',
-			},
-		}
-	} catch (error) {
-		// В случае ошибки возвращаем дефолтные мета-данные
-		console.error('Error loading file details:', error)
-		return {
-			title: 'Ошибка загрузки файла',
-			openGraph: {
-				title: 'Ошибка загрузки файла',
-			},
-		}
+	return {
+		title: res.name,
+		description: res.name,
 	}
 }
 

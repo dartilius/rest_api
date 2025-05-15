@@ -1,14 +1,9 @@
 import { INomenclatureStatistics } from '@/types/nomeclaturesType'
+import { formatTime } from '@/utils'
 import { createColumnHelper } from '@tanstack/react-table'
 import Link from 'next/link'
 
 const columnHelper = createColumnHelper<INomenclatureStatistics>()
-
-const formatTime = (seconds: number): string => {
-	const minutes = Math.floor(seconds / 60)
-	const remainingSeconds = seconds % 60
-	return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-}
 
 export const StatisticsColumnsTable = [
 	columnHelper.accessor('file', {

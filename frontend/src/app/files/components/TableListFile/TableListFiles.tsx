@@ -274,35 +274,34 @@
 // export default TableListFiles
 'use client'
 
-import React, { useState } from 'react'
+import ModalEditFile from '@/app/files/components/ModalEditFile/ModalEditFile'
+import PreviewFile from '@/app/files/components/PreviewFile/PreviewFile'
+import IconActions from '@/app/files/components/TableListFile/IconActions'
+import { CopyButton } from '@/components/Ui/button/CoppyButton'
+import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
+import { useNotification } from '@/hooks/useNotification'
+import { IFileDetailResponse, IFilesListResponse, ITagResponse } from '@/types/fileTypes'
+import { convertSizeFile } from '@/utils'
 import {
 	Box,
+	Collapse,
+	Fade,
+	Grow,
+	Paper,
 	Table,
 	TableBody,
 	TableCell,
 	TableContainer,
 	TableHead,
 	TableRow,
-	Collapse,
-	Fade,
-	Grow,
-	Paper,
 } from '@mui/material'
-import { convertSizeFile } from '@/utils'
-import { useNotification } from '@/hooks/useNotification'
-import styles from './TableListFile.module.scss'
-import { useRouter } from 'next/navigation'
-import IconActions from '@/app/files/components/TableListFile/IconActions'
-import { IFileDetailResponse, IFilesListResponse, ITagResponse } from '@/types/fileTypes'
-import PreviewFile from '@/app/files/components/PreviewFile/PreviewFile'
-import { TransitionGroup } from 'react-transition-group'
-import ModalEditFile from '@/app/files/components/ModalEditFile/ModalEditFile'
 import Link from 'next/link'
-import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
-import FiltersWrapper from '../FilterWrapper/FiltersWrapper'
-import { Label } from '@/components/data-display/Label'
-import { CopyButton } from '@/components/Ui/button/CoppyButton'
+import { useRouter } from 'next/navigation'
+import React, { useState } from 'react'
+import { TransitionGroup } from 'react-transition-group'
 import { deleteFile, getFileDetail } from '../../api'
+import FiltersWrapper from '../FilterWrapper/FiltersWrapper'
+import styles from './TableListFile.module.scss'
 
 type Props = {
 	data: IFilesListResponse['results']
@@ -463,7 +462,6 @@ const TableListFiles = ({ data, count }: Props) => {
 												{column.id !== 'action' ? (
 													<Link
 														href={`/files/${row.id}`}
-														target='_blank'
 														style={{
 															display: 'block',
 															width: '100%',

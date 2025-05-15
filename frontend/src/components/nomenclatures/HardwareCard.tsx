@@ -1,13 +1,13 @@
-import { INomenclatureResponse } from '@/types/nomeclaturesType'
-import { Name } from '@/components/data-display/Name'
 import { Description } from '@/components/data-display/Description'
+import { Name } from '@/components/data-display/Name'
+import { INomenclatureResponse } from '@/types/nomeclaturesType'
 
 interface IHardwareCard {
 	hardwareInfo: INomenclatureResponse['hw_info']
 	className?: string
 }
 
-function HardwareCard({ hardwareInfo, className }: IHardwareCard) {
+export function HardwareCard({ hardwareInfo, className }: IHardwareCard) {
 	return (
 		<div className={`${className}`}>
 			<div className='space-y-2 mb-6'>
@@ -158,5 +158,3 @@ function HardwareCard({ hardwareInfo, className }: IHardwareCard) {
 		</div>
 	)
 }
-
-export default HardwareCard

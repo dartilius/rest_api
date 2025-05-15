@@ -1,41 +1,36 @@
 'use client'
 
-import { getNomenclatureStatistics } from '@/app/nomenclatures/api'
-import { INomenclatureStatusHistoryResponse } from '@/types/nomeclaturesType'
-import {
-	flexRender,
-	getCoreRowModel,
-	getSortedRowModel,
-	useReactTable,
-} from '@tanstack/react-table'
+import { getNomenclatureAdStat } from '@/app/nomenclatures/api'
+import { INomenclatureAdStatResponse } from '@/types/nomeclaturesType'
+import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import { useEffect, useState } from 'react'
-import { HistoryStatisticsColumnsTable } from './HistoryStatisticsColumnsTable'
+import { AdStatisticsColumnsTable } from './AdStatColumnsTable'
+import PanelAdStat from './PanelAdStat'
 
-export function HistoryStatistics({ id, className }: { id: string; className?: string }) {
-	const [statistics, setStatistics] = useState<INomenclatureStatusHistoryResponse[]>([])
+export function AdStat({ id, className }: { id: string; className?: string }) {
+	const [adStat, setAdStat] = useState<INomenclatureAdStatResponse[]>([])
 	const [isLoading, setIsLoading] = useState(true)
+	const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0])
 
 	useEffect(() => {
-		const fetchStatistics = async () => {
+		const fetchAdStat = async () => {
 			try {
 				setIsLoading(true)
-				const res = await getNomenclatureStatistics(id)
-				setStatistics(res)
+				const res = await getNomenclatureAdStat(id, date)
+				setAdStat(res)
 			} catch (error) {
-				console.error('Error fetching statistics:', error)
+				console.error('Ошибка при запросе статистики номенклатуры:', error)
 			} finally {
 				setIsLoading(false)
 			}
 		}
-		fetchStatistics()
-	}, [id])
+		fetchAdStat()
+	}, [id, date])
 
-	const table = useReactTable<INomenclatureStatusHistoryResponse>({
-		data: statistics,
-		columns: HistoryStatisticsColumnsTable,
+	const table = useReactTable<INomenclatureAdStatResponse>({
+		data: adStat,
+		columns: AdStatisticsColumnsTable,
 		getCoreRowModel: getCoreRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		enableSorting: true,
 	})
 
 	return (
@@ -43,13 +38,17 @@ export function HistoryStatistics({ id, className }: { id: string; className?: s
 			className={`bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 rounded-lg shadow h-full overflow-hidden ${className}`}
 		>
 			<div className='max-h-[400px] overflow-auto'>
+				<PanelAdStat
+					setDate={setDate}
+					date={date}
+				/>
 				{isLoading ? (
 					<div className='flex items-center justify-center h-32'>
 						<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white'></div>
 					</div>
 				) : (
 					<table className='w-full'>
-						<thead className='sticky top-0 bg-blue-900'>
+						<thead className='sticky top-[73px] bg-blue-900'>
 							{table.getHeaderGroups().map((headerGroup) => (
 								<tr
 									key={headerGroup.id}
@@ -69,10 +68,10 @@ export function HistoryStatistics({ id, className }: { id: string; className?: s
 							))}
 						</thead>
 						<tbody className='text-sm sm:text-base'>
-							{statistics.length < 1 ? (
+							{adStat.length < 1 ? (
 								<tr>
 									<td
-										colSpan={3}
+										colSpan={4}
 										className='text-center py-4 text-white/80'
 									>
 										Нет данных

@@ -1,6 +1,6 @@
-import { INomenclatureResponse } from '@/types/nomeclaturesType'
-import { Name } from '@/components/data-display/Name'
 import { Description } from '@/components/data-display/Description'
+import { Name } from '@/components/data-display/Name'
+import { INomenclatureResponse } from '@/types/nomeclaturesType'
 
 interface ISettingsInfoCard {
 	settingsInfo: INomenclatureResponse['settings']
@@ -17,7 +17,7 @@ const DAYS_OF_WEEK = [
 	{ id: 6, name: 'Вс', key: 'sun' },
 ]
 
-function SettingsInfoCard({ settingsInfo, className }: ISettingsInfoCard) {
+export function SettingsInfoCard({ settingsInfo, className }: ISettingsInfoCard) {
 	const formatVolume = (volume: number[]) => {
 		return `[${volume.join(', ')}]`
 	}
@@ -87,5 +87,3 @@ function SettingsInfoCard({ settingsInfo, className }: ISettingsInfoCard) {
 		</div>
 	)
 }
-
-export default SettingsInfoCard
