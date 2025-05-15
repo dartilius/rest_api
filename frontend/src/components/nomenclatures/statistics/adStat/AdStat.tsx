@@ -49,7 +49,7 @@ export function AdStat({ id, className }: { id: string; className?: string }) {
 						<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white'></div>
 					</div>
 				) : (
-					<table className='w-full'>
+					<table className='w-[640px] md:w-full'>
 						<thead className='sticky top-[73px] bg-blue-900'>
 							{table.getHeaderGroups().map((headerGroup) => (
 								<tr
@@ -74,7 +74,7 @@ export function AdStat({ id, className }: { id: string; className?: string }) {
 								<tr>
 									<td
 										colSpan={4}
-										className='text-center py-4 text-white/80'
+										className='text-center py-4 text-white/80 '
 									>
 										Нет данных
 									</td>
