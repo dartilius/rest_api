@@ -74,7 +74,7 @@ export function AdStat({ id, className }: { id: string; className?: string }) {
 								<tr>
 									<td
 										colSpan={4}
-										className='text-center py-4 text-white/80 '
+										className='text-center py-4 text-red-500 '
 									>
 										Нет данных
 									</td>

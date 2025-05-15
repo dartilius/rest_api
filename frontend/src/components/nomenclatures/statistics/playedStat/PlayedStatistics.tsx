@@ -136,7 +136,7 @@ export function PlayedStatistics({
 				)}
 				{statistics?.length === 0 && !isLoading && (
 					<div className='flex items-center justify-center h-16'>
-						<div className='text-white'>Нет данных</div>
+						<div className='text-red-500'>Нет данных</div>
 					</div>
 				)}
 			</div>
