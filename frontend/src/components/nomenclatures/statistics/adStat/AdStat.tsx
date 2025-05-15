@@ -35,9 +35,9 @@ export function AdStat({ id, className }: { id: string; className?: string }) {
 
 	return (
 		<div
-			className={`bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 rounded-lg shadow h-full overflow-hidden ${className}`}
+			className={`bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 rounded-lg shadow h-full overflow-hidden w-full ${className}`}
 		>
-			<div className='max-h-[400px] overflow-auto'>
+			<div className='max-h-[400px] overflow-auto w-full'>
 				<PanelAdStat
 					setDate={setDate}
 					date={date}
