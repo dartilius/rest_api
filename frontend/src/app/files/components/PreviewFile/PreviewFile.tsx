@@ -1,10 +1,10 @@
 'use client'
 
+import { IFileDetailResponse } from '@/types/fileTypes'
 import { guessType } from '@/utils/convertTypeFile'
 import Image from 'next/image'
 import { SyntheticEvent, useState } from 'react'
-import { IFileDetailResponse } from '@/types/fileTypes'
-import styles from './PreviewFile.module.scss' // SCSS файл для стилизации скелетона
+import styles from './PreviewFile.module.scss'
 
 type PreviewFileProps = {
 	file: IFileDetailResponse
@@ -42,7 +42,7 @@ function PreviewFile({ file, fileType }: PreviewFileProps) {
 						alt={file.name}
 						width={480}
 						height={480}
-						loading="lazy"
+						loading='lazy'
 						onLoad={() => setIsLoaded(true)}
 						style={{
 							borderRadius: '8px',
@@ -83,7 +83,10 @@ function PreviewFile({ file, fileType }: PreviewFileProps) {
 		case 'audio':
 			return (
 				<audio controls>
-					<source src={file.url} type="audio/mpeg" />
+					<source
+						src={file.url}
+						type='audio/mpeg'
+					/>
 					Ваш браузер не поддерживает аудио.
 				</audio>
 			)

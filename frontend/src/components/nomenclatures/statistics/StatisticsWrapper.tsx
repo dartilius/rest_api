@@ -52,7 +52,12 @@ export function StatisticsWrapper({ id, className = '' }: { id: string; classNam
 						type='video'
 					/>
 				)}
-				{activeTab === 'ad' && <AdStat id={id} />}
+				{activeTab === 'ad' && (
+					<AdStat
+						id={id}
+						className='w-full'
+					/>
+				)}
 				{activeTab === 'image' && (
 					<PlayedStatistics
 						id={id}
