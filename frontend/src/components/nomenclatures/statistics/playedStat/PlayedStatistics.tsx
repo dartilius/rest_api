@@ -1,18 +1,18 @@
 'use client'
 
 import { getNomenclaturePlayedStatistics } from '@/app/nomenclatures/api'
+import { useNotification } from '@/hooks/useNotification'
+import { INomenclatureStatistics } from '@/types/nomeclaturesType'
 import {
+	flexRender,
 	getCoreRowModel,
 	getSortedRowModel,
 	useReactTable,
-	flexRender,
 } from '@tanstack/react-table'
-import { useState, useEffect, useRef } from 'react'
-import { INomenclatureStatistics } from '@/types/nomeclaturesType'
+import { useEffect, useRef, useState } from 'react'
 import { StatisticsColumnsTable } from '../StatisticsColumnsTable'
-import { useNotification } from '@/hooks/useNotification'
 
-export default function PlayedStatistics({
+export function PlayedStatistics({
 	id,
 	type,
 	className,
@@ -28,11 +28,10 @@ export default function PlayedStatistics({
 	const containerRef = useRef<HTMLDivElement>(null)
 	const { showNotification } = useNotification()
 
-	// Загрузка данных
 	const loadData = async (pageNum: number) => {
 		try {
 			setIsLoading(true)
-			const res = await getNomenclaturePlayedStatistics(id, pageNum, type)
+			const res = await getNomenclaturePlayedStatistics(id, type, pageNum)
 
 			if (pageNum === 1) {
 				setStatistics(res.results)
@@ -49,11 +48,7 @@ export default function PlayedStatistics({
 		}
 	}
 
-	// Первоначальная загрузка при монтировании или изменении id
 	useEffect(() => {
-		setPage(1)
-		setStatistics([])
-		setHasMore(true)
 		loadData(1)
 	}, [id])
 
@@ -116,7 +111,7 @@ export default function PlayedStatistics({
 						))}
 					</thead>
 					<tbody className='text-sm sm:text-base'>
-						{statistics.length > 0 &&
+						{statistics?.length > 0 &&
 							table.getRowModel().rows.map((row) => (
 								<tr
 									key={row.id}
@@ -139,7 +134,7 @@ export default function PlayedStatistics({
 						<div className='animate-spin rounded-full h-6 w-6 border-b-2 border-white'></div>
 					</div>
 				)}
-				{statistics.length === 0 && !isLoading && (
+				{statistics?.length === 0 && !isLoading && (
 					<div className='flex items-center justify-center h-16'>
 						<div className='text-white'>Нет данных</div>
 					</div>

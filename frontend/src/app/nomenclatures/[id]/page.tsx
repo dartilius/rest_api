@@ -1,8 +1,23 @@
-import NomenclatureDetailCard from '@/components/nomenclatures/NomenclatureDetailCard'
+import { NomenclatureDetailCard } from '@/components/nomenclatures'
+import { Metadata, ResolvingMetadata } from 'next'
 import { getNomenclatureDetail } from '../api'
 interface Props {
 	params: {
 		id: string
+	}
+}
+
+export async function generateMetadata(
+	{ params }: Props,
+	parent: ResolvingMetadata,
+): Promise<Metadata> {
+	const { id } = await new Promise<{ id: string }>((resolve) => resolve(params))
+
+	const res = await getNomenclatureDetail(id)
+
+	return {
+		title: res.main_info.name,
+		description: res.main_info.description,
 	}
 }
 

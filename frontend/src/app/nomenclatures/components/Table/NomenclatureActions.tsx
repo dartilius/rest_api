@@ -1,12 +1,12 @@
 'use client'
 
+import { staticDelete, staticEdit } from '@/styles'
 import { IconButton } from '@mui/material'
 import Image from 'next/image'
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { staticDelete, staticEdit } from '@/styles'
-import EditNomenclature from '../EditNomenclature/EditNomenclature'
+import { useState } from 'react'
 import { deleteNomenclatures } from '../../api'
+import { EditNomenclatureWrapper } from '../EditNomenclature'
 
 type NomenclatureActionsProps = {
 	id: string
@@ -64,7 +64,7 @@ export function NomenclatureActions({ id }: NomenclatureActionsProps) {
 				/>
 			</IconButton>
 			{isEditModalOpen && (
-				<EditNomenclature
+				<EditNomenclatureWrapper
 					id={id}
 					open={isEditModalOpen}
 					onClose={() => setIsEditModalOpen(false)}

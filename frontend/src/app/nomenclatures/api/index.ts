@@ -1,20 +1,30 @@
-import { API_URL } from "@/config/api.config"
-import { client } from "@/services/httpClient"
-import { ICreateNomenclature, INomenclatureResponse, INomenclaturesListResponse, INomenclatureStatisticsResponse, INomenclatureStatusHistoryResponse, IUpdateNomenclature, NomenclaturesListProps } from "@/types/nomeclaturesType"
-import { getToken } from "@/utils"
+import { API_URL } from '@/config/api.config'
+import { client } from '@/services/httpClient'
+import {
+	ICreateNomenclature,
+	INomenclatureAdStatResponse,
+	INomenclatureResponse,
+	INomenclaturesListResponse,
+	INomenclatureStatisticsResponse,
+	INomenclatureStatusHistoryResponse,
+	IUpdateNomenclature,
+	NomenclaturesListProps,
+} from '@/types/nomeclaturesType'
+import { getToken } from '@/utils'
 
-export async function getNomenclatureList(queryParams: NomenclaturesListProps): Promise<INomenclaturesListResponse> {
+export async function getNomenclatureList(
+	queryParams: NomenclaturesListProps,
+): Promise<INomenclaturesListResponse> {
 	const token = await getToken()
 	const url = `${API_URL}nomenclatures`
-    const stringifiedQueryParams: Record<string, any> = {
-        page: queryParams.page?.toString(),
-        limit: queryParams.limit?.toString(),
-        name: queryParams.name?.toString(),
-        status: queryParams.status?.toString(),
-        timezone: queryParams.timezone?.toString(),
-        version: queryParams.version?.toString()
-
-    }
+	const stringifiedQueryParams: Record<string, any> = {
+		page: queryParams.page?.toString(),
+		limit: queryParams.limit?.toString(),
+		name: queryParams.name?.toString(),
+		status: queryParams.status?.toString(),
+		timezone: queryParams.timezone?.toString(),
+		version: queryParams.version?.toString(),
+	}
 
 	try {
 		return await client.get<INomenclaturesListResponse>(url, {
@@ -116,7 +126,9 @@ export async function getNomenclatureDetail(id: string): Promise<INomenclatureRe
 	}
 }
 
-export async function createNomenclature(body: ICreateNomenclature): Promise<INomenclatureResponse> {
+export async function createNomenclature(
+	body: ICreateNomenclature,
+): Promise<INomenclatureResponse> {
 	const token = await getToken()
 	const url = `${API_URL}nomenclatures/`
 
@@ -125,7 +137,7 @@ export async function createNomenclature(body: ICreateNomenclature): Promise<INo
 			headers: {
 				Authorization: `access_token ${token}`,
 			},
-			body: body
+			body: body,
 		})
 	} catch (error) {
 		console.error('Ошибка при запросе номенклатуры:', error)
@@ -133,7 +145,10 @@ export async function createNomenclature(body: ICreateNomenclature): Promise<INo
 	}
 }
 
-export async function updateNomenclature(id: string, body: IUpdateNomenclature): Promise<INomenclatureResponse> {
+export async function updateNomenclature(
+	id: string,
+	body: IUpdateNomenclature,
+): Promise<INomenclatureResponse> {
 	const token = await getToken()
 	const url = `${API_URL}nomenclatures/${id}/`
 
@@ -150,7 +165,9 @@ export async function updateNomenclature(id: string, body: IUpdateNomenclature):
 	}
 }
 
-export async function getNomenclatureStatistics(id: string): Promise<INomenclatureStatusHistoryResponse[]> {
+export async function getNomenclatureStatistics(
+	id: string,
+): Promise<INomenclatureStatusHistoryResponse[]> {
 	const token = await getToken()
 	const url = `${API_URL}nomenclatures/${id}/status_history/`
 
@@ -164,15 +181,38 @@ export async function getNomenclatureStatistics(id: string): Promise<INomenclatu
 		console.error('Ошибка при запросе статистики номенклатуры:', error)
 		throw error
 	}
-}	
+}
 
-export async function getNomenclaturePlayedStatistics(id: string, page: number, type: string): Promise<INomenclatureStatisticsResponse> {
+export async function getNomenclaturePlayedStatistics(
+	id: string,
+	type: string,
+	page?: number,
+): Promise<INomenclatureStatisticsResponse> {
 	const token = await getToken()
 	//тут лимит по приколу установлен 100, надо будет поменять
 	const url = `${API_URL}nomenclatures/${id}/${type}_stat/?page=${page}&limit=100`
 
 	try {
 		return await client.get<INomenclatureStatisticsResponse>(url, {
+			headers: {
+				Authorization: `access_token ${token}`,
+			},
+		})
+	} catch (error) {
+		console.error('Ошибка при запросе статистики номенклатуры:', error)
+		throw error
+	}
+}
+
+export async function getNomenclatureAdStat(
+	id: string,
+	date: string,
+): Promise<INomenclatureAdStatResponse[]> {
+	const token = await getToken()
+	const url = `${API_URL}nomenclatures/${id}/ad_stat/?date=${date}`
+
+	try {
+		return await client.get<INomenclatureAdStatResponse[]>(url, {
 			headers: {
 				Authorization: `access_token ${token}`,
 			},

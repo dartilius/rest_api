@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import HistoryStatistics from './historyStat/HistoryStatistics'
-import PlayedStatistics from './playedStat/PlayedStatistics'
+import { AdStat } from './adStat/AdStat'
+import { HistoryStatistics } from './historyStat/HistoryStatistics'
+import { PlayedStatistics } from './playedStat/PlayedStatistics'
 
 const statisticsTabs = [
 	{ id: 'history', label: 'История статусов' },
@@ -13,13 +14,7 @@ const statisticsTabs = [
 	{ id: 'ticker', label: 'Бегущая строка' },
 ]
 
-export default function StatisticsWrapper({
-	id,
-	className = '',
-}: {
-	id: string
-	className?: string
-}) {
+export function StatisticsWrapper({ id, className = '' }: { id: string; className?: string }) {
 	const [activeTab, setActiveTab] = useState<(typeof statisticsTabs)[number]['id']>('history')
 
 	return (
@@ -57,14 +52,7 @@ export default function StatisticsWrapper({
 						type='video'
 					/>
 				)}
-				{/* ну фурычит от бэка 500 ошибка */}
-				{activeTab === 'ad' && (
-					<PlayedStatistics
-						id={id}
-						type='ad'
-					/>
-				)}
-				{/* ну фурычит от бэка 500 ошибка */}
+				{activeTab === 'ad' && <AdStat id={id} />}
 				{activeTab === 'image' && (
 					<PlayedStatistics
 						id={id}

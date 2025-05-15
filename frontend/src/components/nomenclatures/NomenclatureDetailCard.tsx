@@ -1,16 +1,15 @@
 import { INomenclatureResponse } from '@/types/nomeclaturesType'
-import MainInfoCard from '@/components/nomenclatures/MainInfoCard'
-import SettingsInfoCard from '@/components/nomenclatures/SettingsInfoCard'
-import TabsSwitcher from '@/components/nomenclatures/TabsSwitcher'
-import HardwareCard from '@/components/nomenclatures/HardwareCard'
-import StatisticsWrapper from './statistics/StatisticsWrapper'
-
+import { HardwareCard } from './HardwareCard'
+import { MainInfoCard } from './MainInfoCard'
+import { SettingsInfoCard } from './SettingsInfoCard'
+import { TabsSwitcher } from './TabsSwitcher'
+import { StatisticsWrapper } from './statistics/StatisticsWrapper'
 interface INomenclatureDetail {
 	data: INomenclatureResponse
 	className?: string
 }
 
-function NomenclatureDetailCard({ data, className = '' }: INomenclatureDetail) {
+export function NomenclatureDetailCard({ data, className = '' }: INomenclatureDetail) {
 	return (
 		<div
 			className={`bg-gradient-to-r from-blue-950 to-indigo-900 rounded-lg shadow p-2 sm:p-4 md:p-6 ${className}`}
@@ -47,5 +46,3 @@ function NomenclatureDetailCard({ data, className = '' }: INomenclatureDetail) {
 		</div>
 	)
 }
-
-export default NomenclatureDetailCard

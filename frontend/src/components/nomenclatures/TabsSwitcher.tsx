@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, ReactNode } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ReactNode, useEffect, useState } from 'react'
 
 interface Props {
 	mainTab: ReactNode
@@ -12,7 +12,7 @@ interface Props {
 
 type Tab = 'main' | 'settings' | 'hardware' | 'statistics'
 
-export default function TabsSwitcher({ mainTab, settingsTab, hardwareTab, statisticsTab }: Props) {
+export function TabsSwitcher({ mainTab, settingsTab, hardwareTab, statisticsTab }: Props) {
 	const searchParams = useSearchParams()
 	const router = useRouter()
 

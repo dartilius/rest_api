@@ -1,13 +1,13 @@
-import { INomenclatureResponse } from '@/types/nomeclaturesType'
-import { Name } from '@/components/data-display/Name'
 import { Description } from '@/components/data-display/Description'
+import { Name } from '@/components/data-display/Name'
+import { INomenclatureResponse } from '@/types/nomeclaturesType'
 
 interface IMainInfoCard {
 	mainInfo: INomenclatureResponse['main_info']
 	className?: string
 }
 
-function MainInfoCard({ mainInfo, className }: IMainInfoCard) {
+export function MainInfoCard({ mainInfo, className }: IMainInfoCard) {
 	return (
 		<div className={`max-h-[400px] overflow-auto${className}`}>
 			<div
@@ -77,5 +77,3 @@ function MainInfoCard({ mainInfo, className }: IMainInfoCard) {
 		</div>
 	)
 }
-
-export default MainInfoCard

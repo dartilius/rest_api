@@ -1,30 +1,29 @@
 'use client'
 
-import { useState } from 'react'
-import {
-	Dialog,
-	DialogContent,
-	DialogTitle,
-	useMediaQuery,
-	useTheme,
-	Button,
-	DialogActions,
-	Typography,
-	Switch,
-	TextField,
-} from '@mui/material'
-import styles from '@/app/nomenclatures/Nomenclatures.module.scss'
-import ActionButton from '@/components/Ui/button/ActionButton'
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
-import { useNomenclatureForm } from '@/app/nomenclatures/components/CreateNomenclature/hooks/useNomenclature'
-import { DAY_KEYS } from '@/app/nomenclatures/components/CreateNomenclature/constans/constants'
 import {
 	BasicInfoFields,
 	DaySettingsAccordion,
 	DaySettingsGrid,
 } from '@/app/nomenclatures/components/CreateNomenclature/components'
-import { NomenclatureVolume } from '@/components/nomenclatures/NomenclatureVolume/NomenclatureVolume'
+import { DAY_KEYS } from '@/app/nomenclatures/components/CreateNomenclature/constans/constants'
+import { useNomenclatureForm } from '@/app/nomenclatures/components/CreateNomenclature/hooks/useNomenclature'
+import { NomenclatureVolume } from '@/components/nomenclatures'
+import ActionButton from '@/components/Ui/button/ActionButton'
 import { CopyButton } from '@/components/Ui/button/CoppyButton'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import {
+	Button,
+	Dialog,
+	DialogActions,
+	DialogContent,
+	DialogTitle,
+	Switch,
+	TextField,
+	Typography,
+	useMediaQuery,
+	useTheme,
+} from '@mui/material'
+import { useState } from 'react'
 
 export default function CreateNomenclature() {
 	const [open, setOpen] = useState<boolean>(false)
