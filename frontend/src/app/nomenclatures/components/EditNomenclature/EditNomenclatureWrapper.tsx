@@ -2,6 +2,7 @@
 import { INomenclatureResponse } from '@/types/nomeclaturesType'
 import { useEffect, useRef, useState } from 'react'
 import { getNomenclatureDetail } from '../../api'
+import { EditNomenclature } from './EditNomenclature'
 
 interface EditNomenclatureProps {
 	id: string
@@ -65,7 +66,7 @@ export function EditNomenclatureWrapper({ id, open, onClose }: EditNomenclatureP
 	console.log(data)
 
 	return (
-		<Test
+		<EditNomenclature
 			id={id}
 			openModal={open}
 			onClose={onClose}
