@@ -9,67 +9,70 @@ import { deleteNomenclatures } from '../../api'
 import { EditNomenclatureWrapper } from '../EditNomenclature'
 
 type NomenclatureActionsProps = {
-	id: string
+  id: string
+  isMobile?: boolean
+  onClick?: (e: React.MouseEvent<Element, MouseEvent>) => void;
 }
 
-export function NomenclatureActions({ id }: NomenclatureActionsProps) {
-	const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-	const router = useRouter()
+export function NomenclatureActions({ id, isMobile }: NomenclatureActionsProps) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const router = useRouter()
 
-	async function handleDelete() {
-		try {
-			const res = await deleteNomenclatures(id)
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation() 
+    try {
+      const res = await deleteNomenclatures(id)
+      if (res === 204) {
+        router.refresh()
+      } else {
+        console.error('Error during deletion:', res)
+      }
+    } catch (error) {
+      console.error('Error deleting nomenclatures:', error)
+    }
+  }
 
-			if (res === 204) {
-				router.refresh()
-			} else {
-				console.error('Error during deletion:', res)
-			}
-		} catch (error) {
-			console.error('Error deleting nomenclatures:', error)
-		}
-	}
+  async function handleEdit(e: React.MouseEvent) {
+    e.stopPropagation()
+    setIsEditModalOpen(true)
+  }
 
-	async function handleEdit() {
-		setIsEditModalOpen(true)
-	}
-
-	return (
-		<div>
-			<IconButton
-				onClick={handleEdit}
-				style={{ background: 'none' }}
-			>
-				<Image
-					src={staticEdit}
-					alt='edit'
-					width={24}
-					height={24}
-					style={{
-						background: 'none',
-						transition: 'opacity 0.3s ease',
-					}}
-				/>
-			</IconButton>
-			<IconButton onClick={handleDelete}>
-				<Image
-					src={staticDelete}
-					alt='edit'
-					width={24}
-					height={24}
-					style={{
-						background: 'none',
-						transition: 'opacity 0.3s ease',
-					}}
-				/>
-			</IconButton>
-			{isEditModalOpen && (
-				<EditNomenclatureWrapper
-					id={id}
-					open={isEditModalOpen}
-					onClose={() => setIsEditModalOpen(false)}
-				/>
-			)}
-		</div>
-	)
+  return (
+    <div className={isMobile ? 'z-10' : ''}>
+      <IconButton
+        onClick={handleEdit}
+        style={{ background: 'none' }}
+      >
+        <Image
+          src={staticEdit}
+          alt='edit'
+          width={24}
+          height={24}
+          style={{
+            background: 'none',
+            transition: 'opacity 0.3s ease',
+          }}
+        />
+      </IconButton>
+      <IconButton onClick={handleDelete}>
+        <Image
+          src={staticDelete}
+          alt='delete'
+          width={24}
+          height={24}
+          style={{
+            background: 'none',
+            transition: 'opacity 0.3s ease',
+          }}
+        />
+      </IconButton>
+      {isEditModalOpen && (
+        <EditNomenclatureWrapper
+          id={id}
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
+    </div>
+  )
 }
