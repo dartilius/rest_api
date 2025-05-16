@@ -1,13 +1,13 @@
 'use client'
 import { INomenclatureResponse } from '@/types/nomeclaturesType'
 import { useEffect, useRef, useState } from 'react'
-import { getNomenclatureDetail } from '../../api'
+import { getNomenclatureDetail } from '../../../app/nomenclatures/api'
 import { EditNomenclature } from './EditNomenclature'
 
 interface EditNomenclatureProps {
 	id: string
 	open: boolean
-	onClose: () => void
+	onClose: (e?: React.MouseEvent<Element, MouseEvent>) => void
 }
 
 export function EditNomenclatureWrapper({ id, open, onClose }: EditNomenclatureProps) {
@@ -63,13 +63,15 @@ export function EditNomenclatureWrapper({ id, open, onClose }: EditNomenclatureP
 		)
 	}
 
-	console.log(data)
+	const handleClose = (e?: React.MouseEvent<Element, MouseEvent>) => {
+		onClose(e)
+	}
 
 	return (
 		<EditNomenclature
 			id={id}
 			openModal={open}
-			onClose={onClose}
+			onClose={handleClose}
 			data={data}
 		/>
 	)

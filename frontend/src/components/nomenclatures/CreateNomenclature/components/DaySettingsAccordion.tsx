@@ -1,8 +1,8 @@
-import { Accordion, AccordionSummary, AccordionDetails, Typography, TextField } from '@mui/material'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import NomenclatureVolume from '@/components/nomenclatures/NomenclatureVolume/NomenclatureVolume'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import { Accordion, AccordionDetails, AccordionSummary, TextField, Typography } from '@mui/material'
 import { ChangeEvent } from 'react'
-import { DAY_LABELS } from '@/app/nomenclatures/components/CreateNomenclature/constans/constants'
+import { DAY_LABELS } from '../constans/constants'
 
 export interface DaySettingsAccordionProps {
 	day: string

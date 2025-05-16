@@ -1,4 +1,4 @@
-import { NomenclatureDetailCard } from '@/components/nomenclatures'
+import { NomenclatureDetailCard } from '@/components/nomenclatures/NomenclatureDetailCard'
 import { Metadata, ResolvingMetadata } from 'next'
 import { getNomenclatureDetail } from '../api'
 interface Props {

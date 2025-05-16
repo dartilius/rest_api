@@ -1,4 +1,4 @@
-import { TableNomenclatures } from '@/app/nomenclatures/components'
+import { TableNomenclatures } from '@/components/nomenclatures'
 import { Metadata } from 'next'
 import { getNomenclatureList } from './api'
 

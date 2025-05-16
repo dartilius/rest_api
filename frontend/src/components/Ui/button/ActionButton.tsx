@@ -1,7 +1,7 @@
 'use client'
 
-import { ComponentType, ReactNode } from 'react'
 import { cn } from '@/utils/utils'
+import { ComponentType, MouseEvent, ReactNode } from 'react'
 
 interface ActionButtonProps {
 	variant?: 'primary' | 'secondary' | 'error' | 'transparent' | 'warning'
@@ -9,7 +9,7 @@ interface ActionButtonProps {
 	className?: string
 	icon?: ComponentType<{ className?: string }>
 	iconClassName?: string
-	onClick?: () => void
+	onClick?: (e?: MouseEvent) => void
 	children: ReactNode
 	disabled?: boolean
 	type?: 'button' | 'submit' | 'reset'

@@ -1,21 +1,15 @@
 'use client'
-import './customPagination.scss'
-import { usePathname, useSearchParams, useRouter } from 'next/navigation'
+import { Theme, useMediaQuery } from '@mui/material'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import CustomPaginationDesktop from './CustomPaginationDesktop'
+import CustomPaginationMobile from './CustomPaginationMobile'
 
-const CustomPagination = ({
-	totalItems,
-	limit,
-	page,
-}: {
-	totalItems: number
-	limit?: number
-	page?: number
-}) => {
+const CustomPagination = ({ totalItems }: { totalItems: number }) => {
 	const pathname = usePathname()
 	const searchParams = useSearchParams()
 	const router = useRouter()
-
-	const currentPage = searchParams.get('page') || 1
+	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
+	const currentPage = Number(searchParams.get('page') || 1)
 	const itemsPerPage = Number(searchParams.get('limit')) || 20
 
 	const totalPages = Math.ceil(totalItems / itemsPerPage)
@@ -28,25 +22,41 @@ const CustomPagination = ({
 		router.push(`${pathname}?${params.toString()}`)
 	}
 
+	const nextPage = () => {
+		return goToPage(currentPage + 1)
+	}
+
+	const prevPage = () => {
+		return goToPage(currentPage - 1)
+	}
+
+	const isPrevButtonDisabled = currentPage === 1
+	const goToFirstPage = () => {
+		return goToPage(1)
+	}
+
 	return (
-		<div className='w-full flex items-center justify-center gap-2 p-4'>
-			<button
-				onClick={() => goToPage(Number(currentPage) - 1)}
-				disabled={Number(currentPage) === 1}
-				className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
-			>
-				Предыдущая
-			</button>
-			<span className='text-black'>
-				Страница: {Number(currentPage)} из {totalPages}
-			</span>
-			<button
-				onClick={() => goToPage(Number(currentPage) + 1)}
-				disabled={isNextButtonDisabled}
-				className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
-			>
-				Следующая
-			</button>
+		<div className='flex items-center justify-center'>
+			{isMobile ? (
+				<CustomPaginationMobile
+					currentPage={Number(currentPage)}
+					totalPages={totalPages}
+					prevPage={prevPage}
+					nextPage={nextPage}
+					isNextButtonDisabled={isNextButtonDisabled}
+					isPrevButtonDisabled={isPrevButtonDisabled}
+					goToFirstPage={goToFirstPage}
+				/>
+			) : (
+				<CustomPaginationDesktop
+					currentPage={Number(currentPage)}
+					totalPages={totalPages}
+					prevPage={prevPage}
+					nextPage={nextPage}
+					isNextButtonDisabled={isNextButtonDisabled}
+					isPrevButtonDisabled={isPrevButtonDisabled}
+				/>
+			)}
 		</div>
 	)
 }
