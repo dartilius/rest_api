@@ -14,7 +14,9 @@ export default function FiltersDesktop() {
 			<VersionSelect />
 			<StatusSelect />
 			<TimezoneSelect />
-			<CreateNomenclature />
+			<div className='m-auto'>
+				<CreateNomenclature />
+			</div>
 		</div>
 	)
 }
