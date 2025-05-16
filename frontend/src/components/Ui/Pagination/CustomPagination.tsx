@@ -10,7 +10,7 @@ const CustomPagination = ({
 	topRef,
 }: {
 	totalItems: number
-	topRef?: RefObject<HTMLDivElement>
+	topRef: RefObject<HTMLDivElement>
 }) => {
 	const pathname = usePathname()
 	const searchParams = useSearchParams()
@@ -23,6 +23,10 @@ const CustomPagination = ({
 
 	const isNextButtonDisabled = Number(currentPage) >= totalPages
 
+	const scrollToTop = () => {
+		topRef.current?.scrollIntoView({ behavior: 'smooth' })
+	}
+
 	const goToPage = (newPage: number) => {
 		const params = new URLSearchParams(searchParams)
 		params.set('page', newPage.toString())
@@ -30,23 +34,25 @@ const CustomPagination = ({
 	}
 
 	const nextPage = () => {
-		return goToPage(currentPage + 1)
+		goToPage(currentPage + 1)
+		scrollToTop()
 	}
 
 	const prevPage = () => {
-		return goToPage(currentPage - 1)
+		goToPage(currentPage - 1)
+		scrollToTop()
 	}
 
 	const isPrevButtonDisabled = currentPage === 1
 	const goToFirstPage = () => {
-		return goToPage(1)
+		goToPage(1)
+		scrollToTop()
 	}
 
 	return (
 		<div className='flex items-center justify-center'>
 			{isMobile ? (
 				<CustomPaginationMobile
-					topRef={topRef}
 					currentPage={Number(currentPage)}
 					totalPages={totalPages}
 					prevPage={prevPage}
@@ -63,6 +69,7 @@ const CustomPagination = ({
 					nextPage={nextPage}
 					isNextButtonDisabled={isNextButtonDisabled}
 					isPrevButtonDisabled={isPrevButtonDisabled}
+					goToFirstPage={goToFirstPage}
 				/>
 			)}
 		</div>

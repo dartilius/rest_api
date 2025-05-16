@@ -158,6 +158,7 @@ export function TableNomenclatures(props: Props) {
 					bgcolor: 'background.paper',
 				}}
 			>
+				<div ref={topRef} />
 				<FiltersWrapper />
 				<Table
 					stickyHeader
@@ -226,7 +227,10 @@ export function TableNomenclatures(props: Props) {
 						))}
 					</TableBody>
 				</Table>
-				<CustomPagination totalItems={count} />
+				<CustomPagination
+					totalItems={count}
+					topRef={topRef}
+				/>
 			</TableContainer>
 		</Box>
 	)
