@@ -5,6 +5,7 @@ type CustomPaginationDesktopProps = {
 	nextPage: () => void
 	isNextButtonDisabled: boolean
 	isPrevButtonDisabled: boolean
+	goToFirstPage: () => void
 }
 export default function CustomPaginationDesktop({
 	currentPage,
@@ -13,6 +14,7 @@ export default function CustomPaginationDesktop({
 	nextPage,
 	isNextButtonDisabled,
 	isPrevButtonDisabled,
+	goToFirstPage,
 }: CustomPaginationDesktopProps) {
 	return (
 		<div className='w-full flex items-center justify-center gap-2 p-4'>
@@ -32,6 +34,13 @@ export default function CustomPaginationDesktop({
 				className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
 			>
 				Следующая
+			</button>
+			<button
+				className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+				onClick={goToFirstPage}
+				disabled={isPrevButtonDisabled}
+			>
+				На первую страницу
 			</button>
 		</div>
 	)
