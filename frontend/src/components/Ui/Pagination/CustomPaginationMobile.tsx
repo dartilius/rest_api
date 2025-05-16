@@ -30,7 +30,7 @@ export default function CustomPaginationMobile({
 				<div className='w-[1px] h-[24px] bg-white/20'></div>
 				<button
 					className='text-center bg-transparent border-none text-white text-sm font-medium cursor-pointer opacity-70 hover:opacity-100 hover:bg-blue-700 transition-opacity'
-					onClick={nextPage}
+					onClick={prevPage}
 					disabled={isPrevButtonDisabled}
 				>
 					<ArrowBackIcon />
@@ -38,7 +38,7 @@ export default function CustomPaginationMobile({
 				<div className='w-[1px] h-[24px] bg-white/20'></div>
 				<button
 					className='text-center bg-transparent border-none text-white text-sm font-medium cursor-pointer opacity-70 hover:opacity-100 transition-opacity'
-					onClick={prevPage}
+					onClick={nextPage}
 					disabled={isNextButtonDisabled}
 				>
 					<ArrowForwardIcon />
