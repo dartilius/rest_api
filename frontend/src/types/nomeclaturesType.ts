@@ -7,12 +7,12 @@ export interface NomenclaturesListProps {
 	version?: string
 }
 
-interface INomenclatures {
+export interface INomenclatures {
 	id: string
 	article: string
 	last_answer: string
 	name: string
-	status: string
+	status: number
 	timezone: string
 	version: string
 }

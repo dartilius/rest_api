@@ -1,3 +1,4 @@
+'use client'
 import {
 	Box,
 	Table,
@@ -6,44 +7,154 @@ import {
 	TableContainer,
 	TableHead,
 	TableRow,
+	Card,
+	CardContent,
+	Typography,
+	Stack,
+	Chip,
+	useMediaQuery,
+	Theme,
 } from '@mui/material'
 import Link from 'next/link'
 import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
 import { getStatusColor } from '@/utils'
 import { convertStatus } from '@/types/checkStatus'
 import { FiltersWrapper, NomenclatureActions } from '@/app/nomenclatures/components'
-import styles from '@/app/nomenclatures/Nomenclatures.module.scss'
+import { INomenclatures } from '@/types/nomeclaturesType'
+import { useRouter } from 'next/navigation'
 
 const columns = [
-	{ id: 'name', label: 'Название', minWidth: 170, maxWidth: 170 },
-	{ id: 'timezone', label: 'Часовой пояс', maxWidth: 120, minWidth: 120 },
-	{ id: 'version', label: 'Версия', maxWidth: 120, minWidth: 120 },
-	{ id: 'last_answer', label: 'Последний ответ', minWidth: 120, maxWidth: 120 },
-	{ id: 'status', label: 'Статус', minWidth: 120, maxWidth: 120 },
-	{ id: 'actions', label: 'Действия', minWidth: 120, maxWidth: 120 },
+	{ id: 'name', label: 'Название', mobile: true },
+	{ id: 'timezone', label: 'Часовой пояс', mobile: false },
+	{ id: 'version', label: 'Версия', mobile: false },
+	{ id: 'last_answer', label: 'Последний ответ', mobile: true },
+	{ id: 'status', label: 'Статус', mobile: true },
+	{ id: 'actions', label: 'Действия', mobile: true },
 ]
 
 type Props = {
-	data: any
+	data: INomenclatures[]
 	count: any
 	limit: number
 	page: number
 }
 
 export function TableNomenclatures(props: Props) {
+	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
+	const router = useRouter()
 	const { data, count, limit, page } = props
 
+	if (isMobile) {
+		return (
+			<Box
+				sx={{
+					flex: 1,
+					display: 'flex',
+					flexDirection: 'column',
+					overflow: 'hidden',
+				}}
+			>
+				<Box
+					sx={{
+						flex: 1,
+						overflow: 'auto',
+						p: 1,
+					}}
+				>
+					<FiltersWrapper />
+					{/* <Box sx={{ mt: 2 }}> */}
+						{data?.map((row) => (
+							<Card
+								key={row.id}
+								sx={{ mb: 2, boxShadow: 3 }}
+								onClick={(e) => {
+									// Обработчик для всей карточки
+									e.preventDefault()
+									router.push(`/nomenclatures/${row.id}`)
+								}}
+							>
+								<CardContent>
+									<Stack spacing={1.5}>
+										<Typography
+											variant='subtitle1'
+											fontWeight='bold'
+										>
+											{row.name}
+										</Typography>
+										<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+											<Typography
+												variant='body2'
+												color='text.secondary'
+											>
+												Версия:
+											</Typography>
+											<Typography variant='body2'>{row.version}</Typography>
+										</Box>
+
+										<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+											<Typography
+												variant='body2'
+												color='text.secondary'
+											>
+												Последний ответ:
+											</Typography>
+											<Typography variant='body2'>{row.last_answer}</Typography>
+										</Box>
+
+										<Box
+											sx={{
+												display: 'flex',
+												justifyContent: 'space-between',
+												alignItems: 'center',
+											}}
+										>
+											<Chip
+												label={convertStatus(row.status)}
+												sx={{
+													backgroundColor: getStatusColor(row.status),
+													color: 'white',
+													fontSize: '0.75rem',
+												}}
+											/>
+											<NomenclatureActions
+												id={row.id}
+												isMobile={isMobile}
+												onClick={(e: React.MouseEvent) => e.stopPropagation()}
+											/>
+										</Box>
+									</Stack>
+								</CardContent>
+							</Card>
+						))}
+					{/* </Box> */}
+					<CustomPagination
+						totalItems={count}
+						limit={limit}
+						page={page}
+					/>
+				</Box>
+			</Box>
+		)
+	}
+
 	return (
-		<TableContainer
-			className='custom_scroll'
+		<Box
 			sx={{
-				maxWidth: '100%',
-				height: '100%',
-				borderRadius: '8px',
-				backgroundColor: 'white',
+				flex: 1,
+				display: 'flex',
+				flexDirection: 'column',
+				overflow: 'hidden',
 			}}
 		>
-			<Box sx={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'white' }}>
+
+			<TableContainer
+				sx={{
+					flex: 1,
+					overflow: 'auto',
+					borderRadius: '8px',
+					bgcolor: 'background.paper',
+				}}
+			>
 				<FiltersWrapper />
 				<Table
 					stickyHeader
@@ -52,77 +163,72 @@ export function TableNomenclatures(props: Props) {
 				>
 					<TableHead>
 						<TableRow>
-							{columns.map((column: any) => (
+							{columns.map((column) => (
 								<TableCell
 									key={column.id}
 									sx={{
-										minWidth: column.minWidth,
-										maxWidth: column.maxWidth,
+										minWidth: 120,
 										whiteSpace: 'nowrap',
 										textAlign: 'center',
+										fontWeight: 'bold',
 									}}
-									className='font-title'
 								>
 									{column.label}
 								</TableCell>
 							))}
 						</TableRow>
 					</TableHead>
+					<TableBody>
+						{data?.map((row: any) => (
+							<TableRow
+								hover
+								role='checkbox'
+								tabIndex={-1}
+								key={row?.id}
+							>
+								{columns?.map((column) => {
+									const value = row[column.id]
+									return (
+										<TableCell
+											key={column.id}
+											sx={{
+												whiteSpace: 'nowrap',
+												overflow: 'hidden',
+												textOverflow: 'ellipsis',
+												textAlign: 'center',
+												maxWidth: 200,
+											}}
+										>
+											{column.id === 'status' ? (
+												<Box
+													sx={{
+														display: 'inline-block',
+														padding: '4px 8px',
+														borderRadius: '8px',
+														backgroundColor: getStatusColor(value),
+														color: 'white',
+													}}
+												>
+													{convertStatus(value)}
+												</Box>
+											) : column.id === 'actions' ? (
+												<NomenclatureActions id={row.id} />
+											) : (
+												<Link href={`/nomenclatures/${row.id}`}>{value}</Link>
+											)}
+										</TableCell>
+									)
+								})}
+							</TableRow>
+						))}
+					</TableBody>
 				</Table>
-			</Box>
-			<Table>
-				<TableBody>
-					{data?.map((row: any) => (
-						<TableRow
-							hover
-							role='checkbox'
-							tabIndex={-1}
-							key={row?.id}
-						>
-							{columns?.map((column: any) => {
-								const value = row[column?.id]
-								return (
-									<TableCell
-										key={column.id}
-										sx={{
-											minWidth: column.minWidth,
-											maxWidth: column.maxWidth,
-											whiteSpace: 'nowrap',
-											overflow: 'hidden',
-											textOverflow: 'ellipsis',
-											textAlign: 'center',
-										}}
-										className='font-subtitle'
-									>
-										{column.id === 'status' ? (
-											<Box
-												sx={{
-													display: 'inline-block',
-													padding: '4px 8px',
-													borderRadius: '8px',
-													backgroundColor: getStatusColor(value),
-													color: 'white',
-												}}
-											>
-												{convertStatus(value)}
-											</Box>
-										) : column.id === 'actions' ? (
-											<NomenclatureActions id={row.id} />
-										) : (
-											<Link href={`/nomenclatures/${row.id}`}>{value}</Link>
-										)}
-									</TableCell>
-								)
-							})}
-						</TableRow>
-					))}
-				</TableBody>
-			</Table>
-			<CustomPagination
-				totalItems={count}
-				limit={limit}
-				page={page}
-			/>
-		</TableContainer>
+				<CustomPagination
+					totalItems={count}
+					limit={limit}
+					page={page}
+				/>
+			</TableContainer>
+		</Box>
 	)
 }
