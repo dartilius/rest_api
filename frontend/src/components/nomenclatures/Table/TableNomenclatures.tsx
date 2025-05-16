@@ -1,26 +1,26 @@
 'use client'
+import { FiltersWrapper, NomenclatureActions } from '@/components/nomenclatures'
+import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
+import { convertStatus } from '@/types/checkStatus'
+import { INomenclatures } from '@/types/nomeclaturesType'
+import { getStatusColor } from '@/utils'
 import {
 	Box,
+	Card,
+	CardContent,
+	Chip,
+	Stack,
 	Table,
 	TableBody,
 	TableCell,
 	TableContainer,
 	TableHead,
 	TableRow,
-	Card,
-	CardContent,
-	Typography,
-	Stack,
-	Chip,
-	useMediaQuery,
 	Theme,
+	Typography,
+	useMediaQuery,
 } from '@mui/material'
 import Link from 'next/link'
-import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
-import { getStatusColor } from '@/utils'
-import { convertStatus } from '@/types/checkStatus'
-import { FiltersWrapper, NomenclatureActions } from '@/app/nomenclatures/components'
-import { INomenclatures } from '@/types/nomeclaturesType'
 import { useRouter } from 'next/navigation'
 
 const columns = [
@@ -63,75 +63,71 @@ export function TableNomenclatures(props: Props) {
 				>
 					<FiltersWrapper />
 					{/* <Box sx={{ mt: 2 }}> */}
-						{data?.map((row) => (
-							<Card
-								key={row.id}
-								sx={{ mb: 2, boxShadow: 3 }}
-								onClick={(e) => {
-									// Обработчик для всей карточки
-									e.preventDefault()
-									router.push(`/nomenclatures/${row.id}`)
-								}}
-							>
-								<CardContent>
-									<Stack spacing={1.5}>
+					{data?.map((row) => (
+						<Card
+							key={row.id}
+							sx={{ mb: 2, boxShadow: 3 }}
+							onClick={(e) => {
+								// Обработчик для всей карточки
+								e.preventDefault()
+								router.push(`/nomenclatures/${row.id}`)
+							}}
+						>
+							<CardContent>
+								<Stack spacing={1.5}>
+									<Typography
+										variant='subtitle1'
+										fontWeight='bold'
+									>
+										{row.name}
+									</Typography>
+									<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
 										<Typography
-											variant='subtitle1'
-											fontWeight='bold'
+											variant='body2'
+											color='text.secondary'
 										>
-											{row.name}
+											Версия:
 										</Typography>
-										<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-											<Typography
-												variant='body2'
-												color='text.secondary'
-											>
-												Версия:
-											</Typography>
-											<Typography variant='body2'>{row.version}</Typography>
-										</Box>
+										<Typography variant='body2'>{row.version}</Typography>
+									</Box>
 
-										<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-											<Typography
-												variant='body2'
-												color='text.secondary'
-											>
-												Последний ответ:
-											</Typography>
-											<Typography variant='body2'>{row.last_answer}</Typography>
-										</Box>
-
-										<Box
-											sx={{
-												display: 'flex',
-												justifyContent: 'space-between',
-												alignItems: 'center',
-											}}
+									<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+										<Typography
+											variant='body2'
+											color='text.secondary'
 										>
-											<Chip
-												label={convertStatus(row.status)}
-												sx={{
-													backgroundColor: getStatusColor(row.status),
-													color: 'white',
-													fontSize: '0.75rem',
-												}}
-											/>
-											<NomenclatureActions
-												id={row.id}
-												isMobile={isMobile}
-												onClick={(e: React.MouseEvent) => e.stopPropagation()}
-											/>
-										</Box>
-									</Stack>
-								</CardContent>
-							</Card>
-						))}
+											Последний ответ:
+										</Typography>
+										<Typography variant='body2'>{row.last_answer}</Typography>
+									</Box>
+
+									<Box
+										sx={{
+											display: 'flex',
+											justifyContent: 'space-between',
+											alignItems: 'center',
+										}}
+									>
+										<Chip
+											label={convertStatus(row.status)}
+											sx={{
+												backgroundColor: getStatusColor(row.status),
+												color: 'white',
+												fontSize: '0.75rem',
+											}}
+										/>
+										<NomenclatureActions
+											id={row.id}
+											isMobile={isMobile}
+											onClick={(e: React.MouseEvent) => e.stopPropagation()}
+										/>
+									</Box>
+								</Stack>
+							</CardContent>
+						</Card>
+					))}
 					{/* </Box> */}
-					<CustomPagination
-						totalItems={count}
-						limit={limit}
-						page={page}
-					/>
+					<CustomPagination totalItems={count} />
 				</Box>
 			</Box>
 		)
@@ -146,7 +142,6 @@ export function TableNomenclatures(props: Props) {
 				overflow: 'hidden',
 			}}
 		>
-
 			<TableContainer
 				sx={{
 					flex: 1,
@@ -223,11 +218,7 @@ export function TableNomenclatures(props: Props) {
 						))}
 					</TableBody>
 				</Table>
-				<CustomPagination
-					totalItems={count}
-					limit={limit}
-					page={page}
-				/>
+				<CustomPagination totalItems={count} />
 			</TableContainer>
 		</Box>
 	)

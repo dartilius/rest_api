@@ -1,13 +1,5 @@
 'use client'
 
-import {
-	BasicInfoFields,
-	DaySettingsAccordion,
-	DaySettingsGrid,
-} from '@/app/nomenclatures/components/CreateNomenclature/components'
-import { DAY_KEYS } from '@/app/nomenclatures/components/CreateNomenclature/constans/constants'
-import { useNomenclatureForm } from '@/app/nomenclatures/components/CreateNomenclature/hooks/useNomenclature'
-import { NomenclatureVolume } from '@/components/nomenclatures'
 import ActionButton from '@/components/Ui/button/ActionButton'
 import { CopyButton } from '@/components/Ui/button/CoppyButton'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
@@ -24,8 +16,14 @@ import {
 	useTheme,
 } from '@mui/material'
 import { useState } from 'react'
+import { NomenclatureVolume } from '../NomenclatureVolume/NomenclatureVolume'
+import { BasicInfoFields } from './components/BasicInfoFields'
+import { DaySettingsGrid } from './components/DaySettings'
+import { DaySettingsAccordion } from './components/DaySettingsAccordion'
+import { DAY_KEYS } from './constans/constants'
+import { useNomenclatureForm } from './hooks/useNomenclature'
 
-export default function CreateNomenclature() {
+export function CreateNomenclature() {
 	const [open, setOpen] = useState<boolean>(false)
 	const [isDaySettings, setIsDaySettings] = useState<boolean>(false)
 	const theme = useTheme()
@@ -58,9 +56,8 @@ export default function CreateNomenclature() {
 			<ActionButton
 				onClick={() => setOpen(true)}
 				icon={AddCircleOutlineIcon}
-				style={{ maxHeight: '56px', height: '100%' }}
 			>
-				Создать номенклатуру
+				Создать
 			</ActionButton>
 
 			<Dialog

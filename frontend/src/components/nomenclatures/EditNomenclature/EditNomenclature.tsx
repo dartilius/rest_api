@@ -1,6 +1,5 @@
 'use client'
 import { Label } from '@/components/data-display/Label'
-import { NomenclatureVolume } from '@/components/nomenclatures'
 import ActionButton from '@/components/Ui/button/ActionButton'
 import { CopyButton } from '@/components/Ui/button/CoppyButton'
 import { useNotification } from '@/hooks/useNotification'
@@ -20,15 +19,16 @@ import {
 	useTheme,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { updateNomenclature } from '../../api'
+import { updateNomenclature } from '../../../app/nomenclatures/api'
 import { DaySettingsAccordion } from '../CreateNomenclature/components'
 import { DaySettingsGrid } from '../CreateNomenclature/components/DaySettings'
 import { DAY_KEYS } from '../CreateNomenclature/constans/constants'
+import NomenclatureVolume from '../NomenclatureVolume/NomenclatureVolume'
 
 interface TestProps {
 	id: string
 	openModal: boolean
-	onClose: () => void
+	onClose: (e?: React.MouseEvent<Element, MouseEvent>) => void
 	data: INomenclatureResponse
 }
 const formatWorktimeString = (digits: string): string => {
@@ -216,10 +216,14 @@ export function EditNomenclature({ openModal, onClose, data }: TestProps) {
 		}
 	}
 
+	const handleClose = (e?: React.MouseEvent<Element, MouseEvent>) => {
+		onClose(e)
+	}
+
 	return (
 		<Dialog
 			open={openModal}
-			onClose={onClose}
+			onClose={(_, reason) => reason === 'backdropClick' && onClose()}
 			fullScreen={isMobile}
 			maxWidth='md'
 			fullWidth
@@ -350,6 +354,13 @@ export function EditNomenclature({ openModal, onClose, data }: TestProps) {
 						variant='secondary'
 					>
 						Сохранить
+					</ActionButton>
+					<ActionButton
+						onClick={handleClose}
+						className='w-48 flex justify-center items-center'
+						variant='secondary'
+					>
+						Закрыть
 					</ActionButton>
 				</div>
 			</DialogActions>
