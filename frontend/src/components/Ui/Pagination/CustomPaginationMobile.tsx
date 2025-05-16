@@ -1,6 +1,7 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import UndoIcon from '@mui/icons-material/Undo'
+import { RefObject } from 'react'
 
 type CustomPaginationMobileProps = {
 	currentPage: number
@@ -10,6 +11,7 @@ type CustomPaginationMobileProps = {
 	isNextButtonDisabled: boolean
 	isPrevButtonDisabled: boolean
 	goToFirstPage: () => void
+	topRef?: RefObject<HTMLDivElement>
 }
 
 export default function CustomPaginationMobile({
@@ -20,36 +22,60 @@ export default function CustomPaginationMobile({
 	isNextButtonDisabled,
 	isPrevButtonDisabled,
 	goToFirstPage,
+	topRef,
 }: CustomPaginationMobileProps) {
+	const scrollToTop = () => {
+		topRef?.current?.scrollIntoView({ behavior: 'smooth' })
+	}
+
+	const goToNextPage = () => {
+		if (currentPage < totalPages) {
+			nextPage()
+			scrollToTop()
+		}
+	}
+
+	const handlePrevPage = () => {
+		prevPage()
+		scrollToTop()
+	}
+
+	const handleGoToFirstPage = () => {
+		goToFirstPage()
+		scrollToTop()
+	}
+
 	return (
-		<div className='flex items-center justify-evenly bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl p-2 w-fit min-w-[240px] gap-2 min-h-[48px] h-fit rounded-full'>
-			<div className='min-w-[48px] text-center text-sm'>
-				{currentPage}/{totalPages}
+		<>
+			<div className='flex items-center justify-evenly bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl p-2 w-fit min-w-[240px] gap-2 min-h-[48px] h-fit rounded-full'>
+				<div className='min-w-[48px] text-center text-sm'>
+					{currentPage}/{totalPages}
+				</div>
+				<div className='w-[1px] h-[24px] bg-white/20'></div>
+				<button
+					className='text-center bg-transparent border-none text-white text-sm font-medium cursor-pointer opacity-70 hover:opacity-100 hover:bg-blue-700 transition-opacity'
+					onClick={handlePrevPage}
+					disabled={isPrevButtonDisabled}
+				>
+					<ArrowBackIcon />
+				</button>
+				<div className='w-[1px] h-[24px] bg-white/20'></div>
+				<button
+					className='text-center bg-transparent border-none text-white text-sm font-medium cursor-pointer opacity-70 hover:opacity-100 transition-opacity'
+					onClick={goToNextPage}
+					disabled={isNextButtonDisabled}
+				>
+					<ArrowForwardIcon />
+				</button>
+				<div className='w-[1px] h-[24px] bg-white/20'></div>
+				<button
+					className='text-center bg-transparent border-none text-white text-sm font-medium cursor-pointer opacity-70 hover:opacity-100 transition-opacity'
+					onClick={handleGoToFirstPage}
+					disabled={isPrevButtonDisabled}
+				>
+					<UndoIcon />
+				</button>
 			</div>
-			<div className='w-[1px] h-[24px] bg-white/20'></div>
-			<button
-				className='text-center bg-transparent border-none text-white text-sm font-medium cursor-pointer opacity-70 hover:opacity-100 hover:bg-blue-700 transition-opacity'
-				onClick={prevPage}
-				disabled={isPrevButtonDisabled}
-			>
-				<ArrowBackIcon />
-			</button>
-			<div className='w-[1px] h-[24px] bg-white/20'></div>
-			<button
-				className='text-center bg-transparent border-none text-white text-sm font-medium cursor-pointer opacity-70 hover:opacity-100 transition-opacity'
-				onClick={nextPage}
-				disabled={isNextButtonDisabled}
-			>
-				<ArrowForwardIcon />
-			</button>
-			<div className='w-[1px] h-[24px] bg-white/20'></div>
-			<button
-				className='text-center bg-transparent border-none text-white text-sm font-medium cursor-pointer opacity-70 hover:opacity-100 transition-opacity'
-				onClick={goToFirstPage}
-				disabled={isPrevButtonDisabled}
-			>
-				<UndoIcon />
-			</button>
-		</div>
+		</>
 	)
 }

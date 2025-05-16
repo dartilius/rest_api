@@ -1,10 +1,17 @@
 'use client'
 import { Theme, useMediaQuery } from '@mui/material'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { RefObject } from 'react'
 import CustomPaginationDesktop from './CustomPaginationDesktop'
 import CustomPaginationMobile from './CustomPaginationMobile'
 
-const CustomPagination = ({ totalItems }: { totalItems: number }) => {
+const CustomPagination = ({
+	totalItems,
+	topRef,
+}: {
+	totalItems: number
+	topRef?: RefObject<HTMLDivElement>
+}) => {
 	const pathname = usePathname()
 	const searchParams = useSearchParams()
 	const router = useRouter()
@@ -39,6 +46,7 @@ const CustomPagination = ({ totalItems }: { totalItems: number }) => {
 		<div className='flex items-center justify-center'>
 			{isMobile ? (
 				<CustomPaginationMobile
+					topRef={topRef}
 					currentPage={Number(currentPage)}
 					totalPages={totalPages}
 					prevPage={prevPage}
