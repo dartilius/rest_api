@@ -22,6 +22,7 @@ import {
 } from '@mui/material'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useRef } from 'react'
 
 const columns = [
 	{ id: 'name', label: 'Название', mobile: true },
@@ -42,6 +43,8 @@ type Props = {
 export function TableNomenclatures(props: Props) {
 	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
 	const router = useRouter()
+	const topRef = useRef<HTMLDivElement>(null)
+
 	const { data, count, limit, page } = props
 
 	if (isMobile) {
@@ -61,7 +64,9 @@ export function TableNomenclatures(props: Props) {
 						p: 1,
 					}}
 				>
+					<div ref={topRef} />
 					<FiltersWrapper />
+
 					{/* <Box sx={{ mt: 2 }}> */}
 					{data?.map((row) => (
 						<Card
@@ -127,7 +132,10 @@ export function TableNomenclatures(props: Props) {
 						</Card>
 					))}
 					{/* </Box> */}
-					<CustomPagination totalItems={count} />
+					<CustomPagination
+						totalItems={count}
+						topRef={topRef}
+					/>
 				</Box>
 			</Box>
 		)
