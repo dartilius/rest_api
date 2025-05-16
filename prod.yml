@@ -13,6 +13,13 @@ volumes:
       type: none
       device: /file/pg_data
 
+  pgadmin:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/pgadmin
+
   static:
     driver: local
     driver_opts:
@@ -54,6 +61,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     ulimits:
@@ -75,6 +83,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    ports:
+      - 5432:5432
     volumes:
       - ./scripts/postgres:/docker-entrypoint-initdb.d
       - pg_data:/var/lib/postgresql/data
@@ -84,6 +95,7 @@ services:
     container_name: files
     env_file: .env
     command: server /data --console-address ":9001"
+    restart: unless-stopped
     healthcheck:
       test: curl -I ${MINIO_EXTERNAL_ENDPOINT}/minio/health/live
       interval: 5s
@@ -109,6 +121,7 @@ services:
     ports:
       - 8000:8000
     command: gunicorn --bind 0:8000 --workers 8 --threads 2 --timeout 90 rmc_rest_api.wsgi
+    restart: unless-stopped
     depends_on:
       files:
         condition: service_healthy
@@ -118,12 +131,18 @@ services:
         condition: service_healthy
       rabbit:
         condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          cpus: '8'
+          memory: 16384M
 
   worker:
     build: ./backend
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -137,6 +156,7 @@ services:
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -148,6 +168,7 @@ services:
     build: ./frontend
     ports:
       - 3000:3000
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -162,6 +183,7 @@ services:
       - static:/staticfiles
     ports:
       - 80:80
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -178,6 +200,7 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+    restart: unless-stopped
     volumes:
       - rabbitdata:/var/lib/rabbitmq
     ports:
@@ -193,6 +216,7 @@ services:
       - celery:/app
     ports:
       - 5555:5555
+    restart: unless-stopped
     depends_on:
       gateway:
         condition: service_started
@@ -201,3 +225,23 @@ services:
     image: redis:7.0.5-alpine
     container_name: redis
     hostname: redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          cpus: '4'
+          memory: 4096M
+
+  pgadmin:
+    image: dpage/pgadmin4:4.23
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${DJANGO_SUPERUSER_NAME}
+      PGADMIN_DEFAULT_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
+      PGADMIN_LISTEN_PORT: 15432
+    ports:
+      - 15432:15432
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      - db

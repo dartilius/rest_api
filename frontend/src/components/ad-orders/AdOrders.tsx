@@ -94,10 +94,7 @@ console.log(props);
 				>
 					<Box width={'20%'}>
 						<Typography
-							variant='h5'
 							noWrap
-							component='div'
-							fontStyle={'uppercase'}
 							sx={{
 								// flexGrow: 1,
 								alignSelf: 'center',
@@ -118,11 +115,11 @@ console.log(props);
 					<CreateAdOrderModal />
 				</Box>
 			</AppBar>
-			<div className='p-2 w-full flex-1 overflow-auto'>
+			<div className='p-2 w-full overflow-auto'>
 				{data.length < 1 ? (
 					<p>loading</p>
 				) : (
-					<table className='w-full '>
+					<table className='w-full'>
 						<thead>
 							{table.getHeaderGroups().map((headerGroup) => (
 								<tr
@@ -169,7 +166,7 @@ console.log(props);
 									{row.getVisibleCells().map((cell) => (
 										<td
 											key={cell.id}
-											className='text-center text-nowrap cursor-pointer p-2'
+											className='text-center cursor-pointer p-2'
 										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</td>

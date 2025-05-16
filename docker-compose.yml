@@ -5,6 +5,7 @@ volumes:
   celery:
   clickhouse_data:
   s3:
+  pgadmin:
 
 services:
   clickhouse:
@@ -19,6 +20,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     ulimits:
@@ -27,6 +29,7 @@ services:
   db:
     image: postgres:16.2
     container_name: db
+    restart: unless-stopped
     env_file: .env
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
@@ -40,6 +43,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    ports:
+      - 5432:5432
     volumes:
       - ./scripts/postgres:/docker-entrypoint-initdb.d
       - pg_data:/var/lib/postgresql/data
@@ -47,6 +52,7 @@ services:
   files:
     image: minio/minio
     container_name: files
+    restart: unless-stopped
     env_file: .env
     command: server /data --console-address ":9001"
     healthcheck:
@@ -63,6 +69,7 @@ services:
   backend:
     build: ./backend
     container_name: backend
+    restart: unless-stopped
     env_file: .env
     healthcheck:
       test: curl --fail ${BACKEND_HC} || exit 1
@@ -80,10 +87,16 @@ services:
         condition: service_healthy
       rabbit:
         condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          cpus: '8'
+          memory: 16384M
 
   worker:
     build: ./backend
     env_file: .env
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
@@ -94,6 +107,7 @@ services:
   beat:
     build: ./backend
     container_name: celery_beat
+    restart: unless-stopped
     env_file: .env
     depends_on:
       backend:
@@ -103,6 +117,7 @@ services:
   frontend:
     env_file: .env
     container_name: frontend
+    restart: unless-stopped
     build: ./frontend
     ports:
       - 3000:3000
@@ -115,6 +130,7 @@ services:
   gateway:
     build: ./nginx
     container_name: gateway
+    restart: unless-stopped
     env_file: .env
     volumes:
       - static:/staticfiles
@@ -129,6 +145,7 @@ services:
   rabbit:
     image: rabbitmq:3.13-management
     container_name: rabbit
+    restart: unless-stopped
     hostname: rabbit
     env_file: .env
     healthcheck:
@@ -145,6 +162,7 @@ services:
   dashboard:
     image: mher/flower
     container_name: dashboard
+    restart: unless-stopped
     env_file: .env
     command: celery flower
     volumes:
@@ -159,3 +177,23 @@ services:
     image: redis:7.0.5-alpine
     container_name: redis
     hostname: redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          cpus: '4'
+          memory: 4096M
+
+  pgadmin:
+    image: dpage/pgadmin4:4.23
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${DJANGO_SUPERUSER_NAME}
+      PGADMIN_DEFAULT_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
+      PGADMIN_LISTEN_PORT: 15432
+    ports:
+      - 15432:15432
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      - db

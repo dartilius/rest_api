@@ -169,7 +169,7 @@ const BgOrders = ({ ...props }: IProps) => {
 									{row.getVisibleCells().map((cell) => (
 										<td
 											key={cell.id}
-											className='text-center text-nowrap cursor-pointer p-2'
+											className='text-center cursor-pointer p-2'
 										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</td>
