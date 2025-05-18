@@ -8,14 +8,15 @@ import CustomPaginationMobile from './CustomPaginationMobile'
 const CustomPagination = ({
 	totalItems,
 	topRef,
+	isMobile
 }: {
 	totalItems: number
 	topRef: RefObject<HTMLDivElement>
+	isMobile: boolean
 }) => {
 	const pathname = usePathname()
 	const searchParams = useSearchParams()
 	const router = useRouter()
-	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
 	const currentPage = Number(searchParams.get('page') || 1)
 	const itemsPerPage = Number(searchParams.get('limit')) || 20
 
@@ -50,7 +51,7 @@ const CustomPagination = ({
 	}
 
 	return (
-		<div className='flex items-center justify-center'>
+		<div className='flex items-center justify-center p-1'>
 			{isMobile ? (
 				<CustomPaginationMobile
 					currentPage={Number(currentPage)}

@@ -21,7 +21,7 @@ export default function CustomPaginationDesktop({
 			<button
 				onClick={prevPage}
 				disabled={isPrevButtonDisabled}
-				className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+				className='px-4 py-2 bg-info text-white rounded disabled:bg-gray-300'
 			>
 				Предыдущая
 			</button>
@@ -31,12 +31,12 @@ export default function CustomPaginationDesktop({
 			<button
 				onClick={nextPage}
 				disabled={isNextButtonDisabled}
-				className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+				className='px-4 py-2 bg-info text-white rounded disabled:bg-gray-300'
 			>
 				Следующая
 			</button>
 			<button
-				className='px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300'
+				className='px-4 py-2 bg-info text-white rounded disabled:bg-gray-300'
 				onClick={goToFirstPage}
 				disabled={isPrevButtonDisabled}
 			>

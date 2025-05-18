@@ -40,7 +40,7 @@ const NomenclaturesPage = async ({
 	})
 
 	return (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
+		<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%', background: 'var(--foreground)' }}>
 			<TableNomenclatures
 				count={listNomenclature.count}
 				data={listNomenclature.results}

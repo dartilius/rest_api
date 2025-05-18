@@ -17,7 +17,7 @@ interface ActionButtonProps {
 }
 
 const BUTTON_CONFIG = {
-	primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl active:shadow-inner',
+	primary: 'bg-info text-white hover:bg-blue-700 shadow-lg hover:shadow-xl active:shadow-inner',
 	secondary:
 		'bg-gray-100 text-gray-900 hover:bg-gray-200 shadow-md hover:shadow-lg active:shadow-inner',
 	error: 'bg-red-600 text-white hover:bg-red-700 shadow-lg hover:shadow-xl active:shadow-inner',

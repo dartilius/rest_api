@@ -1,11 +1,23 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
-@import  "./vars";
+@import "./vars";
+
 :root {
   --background: #152c4d;
   --foreground: #ffffff;
+  --primary: #2563eb;
+  --secondary: #f59e0b;
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #eab308;
+  --info: #3b82f6;
   font-size: $font-size;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
 
 body {
@@ -17,11 +29,16 @@ body {
   height: 100vh;
   display: block;
   box-sizing: border-box;
+  overflow: hidden;
 }
+
 .inactive-link {
-  pointer-events: none; /* Запрещаем клики */
-  color: gray; /* Делаем текст серым */
-  text-decoration: none; /* Убираем подчеркивание */
+  pointer-events: none;
+  /* Запрещаем клики */
+  color: gray;
+  /* Делаем текст серым */
+  text-decoration: none;
+  /* Убираем подчеркивание */
 }
 
 .layout {
@@ -32,20 +49,22 @@ body {
   height: 100%;
   overflow: hidden;
 }
-.flex_sidebar_and_main{
+
+.flex_sidebar_and_main {
   display: flex;
   height: 100%;
   width: 100%;
   flex-direction: row;
   overflow: hidden;
 }
- 
-    .content {
-      flex: 1;
-      padding: $padding8; /* Отступы для children */
-      overflow-y: auto;
-    }
-  
+
+.content {
+  flex: 1;
+  padding: $padding8;
+  /* Отступы для children */
+  overflow-y: auto;
+}
+
 .content::-webkit-scrollbar {
   width: 0.5rem;
 }
@@ -75,6 +94,7 @@ body {
     font-weight: 600;
   }
 }
+
 .MuiSvgIcon-root {
   flex-shrink: 0;
   width: 1em;
@@ -88,10 +108,4 @@ body {
 .custom_scroll::-webkit-scrollbar-thumb {
   background-color: $second-color;
   border-radius: 0.2rem;
-}
-
-/* Firefox */
-.custom_scroll {
-  scrollbar-width: thin;
-  scrollbar-color: $second-color transparent;
 }
