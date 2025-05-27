@@ -1,23 +1,23 @@
 'use client'
 
-import { useState, useEffect, ChangeEvent } from 'react'
+import { useNotification } from '@/hooks/useNotification'
 import { ITagResponse, ITagsListResponse } from '@/types/fileTypes'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import {
 	Box,
 	Button,
+	Checkbox,
+	CircularProgress,
+	ListItemText,
+	MenuItem,
 	Modal,
+	OutlinedInput,
+	Select,
 	TextField,
 	Tooltip,
 	Zoom,
-	Select,
-	MenuItem,
-	OutlinedInput,
-	Checkbox,
-	ListItemText,
-	CircularProgress,
 } from '@mui/material'
-import { useNotification } from '@/hooks/useNotification'
+import { ChangeEvent, useEffect, useState } from 'react'
 import { createTag, getTagList } from '../../api'
 
 interface SelectTagsProps {
@@ -88,7 +88,7 @@ function SelectTags({ onChange, label, style }: SelectTagsProps) {
 	}, [])
 
 	return (
-		<div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', width: '100%' }}>
+		<div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
 			<Select
 				multiple
 				displayEmpty
@@ -146,7 +146,7 @@ function SelectTags({ onChange, label, style }: SelectTagsProps) {
 				placement='right'
 			>
 				<AddCircleOutlineIcon
-					style={{ cursor: 'pointer' }}
+					style={{ cursor: 'pointer', color: 'var(--primary)' }}
 					onClick={() => setIsOpenModal(true)}
 				/>
 			</Tooltip>
@@ -161,7 +161,7 @@ function SelectTags({ onChange, label, style }: SelectTagsProps) {
 						top: '50%',
 						left: '50%',
 						transform: 'translate(-50%, -50%)',
-						width: 500,
+						// width: 500,
 						bgcolor: 'background.paper',
 						boxShadow: 24,
 						p: 4,

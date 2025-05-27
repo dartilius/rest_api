@@ -1,14 +1,14 @@
 'use client'
 
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { Modal, Box, Button, Select, MenuItem, FormControl } from '@mui/material'
-import './ModalAddFile.scss'
-import { ChangeEvent, useState } from 'react'
 import SelectTags from '@/app/files/components/SelectTags/SelectTags'
-import { ITagResponse } from '@/types/fileTypes'
-import { useNotification } from '@/hooks/useNotification'
 import ActionButton from '@/components/Ui/button/ActionButton'
+import { useNotification } from '@/hooks/useNotification'
+import { ITagResponse } from '@/types/fileTypes'
+import { Box, Button, FormControl, MenuItem, Modal, Select } from '@mui/material'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { ChangeEvent, useState } from 'react'
 import { sendFile } from '../../api'
+import './ModalAddFile.scss'
 
 function convertBase64(file: File): Promise<string> {
 	return new Promise((resolve, reject) => {
@@ -103,7 +103,7 @@ export function ModalAddFile() {
 	}
 
 	return (
-		<div className='flex w-full items-center justify-center'>
+		<div className='flex max-w-[200px] items-center justify-center w-full'>
 			<ActionButton
 				variant='primary'
 				onClick={handleOpen}
