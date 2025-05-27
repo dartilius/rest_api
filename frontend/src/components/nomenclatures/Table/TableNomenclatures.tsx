@@ -1,30 +1,11 @@
 'use client'
-import { FiltersWrapper, NomenclatureActions } from '@/components/nomenclatures'
 import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
-import { convertStatus } from '@/types/checkStatus'
 import { INomenclatures } from '@/types/nomeclaturesType'
-import { getStatusColor } from '@/utils'
-import {
-	Box,
-	Card,
-	CardContent,
-	Chip,
-	Stack,
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
-	Theme,
-	Typography,
-	useMediaQuery,
-} from '@mui/material'
-import Link from 'next/link'
+import { Box, Theme, useMediaQuery } from '@mui/material'
 import { useRouter } from 'next/navigation'
 import { useRef } from 'react'
-import MobileView from './MobileView'
 import DesktopView from './DesctopView'
+import MobileView from './MobileView'
 
 const columns = [
 	{ id: 'name', label: 'Название', mobile: true },
@@ -66,7 +47,6 @@ export function TableNomenclatures(props: Props) {
 			<CustomPagination
 				totalItems={count}
 				topRef={topRef}
-				isMobile={isMobile}
 			/>
 		</Box>
 	)

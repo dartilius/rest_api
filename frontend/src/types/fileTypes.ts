@@ -1,57 +1,58 @@
 export interface IFiles {
-    id: string,
-    name: string,
-    length: string,
-    size: number,
-    type: string
+	id: string
+	name: string
+	length: string
+	size: number
+	type: string
+	tags: string[]
 }
 
 export interface IFilesListResponse {
-    count: number;
-    next: string | null;
-    previous: string | null;
-    results: IFiles[]
+	count: number
+	next: string | null
+	previous: string | null
+	results: IFiles[]
 }
 
 export interface IFileDetailResponse {
-    id: string;
-    length: string;
-    size: number;
-    name: string;
-    type: string;
-    source: string;
-    tags: Array<{
-        id: string;
-        name: string;
-    }>
-    url: string;
-    hash: string;
-    created: string;
-    owner: {
-        full_name: string;
-    }
+	id: string
+	length: string
+	size: number
+	name: string
+	type: string
+	source: string
+	tags: Array<{
+		id: string
+		name: string
+	}>
+	url: string
+	hash: string
+	created: string
+	owner: {
+		full_name: string
+	}
 }
 
 export interface ITagsListResponse {
-    count: number;
-    next: string;
-    previous: string;
-    results: ITagResponse[];
+	count: number
+	next: string
+	previous: string
+	results: ITagResponse[]
 }
 
 export interface ITagResponse {
-    id: string;
-    name: string;
+	id: string
+	name: string
 }
 
 export interface ICreateFile {
-    type: number
+	type: number
 	source: string
 	tags: ITagResponse[]
 }
 
 export interface ICreateFileResponse {
-    id: string
+	id: string
 	length: string
 	size: number
 	type: string
