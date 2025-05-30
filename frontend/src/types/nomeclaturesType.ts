@@ -15,6 +15,7 @@ export interface INomenclatures {
 	status: number
 	timezone: string
 	version: string
+	actions?: any
 }
 
 export interface INomenclaturesListResponse {

@@ -3,8 +3,8 @@
 import { INomenclaturesListResponse } from '@/types/nomeclaturesType'
 import { Box, Theme, useMediaQuery } from '@mui/material'
 import { useRef } from 'react'
-import MobileView from '../Table/MobileView'
 import { DesktopView } from './DesktopView/DesktopView'
+import MobileView from './MobileView/MobileView'
 
 interface Props {
 	data: INomenclaturesListResponse['results']

@@ -17,6 +17,7 @@ export function NomenclatureDetailCard({ data, className = '' }: INomenclatureDe
 			<TabsSwitcher
 				mainTab={
 					<MainInfoCard
+						id={data.id}
 						mainInfo={data['main_info']}
 						className='bg-gradient-to-br from-blue-900 via-indigo-900 to-blue-800
 								 rounded-lg shadow p-2 sm:p-4 md:p-6 gap-2 sm:gap-3 flex flex-col overflow-auto'

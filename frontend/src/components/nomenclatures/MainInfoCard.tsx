@@ -1,13 +1,15 @@
 import { Description } from '@/components/data-display/Description'
 import { Name } from '@/components/data-display/Name'
 import { INomenclatureResponse } from '@/types/nomeclaturesType'
+import { ActionButtons } from './actionsButton/ActionButtons'
 
 interface IMainInfoCard {
+	id: string
 	mainInfo: INomenclatureResponse['main_info']
 	className?: string
 }
 
-export function MainInfoCard({ mainInfo, className }: IMainInfoCard) {
+export function MainInfoCard({ id, mainInfo, className }: IMainInfoCard) {
 	return (
 		<div className={`max-h-[400px] overflow-auto${className}`}>
 			<div
@@ -74,6 +76,7 @@ export function MainInfoCard({ mainInfo, className }: IMainInfoCard) {
 					className='text-base text-lime-200'
 				/>
 			</div>
+			<ActionButtons id={id} />
 		</div>
 	)
 }
