@@ -11,7 +11,7 @@ interface IMainInfoCard {
 
 export function MainInfoCard({ id, mainInfo, className }: IMainInfoCard) {
 	return (
-		<div className={`max-h-[400px] overflow-auto${className}`}>
+		<div className={`max-h-[440px] overflow-auto${className}`}>
 			<div
 				className={`font-bold text-xl md:text-2xl ${
 					mainInfo.status === 0 ? 'text-amber-300' : 'text-zinc-200'
