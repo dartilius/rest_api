@@ -30,7 +30,6 @@ const FilesListPage = async ({
 				flexDirection: 'column',
 				gap: '1rem',
 				height: '100%',
-				background: 'var(--foreground)',
 			}}
 		>
 			<PageWrapper

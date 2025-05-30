@@ -15,6 +15,7 @@ export default function FiltersMobile() {
 		<>
 			<div className='flex flex-row gap-2 w-full p-4 justify-between'>
 				<ActionButton
+					variant='secondary'
 					icon={FilterListIcon}
 					onClick={() => setOpenFilters(!openFilters)}
 				>

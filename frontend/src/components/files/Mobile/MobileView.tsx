@@ -29,7 +29,7 @@ const MobileView = ({
 				flexDirection: 'column',
 				minHeight: 0, // Ключевое свойство для iOS
 				WebkitOverflowScrolling: 'touch',
-				background: 'var(--foreground)',
+				// background: 'var(--foreground)',
 			}}
 		>
 			<FiltersWrapper />

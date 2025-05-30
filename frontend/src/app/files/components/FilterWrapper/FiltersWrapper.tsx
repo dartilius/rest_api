@@ -17,7 +17,7 @@ const FiltersWrapper = () => {
 				<>
 					<div className='flex flex-row gap-2 w-full'>
 						<ActionButton
-							variant='transparent'
+							variant='secondary'
 							icon={FilterListIcon}
 							onClick={() => setShowFilters(!showFilters)}
 						>
