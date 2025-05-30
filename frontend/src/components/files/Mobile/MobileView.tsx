@@ -5,6 +5,7 @@ import { Card, CardContent } from '@mui/material'
 import { Box } from '@mui/material'
 
 import FiltersWrapper from '@/app/files/components/FilterWrapper/FiltersWrapper'
+import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
 import { IFilesListResponse } from '@/types/fileTypes'
 import { convertSizeFile } from '@/utils'
 import { useRouter } from 'next/navigation'
@@ -12,9 +13,11 @@ import { useRouter } from 'next/navigation'
 const MobileView = ({
 	data,
 	topRef,
+	count,
 }: {
 	data: IFilesListResponse['results']
 	topRef: React.RefObject<HTMLDivElement>
+	count: number
 }) => {
 	const router = useRouter()
 
@@ -29,6 +32,7 @@ const MobileView = ({
 				background: 'var(--foreground)',
 			}}
 		>
+			<FiltersWrapper />
 			<Box
 				sx={{
 					flex: 1,
@@ -40,7 +44,6 @@ const MobileView = ({
 				}}
 			>
 				<div ref={topRef} />
-				<FiltersWrapper />
 				{data?.map((row) => (
 					<Card
 						key={row.id}
@@ -119,6 +122,11 @@ const MobileView = ({
 					</Card>
 				))}
 			</Box>
+			<CustomPagination
+				totalItems={count}
+				topRef={topRef}
+				isMobile={true}
+			/>
 		</Box>
 	)
 }

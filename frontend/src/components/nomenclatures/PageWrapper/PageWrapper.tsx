@@ -1,14 +1,13 @@
 'use client'
 
+import { INomenclaturesListResponse } from '@/types/nomeclaturesType'
 import { Box, Theme, useMediaQuery } from '@mui/material'
-
-import { IFilesListResponse } from '@/types/fileTypes'
 import { useRef } from 'react'
-import MobileView from './Mobile/MobileView'
-import { DesktopView } from './Table/FileTable'
+import MobileView from '../Table/MobileView'
+import { DesktopView } from './DesktopView/DesktopView'
 
-type Props = {
-	data: IFilesListResponse['results']
+interface Props {
+	data: INomenclaturesListResponse['results']
 	count: number
 }
 

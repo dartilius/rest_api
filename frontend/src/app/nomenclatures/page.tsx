@@ -1,4 +1,4 @@
-import { TableNomenclatures } from '@/components/nomenclatures'
+import { PageWrapper } from '@/components/nomenclatures/PageWrapper/PageWrapper'
 import { Metadata } from 'next'
 import { getNomenclatureList } from './api'
 
@@ -40,12 +40,17 @@ const NomenclaturesPage = async ({
 	})
 
 	return (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%', background: 'var(--foreground)' }}>
-			<TableNomenclatures
+		<div
+			style={{
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '1rem',
+				height: '100%',
+			}}
+		>
+			<PageWrapper
 				count={listNomenclature.count}
 				data={listNomenclature.results}
-				limit={limit}
-				page={page}
 			/>
 		</div>
 	)

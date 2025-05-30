@@ -23,9 +23,16 @@ const FilesListPage = async ({
 	const listFiles = await getFilesList({ page, limit, name, file_type, tags })
 	const dataFiles = listFiles.results ? listFiles.results : []
 	const countFiles = listFiles.count ? listFiles.count : 0
-	console.log(countFiles)
 	return (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
+		<div
+			style={{
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '1rem',
+				height: '100%',
+				background: 'var(--foreground)',
+			}}
+		>
 			<PageWrapper
 				data={dataFiles}
 				count={countFiles}

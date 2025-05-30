@@ -1,8 +1,16 @@
-export function getStatusColor(statusId: number): string {
-    switch (statusId) {
-        case 0: return "#4caf50"; // Зеленый для онлайн
-        case 1: return "#ff9800"; // Оранжевый для оффлайн 5 минут
-        case 2: return "#f44336"; // Красный для оффлайн час
-        default: return "#9e9e9e"; // Серый для неизвестного статуса
-    }
+export function getStatusColor(statusId: number | null): string {
+	if (statusId === null) {
+		return 'rgba(128, 128, 128, 0.4)'
+	}
+
+	switch (statusId) {
+		case 0:
+			return 'rgba(0, 182, 155, 0.4)'
+		case 1:
+			return 'rgba(211, 163, 19, 0.4)'
+		case 2:
+			return 'rgba(239, 56, 40, 0.4)'
+		default:
+			return 'rgba(128, 128, 128, 0.4)'
+	}
 }

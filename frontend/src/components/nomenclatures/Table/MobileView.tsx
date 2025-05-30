@@ -1,7 +1,8 @@
+import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
 import { convertStatus } from '@/types/checkStatus'
 import { INomenclatures } from '@/types/nomeclaturesType'
 import { getStatusColor } from '@/utils'
-import { Box, Card, CardContent, Stack, Typography, Chip, Paper } from '@mui/material'
+import { Box, Card, CardContent, Chip, Stack, Typography } from '@mui/material'
 import { useRouter } from 'next/navigation'
 import { FiltersWrapper } from '../FiltersWrapper'
 import { NomenclatureActions } from './NomenclatureActions'
@@ -9,9 +10,11 @@ import { NomenclatureActions } from './NomenclatureActions'
 const MobileView = ({
 	data,
 	topRef,
+	count,
 }: {
 	data: INomenclatures[]
 	topRef: React.RefObject<HTMLDivElement>
+	count: number
 }) => {
 	const router = useRouter()
 
@@ -25,6 +28,7 @@ const MobileView = ({
 				WebkitOverflowScrolling: 'touch',
 			}}
 		>
+			<FiltersWrapper />
 			<Box
 				sx={{
 					flex: 1,
@@ -36,7 +40,6 @@ const MobileView = ({
 				}}
 			>
 				<div ref={topRef} />
-				<FiltersWrapper />
 				{data?.map((row) => (
 					<Card
 						key={row.id}
@@ -103,6 +106,12 @@ const MobileView = ({
 					</Card>
 				))}
 			</Box>
+
+			<CustomPagination
+				totalItems={count}
+				topRef={topRef}
+				isMobile={true}
+			/>
 		</Box>
 	)
 }

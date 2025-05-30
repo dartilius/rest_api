@@ -1,9 +1,8 @@
 'use client'
 
-import FiltersWrapper from '@/app/files/components/FilterWrapper/FiltersWrapper'
 import CustomPagination from '@/components/Ui/Pagination/CustomPagination'
-import { IFilesListResponse } from '@/types/fileTypes'
-import { AppBar, Box, Paper, Typography } from '@mui/material'
+import { INomenclaturesListResponse } from '@/types/nomeclaturesType'
+import { Box, Paper, Typography } from '@mui/material'
 import {
 	flexRender,
 	getCoreRowModel,
@@ -12,27 +11,28 @@ import {
 } from '@tanstack/react-table'
 import { useRouter } from 'next/navigation'
 import { RefObject } from 'react'
-import { fileColumnsTable } from './fileColumnsTable'
+import { FiltersWrapper } from '../../FiltersWrapper'
+import { nomenclaturesColumnsTable } from './fileNomenclaturesTable'
 
-interface IProps {
-	data: IFilesListResponse['results']
-	count: number
+interface iProps {
+	data: INomenclaturesListResponse['results']
 	topRef: RefObject<HTMLDivElement>
+	count: number
 }
 
-export const DesktopView = ({ data, count, topRef }: IProps) => {
+export const DesktopView = ({ data, topRef, count }: iProps) => {
 	const { push } = useRouter()
 
 	const table = useReactTable({
 		data,
-		columns: fileColumnsTable,
+		columns: nomenclaturesColumnsTable,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		enableSorting: true,
 	})
 
 	const handleRowClick = (id: string) => {
-		push(`files/${id}`)
+		push(`nomenclatures/${id}`)
 	}
 
 	return (
@@ -45,55 +45,56 @@ export const DesktopView = ({ data, count, topRef }: IProps) => {
 				flexDirection: 'column',
 			}}
 		>
+			{/* 
+			почему-то синий цвет
 			<AppBar
 				position='sticky'
 				sx={{
 					zIndex: (theme) => theme.zIndex.drawer + 1,
 					top: 0,
-					backgroundColor: 'background.paper',
+					background: 'background.paper',
 				}}
+			> */}
+			<Box
+				display={'flex'}
+				justifyContent={'center'}
+				alignItems={'center'}
+				width={'100%'}
+				padding={1}
+				gap={2}
+				flexDirection={'column'}
 			>
-				<Box
-					display={'flex'}
-					justifyContent={'center'}
-					alignItems={'center'}
-					width={'100%'}
-					padding={1}
-					gap={2}
-					flexDirection={'column'}
-					ref={topRef}
-				>
-					<Box width={'20%'}>
-						<Typography
-							variant='h5'
-							noWrap
-							component='div'
-							fontStyle={'uppercase'}
-							sx={{
-								// flexGrow: 1,
-								alignSelf: 'center',
-								justifyContent: 'center',
-								alignItems: 'center',
-								textAlign: 'center',
-								fontSize: '2rem',
-								fontStyle: 'oblique',
-								fontVariantCaps: 'all-small-caps',
-								color: '#152c4d',
-							}}
-						>
-							Файлы
-						</Typography>
-					</Box>
-					<FiltersWrapper />
+				<Box width={'20%'}>
+					<Typography
+						variant='h5'
+						noWrap
+						component='div'
+						fontStyle={'uppercase'}
+						sx={{
+							// flexGrow: 1,
+							alignSelf: 'center',
+							justifyContent: 'center',
+							alignItems: 'center',
+							textAlign: 'center',
+							fontSize: '2rem',
+							fontStyle: 'oblique',
+							fontVariantCaps: 'all-small-caps',
+							color: '#152c4d',
+						}}
+					>
+						Номенклатура
+					</Typography>
 				</Box>
-			</AppBar>
+				<FiltersWrapper />
+			</Box>
+			{/* </AppBar> */}
 			<div className='p-2 w-full flex-1 overflow-auto'>
 				{data.length < 1 ? (
-					<p>loading</p>
+					<span>loading</span>
 				) : (
 					<>
 						<div ref={topRef} />
-						<table className='w-full '>
+						<table className='w-full'>
 							<thead>
 								{table.getHeaderGroups().map((headerGroup) => (
 									<tr
