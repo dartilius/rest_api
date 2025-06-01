@@ -120,7 +120,7 @@ const BgOrders = ({ ...props }: IProps) => {
 			</AppBar>
 			<div className='p-2 w-full flex-1 overflow-auto'>
 				{data.length < 1 ? (
-					<p>loading</p>
+					<p>Нет данных</p>
 				) : (
 					<table className='w-full '>
 						<thead>

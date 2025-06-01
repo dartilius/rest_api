@@ -36,6 +36,7 @@ export function Search({ ...props }: IPropsSearch) {
 				handleSearch(e.target.value)
 			}}
 			value={searchValue}
+			size='small'
 			style={{ backgroundColor: 'white', borderRadius: '4px', maxHeight: '52px', width: '100%' }}
 		/>
 	)

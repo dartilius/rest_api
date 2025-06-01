@@ -11,7 +11,6 @@ import {
 	TableBody,
 } from '@mui/material'
 import Link from 'next/link'
-import { FiltersWrapper } from '../FiltersWrapper'
 import { NomenclatureActions } from './NomenclatureActions'
 
 const columns = [
@@ -23,19 +22,11 @@ const columns = [
 	{ id: 'actions', label: 'Действия', mobile: true },
 ]
 
-const DesktopView = ({
-	data,
-	topRef,
-}: {
-	data: INomenclatures[]
-	topRef: React.RefObject<HTMLDivElement>
-}) => (
+const DesktopView = ({ data }: { data: INomenclatures[] }) => (
 	<Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 		<TableContainer
 			sx={{ flex: 1, overflow: 'auto', borderRadius: '8px', bgcolor: 'background.paper' }}
 		>
-			<div ref={topRef} />
-			<FiltersWrapper />
 			<Table
 				stickyHeader
 				aria-label='sticky table'

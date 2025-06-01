@@ -1,10 +1,12 @@
 'use client'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+
 import dayjs, { Dayjs } from 'dayjs'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { handleQueryParamChange } from '@/utils'
-import { Label } from '../data-display/Label'
+import { Theme, useMediaQuery } from '@mui/material'
+import MobileViewDatePicker from '../Ui/datePicker/MobileViewDatePicker'
+import DesktopViewDatePicker from '../Ui/datePicker/DesktopViewDatePicker'
 
 const DATE_FORMAT = 'YYYY-MM-DD'
 const DISPLAY_FORMAT = 'DD-MM-YYYY'
@@ -13,7 +15,7 @@ const DateRangesPickerFilter = () => {
 	const searchParams = useSearchParams()
 	const pathname = usePathname()
 	const router = useRouter()
-
+	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
 	const [createdAfter, setCreatedAfter] = useState<Dayjs | null>(null)
 	const [createdBefore, setCreatedBefore] = useState<Dayjs | null>(null)
 	const [errors, setErrors] = useState<Record<string, boolean>>({
@@ -37,7 +39,7 @@ const DateRangesPickerFilter = () => {
 		setCreatedBefore(parseDate(searchParams?.get('created_before')))
 	}, [searchParams])
 
-	const handleDateChange = (type: 'created_after' | 'created_before', date: Dayjs | null) => {
+	const handleDateChange = (type: string, date: Dayjs | null) => {
 		const isValid = isValidDate(date)
 		setErrors((prev) => ({ ...prev, [type]: !isValid }))
 
@@ -57,36 +59,104 @@ const DateRangesPickerFilter = () => {
 	}
 
 	return (
-		<div className='flex flex-row w-full justify-center items-center gap-2'>
-			<Label className='text-xl text-nowrap'>Дата создания</Label>
-			<div className='w-full flex flex-row flex-nowrap gap-1'>
-				<DatePicker
-					label='От'
-					value={createdAfter}
-					onChange={(date) => handleDateChange('created_after', date)}
-					format={DISPLAY_FORMAT}
-					slotProps={{
-						textField: {
-							error: errors.created_after,
-							helperText: errors.created_after ? 'Некорректная дата' : '',
-						},
-					}}
+		<>
+			{isMobile ? (
+				<MobileViewDatePicker
+					label='Дата создания'
+					valueFrom={createdAfter}
+					valueTo={createdBefore}
+					typeAfter={'created_after'}
+					typeBefore={'created_before'}
+					onChange={handleDateChange}
+					formatDate={DISPLAY_FORMAT}
+					errors={errors}
 				/>
-				<DatePicker
-					label='До'
-					value={createdBefore}
-					onChange={(date) => handleDateChange('created_before', date)}
-					format={DISPLAY_FORMAT}
-					slotProps={{
-						textField: {
-							error: errors.created_before,
-							helperText: errors.created_before ? 'Некорректная дата' : '',
-						},
-					}}
-				/>
-			</div>
-		</div>
+			) : (
+				<DesktopViewDatePicker label='Дата создания'
+					valueFrom={createdAfter}
+					valueTo={createdBefore}
+					typeAfter={'created_after'}
+					typeBefore={'created_before'}
+					onChange={handleDateChange}
+					formatDate={DISPLAY_FORMAT}
+					errors={errors}/>
+			)}
+		</>
 	)
+	// 	return (
+	// 		<div className='flex flex-col w-full gap-2 p-1'>
+	// 			<Label className='text-sm md:text-2xl text-nowrap'>Дата создания</Label>
+
+	// 			<div className='flex flex-col gap-2'>
+	// 				<DatePicker
+	// 					label='От'
+	// 					value={createdAfter}
+	// 					onChange={(date) => handleDateChange('created_after', date)}
+	// 					format={DISPLAY_FORMAT}
+	// 					slotProps={{
+	// 						textField: {
+	// 							size: 'small',
+	// 							fullWidth: true,
+	// 							error: errors.created_after,
+	// 							helperText: errors.created_after ? 'Некорректная дата' : '',
+	// 						},
+	// 					}}
+	// 				/>
+	// 				<DatePicker
+	// 					label='До'
+	// 					value={createdBefore}
+	// 					onChange={(date) => handleDateChange('created_before', date)}
+	// 					format={DISPLAY_FORMAT}
+	// 					slotProps={{
+	// 						textField: {
+	// 							size: 'small',
+	// 							fullWidth: true,
+	// 							error: errors.created_after,
+	// 							helperText: errors.created_after ? 'Некорректная дата' : '',
+	// 						},
+	// 					}}
+	// 				/>
+	// 			</div>
+	// 		</div>
+	// 	)
+	// }
+
+	// Десктопная версия
+	// return (
+	// 	<div className='flex flex-row w-full justify-end items-center gap-2'>
+	// 		<Label className='text-sm md:text-xl text-nowrap'>Дата создания</Label>
+	// 		<div className='w-full flex flex-row justify-end flex-nowrap gap-1'>
+	// 			<DatePicker
+	// 				label='От'
+	// 				value={createdAfter}
+	// 				onChange={(date) => handleDateChange('created_after', date)}
+	// 				format={DISPLAY_FORMAT}
+	// 				slotProps={{
+	// 					textField: {
+	// 						size: 'small',
+	// 						fullWidth: true,
+	// 						error: errors.created_after,
+	// 						helperText: errors.created_after ? 'Некорректная дата' : '',
+	// 					},
+	// 				}}
+	// 			/>
+	// 			<DatePicker
+	// 				label='До'
+	// 				value={createdBefore}
+	// 				onChange={(date) => handleDateChange('created_before', date)}
+	// 				format={DISPLAY_FORMAT}
+	// 				slotProps={{
+	// 					textField: {
+	// 						size: 'small',
+	// 						fullWidth: true,
+	// 						error: errors.created_after,
+	// 						helperText: errors.created_after ? 'Некорректная дата' : '',
+	// 					},
+	// 				}}
+	// 			/>
+	// 		</div>
+	// 	</div>
+	// )
 }
 
 export default DateRangesPickerFilter

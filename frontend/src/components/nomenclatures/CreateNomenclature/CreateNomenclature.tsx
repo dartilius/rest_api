@@ -4,11 +4,13 @@ import ActionButton from '@/components/Ui/button/ActionButton'
 import { CopyButton } from '@/components/Ui/button/CoppyButton'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import {
+	Box,
 	Button,
 	Dialog,
 	DialogActions,
 	DialogContent,
 	DialogTitle,
+	IconButton,
 	Switch,
 	TextField,
 	Typography,
@@ -52,13 +54,34 @@ export function CreateNomenclature() {
 	}
 
 	return (
-		<div>
-			<ActionButton
-				onClick={() => setOpen(true)}
-				icon={AddCircleOutlineIcon}
-			>
-				Создать
-			</ActionButton>
+		<>
+			{/* <Box
+				display='flex'
+				width='100%'
+				height={'100%'}
+				justifyContent='center'
+				alignItems='center'
+			> */}
+				
+				{isMobile ? (
+					<ActionButton
+						variant='primary'
+						size='sm'
+						icon={AddCircleOutlineIcon}
+						onClick={() => setOpen(true)}
+						className='h-full m-2'
+					/>
+				) : (
+					<ActionButton
+						variant='primary'
+						size='lg'
+						icon={AddCircleOutlineIcon}
+						onClick={() => setOpen(true)}
+					>
+						Создать
+					</ActionButton>
+				)}
+			{/* </Box> */}
 
 			<Dialog
 				open={open}
@@ -161,6 +184,6 @@ export function CreateNomenclature() {
 					</Button>
 				</DialogActions>
 			</Dialog>
-		</div>
+		</>
 	)
 }

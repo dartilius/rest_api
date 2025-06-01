@@ -1,24 +1,112 @@
 'use client'
 import { Search } from '@/components/nomenclatures'
 import { useStore } from '@/providers/mobx-provider/MobxProvider'
-import { Box } from '@mui/material'
-import { FC } from 'react'
+import { Box, IconButton, Drawer, Typography, Button } from '@mui/material'
+import { FC, useState } from 'react'
 import { BrcTypeFilter } from './BrcTypeFilter'
 import DateRangePickerSinceOrder from './DateRangePickerSinceOrder'
 import DateRangePickerUntilOrder from './DateRangePickerUntilOrder'
 import DateRangesPickerFilter from './DateRangesPickerFilter'
 import { OrderTypeFilter } from './OrderTypeFilter'
 import { StatusOrderFilters } from './StatusOrderFilter'
+import FilterListIcon from '@mui/icons-material/FilterList'
+import CloseIcon from '@mui/icons-material/Close'
+import { useMediaQuery, Theme } from '@mui/material'
 
 const FiltersPanel: FC = () => {
 	const { ordersStore } = useStore()
 	const activeTab = ordersStore.activeTab
-	// const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState(false)
+	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
+	const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
-	// const handleFilterClick = () => {
-	// 	setIsFiltersPanelOpen((prev) => !prev)
-	// }
+	const toggleFilters = () => setIsFiltersOpen(!isFiltersOpen)
 
+	// Мобильный вид - кнопка фильтров и выдвижная панель
+	if (isMobile) {
+		return (
+			<Box
+				display='flex'
+				justifyContent='center'
+				width='100%'
+			>
+				<IconButton
+					onClick={toggleFilters}
+					color='primary'
+					sx={{ p: 0 }}
+				>
+					<FilterListIcon fontSize='large' />
+					{/* <Typography variant="caption">
+            Фильтры
+          </Typography> */}
+				</IconButton>
+
+				<Drawer
+					anchor='right'
+					open={isFiltersOpen}
+					onClose={toggleFilters}
+					sx={{
+						'& .MuiDrawer-paper': {
+							width: '85vw',
+							maxWidth: 400,
+							p: 2,
+							boxSizing: 'border-box',
+						},
+					}}
+				>
+					<Box
+						display='flex'
+						justifyContent='space-between'
+						alignItems='center'
+					>
+						<Typography variant='h6'>Фильтры</Typography>
+						<IconButton onClick={toggleFilters}>
+							<CloseIcon />
+						</IconButton>
+					</Box>
+
+					<Box
+						display='flex'
+						flexDirection='column'
+						gap={1}
+					>
+						<DateRangesPickerFilter />
+						<DateRangePickerSinceOrder />
+						<DateRangePickerUntilOrder />
+
+						<Box
+							display='flex'
+							flexDirection='column'
+							gap={2}
+						>
+							<Search
+								nameQueryParams='name'
+								label='Название'
+							/>
+							<Search
+								nameQueryParams='client'
+								label='Номенклатура'
+							/>
+						</Box>
+
+						<StatusOrderFilters />
+
+						{activeTab === 0 ? <OrderTypeFilter /> : <BrcTypeFilter />}
+
+						<Button
+							variant='contained'
+							color='primary'
+							onClick={toggleFilters}
+							sx={{ mt: 2 }}
+						>
+							Применить
+						</Button>
+					</Box>
+				</Drawer>
+			</Box>
+		)
+	}
+
+	// Десктопный вид (оригинальный)
 	return (
 		<Box
 			display={'flex'}
@@ -28,63 +116,43 @@ const FiltersPanel: FC = () => {
 			alignItems={'start'}
 			gap={2}
 		>
-			{/* <div className='flex flex-row items-center justify-center gap-4'> */}
-
-			{/* <IconButton onClick={handleFilterClick}>
-					<FilterListIcon />
-				</IconButton> */}
-			{/* </div> */}
-			{/* {isFiltersPanelOpen && (
-				<Box
-					position={'absolute'}
-					top={64}
-					left={0}
-					width={'100%'}
-					boxSizing={'border-box'}
-					padding={1}
-					zIndex={1}
-				>
-					<Paper
-						elevation={6}
-						
-						className='absolute flex flex-row gap-1 w-full p-2 bg-gray-300 rounded-lg'
-					> */}
 			<Box
 				display={'flex'}
 				flexDirection={'column'}
+				justifyContent={'center'}
+				alignItems={'center'}
 				height={'100%'}
-				gap={2}
+				gap={1}
+				width={'100%'}
 			>
 				<DateRangesPickerFilter />
-				{/** настроить параметры запросы согласно доке апи */}
 				<DateRangePickerSinceOrder />
 				<DateRangePickerUntilOrder />
 			</Box>
-			{/* Текстовые поля для имени и клиента */}
-			<div className='w-2/3 grid grid-cols-2 gap-4'>
-				<div className='col-span-1'>
+
+			<Box
+				display='grid'
+				gridTemplateColumns='repeat(2, 1fr)'
+				gap={1}
+				width={'100%'}
+			>
+				<Box gridColumn='span 1'>
 					<Search
 						nameQueryParams='name'
 						label='Название'
 					/>
-				</div>
-				<div className='col-span-1'>
+				</Box>
+				<Box gridColumn='span 1'>
 					<Search
 						nameQueryParams='client'
 						label='Номенклатура'
 					/>
-				</div>
-				<div className='col-span-1'>
+				</Box>
+				<Box gridColumn='span 1'>
 					<StatusOrderFilters />
-				</div>
-				<div className='col-span-1'>
-					{activeTab === 0 && <OrderTypeFilter />}
-					{activeTab === 1 && <BrcTypeFilter />}
-				</div>
-			</div>
-			{/* </Paper>
-				</Box> */}
-			{/* )} */}
+				</Box>
+				<Box gridColumn='span 1'>{activeTab === 0 ? <OrderTypeFilter /> : <BrcTypeFilter />}</Box>
+			</Box>
 		</Box>
 	)
 }
