@@ -4,5 +4,5 @@ interface LabelProps {
 }
 
 export const Label = ({ children, className }: LabelProps) => (
-	<div className={`text-xl md:text-2xl text-zinc-700 mb-1 ${className}`}>{children}</div>
+	<div className={`text-zinc-700 mb-1 ${className}`}>{children}</div>
 )

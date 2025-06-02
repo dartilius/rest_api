@@ -8,12 +8,11 @@ import CustomPaginationMobile from './CustomPaginationMobile'
 const CustomPagination = ({
 	totalItems,
 	topRef,
-	isMobile
 }: {
 	totalItems: number
 	topRef: RefObject<HTMLDivElement>
-	isMobile: boolean
 }) => {
+	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
 	const pathname = usePathname()
 	const searchParams = useSearchParams()
 	const router = useRouter()

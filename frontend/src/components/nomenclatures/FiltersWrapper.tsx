@@ -6,5 +6,5 @@ import { Theme, useMediaQuery } from '@mui/material'
 export const FiltersWrapper = () => {
 	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
 
-	return <div>{isMobile ? <FiltersMobile /> : <FiltersDesktop />}</div>
+	return <>{isMobile ? <FiltersMobile /> : <FiltersDesktop />}</>
 }

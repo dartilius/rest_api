@@ -10,7 +10,7 @@ interface ActionButtonProps {
 	icon?: ComponentType<{ className?: string }>
 	iconClassName?: string
 	onClick?: (e?: MouseEvent) => void
-	children: ReactNode
+	children?: ReactNode
 	disabled?: boolean
 	type?: 'button' | 'submit' | 'reset'
 	style?: React.CSSProperties

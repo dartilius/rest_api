@@ -8,20 +8,67 @@ import { useState } from 'react'
 import { CreateNomenclature } from '../CreateNomenclature/CreateNomenclature'
 import { Search } from '../Search/Search'
 import { VersionSelect } from '../Version/VersionSelect'
+import { AppBar, Box, IconButton, Typography } from '@mui/material'
 export default function FiltersMobile() {
 	const [openFilters, setOpenFilters] = useState<boolean>(false)
 
 	return (
 		<>
-			<div className='flex flex-row gap-2 w-full p-4 justify-between'>
-				<ActionButton
-					icon={FilterListIcon}
-					onClick={() => setOpenFilters(!openFilters)}
+			<AppBar
+				position='sticky'
+				sx={{
+					// zIndex: (theme) => theme.zIndex.drawer + 1,
+					display: 'flex',
+					flexDirection: 'row',
+					p: 1,
+					justifyContent: 'center',
+					// width: '100%',
+					// height: '100%',
+					top: 0,
+					gap: 4,
+					backgroundColor: 'background.paper',
+				}}
+				// className='flex flex-row gap-4 w-full h-full p-2 justify-center'
+			>
+				<Box
+					display='flex'
+					width='100%'
+					height={'100%'}
+					justifyContent='center'
+					alignItems='center'
 				>
-					Фильтры
-				</ActionButton>
-				<CreateNomenclature />
-			</div>
+					<IconButton
+						onClick={() => setOpenFilters(!openFilters)}
+						color='primary'
+						// sx={{ p: 0 }}
+					>
+						<FilterListIcon fontSize='large' />
+					</IconButton>
+					<Box
+						sx={{
+							display: 'flex',
+							justifyContent: 'center',
+							alignItems: 'center',
+							width: '100%', // Занимает всю доступную ширину
+							height: '100%',
+						}}
+					>
+						<Typography
+							noWrap
+							component={'span'}
+							sx={{
+								fontSize: '1.5rem',
+								fontStyle: 'oblique',
+								textTransform: 'uppercase',
+								color: '#152c4d',
+							}}
+						>
+							Номенклатура
+						</Typography>
+					</Box>
+					<CreateNomenclature />
+				</Box>
+			</AppBar>
 			{openFilters && (
 				<div className='flex flex-col gap-2 mb-2'>
 					<Search

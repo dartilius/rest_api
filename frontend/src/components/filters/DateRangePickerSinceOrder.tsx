@@ -1,10 +1,11 @@
 'use client'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs, { Dayjs } from 'dayjs'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { handleQueryParamChange } from '@/utils'
-import { Label } from '../data-display/Label'
+import { Theme, useMediaQuery } from '@mui/material'
+import MobileViewDatePicker from '../Ui/datePicker/MobileViewDatePicker'
+import DesktopViewDatePicker from '../Ui/datePicker/DesktopViewDatePicker'
 
 const DATE_FORMAT = 'YYYY-MM-DD'
 const DISPLAY_FORMAT = 'DD-MM-YYYY'
@@ -13,7 +14,7 @@ const DateRangePickerSinceOrder = () => {
 	const searchParams = useSearchParams()
 	const pathname = usePathname()
 	const router = useRouter()
-
+	const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'))
 	const [sinceAfter, setSinceAfter] = useState<Dayjs | null>(null)
 	const [sinceBefore, setSinceBefore] = useState<Dayjs | null>(null)
 	const [errors, setErrors] = useState<Record<string, boolean>>({
@@ -37,7 +38,7 @@ const DateRangePickerSinceOrder = () => {
 		setSinceBefore(parseDate(searchParams?.get('since_before')))
 	}, [searchParams])
 
-	const handleDateChange = (type: 'since_after' | 'since_before', date: Dayjs | null) => {
+	const handleDateChange = (type: string, date: Dayjs | null) => {
 		const isValid = isValidDate(date)
 		setErrors((prev) => ({ ...prev, [type]: !isValid }))
 
@@ -57,35 +58,31 @@ const DateRangePickerSinceOrder = () => {
 	}
 
 	return (
-		<div className='flex flex-row w-full justify-end items-center gap-2'>
-			<Label className='text-xl text-nowrap'>Начало Эфира</Label>
-			<div className='w-full flex flex-row flex-nowrap gap-1'>
-				<DatePicker
-					label='От'
-					value={sinceAfter}
-					onChange={(date) => handleDateChange('since_after', date)}
-					format={DISPLAY_FORMAT}
-					slotProps={{
-						textField: {
-							error: errors.created_after,
-							helperText: errors.created_after ? 'Некорректная дата' : '',
-						},
-					}}
+		<>
+			{isMobile ? (
+				<MobileViewDatePicker
+					label='Начало Эфира'
+					valueFrom={sinceAfter}
+					valueTo={sinceBefore}
+					typeAfter={'since_after'}
+					typeBefore={'since_before'}
+					onChange={handleDateChange}
+					formatDate={DISPLAY_FORMAT}
+					errors={errors}
 				/>
-				<DatePicker
-					label='До'
-					value={sinceBefore}
-					onChange={(date) => handleDateChange('since_before', date)}
-					format={DISPLAY_FORMAT}
-					slotProps={{
-						textField: {
-							error: errors.created_before,
-							helperText: errors.created_before ? 'Некорректная дата' : '',
-						},
-					}}
+			) : (
+				<DesktopViewDatePicker
+					label='Начало Эфира'
+					valueFrom={sinceAfter}
+					valueTo={sinceBefore}
+					typeAfter={'since_after'}
+					typeBefore={'since_before'}
+					onChange={handleDateChange}
+					formatDate={DISPLAY_FORMAT}
+					errors={errors}
 				/>
-			</div>
-		</div>
+			)}
+		</>
 	)
 }
 

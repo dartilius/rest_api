@@ -1,5 +1,6 @@
 import { formatTime } from '@/utils/dateUtils'
 import { AdOrderType } from '@/types/orderTypes'
+import { Label } from './Label'
 
 interface ParametersDisplayAdProps {
   parameters: {
@@ -24,7 +25,7 @@ export const ParametersDisplayAd = ({
       case AdOrderType.END_OFFSET:
         return parameters.timedelta && (
           <div>
-            <span className='text-xl text-zinc-900'>Смещение по времени:</span>
+            <Label className='text-2xl'>Смещение по времени:</Label>
             <span className='ml-2 font-bold'>
               {parameters.timedelta.toString()} минут
             </span>
