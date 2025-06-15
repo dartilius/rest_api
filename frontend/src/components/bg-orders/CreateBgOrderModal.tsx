@@ -128,20 +128,31 @@ const CreateBgOrderModal = () => {
 
 	return (
 		<>
-			<Box
+					<Box
 				display='flex'
 				width='20%'
+				height={'100%'}
 				justifyContent='center'
 				alignItems='center'
 			>
-				<ActionButton
-					variant='primary'
-					size='lg'
-					icon={AddCircleOutlineIcon}
-					onClick={() => setOpen(true)}
-				>
-					Создать
-				</ActionButton>
+				{isMobile ? (
+					<ActionButton
+						variant='primary'
+						size='sm'
+						icon={AddCircleOutlineIcon}
+						onClick={() => setOpen(true)}
+						className='h-full m-2'
+					/>
+				) : (
+					<ActionButton
+						variant='primary'
+						size='lg'
+						icon={AddCircleOutlineIcon}
+						onClick={() => setOpen(true)}
+					>
+						Создать
+					</ActionButton>
+				)}
 			</Box>
 
 			<Dialog

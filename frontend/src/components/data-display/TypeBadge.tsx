@@ -29,7 +29,7 @@ const TypeBadge = ({
   const {
     label,
     icon: Icon,
-    className: configClass,
+    backgroundColor,
   } = config || {
     label: 'Неизвестный тип',
     icon: Error,
@@ -37,15 +37,16 @@ const TypeBadge = ({
   }
 
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs min-w-[100px]',
-    md: 'px-3 py-1 text-sm min-w-[160px]',
-    lg: 'px-4 py-2 text-base min-w-[200px]',
+    sm: 'px-1 py-0.5 text-xs w-full',
+    md: 'px-1 py-0.5 text-sm w-full',
+    lg: 'px-2 py-1 text-base w-full',
   }
   console.log(type)
 
   return (
     <span
-      className={`inline-flex justify-center items-center gap-2 rounded-full ${sizeClasses[size]} ${configClass} ${className}`}
+    style={{ backgroundColor: backgroundColor }}
+      className={`inline-flex justify-center items-center gap-2 rounded-full ${sizeClasses[size]} ${className}`}
     >
       <Icon className={iconClassName} />
       {label}

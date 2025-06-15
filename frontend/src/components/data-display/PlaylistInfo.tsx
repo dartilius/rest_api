@@ -59,6 +59,7 @@ export const PlaylistInfo = ({ playlist, files_count, className }: PlaylistInfoP
 									<span
 										className={cn(
 											'font-medium',
+											'text-sm md:text-base',
 											'  text-blue-100',
 											' hover:text-blue-400 ',
 											' transition-colors ',
@@ -86,7 +87,7 @@ export const PlaylistInfo = ({ playlist, files_count, className }: PlaylistInfoP
 
 						{file.files_count && (
 							<div className='w-full'>
-								<span className='text-start text-base md:text-2xl text-blue-100'>
+								<span className='text-start text-sm md:text-base text-blue-100'>
 									Вложенных файлов: {file.files_count}
 								</span>
 							</div>

@@ -8,7 +8,7 @@ interface DateTimeProps {
 
 export const DateTime = ({ date, className }: DateTimeProps) => {
   return (
-    <span className={`font-mono ${className}`}>
+    <span className={`text-sm md:text-base font-mono ${className}`}>
       {formatDateTime(date)}
     </span>
   )

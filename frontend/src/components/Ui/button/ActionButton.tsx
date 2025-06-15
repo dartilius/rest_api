@@ -51,7 +51,7 @@ const ActionButton = ({
 			disabled={disabled}
 			style={style}
 			className={cn(
-				'inline-flex items-center rounded-full transition-all',
+				'inline-flex items-center rounded-full transition-all text-nowrap',
 				'duration-200 ease-out transform',
 				'hover:-translate-y-0.5 active:translate-y-0',
 				'active:scale-95 hover:outline-1 hover:ring-2 hover:ring-offset-2',

@@ -24,14 +24,14 @@ interface AdOrderDetailCardProps {
 
 const AdOrderDetailCard = ({ data, className = '' }: AdOrderDetailCardProps) => {
 	const { showNotification } = useNotification()
-  const router = useRouter()
+	const router = useRouter()
 	const handleButtonCancel = async () => {
 		try {
 			await cancelAdOrder(data.id)
 			showNotification('Заказ отменен!', 'success')
-      router.refresh()
+			router.refresh()
 		} catch (error) {
-      console.error(error);
+			console.error(error)
 			showNotification('Не удалось отменить заказ', 'error')
 		}
 	}
@@ -41,12 +41,12 @@ const AdOrderDetailCard = ({ data, className = '' }: AdOrderDetailCardProps) => 
 			className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-6 ${className}`}
 		>
 			{/* Заголовок */}
-			<div className='flex flex-col sm:flex-row justify-between items-start gap-4'>
+			<div className='flex flex-col sm:flex-row justify-between items-start gap-2 '>
 				<div>
 					<Name name={data.name} />
 					{data.description && <Description description={data.description} />}
 				</div>
-				<div className='flex flex-col items-end gap-2'>
+				<div className='flex flex-col w-full md:w-1/3 items-center gap-1'>
 					<TypeBadge
 						type={data.broadcast_type}
 						className='font-bold'
@@ -75,8 +75,8 @@ const AdOrderDetailCard = ({ data, className = '' }: AdOrderDetailCardProps) => 
 			</div>
 
 			{/* Основные данные */}
-			<div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-2xl'>
-				<div className='space-y-4'>
+			<div className='grid grid-cols-1 md:grid-cols-2 gap-1'>
+				<div className='space-y-2'>
 					<div>
 						<Label>Клиент:</Label>
 						<ClientInfo client={data.client} />
@@ -96,7 +96,7 @@ const AdOrderDetailCard = ({ data, className = '' }: AdOrderDetailCardProps) => 
 					</div>
 				</div>
 
-				<div className='space-y-4'>
+				<div className='space-y-2'>
 					<div>
 						<Label>Период трансляции:</Label>
 						<BroadcastInterval interval={data.broadcast_interval} />

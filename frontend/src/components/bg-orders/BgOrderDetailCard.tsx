@@ -42,15 +42,15 @@ const BgOrderDetailCard = ({ data, className = '' }: BgOrderDetailCardProps) => 
 
 	return (
 		<div
-			className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-6 ${className}`}
+			className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-2 ${className}`}
 		>
 			{/* Заголовок */}
-			<div className='flex flex-col sm:flex-row justify-between items-start gap-4 '>
+			<div className='flex flex-col sm:flex-row justify-between items-start gap-2 '>
 				<div>
 					<Name name={data.name} />
 					{data.description && <Description description={data.description} />}
 				</div>
-				<div className='flex flex-col items-end gap-2'>
+				<div className='flex flex-col w-full md:w-1/3 items-center gap-1'>
 					<TypeBadge
 						type={data.order_type}
 						className='font-bold'
@@ -79,8 +79,8 @@ const BgOrderDetailCard = ({ data, className = '' }: BgOrderDetailCardProps) => 
 			</div>
 
 			{/* Основные данные */}
-			<div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-2xl'>
-				<div className='space-y-4'>
+			<div className='grid grid-cols-1 md:grid-cols-2 gap-1'>
+				<div className='space-y-2'>
 					<div>
 						<Label>Клиент:</Label>
 						<ClientInfo client={data.client} />
@@ -97,7 +97,7 @@ const BgOrderDetailCard = ({ data, className = '' }: BgOrderDetailCardProps) => 
 					</div>
 				</div>
 
-				<div className='space-y-4'>
+				<div className='space-y-2'>
 					<div>
 						<Label>Период трансляции:</Label>
 						<BroadcastInterval interval={data.broadcast_interval} />

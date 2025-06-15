@@ -117,25 +117,25 @@ export const ORDER_TYPE_BG_CONFIG: Record<BgOrderType, TypeConfig> = {
   [BgOrderType.MUSIC]: {
     label: 'Музыка',
     icon: MusicNote,
-    backgroundColor: 'rgba(219, 234, 254, 0.1)', // bg-blue-100
+    backgroundColor: 'rgba(173, 216, 230, 0.5)', // bg-blue-100
     textColor: 'rgba(0, 0, 139, 1)', // text-blue-800
   },
   [BgOrderType.VIDEO]: {
     label: 'Видео',
     icon: Videocam,
-    backgroundColor: 'rgba(220, 252, 231, 0.1)', // bg-green-100
+    backgroundColor: 'rgba(144, 238, 144, 0.5)', // bg-green-100
     textColor: 'rgba(0, 100, 0, 1)', // text-green-800
   },
   [BgOrderType.IMAGES]: {
     label: 'Картинки',
     icon: Image,
-    backgroundColor: 'rgba(233, 213, 255, 0.1)', // bg-purple-100
+    backgroundColor: 'rgba(192, 166, 221, 0.5)', // bg-purple-100
     textColor: 'rgba(128, 0, 128, 1)', // text-purple-800
   },
   [BgOrderType.TICKER]: {
     label: 'Бегущая строка',
     icon: TextFields,
-    backgroundColor: 'rgba(255, 237, 213, 0.1)', // bg-orange-100
+    backgroundColor: 'rgba(255, 165, 0, 0.5)', // bg-orange-100
     textColor: 'rgba(255, 69, 0, 1)', // text-orange-800
   },
 };
