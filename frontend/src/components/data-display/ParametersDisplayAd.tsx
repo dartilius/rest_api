@@ -25,7 +25,7 @@ export const ParametersDisplayAd = ({
       case AdOrderType.END_OFFSET:
         return parameters.timedelta && (
           <div>
-            <Label className='text-2xl'>Смещение по времени:</Label>
+            <Label className='text-sm md:text-base'>Смещение по времени:</Label>
             <span className='ml-2 font-bold'>
               {parameters.timedelta.toString()} минут
             </span>
@@ -37,7 +37,7 @@ export const ParametersDisplayAd = ({
           <>
             {parameters.start_time && (
               <div>
-                <span className='text-xl text-zinc-900'>Начало:</span>
+                <span className='text-sm md:text-base text-zinc-900'>Начало:</span>
                 <span className='ml-2 font-bold'>
                   {formatTime(parameters.start_time)}
                 </span>
@@ -45,7 +45,7 @@ export const ParametersDisplayAd = ({
             )}
             {parameters.end_time && (
               <div>
-                <span className='text-xl text-zinc-900'>Окончание:</span>
+                <span className='text-sm md:text-base text-zinc-900'>Окончание:</span>
                 <span className='ml-2 font-bold'>
                   {formatTime(parameters.end_time)}
                 </span>
@@ -57,7 +57,7 @@ export const ParametersDisplayAd = ({
       case AdOrderType.OPEN_TO_HOUR:
         return parameters.end_time && (
           <div>
-            <span className='text-xl text-zinc-900'>Окончание:</span>
+            <span className='text-sm md:text-base text-zinc-900'>Окончание:</span>
             <span className='ml-2 font-bold'>
               {formatTime(parameters.end_time)}
             </span>
@@ -67,7 +67,7 @@ export const ParametersDisplayAd = ({
       case AdOrderType.FIXED_TO_CLOSE:
         return parameters.end_time && (
           <div>
-            <span className='text-xl text-zinc-900'>Фиксированный час:</span>
+            <span className='text-sm md:text-base text-zinc-900'>Фиксированный час:</span>
             <span className='ml-2 font-bold'>
               {formatTime(parameters.end_time)}
             </span>
@@ -77,7 +77,7 @@ export const ParametersDisplayAd = ({
       case AdOrderType.EVENT_START:
         return parameters.start_time && (
           <div>
-            <span className='text-xl text-zinc-900'>Время старта:</span>
+            <span className='text-sm md:text-base text-zinc-900'>Время старта:</span>
             <span className='ml-2 font-bold'>
               {formatTime(parameters.start_time)}
             </span>
@@ -92,13 +92,13 @@ export const ParametersDisplayAd = ({
   return (
     <div className={`grid grid-cols-2 gap-2 ${className}`}>
       {/* Общие параметры для всех типов */}
-      <div className='col-span-2'>
+      <div className='col-span-2 text-sm md:text-base'>
         <div>
-          <span className='text-xl text-blue-100'>Трансляций в час:</span>
+          <span className='text-blue-100'>Трансляций в час:</span>
           <span className='ml-2 font-bold'>{parameters.times_in_hour}</span>
         </div>
         <div>
-          <span className='text-xl text-blue-100'>Приоритет файла:</span>
+          <span className='text-blue-100'>Приоритет файла:</span>
           <span className='ml-2 font-bold'>{parameters.weight}</span>
         </div>
       </div>

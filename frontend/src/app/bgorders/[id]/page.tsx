@@ -20,7 +20,7 @@ const BgOrderDetail = async ({ params }: Props) => {
 				<h1 className='text-xl md:text-2xl text-center font-bold '>Детали заказа</h1>
 				<BgOrderDetailCard
 					data={orderDetail}
-					className='mb-6'
+					className='mb-2'
 				/>
 			</div>
 		)

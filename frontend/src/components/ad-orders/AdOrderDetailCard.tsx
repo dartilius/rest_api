@@ -38,7 +38,7 @@ const AdOrderDetailCard = ({ data, className = '' }: AdOrderDetailCardProps) => 
 	console.log(data.status)
 	return (
 		<div
-			className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-6 ${className}`}
+			className={`bg-gradient-to-r from-cyan-600 to-blue-500  rounded-lg shadow p-2 ${className}`}
 		>
 			{/* Заголовок */}
 			<div className='flex flex-col sm:flex-row justify-between items-start gap-2 '>
