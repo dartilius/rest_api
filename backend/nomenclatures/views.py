@@ -335,6 +335,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureTickerStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
+    @extend_schema(
+        summary='Получить историю доступности номенклатуры',
+        request=None,
+        responses={
+            HTTP_200_OK: StatusHistorySerializer
+        }
+    )
     @action(detail=True, methods=['GET'])
     def status_history(self, request, pk):
         nomenclature = get_instance_or_404(Nomenclature, pk)
