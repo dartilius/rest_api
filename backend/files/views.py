@@ -3,7 +3,9 @@ import copy
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import QuerySet
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import (
+    extend_schema, extend_schema_view, OpenApiExample
+)
 from http import HTTPStatus
 from itertools import chain
 from rest_framework import viewsets, mixins
@@ -11,9 +13,17 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
+from rest_framework.status import (
+    HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
+)
 from uuid import UUID
 
-from api.constants import get_instance_or_404, restricted_update
+from api.constants import (
+    get_instance_or_404,
+    restricted_update,
+    DEFAULT_SCHEMA_RESPONSES,
+    DEFAULT_SCHEMA_EXAMPLES, DetailSerializer
+)
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -26,7 +36,7 @@ from ch_statistic.serializers import (
     FileMusicStatSerializer,
     FileImageStatSerializer,
     FileVideoStatSerializer,
-    FileTickerStatSerializer
+    FileTickerStatSerializer, BaseFileSerializer
 )
 
 from files.filters import FileFilter, PlaylistFilter
@@ -35,7 +45,7 @@ from files.serializers import (
     PlaylistListSerializer,
     FileSerializer,
     FileListSerializer,
-    TagSerializer, FileSourceSerializer
+    TagSerializer, FileSourceSerializer, TagsFileSerializer
 )
 from files.models import Playlist, File, Tag, TYPES
 from orders.models import AdOrder, BgOrder
@@ -55,11 +65,80 @@ class NoUpdateViewSet(
 ):
     """Вьюсет без поддержки методов PUT и PATCH."""
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary='Получить пагинированный список тэгов',
+        examples=[
+            OpenApiExample(
+                'Список тегов',
+                response_only=True,
+                value={
+                    'id': 1, 'name': 'Новый год'
+                },
+                status_codes=[HTTP_200_OK]
+            )
+        ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={
+            HTTP_200_OK: TagSerializer(many=False)
+        } | DEFAULT_SCHEMA_RESPONSES
+    ),
+    retrieve=extend_schema(
+        summary='Получить расшифровку тега',
+        examples=[
+            OpenApiExample(
+                'Пример тега',
+                status_codes=[HTTP_200_OK],
+                response_only=True,
+                value={'id': 1, 'name': 'Новый год'}
+            )
+        ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={HTTP_200_OK: TagSerializer} | DEFAULT_SCHEMA_RESPONSES
+    ),
+    destroy=extend_schema(
+        summary='Удалить тэг',
+        examples=[
+            OpenApiExample(
+                'Тэг успешно удален',
+                status_codes=[HTTP_204_NO_CONTENT],
+                response_only=True
+            )
+        ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={HTTP_204_NO_CONTENT: {}} | DEFAULT_SCHEMA_RESPONSES
+    ),
+    create=extend_schema(
+        summary='Создать новый тэг',
+        examples=[
+            OpenApiExample(
+                'Успешно создан',
+                value={'name': 'Новый год'},
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Успешно создан',
+                value={'id': 1, 'name': 'Новый год'},
+                response_only=True,
+                status_codes=[HTTP_201_CREATED]
+            ),
+            OpenApiExample(
+                'Тэг уже существует',
+                value={'detail': 'Tag с таким name уже существует.'},
+                status_codes=[HTTP_400_BAD_REQUEST],
+                response_only=True
+            )
+        ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={HTTP_201_CREATED: TagSerializer} | DEFAULT_SCHEMA_RESPONSES
+    )
+)
 @extend_schema(tags=['Тэги файлов'])
 class TagViewSet(NoUpdateViewSet):
     """
-    Работа с тегами файлов.
+    # Теги файлов.
+
+    ## Наименование `name`
+    - Строковое поле максимальная допустимая длинна 255 символов
+    значение должно быть уникальным
+
+    ---
 
     Тэги нельзя обновлять, вместо этого следует создать новый.
     Старый, при необходимости, удалить.
@@ -69,10 +148,139 @@ class TagViewSet(NoUpdateViewSet):
     serializer_class = TagSerializer
     permission_classes = [StaffCUDAuthRetrieve]
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary='Получить пагинированный список файлов',
+        examples=[OpenApiExample(
+            'Музыка',
+            value={
+                'id': 'df1e2629-8180-478a-af93-87c45f547e88 ',
+                'length': '00:02:16',
+                'type': 'music',
+                'size': 2169778,
+                'tags': [
+                    {
+                        "id": 1,
+                        "name": "Музыка"
+                    },
+                    {
+                        "id": 65,
+                        "name": "Для тестов"
+                    }
+                ],
+                'url': (
+                    'http://localhost/local-media/music/Каста-ВоругШум.mp3'
+                ),
+                'name': '1Kla$ ft Дора - Почему (mashup) [audiovkСom].mp3',
+                'hash': (
+                    '33ca6a63972a90a799771dff765936f3aeb6b948ee94620b9858'
+                    '2f23dd21b174d209eae0d933ee81559d13b1cf382bc3',
+                ),
+                'owner': {
+                    'full_name': 'Фамилия Имя'
+                },
+                'created': '2025-04-19 19:43:41'
+            }
+        )],
+        responses={
+            HTTP_200_OK: FileListSerializer(many=True)
+        } | DEFAULT_SCHEMA_RESPONSES
+    ),
+    retrieve=extend_schema(
+        summary='Получить расшифровку файла',
+        examples=[
+            OpenApiExample(
+                'Музыка',
+                response_only=True,
+                value={
+                    'id': 'df1e2629-8180-478a-af93-87c45f547e88 ',
+                    'length': '00:02:16',
+                    'type': 'music',
+                    'size': 2169778,
+                    'tags': [
+                        {
+                            "id": 1,
+                            "name": "Музыка"
+                        },
+                        {
+                            "id": 65,
+                            "name": "Для тестов"
+                        }
+                    ],
+                    'url': (
+                        'http://localhost/local-media/music/Каста-ВоругШум.mp3'
+                    ),
+                    'name': '1Kla$ ft Дора - Почему (mashup) [audiovkСom].mp3',
+                    'hash': (
+                        '33ca6a63972a90a799771dff765936f3aeb6b948ee94620b9858'
+                        '2f23dd21b174d209eae0d933ee81559d13b1cf382bc3',
+                    ),
+                    'owner': {
+                        'full_name': 'Фамилия Имя'
+                    },
+                    'created': '2025-04-19 19:43:41'
+                },
+                status_codes=[HTTP_200_OK]
+            )
+        ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={HTTP_200_OK: FileSerializer} | DEFAULT_SCHEMA_RESPONSES
+    ),
+    create=extend_schema(
+        summary='Загрузить файл',
+        request=FileSerializer,
+        examples=[
+            OpenApiExample(
+                'Загрузить файл',
+                request_only=True,
+                value={
+                    'type': 2,
+                    'source': 'base64:file',
+                    'tags': ['Картинка', 'Еда']
+                }
+            ),
+            OpenApiExample(
+                'Файл уже существует',
+                response_only=True,
+                value={'detail': 'Файл с таким hash уже существует'},
+                status_codes=[HTTP_400_BAD_REQUEST]
+            )
+        ],
+        responses={HTTP_201_CREATED: FileSerializer} | DEFAULT_SCHEMA_RESPONSES
+    ),
+    destroy=extend_schema(
+        summary='Деактивировать файл (мягкое удаление)',
+        responses={HTTP_204_NO_CONTENT: {}} | DEFAULT_SCHEMA_RESPONSES
+    )
+)
 @extend_schema(tags=['Файлы'])
 class FileViewSet(NoUpdateViewSet):
-    """Работа с файлами."""
+    """
+    # Файлы.
+
+    ## Ссылка на файл `url`
+    - ссылается на локольное облачное хранилище в котором хранятся файлы
+    - стандартный период жизни ссылки 2 часа
+
+    ## Хэш файла `hash`
+    - Состоит из сопоставления `md5` и `sha256` контрольных сумм файла,
+    во избежании коллизий
+
+    ## Хронометраж файла `length`
+    - для аудио / видео файлов возвращает его хронометраж
+
+    ## Размер файла `size`
+    - Размер файла в байтах
+
+    ## Типы файлов `type`
+    - `0` музыка
+    - `1` видео
+    - `2` изображения
+    - `3` файлы бегущей строки
+    - `4` рекламные файлы
+
+    ## Тэги файла `tags`
+    - Список тэгов присвоенных файлу
+    """
 
     queryset = File.active.all().select_related('owner')
     serializer_class = FileSerializer
@@ -144,6 +352,18 @@ class FileViewSet(NoUpdateViewSet):
         if not all(isinstance(tag, str) for tag in tag_data):
             raise ValidationError('Теги должны быть в строчном формате')
 
+    @extend_schema(
+        summary='Добавить тэги к файлу',
+        request=TagsFileSerializer,
+        examples=[
+            OpenApiExample(
+                'Убрать теги',
+                value={'tags': ['Мясо', 'Шашлык']},
+                request_only=True
+            )
+        ],
+        responses={HTTP_200_OK: DetailSerializer} | DEFAULT_SCHEMA_RESPONSES
+    )
     @action(
         detail=True,
         methods=['POST'],
@@ -173,6 +393,18 @@ class FileViewSet(NoUpdateViewSet):
         file.tags.add(*new_tags_ids)
         return Response(data={'message': 'Тэги успешно присвоены файлу.'})
 
+    @extend_schema(
+        summary='Убрать тэги файла',
+        request=TagsFileSerializer,
+        examples=[
+            OpenApiExample(
+                'Убрать теги',
+                value={'tags': ['Мясо', 'Шашлык']},
+                request_only=True
+            )
+        ],
+        responses={HTTP_200_OK: DetailSerializer} | DEFAULT_SCHEMA_RESPONSES
+    )
     @action(
         detail=True,
         methods=['POST'],
@@ -204,6 +436,10 @@ class FileViewSet(NoUpdateViewSet):
         file.tags.remove(*remove_tags_ids)
         return Response(data={'message': 'Тэги успешно отвязаны от файла.'})
 
+    @extend_schema(
+        summary='Получить список статистики по файлу',
+        responses={HTTP_200_OK: BaseFileSerializer}
+    )
     @action(detail=True, methods=['GET'], url_path='stat')
     def get_stat(self, request, pk):
         """Отображение статистики файла."""
@@ -233,10 +469,94 @@ class FileViewSet(NoUpdateViewSet):
 
         return Response(data, status=HTTPStatus.OK)
 
+@extend_schema_view(
+    list=extend_schema(
+        summary='Получить пагинированный список плейлистов',
+        responses={
+            HTTP_200_OK: PlaylistListSerializer
+        } | DEFAULT_SCHEMA_RESPONSES,
+        examples=[
+            OpenApiExample(
+                'Список плейлистов',
+                value={
+                    'id': '57c42879-2a80-4304-9551-1c02011f559b',
+                    'name': 'Наименование плейлиста',
+                    'created': '2025-03-07 15:10:25',
+                    'owner': {
+                        'full_name':' Фамилия Имя'
+                    },
+                    'files_count': 2
+                },
+                status_codes=[HTTP_200_OK]
+            )
+        ] + DEFAULT_SCHEMA_EXAMPLES
+    ),
+    retrieve=extend_schema(
+        summary='Получить расшифровку плейлиста',
+        responses={
+            HTTP_200_OK: PlaylistSerializer
+        } | DEFAULT_SCHEMA_RESPONSES,
+        examples=[
+            OpenApiExample(
+                'Плейлист',
+                value={
+                    'id': '57c42879-2a80-4304-9551-1c02011f559b',
+                    'name': 'Наименование плейлиста',
+                    'description': 'Описание плейлиста',
+                    'created': '2025-03-07 15:10:25',
+                    'owner': {
+                        'full_name':' Фамилия Имя'
+                    },
+                    'files_count': 2,
+                    'files': [
+                        {
+                            'id': 'be326d46-281f-40fd-b8f4-2534cf4afa25',
+                            'name': '9_est_novosti_kadrovi_proekt_306514_1000.mp4',
+                            'url': 'ССЫЛКА НА ФАЙЛ'
+                        },
+                        {
+                            'id': '66f77962-5c5e-4d41-b1ec-9579b5715f97',
+                            'name': '8_est_novosti_ambassador_306363_1000.mp4',
+                            'url': 'ССЫЛКА НА ФАЙЛ'
+                        }
+                    ]
+                },
+                status_codes=[HTTP_200_OK]
+            )
+        ] + DEFAULT_SCHEMA_EXAMPLES
+    ),
 
+)
 @extend_schema(tags=['Плейлисты'])
 class PlaylistViewSet(viewsets.ModelViewSet):
-    """Работа с плейлистами."""
+    """
+    # Плейлисты.
+
+    ## Описание `description`
+    - Текстовое поле, не обязательное к заполнению, не ограниченно длинной
+
+    ## Наименование `name`
+    - Текстовое поле максимальной длинны 255 символов
+
+    ## Дата создания `created`
+    - Дата и время когда был создан плейлист
+
+    ## Владелец `owner`
+    - Пользователь который создал плелист
+
+    ## количество файлов в плейлисте `files_count`
+    - Выщитывается при каждом запросе плейлиста
+
+    ## Идентификатор плейлиста `id`
+    - Автогенерируемый уникальный идентификатор `uuid`
+
+    ## Файлы плейлиста `files`
+    - Список файлов плейлиста с минимальной необходимой информацией о них
+        - `id` идентификатор для перехода на страницу файла
+        - `name` для отображения наименования фалйа в списке
+        - `url` ссылка на файл в локальном облачном хранилище
+        для его возможного воспроизведения
+    """
 
     queryset = Playlist.objects.all().select_related(
         'owner'

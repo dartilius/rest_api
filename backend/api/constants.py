@@ -233,6 +233,7 @@ DEFAULT_SCHEMA_EXAMPLES = [
     OpenApiExample(
         'Пользователь неавторизован',
         value={'detail': 'Учетные данные не были предоставлены.'},
-        status_codes=[HTTP_401_UNAUTHORIZED]
+        status_codes=[HTTP_401_UNAUTHORIZED],
+        response_only=True
     )
 ]

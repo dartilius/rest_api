@@ -224,3 +224,9 @@ class PlaylistListSerializer(serializers.ModelSerializer):
         repr_['files_count'] = value.files.count()
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
+
+
+class TagsFileSerializer(serializers.Serializer):
+    """Схема добавления и удаления тэгов файла."""
+
+    tags = serializers.ListField(child=serializers.CharField(max_length=255))
