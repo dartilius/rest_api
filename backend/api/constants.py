@@ -1,5 +1,14 @@
 from typing import Type, TypeVar
 from django.db.models import Model
+from drf_spectacular.utils import OpenApiExample
+from rest_framework import serializers
+from rest_framework.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
+    HTTP_405_METHOD_NOT_ALLOWED
+)
 
 ModelType = TypeVar('ModelType', bound=Model)
 
@@ -205,3 +214,25 @@ def filter_by_owner_name(queryset, name, value):
         )
     else:
         return None
+
+
+class DetailSerializer(serializers.Serializer):
+    """Схема для стандартных ответов."""
+
+    detail = serializers.CharField()
+
+
+DEFAULT_SCHEMA_RESPONSES = {
+    HTTP_400_BAD_REQUEST: DetailSerializer,
+    HTTP_401_UNAUTHORIZED: DetailSerializer,
+    HTTP_403_FORBIDDEN: DetailSerializer,
+    HTTP_404_NOT_FOUND: DetailSerializer
+}
+
+DEFAULT_SCHEMA_EXAMPLES = [
+    OpenApiExample(
+        'Пользователь неавторизован',
+        value={'detail': 'Учетные данные не были предоставлены.'},
+        status_codes=[HTTP_401_UNAUTHORIZED]
+    )
+]
