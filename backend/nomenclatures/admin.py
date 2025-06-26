@@ -28,6 +28,8 @@ class NomenclatureAdmin(admin.ModelAdmin):
         'status'
     )
     search_fields = ('name',)
+    show_full_result_count = False
+    raw_id_fields = ('owner',)
 
     def get_queryset(self, request):
         return Nomenclature.objects.all().select_related(
@@ -40,6 +42,8 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
     """Доступность."""
 
     list_display = ('client', 'last_answer_date', 'status')
+    show_full_result_count = False
+    raw_id_fields = ('client',)
 
     def get_queryset(self, request):
         return NomenclatureAvailability.objects.all().select_related('client')
@@ -54,6 +58,8 @@ class StatusHistoryAdmin(admin.ModelAdmin):
         'change_time',
         'status'
     )
+    show_full_result_count = False
+    raw_id_fields = ('client',)
 
     def get_queryset(self, request):
         return StatusHistory.objects.all().select_related('client')

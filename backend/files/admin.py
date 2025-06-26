@@ -32,6 +32,8 @@ class FileAdmin(admin.ModelAdmin):
         'created'
     )
     search_fields = ('name',)
+    raw_id_fields = ('owner',)
+    show_full_result_count = False
 
     def get_queryset(self, request):
         return File.objects.all().select_related(
@@ -53,6 +55,8 @@ class PlaylistAdmin(admin.ModelAdmin):
         'owner'
     )
     search_fields = ('name',)
+    raw_id_fields = ('owner', 'files')
+    show_full_result_count = False
 
     def get_queryset(self, request):
         return Playlist.objects.all().select_related(
@@ -65,3 +69,4 @@ class TagAdmin(admin.ModelAdmin):
     """Тематика."""
 
     list_display = ('id', 'name')
+    show_full_result_count = False

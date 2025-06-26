@@ -28,3 +28,4 @@ class CustomUserAdmin(admin.ModelAdmin):
         'role',
         'is_active'
     )
+    show_full_result_count = False
