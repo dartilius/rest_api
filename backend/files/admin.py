@@ -32,7 +32,7 @@ class FileAdmin(admin.ModelAdmin):
         'created'
     )
     search_fields = ('name',)
-    raw_id_fields = ('owner',)
+    raw_id_fields = ('owner', 'tags')
     show_full_result_count = False
 
     def get_queryset(self, request):
@@ -68,5 +68,5 @@ class PlaylistAdmin(admin.ModelAdmin):
 class TagAdmin(admin.ModelAdmin):
     """Тематика."""
 
-    list_display = ('id', 'name')
+    list_display = ('id', 'name', 'color')
     show_full_result_count = False

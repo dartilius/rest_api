@@ -234,8 +234,48 @@ class TagViewSet(NoUpdateViewSet):
                 request_only=True,
                 value={
                     'type': 2,
-                    'source': 'base64:file',
-                    'tags': ['Картинка', 'Еда']
+                    'source': 'name:cat.jpg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoO'
+                              'FRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQk'
+                              'JCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wgARCADIAMgDASIAAhEBAxEB/8QAGwAB'
+                              'AQADAQEBAAAAAAAAAAAAAAYEBQcDAgH/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAHqgAAAAAAA'
+                              'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEPbQZmWWi15WmKYkh61pneknWAAAAAAAAGBO7rWl'
+                              'TE2whMLpA+fP2HPehQd4AAAAAAAPj7mjT3XJekm0c06KewDndKTPReX1BUAAAAAAATFPjnGO3YsWX+N6ao23xI7Y'
+                              '3v7+c8NDdbH2NkAAAAAAAB8fYi/qyEb6VwkaPLAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+                              'AAAAAAAH/8QAJxAAAgIBAgQHAQEAAAAAAAAAAwQCBQEABhITMEAQERQVFiBwITH/2gAIAQEAAQUC/UW7R5myTuyj'
+                              'a8bGyBWhneWoYCJEw+wlnhjtIfGC4rIWalDZyYhppkagKpMlo1Ygwwjtc+TU/YPy4Edp4x7Nq5rWfW8O5c6mlbWz'
+                              'EY4hE0OYLZmMxT7C3nEdZtmGYUv22n/Q9fM4x1uWUmTQjgcftXeSO5+vcKVzeq8HJ3JZwZIl75aFGGMoC8MX56ti'
+                              'nO20G6Ex8jrK1tY3WuAVeIxMFaxxnixqbIhF5keLnjyXMcZ1/mnnFbG5qqxZcnWMuJjDKomwBaPQFEWBoWVUKyj8'
+                              'ZhqtqfQSznEcWlma1IhWAQTTr10OxnCJIz27leeS7gBr3G588M3pNZpmXMrKhUh+o//EABQRAQAAAAAAAAAAAAAA'
+                              'AAAAAHD/2gAIAQMBAT8BKf/EABQRAQAAAAAAAAAAAAAAAAAAAHD/2gAIAQIBAT8BKf/EADoQAAIBAwEEBQgIBwAA'
+                              'AAAAAAECAwAEERITITFRBRQiMkAQFSBBQlJhcSMlMDNicIGhQ1Nyk7HR8P/aAAgBAQAGPwL80WsejRH9EPpJH4fK'
+                              'updKRrBMe4w7r+htZj/So4saF7PYqlnnGn2wOdLIhyrDI8CTyq5vG3ySynJ/750Y+Eg3o3I01pddm7g7LA+18fI8'
+                              '0pwiDJrzreg6f4EZ9kc6niIzqQ1FnimU8DcMPVEx/ao8e83kg6Q6PVTOu5geBFatdov4agh6RjWO3Q6mKHv0FAwB'
+                              'TpzBFXAzwlxj9PA3RbhsmH7VBkYzk/v6d2ec58AMsBnhVn0ch+/fLfKgqjAG4end2wOEmXWB8eP+/AIL2ZYmHcOv'
+                              'Sat0671tAh0tnONx3VILR9E2OyaS0Fi8d23Z2hG750iu2twMFuflmt+kYpH7RMTqO8Ka4ul2e0OY4/dWrU2mhZnT'
+                              'cT+tdYu7953K40eyPt+s9IxqcdkH11b31rYy21oj6S5z2qyPIkTuoeTujnWjUNXKjDrXaAZ0534rePIZZ3mW0jGz'
+                              'WWPnXWre6mnVhganyPtwJY0kAORqGaaGVQyN6qFtelpLM/dz47vwNB42DKeBFJqZo5IzlJE4rW1a9uWuvVPneKkl'
+                              'kma4nk70jcqydwrzd0X2gd0kw4ChbKoYe1kd41J1dNG0OSPAlWUMD6jW06NvJbU+5xWgNha3A5q2mseaB/dFY6jb'
+                              'xfFpM/4r6xvmdP5UXZWtEESRr+Efml//xAApEAEAAgEDAgQGAwAAAAAAAAABABEhMVFhQXFAgaHwECAwcJGxweHx'
+                              '/9oACAEBAAE/Ifujqn4FQx2MSd3+TqM4yNgRkCKV2PbpKTBtuJ4HjcsFrRrOhn9qK+vd90mTI2mQfAHe4Ioujt+B'
+                              '73mAxYc1j1hK1Wx4celeBbVhV90JU1Z738Eozvg3T+oWfJvv9xIdhdbBL95gAhUBoEJTT84RSNF4MPAr/X5BQerD'
+                              'VlhvK+Zj0bLo7eAZDSoLVzTGNO32vlBuDAOhL+XWHH4Hpo/lF/XNsjVIdr1hkhrp7kNTVGLmHTzl215MO9EldM6W'
+                              'usvxwrgPqYJQ5YRnoX3hm9i+zJfKLbUo9L/D65KpbF24A1gPIKoDi86YvEMEsckqXTWvc11iZQssvlO0DVrnSbqm'
+                              'jDW5FDfSUXNClb121loI8Li39eiuAMDvmCHKlTHVS4s4Z/tdjMmUIpoMtoDg8FbQuXbaNCOFALV6RDb0qH1B25lQ'
+                              'u59yWLYOjLV8HTwOEMSFjEqE22v8n+4wh2tg/mpdV1NZAoW6Vx5RdtjN3D1Zw2Ki++/hq+3n/9oADAMBAAIAAwAA'
+                              'ABDzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzRjjxTzzzzzzzwSyyjTzzzzzzziRDz'
+                              'QDzzzzzzzyQwgjzzzzzzzzywwxzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz/8QA'
+                              'FBEBAAAAAAAAAAAAAAAAAAAAcP/aAAgBAwEBPxAp/8QAFBEBAAAAAAAAAAAAAAAAAAAAcP/aAAgBAgEBPxAp/8QA'
+                              'JxABAQACAgEDBAIDAQAAAAAAAREAITFBURBhcTBAgcFwkaGx4fD/2gAIAQEAAT8Q/jiz7kAND4qto5DtW+HBDTK9'
+                              'w1EsV43yxjpGnrTuuX7M/vgxHOXVEHXW4bFU83AiHf0iP9P2JMSbVhouciB8Ugf+PWIvwAiPG+a4f+YilTonB8+7'
+                              '8Pfo61iOXwB2roPLinlTrWxRPCeW+GF3God2VvVAOK4TB0qPwh+PsZ2eIFGLjIAsY709+wemkuSCELpYNbsnjK6r'
+                              'SbzV1Y8/7ZetApE2HfXGqsOFo+AIAdAZQGtnMQ/eBGgPhlH8/r7Ey71rKIfKB+cPD8FGRO+kj8PpMhkPHpxx3ZaB'
+                              'o066PsJ1nDT5heXG3EXTtCpqhYXrhFEigBAPwZHnKPqNzWEAcApRw+xwdYDz9cbA2EZUKbB051jRNQXBG3X7xXUR'
+                              'EFAoXQgTfnNz6sxaGDivKEu+MT+zcRBHqtfR4cjT90CtehJImzY8YJxVEiAolXZr/jjOYhg6ghHj29YsnVcZRoeU'
+                              'kHsfr7rjrLVGStr7b4yoBwwK5PYFuBUGIcI8OTiGUE5hYPYxPsmmTlOSe+FzicLGC5S4iKapBmIUgCq6AwRgz5ao'
+                              'SiU6qkx4FohQkneg37/XAFYoPgAYnnJb8px4R6R2ONu+LZNQ6A/HWtETOAm9kxi/HFMPjQ/IYy42kYSKnwuN1kCT'
+                              'iErA+fHgx3okoA5V6MGBhqAsB/sOeC3FKWhmoRN5nHQBjsYqdImxg9j7EKVIsDyI85SEip/u3zz2ylSBbR1bBvwd'
+                              'Z52xYtPnjs+d4wphlW7FFXdPhw1oZXa21sb5mBtcqSgSo2p21+1hkeMh/Hf/2Q==',
+                    'tags': [{'name': 'Картинка', 'color': '#000000'}, {'name': 'Котик', 'color': '#ffffff'}]
                 }
             ),
             OpenApiExample(
