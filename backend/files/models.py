@@ -1,3 +1,4 @@
+from colorfield.fields import ColorField
 from django.db import models
 from django_minio_backend import MinioBackend
 from rest_framework.exceptions import ValidationError
@@ -22,6 +23,11 @@ class Tag(models.Model):
         max_length=255,
         unique=True,
         verbose_name='Название'
+    )
+    color = ColorField(
+        verbose_name='Цвет',
+        blank=True,
+        null=True
     )
 
     def __str__(self):

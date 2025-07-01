@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.postgres',
     'corsheaders',
+    'colorfield',
     'django_minio_backend',
     'clickhouse_backend',
     'django_filters',
@@ -158,6 +159,7 @@ MINIO_PRIVATE_BUCKETS = [
 ]
 MINIO_MEDIA_FILES_BUCKET = 'local-media'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
+STATIC_URL = 'http://localhost:9000/local-static/'
 STORAGES = {
     'default': {
         'BACKEND': 'django_minio_backend.models.MinioBackend'

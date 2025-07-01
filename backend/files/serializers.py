@@ -58,6 +58,7 @@ class TagFileSerializer(serializers.Serializer):
 
     id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(max_length=255)
+    color = serializers.CharField(max_length=7, required=False)
 
 
 class FileSourceSerializer(serializers.ModelSerializer):
@@ -80,7 +81,7 @@ class FileSourceSerializer(serializers.ModelSerializer):
 class FileSerializer(serializers.ModelSerializer):
     """Сериализация одного файла."""
 
-    tags = TagFileSerializer(many=True, required=False, allow_empty=True)
+    tags = TagFileSerializer(many=True, required=False, allow_empty=True, write_only=True)
     source = Base64FileField(write_only=True)
     url = serializers.SerializerMethodField()
 
@@ -117,7 +118,12 @@ class FileSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         try:
             tags = validated_data.pop('tags')
-            tag_ids = [Tag.objects.get_or_create(**tag)[0] for tag in tags]
+            tag_ids = [
+                Tag.objects.get_or_create(
+                    name=tag['name'],
+                    defaults={'color': tag['color']} if 'color' in tag else {}
+                )[0] for tag in tags
+            ]
             instance = File.objects.create(**validated_data)
             instance.tags.set(tag_ids)
         except KeyError:

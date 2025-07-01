@@ -7,9 +7,9 @@ ENV PYTHONUNBUFFERED 1
 
 RUN python -m pip install --upgrade pip
 
-COPY req.txt .
+COPY updated_req.txt .
 
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r req.txt
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r updated_req.txt
 
 # --------------------------------------------------------------------- #
 

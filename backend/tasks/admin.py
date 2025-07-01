@@ -26,6 +26,8 @@ class TaskAdmin(admin.ModelAdmin):
         'type',
         'status'
     )
+    raw_id_fields = ('client', 'owner')
+    show_full_result_count = False
 
     def get_queryset(self, request):
         return Task.objects.all().select_related('owner', 'client')

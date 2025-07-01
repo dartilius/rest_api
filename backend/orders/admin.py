@@ -21,19 +21,14 @@ class AdOrderAdmin(admin.ModelAdmin):
         'owner',
         'created'
     )
-    list_filter = (
-        'owner',
-        'client',
-        'status',
-        'broadcast_interval',
-        'created'
-    )
     search_fields = (
         'id',
         'name',
         'client',
         'playlist'
     )
+    raw_id_fields = ('client', 'playlist', 'owner')
+    show_full_result_count = False
 
     def get_queryset(self, request):
         return AdOrder.objects.all().select_related(
@@ -105,20 +100,14 @@ class BgOrderAdmin(admin.ModelAdmin):
         'owner',
         'created'
     )
-    list_filter = (
-        'owner',
-        'client',
-        'order_type',
-        'status',
-        'broadcast_interval',
-        'created'
-    )
     search_fields = (
         'id',
         'name',
         'client',
         'playlist'
     )
+    raw_id_fields = ('client', 'owner', 'playlist')
+    show_full_result_count = False
 
     def get_queryset(self, request):
         return BgOrder.objects.all().select_related(
