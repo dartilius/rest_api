@@ -4,7 +4,9 @@ from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
     StatusHistory,
-    STATUSES
+    STATUSES,
+    Brand,
+    NomenclatureImage,
 )
 
 
@@ -12,28 +14,21 @@ from nomenclatures.models import (
 class NomenclatureAdmin(admin.ModelAdmin):
     """Номенклатура."""
 
-    @admin.display(description='Статус')
+    @admin.display(description="Статус")
     def status(self, obj):
         try:
             return STATUSES[obj.availability.status]
         except AttributeError:
             return None
 
-    list_display = (
-        'id',
-        'name',
-        'owner',
-        'timezone',
-        'is_active',
-        'status'
-    )
-    search_fields = ('name',)
+    list_display = ("id", "name", "owner", "timezone", "is_active", "status")
+    search_fields = ("name",)
     show_full_result_count = False
-    raw_id_fields = ('owner',)
+    raw_id_fields = ("owner",)
 
     def get_queryset(self, request):
         return Nomenclature.objects.all().select_related(
-            'owner', 'availability'
+            "owner", "availability"
         )
 
 
@@ -41,25 +36,43 @@ class NomenclatureAdmin(admin.ModelAdmin):
 class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
     """Доступность."""
 
-    list_display = ('client', 'last_answer_date', 'status')
+    list_display = ("client", "last_answer_date", "status")
     show_full_result_count = False
-    raw_id_fields = ('client',)
+    raw_id_fields = ("client",)
 
     def get_queryset(self, request):
-        return NomenclatureAvailability.objects.all().select_related('client')
+        return NomenclatureAvailability.objects.all().select_related("client")
 
 
 @admin.register(StatusHistory)
 class StatusHistoryAdmin(admin.ModelAdmin):
     """История доступности."""
 
-    list_display = (
-        'client',
-        'change_time',
-        'status'
-    )
+    list_display = ("client", "change_time", "status")
     show_full_result_count = False
-    raw_id_fields = ('client',)
+    raw_id_fields = ("client",)
 
     def get_queryset(self, request):
-        return StatusHistory.objects.all().select_related('client')
+        return StatusHistory.objects.all().select_related("client")
+
+
+@admin.register(Brand)
+class BrandAdmin(admin.ModelAdmin):
+    """Администрирование брендов."""
+
+    list_display = ("id", "name")
+    search_fields = ("name",)
+    show_full_result_count = False
+
+
+@admin.register(NomenclatureImage)
+class NomenclatureImageAdmin(admin.ModelAdmin):
+    """Администрирование фотографий номенклатур."""
+
+    list_display = ("id", "nomenclature__name", "created")
+    search_fields = ("nomenclature__name",)
+    show_full_result_count = False
+    raw_id_fields = ("nomenclature",)
+
+    def get_queryset(self, request):
+        return NomenclatureImage.objects.select_related("nomenclature")
