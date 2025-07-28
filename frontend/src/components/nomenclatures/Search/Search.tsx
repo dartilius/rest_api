@@ -1,10 +1,10 @@
 'use client'
-import { useStore } from '@/providers/mobx-provider/MobxProvider'
-import { handleQueryParamChange } from '@/utils'
-import { TextField } from '@mui/material'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ChangeEvent, useEffect, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useDebouncedCallback } from 'use-debounce'
+import { TextField } from '@mui/material'
+import { handleQueryParamChange } from '@/utils'
+import { useStore } from '@/providers/mobx-provider/MobxProvider'
 interface IPropsSearch {
 	nameQueryParams: string
 	label: string
@@ -36,8 +36,8 @@ export function Search({ ...props }: IPropsSearch) {
 				handleSearch(e.target.value)
 			}}
 			value={searchValue}
-			size='medium'
-			style={{ backgroundColor: 'white', borderRadius: '4px', width: '100%' }}
+			size='small'
+			style={{ backgroundColor: 'white', borderRadius: '4px', maxHeight: '52px', width: '100%' }}
 		/>
 	)
 }
