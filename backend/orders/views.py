@@ -49,7 +49,6 @@ class NoDeleteViewSet(
 
 
 @extend_schema_view(
-    update=extend_schema(summary="Обновить рекламный заказ", deprecated=True),
     partial_update=extend_schema(
         summary='Обновить рекламный заказ',
         examples=DEFAULT_SCHEMA_EXAMPLES + [
@@ -656,6 +655,7 @@ class AdOrderViewSet(NoDeleteViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
     permission_classes = [StaffCUDAuthRetrieve]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def perform_create(self, serializer):
         """
@@ -739,7 +739,6 @@ class AdOrderViewSet(NoDeleteViewSet):
 
 
 @extend_schema_view(
-    update=extend_schema(summary="Обновить фоновый заказ", deprecated=True),
     partial_update=extend_schema(
         summary='Обновить фоновый заказ',
         examples=[
@@ -1003,6 +1002,7 @@ class BgOrderViewSet(NoDeleteViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter
     permission_classes = [StaffCUDAuthRetrieve]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def perform_create(self, serializer):
         """

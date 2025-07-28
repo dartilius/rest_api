@@ -16,6 +16,7 @@ from api.constants import (
     get_instance_or_404,
     restricted_update,
     DetailSerializer,
+    VersionsSerializer,
 )
 from ch_statistic.models import (
     ADStat,
@@ -34,13 +35,18 @@ from ch_statistic.serializers import (
 from ch_statistic.tasks import create_statistic
 from files.models import File
 from nomenclatures.filters import NomenclatureFilter
-from nomenclatures.models import Nomenclature, NomenclatureAvailability, Brand
+from nomenclatures.models import (
+    Nomenclature,
+    NomenclatureAvailability,
+    Brand,
+)
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
     StatusHistorySerializer,
     PhotoSerializer,
     BrandSerializer,
+    BrandCreateSerializer,
 )
 from nomenclatures.tasks import (
     resend_orders_task,
@@ -59,9 +65,9 @@ from users.permissions import StaffCUDAuthRetrieve
 class NomenclatureViewSet(viewsets.ModelViewSet):
     """Работа с номенклатурами."""
 
-    queryset = Nomenclature.active.all().select_related(
-        "owner", "availability"
-    )
+    queryset = Nomenclature.active.select_related(
+        "owner", "availability", "brand"
+    ).prefetch_related("images")
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
     permission_classes = [StaffCUDAuthRetrieve]
@@ -94,6 +100,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         response = restricted_update(self, request, *args, **kwargs)
         return response
 
+    @extend_schema(summary="Деактивировать номенклатуру")
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         data = self.perform_destroy(instance)
@@ -112,6 +119,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         instance.save(update_fields=["is_active"])
         return None
 
+    @extend_schema(
+        summary="Получить список всех версий номенклатур",
+        responses={HTTP_200_OK: VersionsSerializer},
+    )
     @action(detail=False, methods=["GET"], url_path="versions")
     def get_versions(self, request):
         versions = (
@@ -132,35 +143,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             description=request.data["description"]
         )
         return Response({"id": nomenclature.pk})
-
-    @action(detail=True, methods=["POST"])
-    def resend_orders(self, request, pk):
-        """
-        Переотправка заказов.
-
-        0. Получем список айди закзаов и проверяем,
-            что объект запроса существует.
-        1. Фильтруем активные заказы всех типов на совпадение
-            с полученным списком айди.
-        2. Если не нашлось ни одного заказа, возвращаем соответствующий ответ.
-        3. Иначе отправляем заказы на переотправку и оповещаем об успехе.
-        """
-        # 0
-        nomenclature = get_instance_or_404(Nomenclature, pk)
-        # 1
-        adorders = nomenclature.adorders.filter(status__in=[0, 1]).count()
-        bgorders = nomenclature.bgorders.filter(status__in=[0, 1]).count()
-        # 2
-        if adorders == 0 and bgorders == 0:
-            return Response(
-                data={"message": "Нет активных заказов."}, status=HTTP_200_OK
-            )
-        # 3
-        resend_orders_task.delay(pk)
-        return Response(
-            data={"message": "Запрос на переотправку заказов принят."},
-            status=HTTP_201_CREATED,
-        )
 
     @action(detail=True, methods=["POST"], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
@@ -218,18 +200,61 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         ]
         return Response(data, status=HTTP_200_OK)
 
+    @extend_schema(
+        summary="Переотправить заказы",
+        tags=["Номенклатуры", "Заказы"],
+        request=None,
+        responses={
+            HTTP_200_OK: DetailSerializer,
+            HTTP_201_CREATED: DetailSerializer,
+        },
+    )
+    @action(detail=True, methods=["POST"])
+    def resend_orders(self, request, pk):
+        """
+        Переотправка заказов.
+
+        0. Получем список айди закзаов и проверяем,
+            что объект запроса существует.
+        1. Фильтруем активные заказы всех типов на совпадение
+            с полученным списком айди.
+        2. Если не нашлось ни одного заказа, возвращаем соответствующий ответ.
+        3. Иначе отправляем заказы на переотправку и оповещаем об успехе.
+        """
+        # 0
+        nomenclature = get_instance_or_404(Nomenclature, pk)
+        # 1
+        adorders = nomenclature.adorders.filter(status__in=[0, 1]).count()
+        bgorders = nomenclature.bgorders.filter(status__in=[0, 1]).count()
+        # 2
+        if adorders == 0 and bgorders == 0:
+            return Response(
+                data={"detail": "Нет активных заказов."}, status=HTTP_200_OK
+            )
+        # 3
+        resend_orders_task.delay(pk)
+        return Response(
+            data={"detail": "Запрос на переотправку заказов принят."},
+            status=HTTP_201_CREATED,
+        )
+
+    @extend_schema(
+        summary="Создать задачу",
+        responses={
+            HTTP_200_OK: DetailSerializer,
+            HTTP_400_BAD_REQUEST: DetailSerializer,
+        },
+    )
     @action(detail=True, methods=["POST"], url_path="actions")
     def send_task(self, request, pk):
         """
         Отправка административных репликаций на тачку.
 
         Типы репликаций:
-         - Перезагрузка
-         - Обновление
-         - SH команда
-            parameters = {'command': 'rm -rf /'}
-         - Настройки вещания
-            settings = {'mon' = {'default_volume': [50, 50, 50, 50], ...}
+         - Перезагрузка `{"task": "reboot"}`
+         - Обновление `{"task": "update"}`
+         - SH команда `{"task": "custom", "parameters": "rm -rf /"}`
+         - Настройки вещания `{"task": "settings"}`
         """
         nomenclature = get_instance_or_404(Nomenclature, pk)
         task = request.data["task"]
@@ -257,8 +282,12 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     {"detail": "Недопустимое действие."},
                     status=HTTP_400_BAD_REQUEST,
                 )
-        return Response({"message": "Репликация создана."})
+        return Response({"detail": "Репликация создана."})
 
+    @extend_schema(
+        summary="Получить список репликаций номенклатуры",
+        responses={HTTP_200_OK: TaskListSerializer},
+    )
     @action(detail=True, methods=["GET"], url_path="tasks")
     def get_tasks(self, request, pk):
         """Запрос списка репликаций номенклатуры."""
@@ -272,6 +301,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = TaskListSerializer(tasks, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
+    @extend_schema(
+        summary="Получить статистику рекламы по номенклатуре",
+        responses={HTTP_200_OK: NomenclatureAdStatSerializer},
+    )
     @action(detail=True, methods=["GET"], url_path="ad_stat")
     def get_ad_stat(self, request, pk):
         """Отображение статистики рекламы конкретной номенклатуры."""
@@ -283,6 +316,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureAdStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
+    @extend_schema(
+        summary="Получить статистику музыки по номенклатуре",
+        responses={HTTP_200_OK: NomenclatureMusicStatSerializer},
+    )
     @action(detail=True, methods=["GET"], url_path="music_stat")
     def get_music_stat(self, request, pk):
         """Отображение статистики музыки конкретной номенклатуры."""
@@ -295,6 +332,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureMusicStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
+    @extend_schema(
+        summary="Получить статистику фоновых видео по номенклатуре",
+        responses={HTTP_200_OK: NomenclatureVideoStatSerializer},
+    )
     @action(detail=True, methods=["GET"], url_path="video_stat")
     def get_video_stat(self, request, pk):
         """Отображение статистики видео конкретной номенклатуры."""
@@ -308,6 +349,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureVideoStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
+    @extend_schema(
+        summary="Получить статистику фоновых изображений по номенклатуре",
+        responses={HTTP_200_OK: NomenclatureImageStatSerializer},
+    )
     @action(detail=True, methods=["GET"], url_path="image_stat")
     def get_image_stat(self, request, pk):
         """Отображение статистики картинок конкретной номенклатуры."""
@@ -320,6 +365,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         serializer = NomenclatureImageStatSerializer(statistics, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
+    @extend_schema(
+        summary="Получить статистику бегущих строк по номенклатуре",
+        responses={HTTP_200_OK: NomenclatureTickerStatSerializer},
+    )
     @action(detail=True, methods=["GET"], url_path="ticker_stat")
     def get_ticker_stat(self, request, pk):
         """Отображение статистики бегущих строк конкретной номенклатуры."""
@@ -356,10 +405,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     )
     def add_photo(self, request, pk):
         nomenclature = get_instance_or_404(Nomenclature, pk)
-        request.data.nomenclature = nomenclature
-        serializer = PhotoSerializer(request.data)
+        serializer = PhotoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        photo = serializer.save()
+        nomenclature.images.add(photo)
         return Response(
             {"detail": "Фотографии прикреплены"}, status=HTTP_201_CREATED
         )
@@ -370,5 +419,9 @@ class BrandViewSet(NoDeleteViewSet):
     """Бренды."""
 
     queryset = Brand.objects.all()
-    serializer_class = BrandSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return BrandCreateSerializer
+        return BrandSerializer
