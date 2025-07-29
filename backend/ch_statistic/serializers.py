@@ -7,7 +7,7 @@ from ch_statistic.models import (
     MusicStat,
     VideoStat,
     TickerStat,
-    ImageStat
+    ImageStat,
 )
 
 
@@ -19,16 +19,18 @@ class StatisticSerializer(serializers.Serializer):
 
     class Meta:
         fields = (
-            'length',
+            "played",
+            "length",
         )
         read_only_fields = (
-            'length',
+            "played",
+            "length",
         )
         abstract = True
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation['played'] = f'{value.played:%Y-%m-%d %H:%M:%S}'
+        representation["played"] = f"{value.played:%Y-%m-%d %H:%M:%S}"
         return representation
 
 
@@ -38,8 +40,8 @@ class BaseNomenclatureSerializer(StatisticSerializer):
     file = serializers.CharField()
 
     class Meta:
-        fields = StatisticSerializer.Meta.fields + ('file',)
-        read_only_fields = ('file',)
+        fields = StatisticSerializer.Meta.fields + ("file",)
+        read_only_fields = fields
         abstract = True
 
 
@@ -49,14 +51,13 @@ class BaseFileSerializer(StatisticSerializer):
     client = serializers.CharField()
 
     class Meta:
-        fields = StatisticSerializer.Meta.fields + ('client',)
-        read_only_fields = ('client',)
+        fields = StatisticSerializer.Meta.fields + ("client",)
+        read_only_fields = fields
         abstract = True
 
 
 class NomenclatureAdStatSerializer(
-    BaseNomenclatureSerializer,
-    serializers.ModelSerializer
+    BaseNomenclatureSerializer, serializers.ModelSerializer
 ):
     """Сериализация статистики рекламы из номенклатуры."""
 
@@ -64,26 +65,23 @@ class NomenclatureAdStatSerializer(
 
     class Meta:
         model = ADStat
-        fields = BaseNomenclatureSerializer.Meta.fields + ('ad_block',)
-        read_only_fields = (
-                BaseNomenclatureSerializer.Meta.
-                read_only_fields +
-                ('ad_block',)
+        fields = BaseNomenclatureSerializer.Meta.fields + ("ad_block",)
+        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields + (
+            "ad_block",
         )
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation.pop('played')
-        ad_block = f'{td(seconds=value.ad_block)}'
-        representation['ad_block'] = (
+        representation.pop("played")
+        ad_block = f"{td(seconds=value.ad_block)}"
+        representation["ad_block"] = (
             f'{dt.strptime(ad_block, "%H:%M:%S").time()}'
         )
         return representation
 
 
 class NomenclatureMusicStatSerializer(
-    BaseNomenclatureSerializer,
-    serializers.ModelSerializer
+    BaseNomenclatureSerializer, serializers.ModelSerializer
 ):
     """Сериализация статистики музыки из номенклатуры."""
 
@@ -94,8 +92,7 @@ class NomenclatureMusicStatSerializer(
 
 
 class NomenclatureVideoStatSerializer(
-    BaseNomenclatureSerializer,
-    serializers.ModelSerializer
+    BaseNomenclatureSerializer, serializers.ModelSerializer
 ):
     """Сериализация статистики видео из номенклатуры."""
 
@@ -106,8 +103,7 @@ class NomenclatureVideoStatSerializer(
 
 
 class NomenclatureTickerStatSerializer(
-    BaseNomenclatureSerializer,
-    serializers.ModelSerializer
+    BaseNomenclatureSerializer, serializers.ModelSerializer
 ):
     """Сериализация статистики бегущих строк из номенклатуры."""
 
@@ -118,8 +114,7 @@ class NomenclatureTickerStatSerializer(
 
 
 class NomenclatureImageStatSerializer(
-    BaseNomenclatureSerializer,
-    serializers.ModelSerializer
+    BaseNomenclatureSerializer, serializers.ModelSerializer
 ):
     """Сериализация статистики картинок из номенклатуры."""
 
@@ -129,36 +124,28 @@ class NomenclatureImageStatSerializer(
         read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields
 
 
-class FileAdStatSerializer(
-    BaseFileSerializer,
-    serializers.ModelSerializer
-):
+class FileAdStatSerializer(BaseFileSerializer, serializers.ModelSerializer):
     """Сериализация статистики рекламы из файла."""
 
     ad_block = serializers.IntegerField()
 
     class Meta:
         model = ADStat
-        fields = BaseFileSerializer.Meta.fields + ('ad_block',)
-        read_only_fields = (
-                BaseFileSerializer.Meta.
-                read_only_fields +
-                ('ad_block',)
+        fields = BaseFileSerializer.Meta.fields + ("ad_block",)
+        read_only_fields = BaseFileSerializer.Meta.read_only_fields + (
+            "ad_block",
         )
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        ad_block = f'{td(seconds=value.ad_block)}'
-        representation['ad_block'] = (
+        ad_block = f"{td(seconds=value.ad_block)}"
+        representation["ad_block"] = (
             f'{dt.strptime(ad_block, "%H:%M:%S").time()}'
         )
         return representation
 
 
-class FileMusicStatSerializer(
-    BaseFileSerializer,
-    serializers.ModelSerializer
-):
+class FileMusicStatSerializer(BaseFileSerializer, serializers.ModelSerializer):
     """Сериализация статистики музыки из файла."""
 
     class Meta:
@@ -167,10 +154,7 @@ class FileMusicStatSerializer(
         read_only_fields = BaseFileSerializer.Meta.read_only_fields
 
 
-class FileVideoStatSerializer(
-    BaseFileSerializer,
-    serializers.ModelSerializer
-):
+class FileVideoStatSerializer(BaseFileSerializer, serializers.ModelSerializer):
     """Сериализация статистики видео из файла."""
 
     class Meta:
@@ -180,8 +164,7 @@ class FileVideoStatSerializer(
 
 
 class FileTickerStatSerializer(
-    BaseFileSerializer,
-    serializers.ModelSerializer
+    BaseFileSerializer, serializers.ModelSerializer
 ):
     """Сериализация статистики бегущих строк из файла."""
 
@@ -191,10 +174,7 @@ class FileTickerStatSerializer(
         read_only_fields = BaseFileSerializer.Meta.read_only_fields
 
 
-class FileImageStatSerializer(
-    BaseFileSerializer,
-    serializers.ModelSerializer
-):
+class FileImageStatSerializer(BaseFileSerializer, serializers.ModelSerializer):
     """Сериализация статистики картинок из файла."""
 
     class Meta:

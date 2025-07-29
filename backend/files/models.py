@@ -22,7 +22,8 @@ class Tag(models.Model):
     name = models.CharField(
         max_length=255,
         unique=True,
-        verbose_name='Название'
+        verbose_name='Название',
+        editable=False
     )
     color = ColorField(
         verbose_name='Цвет',

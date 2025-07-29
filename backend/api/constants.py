@@ -1,4 +1,5 @@
 from typing import Type, TypeVar
+
 from django.db.models import Model
 from drf_spectacular.utils import OpenApiExample
 from rest_framework import serializers
@@ -7,16 +8,15 @@ from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
-    HTTP_405_METHOD_NOT_ALLOWED
 )
 
-ModelType = TypeVar('ModelType', bound=Model)
+ModelType = TypeVar("ModelType", bound=Model)
 
 
 class Constants:
     """DRY."""
 
-    empty_values = ('', [], (), {}, None)
+    empty_values = ("", [], (), {}, None)
 
 
 def get_bg_task_type(order_type: int, action: str) -> int:
@@ -34,14 +34,14 @@ def get_bg_task_type(order_type: int, action: str) -> int:
     UPDATE_VIDEO_TASK = 12
     UPDATE_TICKER_TASK = 13
     match action:
-        case 'cancel':
+        case "cancel":
             order_types_to_task_types = {
                 ORDER_MUSIC: CANCEL_MUSIC_TASK,
                 ORDER_IMAGE: CANCEL_IMAGE_TASK,
                 ORDER_VIDEO: CANCEL_VIDEO_TASK,
                 ORDER_TICKER: CANCEL_TICKER_TASK,
             }
-        case 'update':
+        case "update":
             order_types_to_task_types = {
                 ORDER_MUSIC: UPDATE_MUSIC_TASK,
                 ORDER_IMAGE: UPDATE_IMAGE_TASK,
@@ -49,7 +49,7 @@ def get_bg_task_type(order_type: int, action: str) -> int:
                 ORDER_TICKER: UPDATE_TICKER_TASK,
             }
         case _:
-            raise ValueError('Такое действие не предусмотрено')
+            raise ValueError("Такое действие не предусмотрено")
     return order_types_to_task_types[order_type]
 
 
@@ -62,17 +62,17 @@ def get_list_of_file_types() -> dict[str, set[str]]:
         ...
     }
     """
-    MUSIC = {'mp3'}
-    IMAGE = {'jpg', 'jpeg', 'png'}
-    VIDEO = {'mp4', 'avi', 'mpg'}
-    TICKER = {'txt'}
+    MUSIC = {"mp3"}
+    IMAGE = {"jpg", "jpeg", "png"}
+    VIDEO = {"mp4", "avi", "mpg"}
+    TICKER = {"txt"}
     AD = MUSIC | VIDEO
     return {
-        'ad': AD,
-        'music': MUSIC,
-        'image': IMAGE,
-        'video': VIDEO,
-        'ticker': TICKER
+        "ad": AD,
+        "music": MUSIC,
+        "image": IMAGE,
+        "video": VIDEO,
+        "ticker": TICKER,
     }
 
 
@@ -93,13 +93,12 @@ def get_minio_client(external=False):
         access_key=settings.MINIO_ACCESS_KEY,
         secret_key=settings.MINIO_SECRET_KEY,
         secure=secure,
-        cert_check=secure
+        cert_check=secure,
     )
     return minio_client
 
 
-def get_instance_or_404(model: Type[ModelType],
-                        pk: str) -> ModelType:
+def get_instance_or_404(model: Type[ModelType], pk: str) -> ModelType:
     """
     Если в базе существует объект модели {model} с заданным {pk},
     возвращаем его, иначе возвращаем 404_NOT_FOUND.
@@ -108,16 +107,18 @@ def get_instance_or_404(model: Type[ModelType],
     from django.shortcuts import get_object_or_404
     from rest_framework.exceptions import ValidationError
     from uuid import UUID
+
     try:
         UUID(pk)
     except ValueError:
-        raise ValidationError(f'Значение {pk} не является верным UUID-ом.')
+        raise ValidationError(f"Значение {pk} не является верным UUID-ом.")
     instance = get_object_or_404(model, id=pk)
     return instance
 
 
-def get_instance_list_or_404(model: Type[ModelType],
-                             pk_list: list[str]) -> list[ModelType]:
+def get_instance_list_or_404(
+    model: Type[ModelType], pk_list: list[str]
+) -> list[ModelType]:
     """
     Возвращаем список объектов модели {model} с pk из списка {pk_list},
     если такие существуют. Если не нашлось ни одного объекта,
@@ -129,6 +130,7 @@ def get_instance_list_or_404(model: Type[ModelType],
     from django.shortcuts import get_list_or_404
     from rest_framework.exceptions import ValidationError
     from uuid import UUID
+
     bad_pks = []
     for pk in pk_list:
         try:
@@ -136,7 +138,9 @@ def get_instance_list_or_404(model: Type[ModelType],
         except ValueError:
             bad_pks.append(pk)
     if bad_pks:
-        raise ValidationError(f'Значения {bad_pks} не являются верным UUID-ом.')
+        raise ValidationError(
+            f"Значения {bad_pks} не являются верным UUID-ом."
+        )
     instance_list = get_list_or_404(model, id__in=pk_list)
     return instance_list
 
@@ -155,35 +159,37 @@ def restricted_update(viewset, request, *args, **kwargs):
     from rest_framework.response import Response
     from rest_framework.status import (
         HTTP_405_METHOD_NOT_ALLOWED,
-        HTTP_400_BAD_REQUEST
+        HTTP_400_BAD_REQUEST,
     )
 
-    updatable_fields = kwargs.pop('updatable_fields', [])
-    error_message = kwargs.pop('error_message',
-                               {'detail': 'Нельзя обновить поля: {keys}'})
-    partial = kwargs.pop('partial', False)
+    updatable_fields = kwargs.pop("updatable_fields", [])
+    error_message = kwargs.pop(
+        "error_message", {"detail": "Нельзя обновить поля: {keys}"}
+    )
+    partial = kwargs.pop("partial", False)
     # 1
     if not partial:
-        return Response(data={'detail': 'Метод "PUT" запрещён, '
-                                        'используйте метод "PATCH".'},
-                        status=HTTP_405_METHOD_NOT_ALLOWED)
+        return Response(
+            data={
+                "detail": 'Метод "PUT" запрещён, ' 'используйте метод "PATCH".'
+            },
+            status=HTTP_405_METHOD_NOT_ALLOWED,
+        )
     instance = viewset.get_object()
     serializer = viewset.get_serializer(
-        instance,
-        data=request.data,
-        partial=partial
+        instance, data=request.data, partial=partial
     )
     initial_data = serializer.initial_data
     # 2
     bad_keys = {key for key in initial_data if key not in updatable_fields}
     if bad_keys:
         return Response(
-            data={'detail': error_message.format(keys=bad_keys)},
-            status=HTTP_400_BAD_REQUEST
+            data={"detail": error_message.format(keys=bad_keys)},
+            status=HTTP_400_BAD_REQUEST,
         )
     serializer.is_valid(raise_exception=True)
     viewset.perform_update(serializer)
-    if getattr(instance, '_prefetched_objects_cache', None):
+    if getattr(instance, "_prefetched_objects_cache", None):
         instance._prefetched_objects_cache = {}
     return Response(serializer.data)
 
@@ -198,19 +204,24 @@ def filter_by_owner_name(queryset, name, value):
     ничего не возвращает.
     """
     from django.db.models import Q
+
     arg_list = value.split()
     if len(arg_list) == 2:
         first_name, last_name = arg_list
         return queryset.filter(
-            (Q(owner__last_name__icontains=last_name) &
-             Q(owner__first_name__icontains=first_name)) |
-            (Q(owner__last_name__icontains=first_name) &
-             Q(owner__first_name__icontains=last_name))
+            (
+                Q(owner__last_name__icontains=last_name)
+                & Q(owner__first_name__icontains=first_name)
+            )
+            | (
+                Q(owner__last_name__icontains=first_name)
+                & Q(owner__first_name__icontains=last_name)
+            )
         )
     elif len(arg_list) == 1:
         return queryset.filter(
-            Q(owner__last_name__icontains=value) |
-            Q(owner__first_name__icontains=value)
+            Q(owner__last_name__icontains=value)
+            | Q(owner__first_name__icontains=value)
         )
     else:
         return None
@@ -222,18 +233,24 @@ class DetailSerializer(serializers.Serializer):
     detail = serializers.CharField()
 
 
+class VersionsSerializer(serializers.Serializer):
+    """Схема ответа для списка версий номенклатур."""
+
+    versions = serializers.ListField()
+
+
 DEFAULT_SCHEMA_RESPONSES = {
     HTTP_400_BAD_REQUEST: DetailSerializer,
     HTTP_401_UNAUTHORIZED: DetailSerializer,
     HTTP_403_FORBIDDEN: DetailSerializer,
-    HTTP_404_NOT_FOUND: DetailSerializer
+    HTTP_404_NOT_FOUND: DetailSerializer,
 }
 
 DEFAULT_SCHEMA_EXAMPLES = [
     OpenApiExample(
-        'Пользователь неавторизован',
-        value={'detail': 'Учетные данные не были предоставлены.'},
+        "Пользователь неавторизован",
+        value={"detail": "Учетные данные не были предоставлены."},
         status_codes=[HTTP_401_UNAUTHORIZED],
-        response_only=True
+        response_only=True,
     )
 ]

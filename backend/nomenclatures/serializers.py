@@ -12,11 +12,53 @@ from nomenclatures.models import (
 )
 
 
+class BrandCreateSerializer(serializers.ModelSerializer):
+    """Схема создания бренда."""
+
+    logo = Base64FileField(write_only=True)
+
+    class Meta:
+        model = Brand
+        fields = ("name", "logo")
+
+
+class BrandSerializer(serializers.ModelSerializer):
+    """Схема чтения бренда."""
+
+    class Meta:
+        model = Brand
+        fields = ("id", "name", "logo", "created")
+        read_only_fields = ("id", "created")
+
+
+class PhotoSerializer(serializers.ModelSerializer):
+    """Схема добавления фотографий к номенклатуре."""
+
+    source = Base64FileField(write_only=True)
+
+    class Meta:
+        model = NomenclatureImage
+        fields = ("id", "source", "type", "created", "nomenclature")
+        read_only_fields = ("id", "created", "nomenclature")
+
+
+class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
+    """Схема для добавления фотографий к номенклатурам."""
+
+    class Meta:
+        model = NomenclatureImage
+        fields = ("source",)
+        read_only_fields = ("source",)
+
+
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
+    brand = BrandSerializer()
+    exterior = serializers.SerializerMethodField()
+    interior = serializers.SerializerMethodField()
 
     class Meta:
         fields = (
@@ -32,6 +74,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "settings",
             "hw_info",
             "created",
+            "brand",
+            "interior",
+            "exterior",
         )
         read_only_fields = (
             "id",
@@ -41,6 +86,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "created",
             "status",
             "last_answer",
+            "brand",
+            "interior",
+            "exterior",
         )
         model = Nomenclature
 
@@ -164,6 +212,16 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         except AttributeError:
             return "Не выходила в сеть"
 
+    def get_interior(self, obj):
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="interior"), many=True
+        ).data
+
+    def get_exterior(self, obj):
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="exterior"), many=True
+        ).data
+
     def to_representation(self, obj):
         repr_ = super().to_representation(obj)
         repr_["main_info"] = {
@@ -197,6 +255,8 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
+    brand = BrandSerializer()
+    exterior = serializers.SerializerMethodField()
 
     class Meta:
         fields = (
@@ -207,9 +267,16 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "status",
             "last_answer",
             "version",
+            "brand",
+            "exterior",
         )
         read_only_fields = fields
         model = Nomenclature
+
+    def get_exterior(self, obj):
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="exterior"), many=True
+        ).data
 
     def get_status(self, obj):
         try:
@@ -241,24 +308,3 @@ class StatusHistorySerializer(serializers.ModelSerializer):
         repr_ = super().to_representation(value)
         repr_["change_time"] = f"{value.change_time:%Y-%m-%d %H:%M:%S}"
         return repr_
-
-
-class PhotoSerializer(serializers.ModelSerializer):
-    """Схема добавления фотографий к номенклатуре."""
-
-    source = Base64FileField(write_only=True)
-
-    class Meta:
-        model = NomenclatureImage
-        fields = ("id", "source", "type", "created", "nomenclature")
-        read_only_fields = ("id", "created")
-        write_only_fields = ("nomenclature",)
-
-
-class BrandSerializer(serializers.ModelSerializer):
-    """Схема бренда."""
-
-    class Meta:
-        model = Brand
-        fields = ("id", "name", "logo", "created")
-        read_only_fields = ("id", "created")
