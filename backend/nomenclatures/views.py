@@ -58,7 +58,7 @@ from nomenclatures.tasks import (
 from orders.views import NoDeleteViewSet
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
-from users.permissions import StaffCUDAuthRetrieve
+from users.permissions import StaffCUDallRead
 
 
 @extend_schema(tags=["Номенклатуры"])
@@ -70,7 +70,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     ).prefetch_related("images")
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
-    permission_classes = [StaffCUDAuthRetrieve]
+    permission_classes = [StaffCUDallRead]
 
     def get_serializer(self, *args, **kwargs):
         if self.action == "list":

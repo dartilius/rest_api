@@ -1,10 +1,10 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-MUTATE_METHODS = ('PUT', 'PATCH')
-MUTATE_DELETE_METHODS = (*MUTATE_METHODS, 'DELETE')
+MUTATE_METHODS = ("PUT", "PATCH")
+MUTATE_DELETE_METHODS = (*MUTATE_METHODS, "DELETE")
 NO_DELETE_METHODS = (*MUTATE_METHODS, *SAFE_METHODS)
 
-error_message = 'Недостаточно прав.' + ' %(class)s.__doc__'
+error_message = "Недостаточно прав." + " %(class)s.__doc__"
 
 
 class SuperuserCUDAuthRetrieve(BasePermission):
@@ -81,7 +81,7 @@ class SuperuserDStaffCUAuthRetrieve(BasePermission):
         if request.method in SAFE_METHODS:
             return request.user.is_authenticated
 
-        if request.method == 'DELETE':
+        if request.method == "DELETE":
             return request.user.is_authenticated and request.user.is_superuser
 
         return request.user.is_authenticated and not request.user.is_ordinary
@@ -96,7 +96,7 @@ class SuperuserDeleteStaffCRU(BasePermission):
         return request.user.is_authenticated and not request.user.is_ordinary
 
     def has_object_permission(self, request, view, obj):
-        if request.method == 'DELETE':
+        if request.method == "DELETE":
             return request.user.is_authenticated and request.user.is_superuser
 
         return request.user.is_authenticated and not request.user.is_ordinary
@@ -117,20 +117,18 @@ class SuperuserDeleteAdminCRU(BasePermission):
             return request.user.is_authenticated
 
         return request.user.is_authenticated and (
-            request.user.is_admin or
-            request.user.is_superuser
+            request.user.is_admin or request.user.is_superuser
         )
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
             return request.user.is_authenticated
 
-        if request.method == 'DELETE':
+        if request.method == "DELETE":
             return request.user.is_authenticated and request.user.is_superuser
 
         return request.user.is_authenticated and (
-            request.user.is_admin or
-            request.user.is_superuser
+            request.user.is_admin or request.user.is_superuser
         )
 
 
@@ -153,8 +151,7 @@ class SuperuserDeleteOwnerCRU(BasePermission):
 
         if request.method in MUTATE_METHODS:
             return request.user.is_authenticated and (
-                obj.owner == request.user or
-                request.user.is_superuser
+                obj.owner == request.user or request.user.is_superuser
             )
 
         return request.user.is_authenticated and request.user.is_superuser
@@ -176,8 +173,7 @@ class OwnerAndStaffCRUD(BasePermission):
             return request.user.is_authenticated
 
         return request.user.is_authenticated and (
-            obj.owner == request.user or
-            not request.user.is_ordinary
+            obj.owner == request.user or not request.user.is_ordinary
         )
 
 
@@ -215,8 +211,7 @@ class OnlySuperuserUDAdminManagerCR(BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
             return (
-                request.user.is_authenticated and
-                not request.user.is_ordinary
+                request.user.is_authenticated and not request.user.is_ordinary
             )
 
         return request.user.is_authenticated and request.user.is_superuser
@@ -241,3 +236,24 @@ class OnlySuperuserUDAdminManagerCAuthR(BasePermission):
             return request.user.is_authenticated
 
         return request.user.is_authenticated and request.user.is_superuser
+
+
+class StaffCUDallRead(BasePermission):
+    """
+    Создать, изменить и удалить может любой сотрудник,
+    просмотреть - все.
+    """
+
+    message = error_message
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+
+        return request.user.is_authenticated and not request.user.is_ordinary
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+
+        return request.user.is_authenticated and not request.user.is_ordinary
