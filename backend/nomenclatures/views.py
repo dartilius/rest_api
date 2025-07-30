@@ -66,7 +66,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     """Работа с номенклатурами."""
 
     queryset = Nomenclature.active.select_related(
-        "owner", "availability", "brand"
+        "owner", "availability", "brand", "address"
     ).prefetch_related("images")
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter

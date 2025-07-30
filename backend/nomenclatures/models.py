@@ -34,7 +34,14 @@ TIMEZONES = {
     "Etc/GMT-12": "UTC +12",
 }
 TYPES = {"interior": "Интерьер", "exterior": "Экстерьер"}
-
+AVAILABLE_CONTENT_TYPES = {
+    "audio": "Аудио",
+    "video": "Видео",
+    "audio_video": "Аудио + Видео",
+    "audio_video_image": "Аудио + Видео + Картинка",
+    "video_image": "Видео + Картинка",
+    "audio_image": "Аудио + Картинка",
+}
 STATUSES = {0: "Online", 1: "Offline 5+ minutes", 2: "Offline 1+ hour"}
 
 
@@ -106,6 +113,24 @@ class Nomenclature(APIBaseObjectModel):
         blank=True,
         verbose_name="Бренд номенклатуры",
     )
+    legalEntity = models.CharField(max_length=255, null=True, blank=True)
+    contentType = models.CharField(
+        max_length=255,
+        choices=AVAILABLE_CONTENT_TYPES,
+        default="audio",
+    )
+    typeOfPlace = models.CharField(
+        max_length=255,
+        verbose_name="Тип места размещения",
+        null=True,
+        blank=True,
+    )
+    pricePerMonth = models.DecimalField(
+        decimal_places=2,
+        max_digits=10,
+        verbose_name="Стоимость размещения в месяц",
+        default=0.0,
+    )
 
     @property
     def brand_logo(self):
@@ -160,6 +185,32 @@ class NomenclatureAvailability(models.Model):
 
     def __str__(self):
         return f"{self.last_answer_date}"
+
+
+class NomenclatureAddress(models.Model):
+    """Адреса номенклатур."""
+
+    nomenclature = models.ForeignKey(
+        Nomenclature,
+        verbose_name="Номенклатура",
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="address",
+    )
+    city = models.CharField(max_length=255, verbose_name="Город")
+    federalDistrict = models.CharField(
+        max_length=255, verbose_name="Федеральный округ"
+    )
+    street = models.CharField(max_length=255, verbose_name="Улица")
+    street_house = models.CharField(max_length=31, verbose_name="Номер дома")
+    building = models.CharField(
+        max_length=31, verbose_name="Строение", null=True, blank=True
+    )
+
+    class Meta:
+        db_table = "addresses"
+        verbose_name = "Адрес номенклатуры"
+        verbose_name_plural = "Адреса номенклатур"
 
 
 class StatusHistory(models.Model):
