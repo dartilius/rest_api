@@ -9,7 +9,22 @@ from nomenclatures.models import (
     TIMEZONES,
     NomenclatureImage,
     Brand,
+    NomenclatureAddress,
 )
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    """Схема добавления адреса в номенклатуру."""
+
+    class Meta:
+        model = NomenclatureAddress
+        fields = (
+            "city",
+            "federalDistrict",
+            "street",
+            "street_house",
+            "building",
+        )
 
 
 class BrandCreateSerializer(serializers.ModelSerializer):
@@ -59,6 +74,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     brand = BrandSerializer()
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
+    address = AddressSerializer(allow_null=True)
 
     class Meta:
         fields = (
@@ -77,6 +93,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "brand",
             "interior",
             "exterior",
+            "address",
+            "legalEntity",
+            "contentType",
+            "typeOfPlace",
+            "pricePerMonth",
         )
         read_only_fields = (
             "id",
@@ -269,6 +290,11 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "version",
             "brand",
             "exterior",
+            "address",
+            "legalEntity",
+            "contentType",
+            "typeOfPlace",
+            "pricePerMonth",
         )
         read_only_fields = fields
         model = Nomenclature

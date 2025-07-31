@@ -7,6 +7,7 @@ from nomenclatures.models import (
     STATUSES,
     Brand,
     NomenclatureImage,
+    NomenclatureAddress,
 )
 
 
@@ -76,3 +77,14 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return NomenclatureImage.objects.select_related("nomenclature")
+
+
+@admin.register(NomenclatureAddress)
+class NomenclatureAddressAdmin(admin.ModelAdmin):
+    """Администрирование адресов номенклатур."""
+
+    list_display = ("nomenclature__id", "city", "street")
+    chow_full_result_count = False
+
+    def get_queryset(self, request):
+        return NomenclatureAddress.objects.select_related("nomenclature")
