@@ -190,7 +190,7 @@ class NomenclatureAvailability(models.Model):
 class NomenclatureAddress(models.Model):
     """Адреса номенклатур."""
 
-    nomenclature = models.ForeignKey(
+    nomenclature = models.OneToOneField(
         Nomenclature,
         verbose_name="Номенклатура",
         primary_key=True,

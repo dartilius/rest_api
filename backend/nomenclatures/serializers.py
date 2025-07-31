@@ -74,7 +74,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     brand = BrandSerializer()
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
-    address = AddressSerializer(allow_null=True)
+    address = AddressSerializer()
 
     class Meta:
         fields = (
@@ -278,6 +278,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     last_answer = serializers.SerializerMethodField()
     brand = BrandSerializer()
     exterior = serializers.SerializerMethodField()
+    address = AddressSerializer()
 
     class Meta:
         fields = (
