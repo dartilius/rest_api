@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets, mixins
 from rest_framework.response import Response
 
@@ -9,7 +9,24 @@ from tasks.models import Task, STATUSES
 from users.permissions import OnlyStaffCRUD
 
 
-@extend_schema(tags=['Репликации'])
+@extend_schema_view(
+    list=extend_schema(
+        summary="Получить список репликкаций",
+        tags=['Репликации'],
+    ),
+    retrieve=extend_schema(
+        summary='Получить информацию о репликации',
+        tags=['Репликации'],
+    ),
+    destroy=extend_schema(
+        summary='Отменить репликацию',
+        tags=['Репликации'],
+    ),
+    create=extend_schema(
+        summary='Создать репликацию',
+        tags=['Репликации']
+    )
+)
 class TaskViewSet(
     viewsets.GenericViewSet,
     mixins.ListModelMixin,
