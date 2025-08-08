@@ -72,7 +72,7 @@ class NomenclatureAdStatSerializer(
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-        representation.pop("played")
+#        representation.pop("played")
         ad_block = f"{td(seconds=value.ad_block)}"
         representation["ad_block"] = (
             f'{dt.strptime(ad_block, "%H:%M:%S").time()}'
