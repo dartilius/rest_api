@@ -1,12 +1,13 @@
 from uuid import uuid4
 from django.db import transaction
-from django.db.models import DO_NOTHING, ForeignKey, Model, Manager
+from django.db.models import SET_NULL, ForeignKey, Model, Manager
 from django.db.models.fields import (
     BooleanField,
     CharField,
     DateTimeField,
-    Field,
+    IntegerField,
     UUIDField,
+    BigIntegerField,
 )
 from django.core import checks, exceptions
 from django.utils.translation import gettext_lazy as _
@@ -30,97 +31,98 @@ class UUIDPKField(UUIDField):
         super().__init__(*args, **kwargs)
 
 
-class Article(Field):
+class Article(IntegerField):
     """
-    Авто-инкрементное поле, но при этом не PK.
-
-    Собрано из стандартных AutoField и IntegerField.
+    Авто-инкрементное не-PK поле для PostgreSQL.
+    Сочетает функциональность IntegerField с авто-генерацией значений.
     """
-    description = _("Integer")
-
+    description = _("Auto-incrementing integer field")
     empty_strings_allowed = False
+
     default_error_messages = {
         'invalid': _("'%(value)s' value must be an integer."),
+        'negative': _("Article number cannot be negative."),
     }
 
     def __init__(self, *args, **kwargs):
-        kwargs['blank'] = True
-        kwargs['unique'] = True
-        super(Article, self).__init__(*args, **kwargs)
+        # Обязательные параметры для авто-инкрементного поля
+        kwargs.setdefault('blank', True)
+        kwargs.setdefault('unique', True)
+        kwargs.setdefault('editable', False)
+        kwargs.setdefault('null', True)
+        super().__init__(*args, **kwargs)
 
     def check(self, **kwargs):
-        errors = super(Article, self).check(**kwargs)
+        """Добавляем кастомные проверки к стандартным"""
+        errors = super().check(**kwargs)
         errors.extend(self._check_key())
         return errors
 
     def _check_key(self):
+        """Гарантируем что поле всегда unique"""
         if not self.unique:
             return [
                 checks.Error(
-                    'Article must set key (unique=True).',
+                    "Article field must be unique.",
                     obj=self,
-                    id='fields.E100',
-                ),
+                    id='articles.E001',
+                )
             ]
         return []
 
     def deconstruct(self):
-        name, path, args, kwargs = super(Article, self).deconstruct()
-        del kwargs['blank']
-        kwargs['unique'] = True
+        """Сериализация для миграций с сохранением критичных параметров"""
+        name, path, args, kwargs = super().deconstruct()
+        kwargs.update({
+            'unique': True,
+            'editable': False,
+            'blank': True,
+        })
         return name, path, args, kwargs
 
     def get_internal_type(self):
-        return "Article"
-
-    def to_python(self, value):
-        if value is None:
-            return value
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            raise exceptions.ValidationError(
-                self.error_messages['invalid'],
-                code='invalid',
-                params={'value': value},
-            )
+        """Указываем базовый тип для Django"""
+        return 'IntegerField'
 
     def db_type(self, connection):
-        return 'serial'
+        """Определяем тип поля для разных СУБД"""
+        if connection.vendor == 'postgresql':
+            return 'serial'
+        return super().db_type(connection)
 
-    def get_db_prep_save(self, value, connection):
-        if value is None:
-            return None
-        return super(Article, self).get_db_prep_save(value, connection)
-
-    def get_db_prep_value(self, value, connection, prepared=False):
-        if value is None:
-            return None
-        return int(value)
+    def validate(self, value, model_instance):
+        """Дополнительная валидация значений"""
+        super().validate(value, model_instance)
+        if value is not None and value < 0:
+            raise exceptions.ValidationError(
+                self.error_messages['negative'],
+                code='negative',
+            )
 
     def contribute_to_class(self, cls, name, **kwargs):
-        assert not cls._meta.auto_field, "Может быть только одно auto-поле."
-        super(Article, self).contribute_to_class(cls, name, **kwargs)
-        cls._meta.auto_field = self
+        """Регистрация поля в модели с проверкой уникальности"""
+        if cls._meta.auto_field:
+            raise ValueError("Model can have only one auto field.")
+        super().contribute_to_class(cls, name, **kwargs)
 
     def pre_save(self, model_instance, add):
-        # Проверяем, что значение корректно встало
+        """Генерация нового значения перед сохранением"""
         value = getattr(model_instance, self.attname, None)
         if value is None and add:
-            value = self.get_next_value(model_instance)
-            setattr(model_instance, self.attname, value)
+            return self.get_next_value(model_instance.__class__)
         return value
 
-    def get_next_value(self, model_instance):
+    def get_next_value(self, model_class):
+        """Безопасное получение следующего значения"""
         with transaction.atomic():
-            # Лочим табличку чтобы избежать race conditions
-            last_instance = model_instance.__class__.objects.select_for_update(
-            ).order_by('-' + self.attname).first()
-            if last_instance:
-                return getattr(last_instance, self.attname) + 1
-            return 1
+            last = model_class.objects.select_for_update() \
+                .order_by('-' + self.attname) \
+                .values_list(self.attname, flat=True) \
+                .first()
+            return (last or 0) + 1
 
     def formfield(self, **kwargs):
+        """Отключаем поле в формах"""
         return None
 
 
@@ -145,7 +147,7 @@ class APIBaseObjectModel(Model):
         CustomUser,
         related_name='%(class)ss',
         verbose_name='Создатель',
-        on_delete=DO_NOTHING,
+        on_delete=SET_NULL,
         null=True,
         blank=True
     )

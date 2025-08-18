@@ -335,3 +335,40 @@ class StatusHistorySerializer(serializers.ModelSerializer):
         repr_ = super().to_representation(value)
         repr_["change_time"] = f"{value.change_time:%Y-%m-%d %H:%M:%S}"
         return repr_
+
+
+class NomenclatureCreateSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания номенклатуры с указанием ID бренда."""
+
+    brand = serializers.PrimaryKeyRelatedField(
+        queryset=Brand.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    address = AddressSerializer()
+
+    class Meta:
+        model = Nomenclature
+        fields = (
+            "name",
+            "article",
+            "timezone",
+            "version",
+            "description",
+            "settings",
+            "brand",
+            "address",
+            "legalEntity",
+            "contentType",
+            "typeOfPlace",
+            "pricePerMonth",
+        )
+
+    def create(self, validated_data):
+        address_data = validated_data.pop('address', None)
+        nomenclature = Nomenclature.objects.create(**validated_data)
+
+        if address_data:
+            NomenclatureAddress.objects.create(nomenclature=nomenclature, **address_data)
+
+        return nomenclature

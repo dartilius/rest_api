@@ -43,6 +43,7 @@ from nomenclatures.models import (
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
+    NomenclatureCreateSerializer,
     StatusHistorySerializer,
     PhotoSerializer,
     BrandSerializer,
@@ -75,11 +76,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def get_serializer(self, *args, **kwargs):
         if self.action == "list":
             serializer = NomenclatureListSerializer
+        elif self.action == "create":
+            serializer = NomenclatureCreateSerializer
         else:
             serializer = NomenclatureSerializer
+
         if "data" in kwargs:
             data = kwargs["data"]
-
             if isinstance(data, list):
                 kwargs["many"] = True
 
@@ -87,6 +90,17 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """Create and return full representation (include nested brand fields)."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = serializer.instance
+        # Return full representation using read serializer
+        read_serializer = NomenclatureSerializer(instance, context={"request": request})
+        headers = self.get_success_headers(read_serializer.data)
+        return Response(read_serializer.data, status=HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
         error_message = (
