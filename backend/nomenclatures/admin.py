@@ -1,5 +1,4 @@
 from django.contrib import admin
-
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
@@ -9,7 +8,6 @@ from nomenclatures.models import (
     NomenclatureImage,
     NomenclatureAddress,
 )
-
 
 @admin.register(Nomenclature)
 class NomenclatureAdmin(admin.ModelAdmin):
@@ -30,8 +28,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return Nomenclature.objects.all().select_related(
             "owner", "availability"
-        )
-
+        ).prefetch_related("images")  # Добавлен prefetch_related для изображений
 
 @admin.register(NomenclatureAvailability)
 class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
@@ -44,7 +41,6 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return NomenclatureAvailability.objects.all().select_related("client")
 
-
 @admin.register(StatusHistory)
 class StatusHistoryAdmin(admin.ModelAdmin):
     """История доступности."""
@@ -56,7 +52,6 @@ class StatusHistoryAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return StatusHistory.objects.all().select_related("client")
 
-
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
     """Администрирование брендов."""
@@ -65,26 +60,25 @@ class BrandAdmin(admin.ModelAdmin):
     search_fields = ("name",)
     show_full_result_count = False
 
-
 @admin.register(NomenclatureImage)
 class NomenclatureImageAdmin(admin.ModelAdmin):
     """Администрирование фотографий номенклатур."""
 
-    list_display = ("id", "nomenclature__name", "created")
-    search_fields = ("nomenclature__name",)
+    list_display = ("id", "nomenclature", "created")  # Исправлено: убрано __name
+    search_fields = ("nomenclature__name",)  # Здесь можно оставить, так как это search_fields
     show_full_result_count = False
     raw_id_fields = ("nomenclature",)
 
     def get_queryset(self, request):
         return NomenclatureImage.objects.select_related("nomenclature")
 
-
 @admin.register(NomenclatureAddress)
 class NomenclatureAddressAdmin(admin.ModelAdmin):
     """Администрирование адресов номенклатур."""
 
-    list_display = ("nomenclature__id", "city", "street")
-    chow_full_result_count = False
+    list_display = ("nomenclature", "city", "street")  # Исправлено: убрано __id
+    show_full_result_count = False  # Исправлено: было chow_full_result_count
 
     def get_queryset(self, request):
         return NomenclatureAddress.objects.select_related("nomenclature")
+

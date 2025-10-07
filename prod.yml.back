@@ -1,3 +1,53 @@
+volumes:
+  rabbitdata:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /var/lib/docker/volumes/rmc_rest_api_rabbitdata/_data
+
+  pg_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /var/lib/docker/volumes/rmc_rest_api_pg_data/_data
+
+  pgadmin:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/pgadmin
+
+  static:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/static
+
+  celery:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /var/lib/docker/volumes/rmc_rest_api_celery/_data
+
+  clickhouse_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /var/lib/docker/volumes/rmc_rest_api_clickhouse_data/_data
+
+  s3:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /file/s3
+
 services:
   clickhouse:
     image: clickhouse/clickhouse-server:latest
@@ -13,15 +63,15 @@ services:
       retries: 5
     restart: unless-stopped
     volumes:
-      - /file/clickhouse_data/_data:/var/lib/clickhouse
+      - clickhouse_data:/var/lib/clickhouse
     deploy:
       resources:
         limits:
+          memory: 32G
+          cpus: '16'
+        reservations:
           memory: 16G
           cpus: '8'
-        reservations:
-          memory: 8G
-          cpus: '4'
     ulimits:
       nofile: 262144
 
@@ -46,17 +96,25 @@ services:
       - 5432:5432
     volumes:
       - ./scripts/postgres:/docker-entrypoint-initdb.d
-      - /file/pg_data/_data:/var/lib/postgresql/data
-      - ./configs/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - pg_data:/var/lib/postgresql/data
     command: >
-      postgres -c config_file=/etc/postgresql/postgresql.conf
+        postgres -c shared_buffers=16GB
+             -c work_mem=64MB
+             -c maintenance_work_mem=2GB
+             -c max_connections=300
+             -c effective_cache_size=48GB
+             -c checkpoint_timeout=15min
+             -c max_wal_size=8GB
+             -c checkpoint_completion_target=0.9
+             -c random_page_cost=1.1
+             -c effective_io_concurrency=200
     deploy:
       resources:
         limits:
           memory: 64G
           cpus: '16'
         reservations:
-          memory: 48G
+          memory: 32G
           cpus: '8'
 
   files:
@@ -71,18 +129,10 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - /file/s3:/data
+      - s3:/data
     ports:
       - 9000:9000
       - 9001:9001
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: '2'
-        reservations:
-          memory: 2G
-          cpus: '1'
 
   backend:
     build: ./backend
@@ -97,7 +147,7 @@ services:
       retries: 5
     ports:
       - 8000:8000
-    command: gunicorn --bind 0:8000 --workers 58 --timeout 90 rmc_rest_api.wsgi
+    command: gunicorn --bind 0:8000 --timeout 90 rmc_rest_api.wsgi
     restart: unless-stopped
     depends_on:
       files:
@@ -111,7 +161,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 24G
+          memory: 48G
           cpus: '16'
         reservations:
           memory: 16G
@@ -128,14 +178,14 @@ services:
         condition: service_healthy
     command: celery -A rmc_rest_api worker
     deploy:
-      replicas: 24
+      replicas: 16
       resources:
         limits:
-          memory: 4G
-          cpus: '4'
+          memory: 32G
+          cpus: '16'
         reservations:
-          memory: 2G
-          cpus: '2'
+          memory: 16G
+          cpus: '8'
 
   beat:
     build: ./backend
@@ -151,10 +201,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 16G
           cpus: '8'
         reservations:
-          memory: 2G
+          memory: 8G
           cpus: '4'
 
   frontend:
@@ -168,22 +218,14 @@ services:
       backend:
         condition: service_healthy
     volumes:
-      - /file/static:/frontend_static
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: '4'
-        reservations:
-          memory: 2G
-          cpus: '2'
+      - static:/frontend_static
 
   gateway:
     build: ./nginx
     container_name: gateway
     env_file: .env
     volumes:
-      - /file/static:/staticfiles
+      - static:/staticfiles
     ports:
       - 80:80
     restart: unless-stopped
@@ -195,11 +237,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
-          cpus: '4'
+          memory: 64G
+          cpus: '16'
         reservations:
-          memory: 2G
-          cpus: '2'
+          memory: 32G
+          cpus: '8'
 
   rabbit:
     image: rabbitmq:4.1.3-management
@@ -213,7 +255,7 @@ services:
       retries: 10
     restart: unless-stopped
     volumes:
-      - /file/rabbitdata:/var/lib/rabbitmq
+      - rabbitdata:/var/lib/rabbitmq
       - ./configs/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     ports:
       - 5672:5672
@@ -221,11 +263,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
-          cpus: '4'
-        reservations:
           memory: 2G
-          cpus: '2'
+        reservations:
+          memory: 1G
 
   dashboard:
     image: mher/flower
@@ -233,42 +273,30 @@ services:
     env_file: .env
     command: celery flower
     volumes:
-      - /file/celery:/app
+      - celery:/app
     ports:
       - 5555:5555
     restart: unless-stopped
     depends_on:
       gateway:
         condition: service_started
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1'
-        reservations:
-          memory: 512M
-          cpus: '0.5'
 
   redis:
     image: redis:8.2.0-alpine
     container_name: redis
     hostname: redis
     restart: unless-stopped
-    command: >
-      redis-server
-      --maxmemory 4GB
-      --maxmemory-policy allkeys-lru
-      --save ""
-      --appendonly no
-      --protected-mode no
+    volumes:
+        - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
     deploy:
       resources:
         limits:
-          memory: 8G
-          cpus: '8'
+          memory: 10G
+          cpus: '4'
         reservations:
           memory: 4G
-          cpus: '4'
+          cpus: '2'
 
   pgadmin:
     image: dpage/pgadmin4:9.5
@@ -280,14 +308,6 @@ services:
     ports:
       - 15432:15432
     volumes:
-      - /file/pgadmin:/var/lib/pgadmin
+      - pgadmin:/var/lib/pgadmin
     depends_on:
       - db
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '2'
-        reservations:
-          memory: 1G
-          cpus: '1'

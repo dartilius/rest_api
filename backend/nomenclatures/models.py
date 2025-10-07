@@ -1,10 +1,9 @@
+# backend/nomenclatures/models.py
 from uuid import uuid4
-
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
 from django_minio_backend import MinioBackend
-
 from api import APIBaseObjectModel, Article
 
 TIMEZONES = {
@@ -49,13 +48,14 @@ class Brand(models.Model):
     """Бренд."""
 
     id = models.UUIDField(
-        verbose_name="ИД", primary_key=True, editable=False, default=uuid4()
+        verbose_name="ИД", primary_key=True, editable=False, default=uuid4
     )
     name = models.CharField(
         verbose_name="Наименование бренда", unique=True, max_length=255
     )
     logo = models.FileField(
-        upload_to="brand_logo", storage=MinioBackend(bucket_name="local-media")
+        upload_to="brand_logo", storage=MinioBackend(bucket_name="local-media"),
+        null=True, blank=True  # Логотип может быть пустым
     )
     created = models.DateTimeField(
         verbose_name="Дата создания", auto_now_add=True
@@ -71,15 +71,12 @@ class Brand(models.Model):
                 name="brand_name_gin_idx",
                 fields=["name"],
                 opclasses=["gin_trgm_ops"],
-            )
+            ),
+            models.Index(fields=['created']),
         ]
 
-
-class Address(models.Model):
-    """Адреса."""
-
-    class Meta:
-        abstract = True
+    def __str__(self):
+        return self.name
 
 
 class Nomenclature(APIBaseObjectModel):
@@ -89,7 +86,7 @@ class Nomenclature(APIBaseObjectModel):
         keys=("mon", "tue", "wed", "thu", "fri", "sat", "sun"), strict=True
     )
 
-    article = Article()
+    article = Article(blank=True, null=True)  # Артикул не обязательный
     description = models.TextField(
         blank=True, null=True, verbose_name="Описание"
     )
@@ -134,7 +131,7 @@ class Nomenclature(APIBaseObjectModel):
 
     @property
     def brand_logo(self):
-        return self.brand.logo
+        return self.brand.logo if self.brand else None
 
     def __str__(self):
         return self.name
@@ -157,8 +154,14 @@ class Nomenclature(APIBaseObjectModel):
                 name="nomenclature_name_gin_idx",
                 fields=["name"],
                 opclasses=["gin_trgm_ops"],
-            )
-        ]
+            ),
+            models.Index(fields=['timezone']),
+            models.Index(fields=['version']),
+            models.Index(fields=['created']),
+            models.Index(fields=['is_active']),
+            models.Index(fields=['brand']),
+            models.Index(fields=['article']),  # Индекс для артикула
+         ]
 
 
 class NomenclatureAvailability(models.Model):
@@ -182,6 +185,11 @@ class NomenclatureAvailability(models.Model):
         ordering = ("-last_answer_date",)
         verbose_name = "Время последнего ответа"
         verbose_name_plural = "Время последнего ответа"
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['last_answer_date']),
+            models.Index(fields=['status', 'last_answer_date']),
+        ]
 
     def __str__(self):
         return f"{self.last_answer_date}"
@@ -211,6 +219,12 @@ class NomenclatureAddress(models.Model):
         db_table = "addresses"
         verbose_name = "Адрес номенклатуры"
         verbose_name_plural = "Адреса номенклатур"
+        indexes = [
+            models.Index(fields=['city']),
+            models.Index(fields=['federalDistrict']),
+            models.Index(fields=['street']),
+            models.Index(fields=['city', 'street']),
+        ]
 
 
 class StatusHistory(models.Model):
@@ -234,6 +248,13 @@ class StatusHistory(models.Model):
         ordering = ("-change_time",)
         verbose_name = "История доступности"
         verbose_name_plural = "История доступности"
+        indexes = [
+            models.Index(fields=['client']),
+            models.Index(fields=['change_time']),
+            models.Index(fields=['status']),
+            models.Index(fields=['client', 'change_time']),
+            models.Index(fields=['status', 'change_time']),
+        ]
 
     def __str__(self):
         return (
@@ -251,7 +272,7 @@ class NomenclatureImage(models.Model):
     """Фотографии экстерьера и интерьера номенклатур."""
 
     id = models.UUIDField(
-        verbose_name="ИД", editable=False, primary_key=True, default=uuid4()
+        verbose_name="ИД", editable=False, primary_key=True, default=uuid4
     )
     source = models.FileField(
         verbose_name="Файл",
@@ -278,3 +299,8 @@ class NomenclatureImage(models.Model):
         ordering = ("-created",)
         verbose_name = "Фотография номенклатуры"
         verbose_name_plural = "Фотографии номенклатур"
+        indexes = [
+            models.Index(fields=['type']),
+            models.Index(fields=['created']),
+            models.Index(fields=['nomenclature', 'type']),
+        ]

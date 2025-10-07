@@ -16,8 +16,12 @@ from users.serializers import CustomUserSerializer, CustomUserListSerializer
 
 @extend_schema(tags=['users'])
 class CustomUserViewSet(viewsets.ModelViewSet):
-    """Работа с пользователями."""
-
+    """
+    ViewSet для работы с пользователями.
+    
+    Обеспечивает CRUD операции для пользователей с фильтрацией.
+    """
+    
     queryset = CustomUser.objects.all().order_by('id')
     serializer_class = CustomUserSerializer
     filter_backends = [DjangoFilterBackend]
@@ -25,11 +29,22 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     permission_classes = [SuperuserCUDAuthRetrieve]
 
     def perform_create(self, serializer):
+        """
+        Создает пользователя с хешированием пароля.
+        
+        Args:
+            serializer: Сериализатор пользователя
+        """
         user = serializer.save()
         user.set_password(self.request.data['password'])
         user.save()
 
     def destroy(self, request, *args, **kwargs):
+        """
+        Мягкое удаление пользователя.
+        
+        Помечает пользователя как неактивного вместо физического удаления.
+        """
         instance = self.get_object()
         data = self.perform_destroy(instance)
         return Response(
@@ -38,6 +53,15 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
+        """
+        Выполняет мягкое удаление пользователя.
+        
+        Args:
+            instance: Объект пользователя
+            
+        Returns:
+            str | None: Сообщение об ошибке или None при успехе
+        """
         if instance.is_active is True:
             instance.is_active = False
             instance.save(update_fields=['is_active'])
@@ -49,6 +73,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             )
 
     def get_serializer(self, *args, **kwargs):
+        """
+        Возвращает соответствующий сериализатор в зависимости от действия.
+        
+        Для списка использует краткий сериализатор, для остального - полный.
+        """
         if self.action == 'list':
             serializer = CustomUserListSerializer
         else:
@@ -62,10 +91,23 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
 
-@extend_schema(tags=['users'])
+@extend_schema(
+    tags=['users'],
+    responses={
+        204: None,  # Успешный выход без содержимого
+        401: None   # Неавторизованный запрос
+    }
+)
 @api_view(['POST'])
 def logout(request):
-    """Выход из системы."""
+    """
+    Выход пользователя из системы.
+    
+    Добавляет токен в черный список для предотвращения повторного использования.
+    
+    Returns:
+        Response: Сообщение о успешном выходе или ошибке авторизации
+    """
     if not request.user.is_authenticated:
         return Response(
             {'message': 'Пользователь не авторизован.'},

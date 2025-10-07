@@ -8,12 +8,19 @@ from files.models import File, Playlist, Tag, TYPES
 
 
 class Base64FileField(serializers.FileField):
-    """Поле для получения и декодирования base64 строки в файл."""
-
+    """
+    Кастомное поле для обработки файлов, закодированных в base64.
+    
+    Преобразует base64 строку в файл Django для сохранения.
+    
+    Attributes:
+        default_error_messages (dict): Сообщения об ошибках валидации
+        empty_values (tuple): Значения, считающиеся пустыми
+    """
+    
     default_error_messages = {
         'invalid_file': 'Файл невозможно декодировать, либо он повреждён.',
-        'invalid_format':
-            'Файл должен быть закодирован в base64 строку.',
+        'invalid_format': 'Файл должен быть закодирован в base64 строку.',
         'empty_name': 'Не указано имя либо расширение файла.',
         'empty_contents': 'Base64 строка ничего не содержит.',
         'empty': 'Отправлен пустой файл.'
@@ -21,6 +28,18 @@ class Base64FileField(serializers.FileField):
     empty_values = Constants.empty_values
 
     def to_internal_value(self, data):
+        """
+        Преобразует base64 строку в файл Django.
+        
+        Args:
+            data (str): Base64 строка с файлом
+            
+        Returns:
+            ContentFile: Декодированный файл
+            
+        Raises:
+            ValidationError: При ошибках декодирования или валидации
+        """
         if isinstance(data, str):
             try:
                 if data in self.empty_values:
@@ -42,8 +61,12 @@ class Base64FileField(serializers.FileField):
 
 
 class TagSerializer(serializers.ModelSerializer):
-    """Сериализация тегов файлов."""
-
+    """
+    Сериализатор для тегов файлов.
+    
+    Используется для операций CRUD с тегами.
+    """
+    
     class Meta:
         fields = (
             'id',
@@ -55,16 +78,24 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class TagFileSerializer(serializers.Serializer):
-    """Сериализация тегов в файле."""
-
+    """
+    Сериализатор для тегов в составе файла.
+    
+    Используется при создании/обновлении файлов с тегами.
+    """
+    
     id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(max_length=255)
     color = serializers.CharField(max_length=7, required=False)
 
 
 class FileSourceSerializer(serializers.ModelSerializer):
-    """Сериализация одного файла."""
-
+    """
+    Сериализатор для отображения источника файла.
+    
+    Используется для простого отображения файла без дополнительных данных.
+    """
+    
     source = serializers.FileField()
 
     class Meta:
@@ -80,8 +111,13 @@ class FileSourceSerializer(serializers.ModelSerializer):
 
 
 class FileSerializer(serializers.ModelSerializer):
-    """Сериализация одного файла."""
-
+    """
+    Основной сериализатор для файлов.
+    
+    Обрабатывает создание, обновление и отображение файлов с тегами.
+    Поддерживает загрузку файлов через base64.
+    """
+    
     tags = TagFileSerializer(many=True, required=False, allow_empty=True, write_only=True)
     source = Base64FileField(write_only=True)
     url = serializers.SerializerMethodField()
@@ -104,10 +140,30 @@ class FileSerializer(serializers.ModelSerializer):
         )
         model = File
 
-    def get_url(self, instance):
+    def get_url(self, instance) -> str:
+        """
+        Возвращает URL файла.
+        
+        Args:
+            instance (File): Объект файла
+            
+        Returns:
+            str: URL файла
+        """
         return instance.url
 
     def to_representation(self, value):
+        """
+        Преобразует объект файла в словарь для ответа.
+        
+        Добавляет дополнительные поля для удобства клиента.
+        
+        Args:
+            value (File): Объект файла
+            
+        Returns:
+            dict: Сериализованные данные файла
+        """
         repr_ = super().to_representation(value)
         repr_['name'] = value.name
         repr_['owner'] = value.owner.full_name
@@ -117,6 +173,15 @@ class FileSerializer(serializers.ModelSerializer):
         return repr_
 
     def create(self, validated_data):
+        """
+        Создает файл с тегами.
+        
+        Args:
+            validated_data (dict): Валидированные данные
+            
+        Returns:
+            File: Созданный объект файла
+        """
         try:
             tags = validated_data.pop('tags')
             tag_ids = [
@@ -133,8 +198,12 @@ class FileSerializer(serializers.ModelSerializer):
 
 
 class FileListSerializer(serializers.ModelSerializer):
-    """Сериализация списка файлов."""
-
+    """
+    Сериализатор для списка файлов.
+    
+    Используется для отображения краткой информации о файлах в списках.
+    """
+    
     class Meta:
         fields = (
             'id',
@@ -147,6 +216,15 @@ class FileListSerializer(serializers.ModelSerializer):
         model = File
 
     def to_representation(self, value):
+        """
+        Преобразует объект файла для списка.
+        
+        Args:
+            value (File): Объект файла
+            
+        Returns:
+            dict: Сериализованные данные для списка
+        """
         repr_ = super().to_representation(value)
         repr_['type'] = TYPES[value.type]
         repr_['tags'] = [
@@ -156,8 +234,12 @@ class FileListSerializer(serializers.ModelSerializer):
 
 
 class PlaylistSerializer(serializers.ModelSerializer):
-    """Сериализация одного плейлиста."""
-
+    """
+    Сериализатор для плейлистов.
+    
+    Обрабатывает создание и отображение плейлистов с файлами.
+    """
+    
     files = serializers.SlugRelatedField(
         slug_field='id',
         queryset=File.active.all(),
@@ -182,7 +264,22 @@ class PlaylistSerializer(serializers.ModelSerializer):
         model = Playlist
 
     def validate(self, data):
-        """Проверяем, что все файлы в плейлисте актуальны и одного типа."""
+        """
+        Валидирует данные плейлиста.
+        
+        Проверяет:
+        - Все файлы должны быть активными
+        - Все файлы должны быть одного типа
+        
+        Args:
+            data (dict): Данные для валидации
+            
+        Returns:
+            dict: Валидированные данные
+            
+        Raises:
+            ValidationError: При нарушении условий валидации
+        """
         if 'files' in self.initial_data:
             files_ids: list = self.initial_data.get('files')
             all_files_count = File.objects.filter(id__in=files_ids).count()
@@ -201,6 +298,15 @@ class PlaylistSerializer(serializers.ModelSerializer):
         return data
 
     def to_representation(self, value):
+        """
+        Преобразует объект плейлиста для ответа.
+        
+        Args:
+            value (Playlist): Объект плейлиста
+            
+        Returns:
+            dict: Сериализованные данные плейлиста
+        """
         repr_ = super().to_representation(value)
         repr_['owner'] = value.owner.full_name
         repr_['files_count'] = value.files.count()
@@ -214,8 +320,12 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
 
 class PlaylistListSerializer(serializers.ModelSerializer):
-    """Сериализация списка плейлистов."""
-
+    """
+    Сериализатор для списка плейлистов.
+    
+    Используется для отображения краткой информации о плейлистах.
+    """
+    
     class Meta:
         fields = (
             'id',
@@ -226,6 +336,15 @@ class PlaylistListSerializer(serializers.ModelSerializer):
         model = Playlist
 
     def to_representation(self, value):
+        """
+        Преобразует объект плейлиста для списка.
+        
+        Args:
+            value (Playlist): Объект плейлиста
+            
+        Returns:
+            dict: Сериализованные данные для списка
+        """
         repr_ = super().to_representation(value)
         repr_['owner'] = value.owner.full_name
         repr_['files_count'] = value.files.count()
@@ -234,6 +353,10 @@ class PlaylistListSerializer(serializers.ModelSerializer):
 
 
 class TagsFileSerializer(serializers.Serializer):
-    """Схема добавления и удаления тэгов файла."""
-
+    """
+    Сериализатор для добавления/удаления тегов файла.
+    
+    Используется для операций с тегами существующего файла.
+    """
+    
     tags = serializers.ListField(child=serializers.CharField(max_length=255))

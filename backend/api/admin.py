@@ -5,30 +5,53 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 
 
 class CustomOutstandingTokenAdmin(OutstandingTokenAdmin):
-    """Даёт возможность удалять токены через админ-панель."""
-
-    actions = ['delete']
+    """
+    Кастомный администратор для OutstandingToken.
+    
+    Добавляет возможность массового удаления токенов через админ-панель
+    с обработкой ошибок и пользовательскими сообщениями.
+    """
+    
+    actions = ['delete_selected_tokens']
 
     def has_delete_permission(self, *args, **kwargs):
+        """Разрешает право на удаление токенов."""
         return True
 
     @admin.action(description='Удалить выбранные токены')
-    def delete(self, request, queryset):
-        """Удаление токенов."""
+    def delete_selected_tokens(self, request, queryset):
+        """
+        Массовое удаление выбранных токенов.
+        
+        Args:
+            request: HttpRequest объект
+            queryset: QuerySet выбранных токенов для удаления
+            
+        Returns:
+            None, но показывает сообщение о результате операции
+        """
         try:
-            updated = queryset.delete()
+            # Используем bulk delete для оптимизации
+            count, _ = queryset.delete()
+            
             self.message_user(
                 request,
                 ngettext(
-                    f'{updated} запрос на отмену заказа принят',
-                    f'{updated} запросов на отмену заказов принято',
-                    updated,
+                    f'{count} токен успешно удалён',
+                    f'{count} токенов успешно удалено',
+                    count,
                 ),
                 messages.SUCCESS
             )
         except Exception as e:
-            self.message_user(request, e, messages.ERROR)
+            # Логируем ошибку для отладки
+            self.message_user(
+                request, 
+                f'Ошибка при удалении токенов: {str(e)}', 
+                messages.ERROR
+            )
 
 
+# Регистрируем кастомный администратор
 admin.site.unregister(OutstandingToken)
 admin.site.register(OutstandingToken, CustomOutstandingTokenAdmin)

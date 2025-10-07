@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<yandex>
+    <logger>
+        <level>warning</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>100M</size>
+        <count>3</count>
+    </logger>
+
+    <listen_host>0.0.0.0</listen_host>
+    
+    <max_connections>4096</max_connections>
+    <keep_alive_timeout>3</keep_alive_timeout>
+    
+    <max_concurrent_queries>100</max_concurrent_queries>
+    <max_thread_pool_size>10000</max_thread_pool_size>
+    
+    <mark_cache_size>536870912</mark_cache_size> <!-- 512MB -->
+    
+    <disable_internal_dns_cache>1</disable_internal_dns_cache>
+    
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <partition_by>toYYYYMM(event_date)</partition_by>
+        <flush_interval_milliseconds>10000</flush_interval_milliseconds>
+        <ttl>event_date + INTERVAL 1 DAY</ttl>
+    </query_log>
+
+    <merge_tree>
+        <max_suspicious_broken_parts>1000</max_suspicious_broken_parts>
+        <max_part_loading_threads>16</max_part_loading_threads>
+        <max_part_removal_threads>16</max_part_removal_threads>
+        <max_bytes_to_merge_at_max_space_in_pool>107374182400</max_bytes_to_merge_at_max_space_in_pool>
+    </merge_tree>
+
+    <!-- ОТКЛЮЧАЕМ НЕНУЖНЫЕ ЛОГИ -->
+    <enable_text_log>0</enable_text_log>
+    <enable_part_log>0</enable_part_log>
+    <enable_query_log>0</enable_query_log>
+    <enable_trace_log>0</enable_trace_log>
+    <enable_processors_profile_log>0</enable_processors_profile_log>
+
+</yandex>
