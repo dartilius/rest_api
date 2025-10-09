@@ -2,13 +2,13 @@ from datetime import time
 
 from rest_framework import serializers
 
+from brands.serializers import BrandSerializer
 from files.serializers import Base64FileField
 from nomenclatures.models import (
     Nomenclature,
     StatusHistory,
     TIMEZONES,
     NomenclatureImage,
-    Brand,
     NomenclatureAddress,
 )
 
@@ -25,25 +25,6 @@ class AddressSerializer(serializers.ModelSerializer):
             "street_house",
             "building",
         )
-
-
-class BrandCreateSerializer(serializers.ModelSerializer):
-    """Схема создания бренда."""
-
-    logo = Base64FileField(write_only=True)
-
-    class Meta:
-        model = Brand
-        fields = ("name", "logo")
-
-
-class BrandSerializer(serializers.ModelSerializer):
-    """Схема чтения бренда."""
-
-    class Meta:
-        model = Brand
-        fields = ("id", "name", "logo", "created")
-        read_only_fields = ("id", "created")
 
 
 class PhotoSerializer(serializers.ModelSerializer):

@@ -6,6 +6,7 @@ from django.db import models
 from django_minio_backend import MinioBackend
 
 from api import APIBaseObjectModel, Article
+from brands.models import Brand
 
 TIMEZONES = {
     "Etc/GMT+11": "UTC -11",
@@ -43,36 +44,6 @@ AVAILABLE_CONTENT_TYPES = {
     "audio_image": "Аудио + Картинка",
 }
 STATUSES = {0: "Online", 1: "Offline 5+ minutes", 2: "Offline 1+ hour"}
-
-
-class Brand(models.Model):
-    """Бренд."""
-
-    id = models.UUIDField(
-        verbose_name="ИД", primary_key=True, editable=False, default=uuid4()
-    )
-    name = models.CharField(
-        verbose_name="Наименование бренда", unique=True, max_length=255
-    )
-    logo = models.FileField(
-        upload_to="brand_logo", storage=MinioBackend(bucket_name="local-media")
-    )
-    created = models.DateTimeField(
-        verbose_name="Дата создания", auto_now_add=True
-    )
-
-    class Meta:
-        db_table = "brands"
-        verbose_name = "Бренд"
-        verbose_name_plural = "Бренды"
-        ordering = ("-created",)
-        indexes = [
-            GinIndex(
-                name="brand_name_gin_idx",
-                fields=["name"],
-                opclasses=["gin_trgm_ops"],
-            )
-        ]
 
 
 class Address(models.Model):
@@ -134,7 +105,7 @@ class Nomenclature(APIBaseObjectModel):
 
     @property
     def brand_logo(self):
-        return self.brand.logo
+        return self.brand.logotype
 
     def __str__(self):
         return self.name
@@ -149,7 +120,7 @@ class Nomenclature(APIBaseObjectModel):
                 fields=["name"],
                 name="unique_nomenclature_name",
                 violation_error_message="Номенклатура с таким названием "
-                "уже существует",
+                                        "уже существует",
             )
         ]
         indexes = [

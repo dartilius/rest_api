@@ -45,8 +45,6 @@ from nomenclatures.serializers import (
     NomenclatureListSerializer,
     StatusHistorySerializer,
     PhotoSerializer,
-    BrandSerializer,
-    BrandCreateSerializer,
 )
 from nomenclatures.tasks import (
     resend_orders_task,
@@ -412,16 +410,3 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return Response(
             {"detail": "Фотографии прикреплены"}, status=HTTP_201_CREATED
         )
-
-
-@extend_schema(tags=["Бренды"])
-class BrandViewSet(NoDeleteViewSet):
-    """Бренды."""
-
-    queryset = Brand.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    def get_serializer_class(self):
-        if self.action == "create":
-            return BrandCreateSerializer
-        return BrandSerializer

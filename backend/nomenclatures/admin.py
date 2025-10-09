@@ -1,11 +1,11 @@
 from django.contrib import admin
 
+from brands.models import Brand
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
     StatusHistory,
     STATUSES,
-    Brand,
     NomenclatureImage,
     NomenclatureAddress,
 )
