@@ -1,6 +1,5 @@
 from django.contrib import admin
 
-from brands.models import Brand
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
@@ -55,16 +54,6 @@ class StatusHistoryAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return StatusHistory.objects.all().select_related("client")
-
-
-@admin.register(Brand)
-class BrandAdmin(admin.ModelAdmin):
-    """Администрирование брендов."""
-
-    list_display = ("id", "name")
-    search_fields = ("name",)
-    show_full_result_count = False
-
 
 @admin.register(NomenclatureImage)
 class NomenclatureImageAdmin(admin.ModelAdmin):

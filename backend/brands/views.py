@@ -24,7 +24,7 @@ class BrandViewSet(NoDeleteViewSet):
             else:
                 queryset = queryset.filter(
                     is_deleted=False)  # по умолчанию только активные
-            return queryset
+        return queryset
 
     def get_serializer_class(self):
         if self.action == "create":

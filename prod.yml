@@ -61,6 +61,7 @@ services:
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
+      - ./file/static:/app/staticfiles
       - type: volume
         source: brand_logs
         target: /app/network_logs
@@ -270,7 +271,8 @@ services:
 
 volumes:
   brand_logs:
+    driver: local
     driver_opts:
       type: cifs
       o: username=${RM_USER},password=${RM_PASS},vers=3.0
-      device: "//192.168.0.2/rm/# ПО"
+      device: "//192.168.0.2/rm/brands_logs"

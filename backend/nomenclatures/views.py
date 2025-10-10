@@ -38,7 +38,6 @@ from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
-    Brand,
 )
 from nomenclatures.serializers import (
     NomenclatureSerializer,
