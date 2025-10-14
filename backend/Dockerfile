@@ -2,8 +2,8 @@ FROM python:3.13.6-slim AS builder
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Устанавливаем инструменты для сборки
 RUN apt-get update && apt-get install -y \

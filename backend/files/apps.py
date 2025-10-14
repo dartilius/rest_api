@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.conf import settings
 
 
 class FilesConfig(AppConfig):
@@ -10,3 +11,4 @@ class FilesConfig(AppConfig):
         """Вызов функции по инициализации бакетов при запуске приложения."""
         from . import minio_setup
         minio_setup.initialize_minio_buckets()
+
