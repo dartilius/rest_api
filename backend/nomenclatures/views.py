@@ -90,7 +90,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             "Изменить можно только название, описание, "
             "часовой пояс и настройки вещания. Лишние ключи: {keys}."
         )
-        updatable_fields = ("name", "description", "timezone", "settings")
+        updatable_fields = ("name", "description", "timezone", "settings", "brand_id")
         kwargs.update(
             updatable_fields=updatable_fields, error_message=error_message
         )

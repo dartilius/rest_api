@@ -12,10 +12,10 @@ STATUSES = {
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
     """Администрирование брендов."""
-    list_display = ("id", "name", "is_deleted")
+    list_display = ("id", "name", "is_deleted", "code1c")
     search_fields = ("name",)
     show_full_result_count = False
-    readonly_fields = ("show_nomenclatures",)  # показываем блок только для чтения
+    readonly_fields = ("show_nomenclatures", "code1c")  # показываем блок только для чтения
 
     @admin.display(description="Удалён")
     def status(self, obj):

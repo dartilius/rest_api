@@ -6,7 +6,6 @@ from django_minio_backend import MinioBackend
 
 """ чтобы soft-deleted объекты не возвращались """
 
-
 class BrandManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().filter(is_deleted=False)
@@ -19,9 +18,12 @@ class Brand(models.Model):
     id = models.UUIDField(
         verbose_name="ИД", primary_key=True, editable=False, default=uuid4
     )
-
+    code1c = models.CharField(
+        verbose_name="Код из 1С", max_length=64, blank=True,
+        null=True
+    )
     name = models.CharField(
-        max_length=64, blank=False, null=False, verbose_name="Наименование бренда", unique=True
+        max_length=64, blank=False, null=False, verbose_name="Наименование бренда"
     )
     description = models.TextField(
         max_length=255, blank=False, null=True, default=None, verbose_name="Описание бренда"
@@ -48,13 +50,6 @@ class Brand(models.Model):
         verbose_name = "Бренд"
         verbose_name_plural = "Бренды"
         ordering = ("-created",)
-        constraints = [
-            models.UniqueConstraint(
-                fields=["name"],
-                name="unique_brand_name",
-                violation_error_message="Бренд с таким названием уже существует",
-            )
-        ]
         indexes = [
             GinIndex(
                 name="brand_name_gin_idx",
