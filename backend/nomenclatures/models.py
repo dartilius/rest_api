@@ -4,7 +4,7 @@ from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
 from django_minio_backend import MinioBackend
-
+from django.core.validators import RegexValidator
 from api import APIBaseObjectModel, Article
 from brands.models import Brand
 
@@ -168,20 +168,90 @@ class NomenclatureAddress(models.Model):
         on_delete=models.CASCADE,
         related_name="address",
     )
-    city = models.CharField(max_length=255, verbose_name="Город")
-    federalDistrict = models.CharField(
-        max_length=255, verbose_name="Федеральный округ"
+    index = models.CharField(
+        max_length=6,
+        verbose_name="Почтовый индекс",
+        validators=[RegexValidator(r'^\d{6}$', 'Индекс должен содержать 6 цифр')],
+        null=True,
+        blank=True
     )
-    street = models.CharField(max_length=255, verbose_name="Улица")
-    street_house = models.CharField(max_length=31, verbose_name="Номер дома")
+    country = models.CharField(
+        max_length=50,
+        verbose_name="Страна",
+        null=True,
+        blank=True
+    )
+    city = models.CharField(
+        max_length=50,
+        verbose_name="Город",
+        null=True,
+        blank=True
+    )
+    locality = models.CharField(
+        max_length=50,
+        verbose_name="Тип населен. пункта",
+        null=True,
+        blank=True
+    )
+    region = models.CharField(
+        max_length=50,
+        verbose_name="Регион",
+        null=True,
+        blank=True
+    )
+    administrativeTerritory = models.CharField(
+        max_length=50,
+        verbose_name="Тип админ. терр. деления",
+        null=True,
+        blank=True
+    )
+    microdistrict = models.CharField(
+        max_length=50,
+        verbose_name="Микрорайон",
+        null=True,
+        blank=True
+    )
+    federalDistrict = models.CharField(
+        max_length=50,
+        verbose_name="Федеральный округ",
+        null=True,
+        blank=True
+    )
+    street = models.CharField(
+        max_length=50,
+        verbose_name="Улица",
+        null=True,
+        blank=True
+    )
+    street_house = models.CharField(
+        max_length=31,
+        verbose_name="Номер дома",
+        null=True,
+        blank=True
+    )
     building = models.CharField(
-        max_length=31, verbose_name="Строение", null=True, blank=True
+        max_length=31,
+        verbose_name="Строение",
+        null=True,
+        blank=True
+    )
+    coordinates = models.CharField(
+        max_length=50,
+        verbose_name="Координаты",
+        null=True,
+        blank=True
     )
 
     class Meta:
         db_table = "addresses"
         verbose_name = "Адрес номенклатуры"
         verbose_name_plural = "Адреса номенклатур"
+        indexes = [
+            models.Index(fields=['city']),
+            models.Index(fields=['federalDistrict']),
+            models.Index(fields=['street']),
+            models.Index(fields=['city', 'street']),
+        ]
 
 
 class StatusHistory(models.Model):
