@@ -91,14 +91,14 @@ services:
     environment:
       - RM_USER=${RM_USER}
       - RM_PASS=${RM_PASS}
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 24G
-    #       cpus: '16'
-    #     reservations:
-    #       memory: 16G
-    #       cpus: '8'
+    deploy:
+      resources:
+        limits:
+          memory: 24G
+          cpus: '16'
+        reservations:
+          memory: 16G
+          cpus: '8'
 
   worker:
     build: ./backend
@@ -110,15 +110,15 @@ services:
       backend:
         condition: service_healthy
     command: celery -A rmc_rest_api worker
-    # deploy:
-    #   replicas: 4
-    #   resources:
-    #     limits:
-    #       memory: 4G
-    #       cpus: '4'
-    #     reservations:
-    #       memory: 2G
-    #       cpus: '2'
+    deploy:
+      replicas: 4
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4'
+        reservations:
+          memory: 2G
+          cpus: '2'
 
   beat:
     build: ./backend
@@ -131,14 +131,14 @@ services:
       backend:
         condition: service_healthy
     command: celery -A rmc_rest_api beat
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 4G
-    #       cpus: '8'
-    #     reservations:
-    #       memory: 2G
-    #       cpus: '4'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '8'
+        reservations:
+          memory: 2G
+          cpus: '4'
 
   frontend:
     env_file: .env
@@ -152,14 +152,14 @@ services:
         condition: service_healthy
     volumes:
       - ./file/static:/frontend_static
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 4G
-    #       cpus: '4'
-    #     reservations:
-    #       memory: 2G
-    #       cpus: '2'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4'
+        reservations:
+          memory: 2G
+          cpus: '2'
 
   gateway:
     build: ./nginx
@@ -175,14 +175,14 @@ services:
         condition: service_healthy
       frontend:
         condition: service_started
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 4G
-    #       cpus: '4'
-    #     reservations:
-    #       memory: 2G
-    #       cpus: '2'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4'
+        reservations:
+          memory: 2G
+          cpus: '2'
 
   rabbit:
     image: rabbitmq:management
@@ -200,14 +200,14 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 4G
-    #       cpus: '4'
-    #     reservations:
-    #       memory: 2G
-    #       cpus: '2'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4'
+        reservations:
+          memory: 2G
+          cpus: '2'
 
   dashboard:
     image: mher/flower
@@ -222,14 +222,14 @@ services:
     depends_on:
       gateway:
         condition: service_started
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 1G
-    #       cpus: '1'
-    #     reservations:
-    #       memory: 512M
-    #       cpus: '0.5'
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
 
   redis:
     image: redis:8.2.2
@@ -243,14 +243,14 @@ services:
       --save ""
       --appendonly no
       --protected-mode no
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 8G
-    #       cpus: '8'
-    #     reservations:
-    #       memory: 4G
-    #       cpus: '4'
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '8'
+        reservations:
+          memory: 4G
+          cpus: '4'
 
   pgadmin:
     image: dpage/pgadmin4:9.5
@@ -265,14 +265,14 @@ services:
       - ./file/pgadmin:/var/lib/pgadmin
     depends_on:
       - db
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 2G
-    #       cpus: '2'
-    #     reservations:
-    #       memory: 1G
-    #       cpus: '1'
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+        reservations:
+          memory: 1G
+          cpus: '1'
 
 volumes:
   brand_logs:
