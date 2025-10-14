@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'docs',
     'files',
     'nomenclatures',
+    'brands',
     'orders',
     'ch_statistic',
     'tasks',
@@ -92,7 +93,6 @@ DATABASES = {
 }
 
 DATABASE_ROUTERS = ['rmc_rest_api.dbrouters.ClickHouseRouter']
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -188,13 +188,12 @@ CORS_ALLOW_METHODS = [
 
 CORS_ALLOWED_HEADERS = [
     'accept', 'accept-encoding', 'authorization', 'content-type', 'dnt',
-    'origin', 'user-agent','x-csrftoken', 'x-requested-with'
+    'origin', 'user-agent', 'x-csrftoken', 'x-requested-with'
 ]
 
 CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN').split(', ')
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
-
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': td(
@@ -209,6 +208,7 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',)
 }
 
+
 # ------------------------------ DEBUG TOOLBAR ------------------------------ #
 
 
@@ -222,4 +222,5 @@ DEBUG_TOOLBAR_CONFIG = {
 
 if DEBUG:
     import mimetypes
+
     mimetypes.add_type('application/javascript', '.js', True)

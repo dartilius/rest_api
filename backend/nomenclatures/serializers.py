@@ -2,16 +2,16 @@ from datetime import time
 
 from rest_framework import serializers
 
+from brands.models import Brand
+from brands.serializers import BrandSerializer
 from files.serializers import Base64FileField
 from nomenclatures.models import (
     Nomenclature,
     StatusHistory,
     TIMEZONES,
     NomenclatureImage,
-    Brand,
     NomenclatureAddress,
 )
-
 
 class AddressSerializer(serializers.ModelSerializer):
     """Схема добавления адреса в номенклатуру."""
@@ -25,25 +25,6 @@ class AddressSerializer(serializers.ModelSerializer):
             "street_house",
             "building",
         )
-
-
-class BrandCreateSerializer(serializers.ModelSerializer):
-    """Схема создания бренда."""
-
-    logo = Base64FileField(write_only=True)
-
-    class Meta:
-        model = Brand
-        fields = ("name", "logo")
-
-
-class BrandSerializer(serializers.ModelSerializer):
-    """Схема чтения бренда."""
-
-    class Meta:
-        model = Brand
-        fields = ("id", "name", "logo", "created")
-        read_only_fields = ("id", "created")
 
 
 class PhotoSerializer(serializers.ModelSerializer):
@@ -71,7 +52,14 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
-    brand = BrandSerializer()
+    brand = BrandSerializer(read_only=True) # чисто чтение
+    brand_id = serializers.PrimaryKeyRelatedField(
+        queryset=Brand.objects.all(),
+        source="brand",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    ) # только запись по id
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
     address = AddressSerializer()
@@ -91,6 +79,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "hw_info",
             "created",
             "brand",
+            "brand_id",
             "interior",
             "exterior",
             "address",
@@ -220,6 +209,52 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     _validate_volume(tuple(volume))
                 _validate_collision(settings["custom_volume"])
         return value
+
+    def create(self, validated_data):
+        address_data = validated_data.pop("address", None)
+        brand_id = validated_data.pop("brand_id", None)
+
+        if brand_id:
+            try:
+                validated_data["brand"] = Brand.objects.get(id=brand_id)
+            except Brand.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"brand_id": "Бренд с таким ID не найден"}
+                )
+
+        nomenclature = Nomenclature.objects.create(**validated_data)
+
+        if address_data:
+            NomenclatureAddress.objects.create(nomenclature=nomenclature, **address_data)
+
+        return nomenclature
+
+    def update(self, instance, validated_data):
+        address_data = validated_data.pop("address", None)
+        brand_id = validated_data.pop("brand_id", None)
+
+        if brand_id is not None:
+            if brand_id == "":
+                instance.brand = None
+            else:
+                try:
+                    instance.brand = Brand.objects.get(id=brand_id)
+                except Brand.DoesNotExist:
+                    raise serializers.ValidationError(
+                        {"brand_id": "Бренд с таким ID не найден"}
+                    )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if address_data:
+            # обновляем или создаем address
+            NomenclatureAddress.objects.update_or_create(
+                nomenclature=instance, defaults=address_data
+            )
+
+        return instance
 
     def get_status(self, obj) -> int | None:
         try:
