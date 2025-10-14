@@ -19,11 +19,18 @@ class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = NomenclatureAddress
         fields = (
+            "index",
+            "country",
             "city",
+            "locality",
+            "region",
+            "administrativeTerritory",
+            "microdistrict",
             "federalDistrict",
             "street",
             "street_house",
             "building",
+            "coordinates",
         )
 
 
