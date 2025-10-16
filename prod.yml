@@ -89,16 +89,11 @@ services:
       rabbit:
         condition: service_healthy
     environment:
-      - RM_USER=${RM_USER}
-      - RM_PASS=${RM_PASS}
-    deploy:
-      resources:
-        limits:
-          memory: 24G
-          cpus: '16'
-        reservations:
-          memory: 16G
-          cpus: '8'
+    - RM_USER=${RM_USER}
+    - RM_PASS=${RM_PASS}
+    - URL_1C=${URL_1C}
+    - RM_LK_PASS=${RM_LK_PASS}
+    - RM_LK_EMAIL=${RM_LK_EMAIL}
 
   worker:
     build: ./backend

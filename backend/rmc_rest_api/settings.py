@@ -103,7 +103,7 @@ if CLICKHOUSE_HOST:
         'PORT': os.environ.get('CLICKHOUSE_PORT'),
         'PASSWORD': os.environ.get('CLICKHOUSE_PASSWORD'),
     }
-}
+
 
 DATABASE_ROUTERS = ['rmc_rest_api.dbrouters.ClickHouseRouter']
 
