@@ -1,12 +1,12 @@
-from django.shortcuts import render
-
-# Create your views here.
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+from rest_framework.exceptions import NotFound
 from brands.models import Brand
 from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
 from orders.views import NoDeleteViewSet
+from uuid import UUID
+
 
 
 class BrandViewSet(NoDeleteViewSet):
@@ -33,7 +33,6 @@ class BrandViewSet(NoDeleteViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-
         serializer.is_valid(raise_exception=True)
         brand = serializer.save()
         short = BrandShortSerializer(brand)
