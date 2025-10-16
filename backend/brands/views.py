@@ -45,3 +45,24 @@ class BrandViewSet(NoDeleteViewSet):
         brand = self.get_object()
         brand.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_object(self):
+        """
+        Получаем бренд по UUID или code1c.
+        """
+        identifier = self.kwargs.get(self.lookup_field, None)
+        if not identifier:
+            raise NotFound("Не указан идентификатор бренда.")
+
+        # пробуем UUID
+        try:
+            uuid_obj = UUID(str(identifier))
+            return Brand.all_objects.get(id=uuid_obj)
+        except (ValueError, Brand.DoesNotExist):
+            pass
+
+        # пробуем code1c
+        try:
+            return Brand.all_objects.get(code1c=identifier)
+        except Brand.DoesNotExist:
+            raise NotFound("Бренд не найден.")

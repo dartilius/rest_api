@@ -51,53 +51,6 @@ class BrandCreateSerializer(serializers.ModelSerializer):
 
         return attrs
 
-
-# class BrandCreateSerializer(serializers.ModelSerializer):
-#     """схема создания бренда."""
-#     logotype = Base64FileField(write_only=True, required=False)
-#
-#     class Meta:
-#         model = Brand
-#         fields = ("name", "logotype", "description", "code1c")
-#         # extra_kwargs = {
-#         #     'name': {'validators': []},
-#         # }
-#
-#     # def validate_name(self, code1c):
-#     #     if not code1c:
-#     #         return code1c
-#     #
-#     #     # Проверяем, существует ли бренд с таким названием
-#     #     old_brand = Brand.objects.filter(code1c=code1c).first()
-#     #     if old_brand:
-#     #         # Записываем ошибку в лог-файл
-#     #         with open('/app/network_logs/brand_conflicts.log', 'a', encoding='utf-8') as f:
-#     #             f.write(f'{old_brand.name}: {old_brand.id}, {getattr(old_brand, "code1c", "—")}\n')
-#     #         raise ValidationError({
-#     #             'error': 'Brand already exists',
-#     #             'existing_brand_id': old_brand.id,
-#     #             'existing_brand_code1c': old_brand.code1c,
-#     #             'message': f'Бренд "{old_brand.name}" уже существует'
-#     #         })
-#     #     return old_brand.name
-#
-#     def validate_code1c(self, code1c):
-#         if not code1c:
-#             return code1c
-#
-#         old_brand = Brand.objects.filter(code1c=code1c).first()
-#         if old_brand:
-#             with open('/app/network_logs/brand_conflicts.log', 'a', encoding='utf-8') as f:
-#                 f.write(f'{old_brand.name}: {old_brand.id}, {getattr(old_brand, "code1c", "—")}\n')
-#             raise ValidationError({
-#                 'error': 'Brand already exists',
-#                 'existing_brand_id': old_brand.id,
-#                 'existing_brand_code1c': old_brand.code1c,
-#                 'message': f'Бренд "{old_brand.name}" уже существует'
-#             })
-#         return code1c
-
-
 class BrandSerializer(serializers.ModelSerializer):
     """Схема чтения бренда."""
 
