@@ -70,6 +70,10 @@ class Nomenclature(APIBaseObjectModel):
         verbose_name="Часовой пояс",
         default="Etc/GMT-7",
     )
+    code1c = models.CharField(
+        verbose_name="Код из 1С", max_length=64, blank=True,
+        null=True
+    )
     version = models.CharField(max_length=127, verbose_name="Версия ПО")
     settings = models.JSONField(
         verbose_name="Настройки вещания", validators=(keys_validator,)
@@ -83,6 +87,7 @@ class Nomenclature(APIBaseObjectModel):
         null=True,
         blank=True,
         verbose_name="Бренд номенклатуры",
+        related_name="nomenclatures"
     )
     legalEntity = models.CharField(max_length=255, null=True, blank=True)
     contentType = models.CharField(

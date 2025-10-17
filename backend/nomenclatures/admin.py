@@ -21,7 +21,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         except AttributeError:
             return None
 
-    list_display = ("id", "name", "owner", "timezone", "is_active", "status")
+    list_display = ("id", "name", "owner", "timezone", "is_active", "status", "code1c")
     search_fields = ("name",)
     show_full_result_count = False
     raw_id_fields = ("owner",)
