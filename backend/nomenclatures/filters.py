@@ -22,10 +22,12 @@ class NomenclatureFilter(FilterSet):
     name = CharFilter(field_name='name', lookup_expr='icontains')
     id = CharFilter(field_name='id', lookup_expr='iexact')
     timezone = CharFilter(field_name='timezone', lookup_expr='iexact')
+    brand_name = CharFilter(field_name='brand__name', lookup_expr='icontains')
+    code1c = CharFilter(field_name="code1c", lookup_expr="icontains")
 
     class Meta:
         model = Nomenclature
-        fields = ('name', 'id', 'timezone', 'versions', 'status')
+        fields = ('name', 'id', 'timezone', 'versions', 'status', 'brand_name', "code1c")
 
     def get_status(self, queryset, name, value):
         """

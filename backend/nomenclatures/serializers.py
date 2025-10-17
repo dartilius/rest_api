@@ -70,6 +70,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
     address = AddressSerializer()
+    code1c = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     class Meta:
         fields = (
@@ -94,6 +95,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
+            "code1c"
         )
         read_only_fields = (
             "id",
@@ -219,16 +221,35 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         address_data = validated_data.pop("address", None)
-        brand_id = validated_data.pop("brand_id", None)
+        brand = validated_data.pop("brand_id", None)  # или source="brand"
 
-        if brand_id:
+        name = validated_data.get("name")
+        code1c = validated_data.get("code1c")
+
+        # --- Проверка уникальности code1c только при создании ---
+        if code1c:
+            old_item = Nomenclature.objects.filter(code1c=code1c).first()
+            if old_item:
+                # --- Логируем попытку ---
+                log_path = "/app/network_logs/nomenclature_conflicts.log"
+                with open(log_path, "a", encoding="utf-8") as f:
+                    f.write(f"{name}: {old_item.id}, {getattr(old_item, 'code1c', '—')}\n")
+
+                # --- Ошибка валидации ---
+                raise serializers.ValidationError({
+                    "code1c": f"Номенклатура с кодом '{code1c}' уже существует (id={old_item.id})"
+                })
+
+        # --- Обработка brand ---
+        if brand:
             try:
-                validated_data["brand"] = Brand.objects.get(id=brand_id)
+                validated_data["brand"] = Brand.objects.get(id=brand)
             except Brand.DoesNotExist:
                 raise serializers.ValidationError(
                     {"brand_id": "Бренд с таким ID не найден"}
                 )
 
+        # --- Создание номенклатуры ---
         nomenclature = Nomenclature.objects.create(**validated_data)
 
         if address_data:

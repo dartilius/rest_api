@@ -1,4 +1,6 @@
 from datetime import datetime as dt
+from uuid import UUID
+from rest_framework.exceptions import NotFound
 
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
@@ -140,6 +142,29 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             description=request.data["description"]
         )
         return Response({"id": nomenclature.pk})
+
+
+
+    def get_object(self):
+        """
+        Получаем бренд по UUID или code1c.
+        """
+
+        identifier = self.kwargs.get(self.lookup_field, None)
+        if not identifier:
+            raise NotFound("Не указан идентификатор бренда.")
+        # пробуем UUID
+        try:
+            uuid_obj = UUID(str(identifier))
+            return Nomenclature.objects.get(id=uuid_obj)
+        except (ValueError, Nomenclature.DoesNotExist):
+            pass
+
+        # пробуем code1c
+        try:
+            return Nomenclature.objects.get(code1c=identifier)
+        except Nomenclature.DoesNotExist:
+            raise NotFound("Номенклатура не найдена.")
 
     @action(detail=True, methods=["POST"], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):

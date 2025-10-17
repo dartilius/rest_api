@@ -1,30 +1,147 @@
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
+from rest_framework import viewsets
+from brands.filters import BrandFilter
 from brands.models import Brand
 from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
-from orders.views import NoDeleteViewSet
 from uuid import UUID
+from rest_framework.status import (
+    HTTP_200_OK, HTTP_204_NO_CONTENT,
+)
+
+from api.constants import (
+    DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
+)
 
 
-
-class BrandViewSet(NoDeleteViewSet):
+@extend_schema_view(
+    list=extend_schema(
+        summary="Получить пагинированный список брендов",
+        examples=[
+                     OpenApiExample(
+                         "Список брендов",
+                         response_only=True,
+                         value={
+                             "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
+                             "name": "django drf test",
+                             "logotype": "http://192.168.0.90/local-media/brand_logo/example.png",
+                             "created": "2025-10-17T10:42:15.434767",
+                             "description": "django drf test",
+                             "code1c": "0001"
+                         },
+                         status_codes=[HTTP_200_OK],
+                     )
+                 ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={HTTP_200_OK: BrandSerializer(many=True)} | DEFAULT_SCHEMA_RESPONSES,
+    ),
+    retrieve=extend_schema(
+        summary="Получить расшифровку бренда",
+        examples=[
+                     OpenApiExample(
+                         "Пример бренда",
+                         status_codes=[HTTP_200_OK],
+                         response_only=True,
+                         value={
+                             "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
+                             "name": "django drf test",
+                             "logotype": "http://192.168.0.90/local-media/brand_logo/example.png",
+                             "created": "2025-10-17T10:42:15.434767",
+                             "description": "django drf test",
+                             "code1c": "0001"
+                         },
+                     )
+                 ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={HTTP_200_OK: BrandSerializer} | DEFAULT_SCHEMA_RESPONSES,
+    ),
+    destroy=extend_schema(
+        summary="Удалить бренд",
+        examples=[
+                     OpenApiExample(
+                         "Бренд успешно удален",
+                         status_codes=[HTTP_204_NO_CONTENT],
+                         response_only=True,
+                     )
+                 ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={HTTP_204_NO_CONTENT: {}} | DEFAULT_SCHEMA_RESPONSES,
+    ),
+    create=extend_schema(
+        summary="Создать новый бренд",
+        description="Создает бренд. Если бренд с таким code1c уже существует, вернется ошибка. Поле code1c можно не отправлять.",
+        request=BrandCreateSerializer,
+        responses={
+            201: BrandShortSerializer,
+            400: {
+                "description": "Бренд с таким code1c уже существует",
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "error": "Brand with this code1c already exists",
+                            "existing_brand_id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
+                            "existing_brand_name": "django drf test",
+                            "existing_brand_code1c": "0001",
+                            "message": "Бренд с кодом '0001' уже существует"
+                        }
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                "Успешно создан с code1c",
+                value={
+                    "name": "django drf test",
+                    "code1c": "0002",
+                    "id": "db2f3774-9d0a-4340-8183-b5130e0d073d"
+                },
+                status_codes=[201],
+            ),
+            OpenApiExample(
+                "Успешно создан без code1c",
+                value={
+                    "name": "django drf test without code1c",
+                    "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
+                    "code1c": "null"
+                },
+                status_codes=[201],
+            ),
+            OpenApiExample(
+                "Бренд с code1c уже существует",
+                value={
+                    "error": "Brand with this code1c already exists",
+                    "existing_brand_id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
+                    "existing_brand_name": "django drf test",
+                    "existing_brand_code1c": "0001",
+                    "message": "Бренд с кодом '0001' уже существует"
+                },
+                status_codes=[400],
+            ),
+        ]
+    ),
+    partial_update=extend_schema(
+        summary="Частичное обновление бренда",
+        request=BrandSerializer,
+        responses={HTTP_200_OK: BrandSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        examples=[
+                     OpenApiExample(
+                         "Поля для обновления бренда",
+                         value={"name": "django drf test 2"},
+                         request_only=True,
+                     )
+                 ] + DEFAULT_SCHEMA_EXAMPLES,
+    ),
+)
+@extend_schema(tags=["Бренды"])
+class BrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
+    lookup_field = "id_or_code1c"
     http_method_names = ["get", "post", "patch", "delete"]
-
-    def get_queryset(self):
-        queryset = Brand.all_objects.all()  # берём все бренды, включая мягко удалённые
-        is_deleted = self.request.query_params.get("is_deleted")
-        if is_deleted is not None:
-            if is_deleted.lower() in ["true", "1"]:
-                queryset = queryset.filter(is_deleted=True)
-            elif is_deleted.lower() in ["false", "0"]:
-                queryset = queryset.filter(is_deleted=False)
-            else:
-                queryset = queryset.filter(
-                    is_deleted=False)  # по умолчанию только активные
-        return queryset
+    queryset = Brand.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = BrandFilter
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -49,19 +166,25 @@ class BrandViewSet(NoDeleteViewSet):
         """
         Получаем бренд по UUID или code1c.
         """
-        identifier = self.kwargs.get(self.lookup_field, None)
+        identifier = self.kwargs.get(self.lookup_field)
         if not identifier:
             raise NotFound("Не указан идентификатор бренда.")
 
         # пробуем UUID
         try:
             uuid_obj = UUID(str(identifier))
-            return Brand.all_objects.get(id=uuid_obj)
+            brand = Brand.all_objects.get(id=uuid_obj)
+            if brand.is_deleted:
+                raise NotFound("Бренд не найден.")
+            return brand
         except (ValueError, Brand.DoesNotExist):
             pass
 
         # пробуем code1c
         try:
-            return Brand.all_objects.get(code1c=identifier)
+            brand = Brand.all_objects.get(code1c=identifier)
+            if brand.is_deleted:
+                raise NotFound("Бренд не найден.")
+            return brand
         except Brand.DoesNotExist:
             raise NotFound("Бренд не найден.")
