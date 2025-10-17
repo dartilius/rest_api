@@ -16,7 +16,7 @@ class BrandAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("Основная информация", {
-            "fields": ("name", "code1c", "description", "logotype"),
+            "fields": ("name", "code1c", "description", "logotype", "is_deleted"),
         }),
         ("Связанные данные", {
             "fields": ("show_nomenclatures",),
