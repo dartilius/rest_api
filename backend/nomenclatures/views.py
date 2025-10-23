@@ -1,17 +1,18 @@
 from datetime import datetime as dt
 from uuid import UUID
+
 from rest_framework.exceptions import NotFound
 
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST,
+    HTTP_400_BAD_REQUEST
 )
 
 from api.constants import (
@@ -54,7 +55,6 @@ from nomenclatures.tasks import (
     custom_task,
     settings_task,
 )
-from orders.views import NoDeleteViewSet
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
 from users.permissions import StaffCUDallRead
@@ -67,6 +67,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     queryset = Nomenclature.active.select_related(
         "owner", "availability", "brand", "address"
     ).prefetch_related("images")
+    lookup_field = "id_or_code1c"
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
     permission_classes = [StaffCUDallRead]
@@ -92,11 +93,20 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             "Изменить можно только название, описание, "
             "часовой пояс и настройки вещания. Лишние ключи: {keys}."
         )
-        updatable_fields = ("name", "description", "timezone", "settings", "brand_id")
+        updatable_fields = (
+            "name", "description", "timezone",
+            "settings", "brand_id", "code1c",
+            "address", "legalEntity", "pricePerMonth",
+            "contentType"
+        )
+
+        # --- добавить потом логику проверки прав на изменение ---
         kwargs.update(
-            updatable_fields=updatable_fields, error_message=error_message
+            updatable_fields=updatable_fields,
+            error_message=error_message
         )
         response = restricted_update(self, request, *args, **kwargs)
+
         return response
 
     @extend_schema(summary="Деактивировать номенклатуру")
@@ -143,14 +153,12 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         )
         return Response({"id": nomenclature.pk})
 
-
-
     def get_object(self):
         """
         Получаем бренд по UUID или code1c.
         """
 
-        identifier = self.kwargs.get(self.lookup_field, None)
+        identifier = self.kwargs.get(self.lookup_field)
         if not identifier:
             raise NotFound("Не указан идентификатор бренда.")
         # пробуем UUID
