@@ -10,7 +10,7 @@ from nomenclatures.models import (
     StatusHistory,
     TIMEZONES,
     NomenclatureImage,
-    NomenclatureAddress,
+    NomenclatureAddress, AVAILABLE_CONTENT_TYPES,
 )
 
 class AddressSerializer(serializers.ModelSerializer):
@@ -59,18 +59,22 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
-    brand = BrandSerializer(read_only=True) # чисто чтение
+    brand = BrandSerializer(read_only=True)  # чисто чтение
     brand_id = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(),
         source="brand",
         write_only=True,
         required=False,
         allow_null=True,
-    ) # только запись по id
+    )  # только запись по id
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
     address = AddressSerializer()
     code1c = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    contentType = serializers.ChoiceField(
+        choices=list(AVAILABLE_CONTENT_TYPES.values()),
+        required=False,
+    )
 
     class Meta:
         fields = (
@@ -226,7 +230,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         name = validated_data.get("name")
         code1c = validated_data.get("code1c")
 
-        # --- Проверка уникальности code1c только при создании ---
+        price_of_month = validated_data.get("pricePerMonth")
+
+        # --- Проверка уникальности code1c ---
         if code1c:
             old_item = Nomenclature.objects.filter(code1c=code1c).first()
             if old_item:
@@ -238,6 +244,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 # --- Ошибка валидации ---
                 raise serializers.ValidationError({
                     "code1c": f"Номенклатура с кодом '{code1c}' уже существует (id={old_item.id})"
+                })
+
+        if price_of_month is not None:
+            if price_of_month < 0:
+                raise serializers.ValidationError({
+                    "pricePerMonth": "Стоимость аренда не может быть меньше 0."
                 })
 
         # --- Обработка brand ---
@@ -259,10 +271,28 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         address_data = validated_data.pop("address", None)
-        brand_id = validated_data.pop("brand_id", None)
+        brand_id = validated_data.pop("brand_id", None) if "brand_id" in validated_data else None
+        code1c = validated_data.get("code1c")
+        price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
+
+        if code1c is not None:
+            conflict = Nomenclature.objects.filter(code1c=code1c).exclude(id=instance.id).first()
+
+            if conflict:
+                raise serializers.ValidationError({
+                    "code1c": f"Код '{code1c}' уже используется в другой номенклатуре (id={conflict.id})\n"
+                })
+            instance.code1c = code1c
+
+        if price_per_month is not None:
+            if price_per_month < 0:
+                raise serializers.ValidationError({
+                    "pricePerMonth": "Стоимость аренда не может быть меньше 0."
+                })
+            instance.pricePerMonth = price_per_month
 
         if brand_id is not None:
-            if brand_id == "":
+            if brand_id == "" or brand_id is None:
                 instance.brand = None
             else:
                 try:
@@ -272,15 +302,14 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         {"brand_id": "Бренд с таким ID не найден"}
                     )
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        if address_data:
-            # обновляем или создаем address
+        if address_data is not None:
             NomenclatureAddress.objects.update_or_create(
                 nomenclature=instance, defaults=address_data
             )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
 
         return instance
 
@@ -331,6 +360,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     else {}
                 ),
             }
+        if "contentType" in repr_:
+            key = repr_["contentType"]
+            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
         return repr_
 
 
@@ -342,6 +374,10 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     brand = BrandSerializer()
     exterior = serializers.SerializerMethodField()
     address = AddressSerializer()
+    contentType = serializers.ChoiceField(
+        choices=list(AVAILABLE_CONTENT_TYPES.values()),
+        required=False
+    )
 
     class Meta:
         fields = (
@@ -359,6 +395,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
+            "code1c"
         )
         read_only_fields = fields
         model = Nomenclature
@@ -383,6 +420,9 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_["timezone"] = TIMEZONES[value.timezone]
+        if "contentType" in repr_:
+            key = repr_["contentType"]
+            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
         return repr_
 
 
