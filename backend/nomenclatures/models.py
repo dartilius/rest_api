@@ -89,7 +89,7 @@ class Nomenclature(APIBaseObjectModel):
         verbose_name="Бренд номенклатуры",
         related_name="nomenclatures"
     )
-    legalEntity = models.CharField(max_length=255, null=True, blank=True)
+    legalEntity = models.CharField(max_length=255, null=True, blank=True, verbose_name="Юр. лицо")
     contentType = models.CharField(
         max_length=255,
         choices=AVAILABLE_CONTENT_TYPES,
