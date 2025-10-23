@@ -59,18 +59,22 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
-    brand = BrandSerializer(read_only=True) # чисто чтение
+    brand = BrandSerializer(read_only=True)  # чисто чтение
     brand_id = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(),
         source="brand",
         write_only=True,
         required=False,
         allow_null=True,
-    ) # только запись по id
+    )  # только запись по id
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
     address = AddressSerializer()
     code1c = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    contentType = serializers.ChoiceField(
+        choices=list(AVAILABLE_CONTENT_TYPES.values()),
+        required=False,
+    )
 
     class Meta:
         fields = (
@@ -331,6 +335,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     else {}
                 ),
             }
+        if "contentType" in repr_:
+            key = repr_["contentType"]
+            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
         return repr_
 
 
@@ -342,6 +349,10 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     brand = BrandSerializer()
     exterior = serializers.SerializerMethodField()
     address = AddressSerializer()
+    contentType = serializers.ChoiceField(
+        choices=list(AVAILABLE_CONTENT_TYPES.values()),
+        required=False
+    )
 
     class Meta:
         fields = (
@@ -383,6 +394,9 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_["timezone"] = TIMEZONES[value.timezone]
+        if "contentType" in repr_:
+            key = repr_["contentType"]
+            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
         return repr_
 
 
