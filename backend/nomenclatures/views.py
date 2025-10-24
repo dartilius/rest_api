@@ -4,7 +4,7 @@ from uuid import UUID
 from rest_framework.exceptions import NotFound
 
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -59,8 +59,53 @@ from tasks.models import Task
 from tasks.serializers import TaskListSerializer
 from users.permissions import StaffCUDallRead
 
-
 @extend_schema(tags=["Номенклатуры"])
+@extend_schema_view(
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID номенклатуры или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ]
+    ),
+    update=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID номенклатуры или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ]
+    ),
+    partial_update=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID номенклатуры или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ]
+    ),
+    destroy=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID номенклатуры или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ]
+    )
+)
 class NomenclatureViewSet(viewsets.ModelViewSet):
     """Работа с номенклатурами."""
 

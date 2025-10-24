@@ -104,7 +104,7 @@ class FileSerializer(serializers.ModelSerializer):
         )
         model = File
 
-    def get_url(self, instance):
+    def get_url(self, instance) -> str:
         return instance.url
 
     def to_representation(self, value):

@@ -34,7 +34,12 @@ TIMEZONES = {
     "Etc/GMT-11": "UTC +11",
     "Etc/GMT-12": "UTC +12",
 }
-TYPES = {"interior": "Интерьер", "exterior": "Экстерьер"}
+
+TYPES = {
+    "interior": "Интерьер",
+    "exterior": "Экстерьер"
+}
+
 AVAILABLE_CONTENT_TYPES = {
     "audio": "Аудио",
     "video": "Видео",
@@ -43,7 +48,12 @@ AVAILABLE_CONTENT_TYPES = {
     "video_image": "Видео + Картинка",
     "audio_image": "Аудио + Картинка",
 }
-STATUSES = {0: "Online", 1: "Offline 5+ minutes", 2: "Offline 1+ hour"}
+
+STATUSES = {
+    0: "Online",
+    1: "Offline 5+ minutes",
+    2: "Offline 1+ hour"
+}
 
 
 class Address(models.Model):
@@ -57,30 +67,45 @@ class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
 
     keys_validator = KeysValidator(
-        keys=("mon", "tue", "wed", "thu", "fri", "sat", "sun"), strict=True
+        keys=("mon", "tue", "wed", "thu", "fri", "sat", "sun"),
+        strict=True
     )
 
     article = Article()
+
     description = models.TextField(
         blank=True, null=True, verbose_name="Описание"
     )
+
     timezone = models.CharField(
         choices=TIMEZONES,
         max_length=31,
         verbose_name="Часовой пояс",
         default="Etc/GMT-7",
     )
+
     code1c = models.CharField(
-        verbose_name="Код из 1С", max_length=64, blank=True,
+        verbose_name="Код из 1С",
+        max_length=64,
+        blank=True,
         null=True
     )
-    version = models.CharField(max_length=127, verbose_name="Версия ПО")
+
+    version = models.CharField(
+        max_length=127,
+        verbose_name="Версия ПО"
+    )
+
     settings = models.JSONField(
-        verbose_name="Настройки вещания", validators=(keys_validator,)
+        verbose_name="Настройки вещания",
+        validators=(keys_validator,)
     )
+
     hw_info = models.JSONField(
-        verbose_name="Информация о железе", blank=True, null=True
+        verbose_name="Информация о железе",
+        blank=True, null=True
     )
+
     brand = models.ForeignKey(
         Brand,
         on_delete=models.SET_NULL,
@@ -89,18 +114,27 @@ class Nomenclature(APIBaseObjectModel):
         verbose_name="Бренд номенклатуры",
         related_name="nomenclatures"
     )
-    legalEntity = models.CharField(max_length=255, null=True, blank=True, verbose_name="Юр. лицо")
+
+    legalEntity = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="Юр. лицо"
+    )
+
     contentType = models.CharField(
         max_length=255,
         choices=AVAILABLE_CONTENT_TYPES,
         default="audio",
     )
+
     typeOfPlace = models.CharField(
         max_length=255,
         verbose_name="Тип места размещения",
         null=True,
         blank=True,
     )
+
     pricePerMonth = models.DecimalField(
         decimal_places=2,
         max_digits=10,
@@ -143,12 +177,14 @@ class NomenclatureAvailability(models.Model):
     last_answer_date = models.DateTimeField(
         verbose_name="Время последнего ответа",
     )
+
     client = models.OneToOneField(
         Nomenclature,
         verbose_name="Рабочая станция",
         related_name="availability",
         on_delete=models.CASCADE,
     )
+
     status = models.PositiveSmallIntegerField(
         choices=STATUSES, verbose_name="Статус", default=2
     )
@@ -269,7 +305,8 @@ class StatusHistory(models.Model):
         on_delete=models.CASCADE,
     )
     change_time = models.DateTimeField(
-        verbose_name="Время изменения статуса", auto_now_add=True
+        verbose_name="Время изменения статуса",
+        auto_now_add=True
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES, verbose_name="Статус"
@@ -305,10 +342,13 @@ class NomenclatureImage(models.Model):
         storage=MinioBackend(bucket_name="local-media"),
     )
     type = models.CharField(
-        max_length=31, choices=TYPES, verbose_name="Тип фотографии"
+        max_length=31,
+        choices=TYPES,
+        verbose_name="Тип фотографии"
     )
     created = models.DateTimeField(
-        verbose_name="Дата создания", auto_now_add=True
+        verbose_name="Дата создания",
+        auto_now_add=True
     )
     nomenclature = models.ForeignKey(
         Nomenclature,

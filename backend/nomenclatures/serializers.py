@@ -1,7 +1,6 @@
 from datetime import time
 
 from rest_framework import serializers
-
 from brands.models import Brand
 from brands.serializers import BrandSerializer
 from files.serializers import Base64FileField
@@ -12,6 +11,11 @@ from nomenclatures.models import (
     NomenclatureImage,
     NomenclatureAddress, AVAILABLE_CONTENT_TYPES,
 )
+
+from api.base_objects import Article
+
+serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
+
 
 class AddressSerializer(serializers.ModelSerializer):
     """Схема добавления адреса в номенклатуру."""
@@ -75,6 +79,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         choices=list(AVAILABLE_CONTENT_TYPES.values()),
         required=False,
     )
+    article = serializers.IntegerField(read_only=True)
 
     class Meta:
         fields = (
@@ -112,6 +117,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "brand",
             "interior",
             "exterior",
+            "article"
         )
         model = Nomenclature
 
@@ -378,6 +384,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         choices=list(AVAILABLE_CONTENT_TYPES.values()),
         required=False
     )
+    article = serializers.IntegerField(read_only=True)
 
     class Meta:
         fields = (
