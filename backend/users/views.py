@@ -7,6 +7,7 @@ from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_204_NO_CONTENT
 )
+from rest_framework.views import APIView
 
 from users.filters import CustomUserFilter
 from users.models import CustomUser
@@ -62,17 +63,24 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return serializer(*args, **kwargs)
 
 
-@extend_schema(tags=['users'])
-@api_view(['POST'])
-def logout(request):
+@extend_schema(
+    tags=['users'],
+    responses={
+        204: None,
+        401: None
+    }
+)
+class LogoutView(APIView):
     """Выход из системы."""
-    if not request.user.is_authenticated:
+
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response(
+                {'message': 'Пользователь не авторизован.'},
+                status=HTTP_401_UNAUTHORIZED
+            )
+        request.auth.blacklist()
         return Response(
-            {'message': 'Пользователь не авторизован.'},
-            status=HTTP_401_UNAUTHORIZED
+            {'message': 'Вы вышли из системы.'},
+            status=HTTP_204_NO_CONTENT
         )
-    request.auth.blacklist()
-    return Response(
-        {'message': 'Вы вышли из системы.'},
-        status=HTTP_204_NO_CONTENT
-    )
