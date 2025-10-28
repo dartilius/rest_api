@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST
+    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 )
 
 from api.constants import (
@@ -58,6 +58,7 @@ from nomenclatures.tasks import (
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
 from users.permissions import StaffCUDallRead
+
 
 @extend_schema(tags=["Номенклатуры"])
 @extend_schema_view(
@@ -112,7 +113,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     queryset = Nomenclature.active.select_related(
         "owner", "availability", "brand", "address"
     ).prefetch_related("images")
-    lookup_field = "id_or_code1c"
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
     permission_classes = [StaffCUDallRead]
@@ -132,6 +132,18 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    @action(detail=True, methods=["get"], url_path="code1c")
+    def get_code1c(self, request, pk=None):
+        """Получить code1c по id"""
+        try:
+            nomenclature = self.get_object()  # автоматически ищет по pk
+            return Response({"code1c": nomenclature.code1c})
+        except Nomenclature.DoesNotExist:
+            return Response(
+                {"detail": "Номенклатура не найдена."},
+                status=HTTP_404_NOT_FOUND
+            )
 
     def update(self, request, *args, **kwargs):
         error_message = (
@@ -197,27 +209,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             description=request.data["description"]
         )
         return Response({"id": nomenclature.pk})
-
-    def get_object(self):
-        """
-        Получаем бренд по UUID или code1c.
-        """
-
-        identifier = self.kwargs.get(self.lookup_field)
-        if not identifier:
-            raise NotFound("Не указан идентификатор бренда.")
-        # пробуем UUID
-        try:
-            uuid_obj = UUID(str(identifier))
-            return Nomenclature.objects.get(id=uuid_obj)
-        except (ValueError, Nomenclature.DoesNotExist):
-            pass
-
-        # пробуем code1c
-        try:
-            return Nomenclature.objects.get(code1c=identifier)
-        except Nomenclature.DoesNotExist:
-            raise NotFound("Номенклатура не найдена.")
 
     @action(detail=True, methods=["POST"], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
