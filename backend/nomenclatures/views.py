@@ -1,15 +1,18 @@
 from datetime import datetime as dt
+from uuid import UUID
+
+from rest_framework.exceptions import NotFound
 
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST,
+    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 )
 
 from api.constants import (
@@ -38,15 +41,12 @@ from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
-    Brand,
 )
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
     StatusHistorySerializer,
     PhotoSerializer,
-    BrandSerializer,
-    BrandCreateSerializer,
 )
 from nomenclatures.tasks import (
     resend_orders_task,
@@ -55,13 +55,58 @@ from nomenclatures.tasks import (
     custom_task,
     settings_task,
 )
-from orders.views import NoDeleteViewSet
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
 from users.permissions import StaffCUDallRead
 
 
 @extend_schema(tags=["Номенклатуры"])
+@extend_schema_view(
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID номенклатуры или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ]
+    ),
+    update=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID номенклатуры или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ]
+    ),
+    partial_update=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID номенклатуры или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ]
+    ),
+    destroy=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID номенклатуры или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ]
+    )
+)
 class NomenclatureViewSet(viewsets.ModelViewSet):
     """Работа с номенклатурами."""
 
@@ -88,16 +133,37 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+    @action(detail=True, methods=["get"], url_path="code1c")
+    def get_code1c(self, request, pk=None):
+        """Получить code1c по id"""
+        try:
+            nomenclature = self.get_object()  # автоматически ищет по pk
+            return Response({"code1c": nomenclature.code1c})
+        except Nomenclature.DoesNotExist:
+            return Response(
+                {"detail": "Номенклатура не найдена."},
+                status=HTTP_404_NOT_FOUND
+            )
+
     def update(self, request, *args, **kwargs):
         error_message = (
             "Изменить можно только название, описание, "
             "часовой пояс и настройки вещания. Лишние ключи: {keys}."
         )
-        updatable_fields = ("name", "description", "timezone", "settings")
+        updatable_fields = (
+            "name", "description", "timezone",
+            "settings", "brand_id", "code1c",
+            "address", "legalEntity", "pricePerMonth",
+            "contentType"
+        )
+
+        # --- добавить потом логику проверки прав на изменение ---
         kwargs.update(
-            updatable_fields=updatable_fields, error_message=error_message
+            updatable_fields=updatable_fields,
+            error_message=error_message
         )
         response = restricted_update(self, request, *args, **kwargs)
+
         return response
 
     @extend_schema(summary="Деактивировать номенклатуру")
@@ -143,6 +209,27 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             description=request.data["description"]
         )
         return Response({"id": nomenclature.pk})
+
+    def get_object(self):
+        """
+        Получаем номенклатуру по UUID или code1c.
+        """
+        identifier = self.kwargs.get(self.lookup_field, None)
+        if not identifier:
+            raise NotFound("Не указан идентификатор номенклатуры.")
+
+        # пробуем UUID
+        try:
+            uuid_obj = UUID(str(identifier))
+            return Nomenclature.objects.get(id=uuid_obj)
+        except (ValueError, Nomenclature.DoesNotExist):
+            pass
+
+        # пробуем code1c
+        try:
+            return Nomenclature.objects.get(code1c=identifier)
+        except Nomenclature.DoesNotExist:
+            raise NotFound("Номенклатура не найдена.")
 
     @action(detail=True, methods=["POST"], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
@@ -412,16 +499,3 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return Response(
             {"detail": "Фотографии прикреплены"}, status=HTTP_201_CREATED
         )
-
-
-@extend_schema(tags=["Бренды"])
-class BrandViewSet(NoDeleteViewSet):
-    """Бренды."""
-
-    queryset = Brand.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    def get_serializer_class(self):
-        if self.action == "create":
-            return BrandCreateSerializer
-        return BrandSerializer

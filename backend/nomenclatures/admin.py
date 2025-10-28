@@ -5,7 +5,6 @@ from nomenclatures.models import (
     NomenclatureAvailability,
     StatusHistory,
     STATUSES,
-    Brand,
     NomenclatureImage,
     NomenclatureAddress,
 )
@@ -22,7 +21,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         except AttributeError:
             return None
 
-    list_display = ("id", "name", "owner", "timezone", "is_active", "status")
+    list_display = ("id", "name", "owner", "timezone", "is_active", "status", "code1c")
     search_fields = ("name",)
     show_full_result_count = False
     raw_id_fields = ("owner",)
@@ -56,16 +55,6 @@ class StatusHistoryAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return StatusHistory.objects.all().select_related("client")
 
-
-@admin.register(Brand)
-class BrandAdmin(admin.ModelAdmin):
-    """Администрирование брендов."""
-
-    list_display = ("id", "name")
-    search_fields = ("name",)
-    show_full_result_count = False
-
-
 @admin.register(NomenclatureImage)
 class NomenclatureImageAdmin(admin.ModelAdmin):
     """Администрирование фотографий номенклатур."""
@@ -83,8 +72,8 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
 class NomenclatureAddressAdmin(admin.ModelAdmin):
     """Администрирование адресов номенклатур."""
 
-    list_display = ("nomenclature__id", "city", "street")
-    chow_full_result_count = False
+    list_display = ("nomenclature_id", "address")
+    show_full_result_count = False
 
     def get_queryset(self, request):
-        return NomenclatureAddress.objects.select_related("nomenclature")
+        return NomenclatureAddress.objects.select_related("nomenclature", "address")

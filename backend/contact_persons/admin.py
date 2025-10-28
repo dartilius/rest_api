@@ -26,8 +26,8 @@ class ContactInformationInline(admin.StackedInline):
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    list_display = ("last_name", "first_name", "vid", "active")
-    search_fields = ("last_name", "first_name")
+    list_display = ("surname", "name", "vid", "active")
+    search_fields = ("surname", "name")
     inlines = [ContactInformationInline]
 
     def save_model(self, request, obj, form, change):
@@ -40,4 +40,4 @@ class ContactAdmin(admin.ModelAdmin):
 class ContactInformationAdmin(admin.ModelAdmin):
     list_display = ("type", "meaning", "contact", "basic", "active")
     list_filter = ("type", "basic")
-    search_fields = ("meaning", "contact__last_name", "contact__first_name")
+    search_fields = ("meaning", "contact__surname", "contact__name")

@@ -1,56 +1,23 @@
 from datetime import time
 
 from rest_framework import serializers
-
+from brands.models import Brand
+from brands.serializers import BrandSerializer
 from files.serializers import Base64FileField
 from nomenclatures.models import (
     Nomenclature,
     StatusHistory,
     TIMEZONES,
     NomenclatureImage,
-    Brand,
-    NomenclatureAddress,
+    NomenclatureAddress, AVAILABLE_CONTENT_TYPES,
 )
 
+from addresses.models import Address as AddressBook
+from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
 
-class AddressSerializer(serializers.ModelSerializer):
-    """Схема добавления адреса в номенклатуру."""
+from api.base_objects import Article
 
-    class Meta:
-        model = NomenclatureAddress
-        fields = (
-            "index",
-            "country",
-            "city",
-            "locality",
-            "region",
-            "administrativeTerritory",
-            "microdistrict",
-            "federalDistrict",
-            "street",
-            "street_house",
-            "building",
-            "coordinates",
-        )
-
-
-class BrandCreateSerializer(serializers.ModelSerializer):
-    """Схема создания бренда."""
-
-    logo = Base64FileField(write_only=True)
-
-    class Meta:
-        model = Brand
-        fields = ("name", "logo")
-
-
-class BrandSerializer(serializers.ModelSerializer):
-    """Схема чтения бренда."""
-
-    class Meta:
-        model = Brand
-        fields = ("id", "name", "logo", "created")
-        read_only_fields = ("id", "created")
+serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
 
 class PhotoSerializer(serializers.ModelSerializer):
@@ -78,10 +45,33 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
-    brand = BrandSerializer()
+    brand = BrandSerializer(read_only=True)  # чисто чтение
+    brand_id = serializers.PrimaryKeyRelatedField(
+        queryset=Brand.objects.all(),
+        source="brand",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )  # только запись по id
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
-    address = AddressSerializer()
+    address_data = AddressCreateSerializer(
+        source="address.address", required=False, write_only=True
+    )
+    address_id = serializers.PrimaryKeyRelatedField(
+        queryset=AddressBook.objects.all(),
+        source="address.address",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    address = AddressReadSerializer(source="address.address", read_only=True)
+    code1c = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    contentType = serializers.ChoiceField(
+        choices=list(AVAILABLE_CONTENT_TYPES.values()),
+        required=False,
+    )
+    article = serializers.IntegerField(read_only=True)
 
     class Meta:
         fields = (
@@ -98,13 +88,17 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "hw_info",
             "created",
             "brand",
+            "brand_id",
             "interior",
             "exterior",
             "address",
             "legalEntity",
+            "address_data",
+            "address_id",
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
+            "code1c"
         )
         read_only_fields = (
             "id",
@@ -117,6 +111,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "brand",
             "interior",
             "exterior",
+            "article"
         )
         model = Nomenclature
 
@@ -228,6 +223,114 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 _validate_collision(settings["custom_volume"])
         return value
 
+    def create(self, validated_data):
+        address_relation = validated_data.pop("address", {})
+        address_data = address_relation.get("address")
+        brand = validated_data.pop("brand_id", None)  # или source="brand"
+
+        name = validated_data.get("name")
+        code1c = validated_data.get("code1c")
+
+        price_of_month = validated_data.get("pricePerMonth")
+
+        # --- Проверка уникальности code1c ---
+        if code1c:
+            old_item = Nomenclature.objects.filter(code1c=code1c).first()
+            if old_item:
+                # --- Логируем попытку ---
+                log_path = "/app/network_logs/nomenclature_conflicts.log"
+                with open(log_path, "a", encoding="utf-8") as f:
+                    f.write(f"{name}: {old_item.id}, {getattr(old_item, 'code1c', '—')}\n")
+
+                # --- Ошибка валидации ---
+                raise serializers.ValidationError({
+                    "code1c": f"Номенклатура с кодом '{code1c}' уже существует (id={old_item.id})"
+                })
+
+        if price_of_month is not None:
+            if price_of_month < 0:
+                raise serializers.ValidationError({
+                    "pricePerMonth": "Стоимость аренда не может быть меньше 0."
+                })
+
+        # --- Обработка brand ---
+        if brand:
+            try:
+                validated_data["brand"] = Brand.objects.get(id=brand)
+            except Brand.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"brand_id": "Бренд с таким ID не найден"}
+                )
+
+        # --- Создание номенклатуры ---
+        nomenclature = Nomenclature.objects.create(**validated_data)
+
+        # обработка адреса (может быть dict или id через address_id)
+        if address_data:
+            # если пришли данные адреса — используем AddressCreateSerializer
+            serializer = AddressCreateSerializer(data=address_data)
+            serializer.is_valid(raise_exception=True)
+            address_obj = serializer.save()
+            NomenclatureAddress.objects.update_or_create(
+                nomenclature=nomenclature, defaults={"address": address_obj}
+            )
+
+        return nomenclature
+
+    def update(self, instance, validated_data):
+        address_relation = validated_data.pop("address", {})
+        address_data = address_relation.get("address")
+        brand_id = validated_data.pop("brand_id", None) if "brand_id" in validated_data else None
+        code1c = validated_data.get("code1c")
+        price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
+
+        if code1c is not None:
+            conflict = Nomenclature.objects.filter(code1c=code1c).exclude(id=instance.id).first()
+
+            if conflict:
+                raise serializers.ValidationError({
+                    "code1c": f"Код '{code1c}' уже используется в другой номенклатуре (id={conflict.id})\n"
+                })
+            instance.code1c = code1c
+
+        if price_per_month is not None:
+            if price_per_month < 0:
+                raise serializers.ValidationError({
+                    "pricePerMonth": "Стоимость аренда не может быть меньше 0."
+                })
+            instance.pricePerMonth = price_per_month
+
+        if brand_id is not None:
+            if brand_id == "" or brand_id is None:
+                instance.brand = None
+            else:
+                try:
+                    instance.brand = Brand.objects.get(id=brand_id)
+                except Brand.DoesNotExist:
+                    raise serializers.ValidationError(
+                        {"brand_id": "Бренд с таким ID не найден"}
+                    )
+
+        if address_data is not None:
+            # если пришли словари с адресом — создаём/находим запись в справочнике
+            if isinstance(address_data, dict):
+                serializer = AddressCreateSerializer(data=address_data)
+                serializer.is_valid(raise_exception=True)
+                address_obj = serializer.save()
+                NomenclatureAddress.objects.update_or_create(
+                    nomenclature=instance, defaults={"address": address_obj}
+                )
+            elif isinstance(address_data, AddressBook):
+                NomenclatureAddress.objects.update_or_create(
+                    nomenclature=instance, defaults={"address": address_data}
+                )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance
+
     def get_status(self, obj) -> int | None:
         try:
             return obj.availability.status
@@ -275,6 +378,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     else {}
                 ),
             }
+        if "contentType" in repr_:
+            key = repr_["contentType"]
+            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
         return repr_
 
 
@@ -285,7 +391,12 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     last_answer = serializers.SerializerMethodField()
     brand = BrandSerializer()
     exterior = serializers.SerializerMethodField()
-    address = AddressSerializer()
+    address = AddressReadSerializer(source="address.address")
+    contentType = serializers.ChoiceField(
+        choices=list(AVAILABLE_CONTENT_TYPES.values()),
+        required=False
+    )
+    article = serializers.IntegerField(read_only=True)
 
     class Meta:
         fields = (
@@ -303,6 +414,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
+            "code1c"
         )
         read_only_fields = fields
         model = Nomenclature
@@ -327,6 +439,9 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_["timezone"] = TIMEZONES[value.timezone]
+        if "contentType" in repr_:
+            key = repr_["contentType"]
+            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
         return repr_
 
 
