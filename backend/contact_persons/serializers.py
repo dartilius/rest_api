@@ -26,9 +26,9 @@ class ContactSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "vid",
-            "last_name",
-            "first_name",
             "surname",
+            "name",
+            "patronymic",
             "role",
             "job_title",
             "gender",
@@ -45,8 +45,8 @@ class ContactSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         contact_info_data = validated_data.pop("contact_info", [])
         existing = Contact.objects.filter(
-            last_name=validated_data.get("last_name"),
-            first_name=validated_data.get("first_name"),
+            surname=validated_data.get("surname"),
+            name=validated_data.get("name"),
             active=True
         ).first()
         if existing:

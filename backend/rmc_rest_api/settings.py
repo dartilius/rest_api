@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'djoser',
     'phonenumber_field',
+    'dal',
+    'dal_select2',
     'docs',
     'files',
     'nomenclatures',
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
     'tasks',
     'users',
     'contact_persons',
+    'addresses',
 ]
 
 # Базовый MIDDLEWARE

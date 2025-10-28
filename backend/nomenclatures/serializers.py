@@ -37,6 +37,14 @@ class AddressSerializer(serializers.ModelSerializer):
             "coordinates",
         )
 
+from addresses.models import Address as AddressBook
+from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
+
+from api.base_objects import Article
+
+serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
+
+
 
 class PhotoSerializer(serializers.ModelSerializer):
     """Схема добавления фотографий к номенклатуре."""
@@ -73,13 +81,24 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     )  # только запись по id
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
-    address = AddressSerializer()
     code1c = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     contentType = serializers.ChoiceField(
         choices=list(AVAILABLE_CONTENT_TYPES.values()),
         required=False,
     )
     article = serializers.IntegerField(read_only=True)
+    address_data = AddressCreateSerializer(
+        source="address.address", required=False, write_only=True
+    )
+    address_id = serializers.PrimaryKeyRelatedField(
+        queryset=AddressBook.objects.all(),
+        source="address.address",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    address = AddressReadSerializer(source="address.address", read_only=True)
+
 
     class Meta:
         fields = (
@@ -101,6 +120,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "exterior",
             "address",
             "legalEntity",
+            "address_data",
+            "address_id",
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
@@ -230,7 +251,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        address_data = validated_data.pop("address", None)
+        address_relation = validated_data.pop("address", {})
+        address_data = address_relation.get("address")
         brand = validated_data.pop("brand_id", None)  # или source="brand"
 
         name = validated_data.get("name")
@@ -270,13 +292,21 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # --- Создание номенклатуры ---
         nomenclature = Nomenclature.objects.create(**validated_data)
 
+        # обработка адреса (может быть dict или id через address_id)
         if address_data:
-            NomenclatureAddress.objects.create(nomenclature=nomenclature, **address_data)
+            # если пришли данные адреса — используем AddressCreateSerializer
+            serializer = AddressCreateSerializer(data=address_data)
+            serializer.is_valid(raise_exception=True)
+            address_obj = serializer.save()
+            NomenclatureAddress.objects.update_or_create(
+                nomenclature=nomenclature, defaults={"address": address_obj}
+            )
 
         return nomenclature
 
     def update(self, instance, validated_data):
-        address_data = validated_data.pop("address", None)
+        address_relation = validated_data.pop("address", {})
+        address_data = address_relation.get("address")
         brand_id = validated_data.pop("brand_id", None) if "brand_id" in validated_data else None
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
@@ -309,9 +339,18 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     )
 
         if address_data is not None:
-            NomenclatureAddress.objects.update_or_create(
-                nomenclature=instance, defaults=address_data
-            )
+            # если пришли словари с адресом — создаём/находим запись в справочнике
+            if isinstance(address_data, dict):
+                serializer = AddressCreateSerializer(data=address_data)
+                serializer.is_valid(raise_exception=True)
+                address_obj = serializer.save()
+                NomenclatureAddress.objects.update_or_create(
+                    nomenclature=instance, defaults={"address": address_obj}
+                )
+            elif isinstance(address_data, AddressBook):
+                NomenclatureAddress.objects.update_or_create(
+                    nomenclature=instance, defaults={"address": address_data}
+                )
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -379,7 +418,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     last_answer = serializers.SerializerMethodField()
     brand = BrandSerializer()
     exterior = serializers.SerializerMethodField()
-    address = AddressSerializer()
+    address = AddressReadSerializer(source="address.address")
     contentType = serializers.ChoiceField(
         choices=list(AVAILABLE_CONTENT_TYPES.values()),
         required=False

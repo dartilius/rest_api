@@ -43,9 +43,9 @@ class Contact(models.Model):
     """Контактное лицо (может быть связано с множеством номенклатур)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     vid = models.CharField(max_length=255, choices=TYPE_OF_CONTACT, default="CA", verbose_name="Вид")
-    last_name = models.CharField(max_length=100, verbose_name="Фамилия")
-    first_name = models.CharField(max_length=100, verbose_name="Имя")
-    surname = models.CharField(max_length=100, null=True, blank=True, verbose_name="Отчество")
+    surname = models.CharField(max_length=100, verbose_name="Фамилия")
+    name = models.CharField(max_length=100, verbose_name="Имя")
+    patronymic = models.CharField(max_length=100, null=True, blank=True, verbose_name="Отчество")
     role = models.CharField(max_length=100, null=True, blank=True, verbose_name="Роль")
     job_title = models.CharField(max_length=100, null=True, blank=True, verbose_name="Должность")
     gender = models.CharField(max_length=255, choices=GENDER, default="man", verbose_name="Пол")
@@ -54,7 +54,7 @@ class Contact(models.Model):
 
     nomenclatures = models.ManyToManyField(
         Nomenclature,
-        related_name="contacts",
+        related_name="contact",
         verbose_name="Связанные номенклатуры",
         blank=True,
     )
@@ -69,7 +69,7 @@ class Contact(models.Model):
         verbose_name_plural = "Контактные лица"
 
     def __str__(self):
-        return f"{self.last_name} {self.first_name}"
+        return f"{self.surname} {self.name}"
 
 
 class ContactInformation(models.Model):
@@ -77,7 +77,7 @@ class ContactInformation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     basic = models.BooleanField(default=False, verbose_name="Основной")
     type = models.CharField(max_length=255, choices=CONTACTINFO, verbose_name="Тип")
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name="contact_info")
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name="contact_information", verbose_name="Контактная информация")
 
     vidtel = models.CharField(max_length=255, null=True, blank=True, choices=TYPEOFPHONE, verbose_name="Вид телефона")
     vidmail = models.CharField(max_length=255, null=True, blank=True, choices=TYPEMAIL, verbose_name="Вид почты")
