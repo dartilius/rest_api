@@ -8,10 +8,10 @@ class ContactViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Contact.objects.filter(active=True)
+        return Contact.active.all()
 
     def perform_destroy(self, instance):
         instance.active = False
         instance.save()
         # также делаем неактивной всю контактную информацию
-        instance.contact_info.update(active=False)
+        instance.contact_info.update(is_active=False)
