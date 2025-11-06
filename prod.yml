@@ -1,6 +1,6 @@
 services:
   clickhouse:
-    image: clickhouse/clickhouse-server:latest
+    image: clickhouse/clickhouse-server:25.8
     container_name: clickhouse
     env_file: .env
     ports:
@@ -12,17 +12,6 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    volumes:
-       - clickhouse_data:/var/lib/clickhouse
-    #  - ./file/clickhouse_data/_data:/var/lib/clickhouse
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 16G
-#          cpus: '8'
-#        reservations:
-#          memory: 8G
-#          cpus: '4'
     ulimits:
       nofile: 262144
 
@@ -38,7 +27,7 @@ services:
       - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_PASSWORD=${POSTGRES_PASS}
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: [ 'CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}' ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -48,20 +37,9 @@ services:
     volumes:
       - ./scripts/postgres:/docker-entrypoint-initdb.d
       - ./file/pg_data/_data:/var/lib/postgresql/data
-      #- ./configs/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
-    #command: >
-     # postgres -c config_file=/etc/postgresql/postgresql.conf
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 64G
-#          cpus: '16'
-#        reservations:
-#          memory: 48G
-#          cpus: '8'
 
   files:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
     container_name: files
     env_file: .env
     command: server /data --console-address ":9001"
@@ -72,19 +50,15 @@ services:
       - "9000:9000"  # S3 API
       - "9001:9001"  # Web-консоль
     healthcheck:
-      # ✅ Важно: healthcheck должен выполняться внутри контейнера, не снаружи
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
-      interval: 10s
+      test: [ 'CMD', 'curl', '-f', 'http://127.0.0.1:9000/minio/health/live' ]
+      interval: 5s
       timeout: 5s
       retries: 5
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 4G
-#          cpus: '2'
-#        reservations:
-#          memory: 2G
-#          cpus: '1'
+    volumes:
+      - ./file/s3:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
 
   backend:
     build: ./backend
@@ -92,6 +66,10 @@ services:
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
+      - ./file/static:/app/staticfiles
+      - type: volume
+        source: brand_logs
+        target: /app/network_logs
     healthcheck:
       test: curl --fail ${BACKEND_HC} || exit 1
       interval: 10s
@@ -99,7 +77,7 @@ services:
       retries: 5
     ports:
       - 8000:8000
-    command: gunicorn --bind 0:8000 --workers 2 --timeout 90 rmc_rest_api.wsgi
+    command: gunicorn --bind 0:8000 --workers 4 --timeout 90 rmc_rest_api.wsgi
     restart: unless-stopped
     depends_on:
       files:
@@ -110,14 +88,17 @@ services:
         condition: service_healthy
       rabbit:
         condition: service_healthy
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 24G
-#          cpus: '16'
-#        reservations:
-#          memory: 16G
-#          cpus: '8'
+    environment:
+      - RM_USER=${RM_USER}
+      - RM_PASS=${RM_PASS}
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 24G
+    #       cpus: '16'
+    #     reservations:
+    #       memory: 16G
+    #       cpus: '8'
 
   worker:
     build: ./backend
@@ -129,15 +110,15 @@ services:
       backend:
         condition: service_healthy
     command: celery -A rmc_rest_api worker
-    deploy:
-      replicas: 2
-#      resources:
-#        limits:
-#          memory: 4G
-#          cpus: '4'
-#        reservations:
-#          memory: 2G
-#          cpus: '2'
+    # deploy:
+    #   replicas: 4
+    #   resources:
+    #     limits:
+    #       memory: 4G
+    #       cpus: '4'
+    #     reservations:
+    #       memory: 2G
+    #       cpus: '2'
 
   beat:
     build: ./backend
@@ -150,14 +131,14 @@ services:
       backend:
         condition: service_healthy
     command: celery -A rmc_rest_api beat
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 4G
-#          cpus: '8'
-#        reservations:
-#          memory: 2G
-#          cpus: '4'
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4G
+    #       cpus: '8'
+    #     reservations:
+    #       memory: 2G
+    #       cpus: '4'
 
   frontend:
     env_file: .env
@@ -171,14 +152,14 @@ services:
         condition: service_healthy
     volumes:
       - ./file/static:/frontend_static
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 4G
-#          cpus: '4'
-#        reservations:
-#          memory: 2G
-#          cpus: '2'
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4G
+    #       cpus: '4'
+    #     reservations:
+    #       memory: 2G
+    #       cpus: '2'
 
   gateway:
     build: ./nginx
@@ -194,14 +175,14 @@ services:
         condition: service_healthy
       frontend:
         condition: service_started
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 4G
-#          cpus: '4'
-#        reservations:
-#          memory: 2G
-#          cpus: '2'
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4G
+    #       cpus: '4'
+    #     reservations:
+    #       memory: 2G
+    #       cpus: '2'
 
   rabbit:
     image: rabbitmq:management
@@ -216,18 +197,17 @@ services:
     restart: unless-stopped
     volumes:
       - ./file/rabbitdata:/var/lib/rabbitmq
-     # - ./configs/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     ports:
       - 5672:5672
       - 15672:15672
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 4G
-#          cpus: '4'
-#        reservations:
-#          memory: 2G
-#          cpus: '2'
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4G
+    #       cpus: '4'
+    #     reservations:
+    #       memory: 2G
+    #       cpus: '2'
 
   dashboard:
     image: mher/flower
@@ -242,14 +222,14 @@ services:
     depends_on:
       gateway:
         condition: service_started
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 1G
-#          cpus: '1'
-#        reservations:
-#          memory: 512M
-#          cpus: '0.5'
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 1G
+    #       cpus: '1'
+    #     reservations:
+    #       memory: 512M
+    #       cpus: '0.5'
 
   redis:
     image: redis:8.2.2
@@ -263,17 +243,17 @@ services:
       --save ""
       --appendonly no
       --protected-mode no
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 8G
-#          cpus: '8'
-#        reservations:
-#          memory: 4G
-#          cpus: '4'
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 8G
+    #       cpus: '8'
+    #     reservations:
+    #       memory: 4G
+    #       cpus: '4'
 
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.5
     env_file: .env
     environment:
       PGADMIN_DEFAULT_EMAIL: ${DJANGO_SUPERUSER_NAME}
@@ -285,14 +265,19 @@ services:
       - ./file/pgadmin:/var/lib/pgadmin
     depends_on:
       - db
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 2G
-#          cpus: '2'
-#        reservations:
-#          memory: 1G
-#          cpus: '1'
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 2G
+    #       cpus: '2'
+    #     reservations:
+    #       memory: 1G
+    #       cpus: '1'
 
 volumes:
-  clickhouse_data:
+  brand_logs:
+    driver: local
+    driver_opts:
+      type: cifs
+      o: username=${RM_USER},password=${RM_PASS},vers=3.0
+      device: "//192.168.0.2/rm/brands_logs"

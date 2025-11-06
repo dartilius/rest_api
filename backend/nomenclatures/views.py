@@ -38,15 +38,12 @@ from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
-    Brand,
 )
 from nomenclatures.serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
     StatusHistorySerializer,
     PhotoSerializer,
-    BrandSerializer,
-    BrandCreateSerializer,
 )
 from nomenclatures.tasks import (
     resend_orders_task,
@@ -93,7 +90,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             "Изменить можно только название, описание, "
             "часовой пояс и настройки вещания. Лишние ключи: {keys}."
         )
-        updatable_fields = ("name", "description", "timezone", "settings")
+        updatable_fields = ("name", "description", "timezone", "settings", "brand_id")
         kwargs.update(
             updatable_fields=updatable_fields, error_message=error_message
         )
@@ -412,16 +409,3 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return Response(
             {"detail": "Фотографии прикреплены"}, status=HTTP_201_CREATED
         )
-
-
-@extend_schema(tags=["Бренды"])
-class BrandViewSet(NoDeleteViewSet):
-    """Бренды."""
-
-    queryset = Brand.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    def get_serializer_class(self):
-        if self.action == "create":
-            return BrandCreateSerializer
-        return BrandSerializer
