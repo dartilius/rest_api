@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import Contact, ContactInformation
 
-
 class ContactInformationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactInformation
@@ -19,35 +18,34 @@ class ContactInformationSerializer(serializers.ModelSerializer):
 
 
 class ContactSerializer(serializers.ModelSerializer):
-    contact_info = ContactInformationSerializer(many=True)
+    contact_info = ContactInformationSerializer(many=True, read_only=True)
 
     class Meta:
         model = Contact
         fields = (
             "id",
             "vid",
-            "last_name",
-            "first_name",
             "surname",
+            "name",
+            "patronymic",
             "role",
             "job_title",
             "gender",
             "date_of_birth",
             "other",
             "nomenclatures",
-            "active",
+            "is_active",
             "created",
-            "updated",
             "contact_info",
         )
-        read_only_fields = ("id", "active", "created", "updated")
+        read_only_fields = ("id", "is_active", "created")
 
     def create(self, validated_data):
         contact_info_data = validated_data.pop("contact_info", [])
         existing = Contact.objects.filter(
-            last_name=validated_data.get("last_name"),
-            first_name=validated_data.get("first_name"),
-            active=True
+            surname=validated_data.get("surname"),
+            name=validated_data.get("name"),
+            is_active=True
         ).first()
         if existing:
             # Возвращаем существующий контакт
