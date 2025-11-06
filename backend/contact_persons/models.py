@@ -3,6 +3,7 @@ import re
 from django.db import models
 from django.core.exceptions import ValidationError
 from nomenclatures.models import Nomenclature
+from api import APIBaseObjectModel
 
 # ---------- Справочники ----------
 TYPE_OF_CONTACT = [
@@ -39,29 +40,26 @@ TYPEMAIL = [
 ]
 
 # ---------- Основные модели ----------
-class Contact(models.Model):
+class Contact(APIBaseObjectModel):
     """Контактное лицо (может быть связано с множеством номенклатур)."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     vid = models.CharField(max_length=255, choices=TYPE_OF_CONTACT, default="CA", verbose_name="Вид")
-    last_name = models.CharField(max_length=100, verbose_name="Фамилия")
-    first_name = models.CharField(max_length=100, verbose_name="Имя")
-    surname = models.CharField(max_length=100, null=True, blank=True, verbose_name="Отчество")
+    surname = models.CharField(max_length=100, verbose_name="Фамилия")
+    name = models.CharField(max_length=100, verbose_name="Имя")
+    patronymic = models.CharField(max_length=100, null=True, blank=True, verbose_name="Отчество")
     role = models.CharField(max_length=100, null=True, blank=True, verbose_name="Роль")
     job_title = models.CharField(max_length=100, null=True, blank=True, verbose_name="Должность")
     gender = models.CharField(max_length=255, choices=GENDER, default="man", verbose_name="Пол")
     date_of_birth = models.DateField(null=True, blank=True, verbose_name="Дата рождения")
     other = models.CharField(max_length=255, null=True, blank=True, verbose_name="Прочее")
 
-    nomenclatures = models.ManyToManyField(
+    nomenclatures = models.ForeignKey(
         Nomenclature,
-        related_name="contacts",
+        on_delete= models.SET_NULL,
+        related_name="contact",
         verbose_name="Связанные номенклатуры",
         blank=True,
+        null=True,
     )
-
-    active = models.BooleanField(default=True, verbose_name="Активен")
-    created = models.DateTimeField(auto_now_add=True, verbose_name="Создан")
-    updated = models.DateTimeField(auto_now=True, verbose_name="Обновлён")
 
     class Meta:
         db_table = "contacts"
@@ -69,15 +67,14 @@ class Contact(models.Model):
         verbose_name_plural = "Контактные лица"
 
     def __str__(self):
-        return f"{self.last_name} {self.first_name}"
+        return f"{self.surname} {self.name}"
 
 
-class ContactInformation(models.Model):
+class ContactInformation(APIBaseObjectModel):
     """Контактная информация (телефон, почта, адрес и т.д.)."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     basic = models.BooleanField(default=False, verbose_name="Основной")
     type = models.CharField(max_length=255, choices=CONTACTINFO, verbose_name="Тип")
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name="contact_info")
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name="contact_information", verbose_name="Контактная информация")
 
     vidtel = models.CharField(max_length=255, null=True, blank=True, choices=TYPEOFPHONE, verbose_name="Вид телефона")
     vidmail = models.CharField(max_length=255, null=True, blank=True, choices=TYPEMAIL, verbose_name="Вид почты")
@@ -86,9 +83,6 @@ class ContactInformation(models.Model):
     ext = models.CharField(max_length=255, null=True, blank=True, verbose_name="Доб.")
     comment = models.CharField(max_length=255, null=True, blank=True, verbose_name="Комментарий")
 
-    active = models.BooleanField(default=True, verbose_name="Активна")
-    created = models.DateTimeField(auto_now_add=True, verbose_name="Создана")
-    updated = models.DateTimeField(auto_now=True, verbose_name="Обновлена")
 
     class Meta:
         db_table = "contact_information"
