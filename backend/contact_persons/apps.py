@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class ContactPersonsConfig(AppConfig):  # латинская C!
+class ContactPersonsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'contact_persons'  # латинская c!
-    verbose_name = 'Контактные лица'
+    name = 'contact_persons'
+    verbose_name = "Контактные лица"
