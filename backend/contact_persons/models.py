@@ -52,15 +52,6 @@ class Contact(APIBaseObjectModel):
     date_of_birth = models.DateField(null=True, blank=True, verbose_name="Дата рождения")
     other = models.CharField(max_length=255, null=True, blank=True, verbose_name="Прочее")
 
-    nomenclatures = models.ForeignKey(
-        Nomenclature,
-        on_delete= models.SET_NULL,
-        related_name="contact",
-        verbose_name="Связанные номенклатуры",
-        blank=True,
-        null=True,
-    )
-
     class Meta:
         db_table = "contacts"
         verbose_name = "Контактное лицо"

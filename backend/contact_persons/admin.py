@@ -36,8 +36,6 @@ class ContactAdmin(admin.ModelAdmin):
         obj.save()
         super().save_model(request, obj, form, change)
 
-    def get_queryset(self, request):
-        return Contact.objects.select_related("nomenclatures")
 
 @admin.register(ContactInformation)
 class ContactInformationAdmin(admin.ModelAdmin):

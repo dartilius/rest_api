@@ -33,7 +33,6 @@ class ContactSerializer(serializers.ModelSerializer):
             "gender",
             "date_of_birth",
             "other",
-            "nomenclatures",
             "is_active",
             "created",
             "contact_info",
