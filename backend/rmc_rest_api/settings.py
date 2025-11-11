@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'djoser',
     'phonenumber_field',
+    'counterparties',
     'dal',
     'dal_select2',
     'docs',

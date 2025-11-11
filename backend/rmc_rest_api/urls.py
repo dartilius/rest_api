@@ -21,7 +21,7 @@ urlpatterns = [
     path('api/', include('addresses.urls')),
     path('api/', include('contact_persons.urls')),
     path('api/', include('nomenclatures.urls')),
-
+    path('api/', include('counterparties.urls')),
 
     path('api/', include('brands.urls')),
 
