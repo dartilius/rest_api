@@ -51,8 +51,9 @@ class BrandCreateSerializer(serializers.ModelSerializer):
 
         return attrs
 
+
 class BrandSerializer(serializers.ModelSerializer):
-    """Схема чтения бренда."""
+    logotype = Base64FileField(required=False)
 
     class Meta:
         model = Brand
