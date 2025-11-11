@@ -1,12 +1,13 @@
 from uuid import uuid4
 
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
 from django_minio_backend import MinioBackend
-from django.core.validators import RegexValidator
+
+from addresses.models import Address as AddressBook
 from api import APIBaseObjectModel, Article
-from brands.models import Brand
 
 TIMEZONES = {
     "Etc/GMT+11": "UTC -11",
@@ -71,10 +72,34 @@ class Nomenclature(APIBaseObjectModel):
         strict=True
     )
 
+    floor_space = models.CharField(
+        blank=True, null=True, verbose_name="Площадь"
+    )
+
+    traffic = models.CharField(
+        blank=True, null=True, verbose_name="Проходимость"
+    )
+
     article = Article()
 
     description = models.TextField(
         blank=True, null=True, verbose_name="Описание"
+    )
+
+    responsible_radio = models.TextField(
+        blank=True, null=True, verbose_name="Ответсвенный за радио"
+    )
+
+    responsible_ad = models.TextField(
+        blank=True, null=True, verbose_name="Ответсвенный за размещение"
+    )
+
+    media = ArrayField(
+        models.CharField(max_length=100),
+        blank=True,
+        default=list,
+        null=True,
+        verbose_name="Носители"
     )
 
     timezone = models.CharField(
@@ -98,7 +123,9 @@ class Nomenclature(APIBaseObjectModel):
 
     settings = models.JSONField(
         verbose_name="Настройки вещания",
-        validators=(keys_validator,)
+        validators=(keys_validator,),
+        blank=True,
+        default=dict
     )
 
     hw_info = models.JSONField(
@@ -107,7 +134,7 @@ class Nomenclature(APIBaseObjectModel):
     )
 
     brand = models.ForeignKey(
-        Brand,
+        'brands.Brand',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -115,11 +142,20 @@ class Nomenclature(APIBaseObjectModel):
         related_name="nomenclatures"
     )
 
-    legalEntity = models.CharField(
-        max_length=255,
+    legalEntity = models.ForeignKey(
+        'counterparties.Counterparties',
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Юр. лицо"
+        verbose_name="Юр. лицо",
+        related_name="owned_nomenclatures"
+    )
+
+    tenants = models.ManyToManyField(
+        'counterparties.Counterparties',
+        blank=True,
+        verbose_name="Арендаторы",
+        related_name="rented_nomenclatures"
     )
 
     contentType = models.CharField(
@@ -198,10 +234,7 @@ class NomenclatureAvailability(models.Model):
     def __str__(self):
         return f"{self.last_answer_date}"
 
-
 class NomenclatureAddress(models.Model):
-    """Адреса номенклатур."""
-
     nomenclature = models.OneToOneField(
         Nomenclature,
         verbose_name="Номенклатура",
@@ -209,90 +242,18 @@ class NomenclatureAddress(models.Model):
         on_delete=models.CASCADE,
         related_name="address",
     )
-    index = models.CharField(
-        max_length=6,
-        verbose_name="Почтовый индекс",
-        validators=[RegexValidator(r'^\d{6}$', 'Индекс должен содержать 6 цифр')],
+    address = models.ForeignKey(
+        AddressBook,
+        on_delete=models.SET_NULL,
         null=True,
-        blank=True
-    )
-    country = models.CharField(
-        max_length=50,
-        verbose_name="Страна",
-        null=True,
-        blank=True
-    )
-    city = models.CharField(
-        max_length=50,
-        verbose_name="Город",
-        null=True,
-        blank=True
-    )
-    locality = models.CharField(
-        max_length=50,
-        verbose_name="Тип населен. пункта",
-        null=True,
-        blank=True
-    )
-    region = models.CharField(
-        max_length=50,
-        verbose_name="Регион",
-        null=True,
-        blank=True
-    )
-    administrativeTerritory = models.CharField(
-        max_length=50,
-        verbose_name="Тип админ. терр. деления",
-        null=True,
-        blank=True
-    )
-    microdistrict = models.CharField(
-        max_length=50,
-        verbose_name="Микрорайон",
-        null=True,
-        blank=True
-    )
-    federalDistrict = models.CharField(
-        max_length=50,
-        verbose_name="Федеральный округ",
-        null=True,
-        blank=True
-    )
-    street = models.CharField(
-        max_length=50,
-        verbose_name="Улица",
-        null=True,
-        blank=True
-    )
-    street_house = models.CharField(
-        max_length=31,
-        verbose_name="Номер дома",
-        null=True,
-        blank=True
-    )
-    building = models.CharField(
-        max_length=31,
-        verbose_name="Строение",
-        null=True,
-        blank=True
-    )
-    coordinates = models.CharField(
-        max_length=50,
-        verbose_name="Координаты",
-        null=True,
-        blank=True
+        blank=True,
+        verbose_name="Адрес из справочника",
     )
 
     class Meta:
-        db_table = "addresses"
-        verbose_name = "Адрес номенклатуры"
-        verbose_name_plural = "Адреса номенклатур"
-        indexes = [
-            models.Index(fields=['city']),
-            models.Index(fields=['federalDistrict']),
-            models.Index(fields=['street']),
-            models.Index(fields=['city', 'street']),
-        ]
+        db_table = "nomenclature_addresses"
+        verbose_name = "Адрес Номенклатуры"
+        verbose_name_plural = "Ареса Номенклатур"
 
 
 class StatusHistory(models.Model):
