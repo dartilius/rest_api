@@ -1,14 +1,12 @@
+from uuid import UUID
+
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample, OpenApiParameter
 from rest_framework import status
+from rest_framework import viewsets
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound
-from rest_framework import viewsets
-from brands.filters import BrandFilter
-from brands.models import Brand
-from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
-from uuid import UUID
 from rest_framework.status import (
     HTTP_200_OK, HTTP_204_NO_CONTENT,
 )
@@ -16,6 +14,9 @@ from rest_framework.status import (
 from api.constants import (
     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
 )
+from brands.filters import BrandFilter
+from brands.models import Brand
+from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
 
 
 @extend_schema_view(
@@ -40,6 +41,15 @@ from api.constants import (
     ),
     retrieve=extend_schema(
         summary="Получить расшифровку бренда",
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID бренда или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ],
         examples=[
                      OpenApiExample(
                          "Пример бренда",
@@ -59,6 +69,15 @@ from api.constants import (
     ),
     destroy=extend_schema(
         summary="Удалить бренд",
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID бренда или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ],
         examples=[
                      OpenApiExample(
                          "Бренд успешно удален",
@@ -123,6 +142,15 @@ from api.constants import (
     ),
     partial_update=extend_schema(
         summary="Частичное обновление бренда",
+        parameters=[
+            OpenApiParameter(
+                name='id_or_code1c',
+                description='UUID бренда или код 1С',
+                required=True,
+                type=str,
+                location=OpenApiParameter.PATH
+            )
+        ],
         request=BrandSerializer,
         responses={HTTP_200_OK: BrandSerializer} | DEFAULT_SCHEMA_RESPONSES,
         examples=[
@@ -139,7 +167,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     lookup_field = "id_or_code1c"
     http_method_names = ["get", "post", "patch", "delete"]
-    queryset = Brand.objects.all()
+    queryset = Brand.objects.all().filter(nomenclatures__isnull=False).distinct()
     filter_backends = [DjangoFilterBackend]
     filterset_class = BrandFilter
 
