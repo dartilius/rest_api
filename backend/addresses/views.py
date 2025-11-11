@@ -2,10 +2,10 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import *
+from drf_spectacular.utils import extend_schema
 from .serializers import *
 
-
+@extend_schema(tags=["Адрес"])
 class AddressViewSet(viewsets.ModelViewSet):
     queryset = Address.objects.all()
 
@@ -133,66 +133,67 @@ class AddressViewSet(viewsets.ModelViewSet):
 
 
 # Базовые вьюсеты для всех моделей
+@extend_schema(tags=["Адрес (страна)"])
 class CountryViewSet(viewsets.ModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
 
-
+@extend_schema(tags=["Адрес (Фед. округ)"])
 class FederalDistrictViewSet(viewsets.ModelViewSet):
     queryset = FederalDistrict.objects.all()
     serializer_class = FederalDistrictSerializer
 
-
+@extend_schema(tags=["Адрес (тип региона)"])
 class TypeRegionViewSet(viewsets.ModelViewSet):
     queryset = TypeRegion.objects.all()
     serializer_class = TypeRegionSerializer
 
-
+@extend_schema(tags=["Адрес (часовой пояс)"])
 class TimezoneViewSet(viewsets.ModelViewSet):
     queryset = Timezone.objects.all()
     serializer_class = TimezoneSerializer
 
-
+@extend_schema(tags=["Адрес (регион)"])
 class RegionViewSet(viewsets.ModelViewSet):
     queryset = Region.objects.all()
     serializer_class = RegionSerializer
 
-
+@extend_schema(tags=["Адрес (населенный пункт)"])
 class LocalityTypeViewSet(viewsets.ModelViewSet):
     queryset = LocalityType.objects.all()
     serializer_class = LocalityTypeSerializer
 
-
+@extend_schema(tags=["Адрес (город)"])
 class CityViewSet(viewsets.ModelViewSet):
     queryset = City.objects.all()
     serializer_class = CitySerializer
 
-
+@extend_schema(tags=["Адрес (адм. округ)"])
 class AdministrativeTerritoryViewSet(viewsets.ModelViewSet):
     queryset = AdministrativeTerritory.objects.all()
     serializer_class = AdministrativeTerritorySerializer
 
-
+@extend_schema(tags=["Адрес (Административно-территориальная единица (АТЕ))"])
 class AdministrativeTerritorialUnitViewSet(viewsets.ModelViewSet):
     queryset = AdministrativeTerritorialUnit.objects.all()
     serializer_class = AdministrativeUnitSerializer  # Используем существующий сериализатор
 
-
+@extend_schema(tags=["Адрес (тип улицы)"])
 class StreetTypeViewSet(viewsets.ModelViewSet):
     queryset = StreetType.objects.all()
     serializer_class = StreetTypeSerializer
 
-
+@extend_schema(tags=["Адрес (улица)"])
 class StreetViewSet(viewsets.ModelViewSet):
     queryset = Street.objects.all()
     serializer_class = StreetSerializer
 
-
+@extend_schema(tags=["Адрес (дом)"])
 class HouseViewSet(viewsets.ModelViewSet):
     queryset = House.objects.all()
     serializer_class = HouseSerializer
 
-
+@extend_schema(tags=["Адрес (строение)"])
 class BuildingViewSet(viewsets.ModelViewSet):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer

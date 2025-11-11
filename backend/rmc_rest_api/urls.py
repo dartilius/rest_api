@@ -6,9 +6,8 @@ from drf_spectacular.views import (
 )
 from rest_framework import permissions
 
-from users.views import logout
 from docs.views import docs, openapi_scheme
-
+from users.views import LogoutView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -22,12 +21,16 @@ urlpatterns = [
     path('api/', include('addresses.urls')),
     path('api/', include('contact_persons.urls')),
     path('api/', include('nomenclatures.urls')),
+    path('api/', include('counterparties.urls')),
+
+    path('api/', include('brands.urls')),
+
     path('api/', include('users.urls')),
     path('api/', include('files.urls')),
     path('api/', include('orders.urls')),
     path('api/', include('tasks.urls')),
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
-    path('auth/logout/', logout, name='logout'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('__debug__/', include('debug_toolbar.urls')),
 ]
