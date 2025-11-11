@@ -32,7 +32,6 @@ class NomenclatureFilter(FilterSet):
     id = CharFilter(field_name='id', lookup_expr='iexact')
     timezone = CharFilter(field_name='timezone', lookup_expr='iexact')
     brand_id = UUIDCommaInFilter(field_name='brand_id', lookup_expr='in')
-    code1c = CharFilter(field_name="code1c", lookup_expr="icontains")
 
     ordering = OrderingFilter(
         fields=(
@@ -47,7 +46,6 @@ class NomenclatureFilter(FilterSet):
             'name': 'Название',
             'version': 'Версия ПО',
             'timezone': 'Часовой пояс',
-            'code1c': 'Код 1С',
             'pricePerMonth': 'Цена за месяц',
             'created': 'Дата создания',
             'brand__name': 'Название бренда',
@@ -57,7 +55,7 @@ class NomenclatureFilter(FilterSet):
 
     class Meta:
         model = Nomenclature
-        fields = ('name', 'id', 'timezone', 'versions', 'status', 'brand_id', "code1c")
+        fields = ('name', 'id', 'timezone', 'versions', 'status', 'brand_id')
 
     def get_status(self, queryset, name, value):
         """
