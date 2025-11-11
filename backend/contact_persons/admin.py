@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import Contact, ContactInformation
 from django.core.exceptions import ValidationError
 
+
 class ContactInformationInline(admin.StackedInline):
     model = ContactInformation
     extra = 1
@@ -26,7 +27,7 @@ class ContactInformationInline(admin.StackedInline):
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    list_display = ("surname", "name", "vid", "active")
+    list_display = ("surname", "name", "vid", "is_active")
     search_fields = ("surname", "name")
     inlines = [ContactInformationInline]
 
@@ -38,6 +39,6 @@ class ContactAdmin(admin.ModelAdmin):
 
 @admin.register(ContactInformation)
 class ContactInformationAdmin(admin.ModelAdmin):
-    list_display = ("type", "meaning", "contact", "basic", "active")
+    list_display = ("type", "meaning", "contact", "basic", "is_active")
     list_filter = ("type", "basic")
     search_fields = ("meaning", "contact__surname", "contact__name")

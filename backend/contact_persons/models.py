@@ -3,6 +3,7 @@ import re
 from django.db import models
 from django.core.exceptions import ValidationError
 from nomenclatures.models import Nomenclature
+from api import APIBaseObjectModel
 
 # ---------- Справочники ----------
 TYPE_OF_CONTACT = [
@@ -39,9 +40,8 @@ TYPEMAIL = [
 ]
 
 # ---------- Основные модели ----------
-class Contact(models.Model):
+class Contact(APIBaseObjectModel):
     """Контактное лицо (может быть связано с множеством номенклатур)."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     vid = models.CharField(max_length=255, choices=TYPE_OF_CONTACT, default="CA", verbose_name="Вид")
     surname = models.CharField(max_length=100, verbose_name="Фамилия")
     name = models.CharField(max_length=100, verbose_name="Имя")
@@ -52,17 +52,6 @@ class Contact(models.Model):
     date_of_birth = models.DateField(null=True, blank=True, verbose_name="Дата рождения")
     other = models.CharField(max_length=255, null=True, blank=True, verbose_name="Прочее")
 
-    nomenclatures = models.ManyToManyField(
-        Nomenclature,
-        related_name="contact",
-        verbose_name="Связанные номенклатуры",
-        blank=True,
-    )
-
-    active = models.BooleanField(default=True, verbose_name="Активен")
-    created = models.DateTimeField(auto_now_add=True, verbose_name="Создан")
-    updated = models.DateTimeField(auto_now=True, verbose_name="Обновлён")
-
     class Meta:
         db_table = "contacts"
         verbose_name = "Контактное лицо"
@@ -72,9 +61,8 @@ class Contact(models.Model):
         return f"{self.surname} {self.name}"
 
 
-class ContactInformation(models.Model):
+class ContactInformation(APIBaseObjectModel):
     """Контактная информация (телефон, почта, адрес и т.д.)."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     basic = models.BooleanField(default=False, verbose_name="Основной")
     type = models.CharField(max_length=255, choices=CONTACTINFO, verbose_name="Тип")
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name="contact_information", verbose_name="Контактная информация")
@@ -86,9 +74,6 @@ class ContactInformation(models.Model):
     ext = models.CharField(max_length=255, null=True, blank=True, verbose_name="Доб.")
     comment = models.CharField(max_length=255, null=True, blank=True, verbose_name="Комментарий")
 
-    active = models.BooleanField(default=True, verbose_name="Активна")
-    created = models.DateTimeField(auto_now_add=True, verbose_name="Создана")
-    updated = models.DateTimeField(auto_now=True, verbose_name="Обновлена")
 
     class Meta:
         db_table = "contact_information"
