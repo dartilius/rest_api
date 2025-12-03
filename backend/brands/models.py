@@ -19,8 +19,7 @@ class Brand(models.Model):
         verbose_name="ИД", primary_key=True, editable=False, default=uuid4
     )
     code1c = models.CharField(
-        verbose_name="Код из 1С", max_length=64, blank=True,
-        null=True
+        verbose_name="Код из 1С", max_length=64, blank=True, unique=True
     )
     name = models.CharField(
         max_length=64, blank=False, null=False, verbose_name="Наименование бренда"

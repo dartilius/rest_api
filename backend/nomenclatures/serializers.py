@@ -3,7 +3,7 @@ from datetime import time
 from rest_framework import serializers
 from brands.models import Brand
 from brands.serializers import BrandSerializer
-from counterparties.models import Counterparties
+from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesSerializer, CounterpartiesShortSerializer
 from files.serializers import Base64FileField
 from nomenclatures.models import (
@@ -17,7 +17,6 @@ from nomenclatures.models import (
 from api.base_objects import Article
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
-
 
 class AddressSerializer(serializers.ModelSerializer):
     """Схема добавления адреса в номенклатуру."""
@@ -74,16 +73,16 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
-    tenants = CounterpartiesShortSerializer(read_only=True)
+    tenants = CounterpartiesShortSerializer(read_only=True, source="rented_nomenclatures")
     legalEntity_id = serializers.PrimaryKeyRelatedField(
-        queryset=Counterparties.objects.all(),
+        queryset=Counterparty.objects.all(),
         source="legalEntity",
         write_only=True,
         required=False,
         allow_null=True,
     )
     tenants_id = serializers.PrimaryKeyRelatedField(
-        queryset=Counterparties.objects.all(),
+        queryset=Counterparty.objects.all(),
         source="tenants",
         write_only=True,
         required=False,
@@ -100,7 +99,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     )  # только запись по id
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
-    address = AddressSerializer()
     code1c = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     contentType = serializers.ChoiceField(
         choices=list(AVAILABLE_CONTENT_TYPES.values()),
@@ -150,7 +148,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
-            "code1c"
+            "code1c",
         )
         read_only_fields = (
             "id",
@@ -339,6 +337,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         address_relation = validated_data.pop("address", {})
         address_data = address_relation.get("address")
         brand_id = validated_data.pop("brand_id", None) if "brand_id" in validated_data else None
+        legalEntity_id = validated_data.pop("legalEntity_id", None) if "legalEntity_id" in validated_data else None
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
         tenants = validated_data.pop("tenants", None)
@@ -358,6 +357,20 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "pricePerMonth": "Стоимость аренда не может быть меньше 0."
                 })
             instance.pricePerMonth = price_per_month
+            
+        if legalEntity_id is not None:
+            if legalEntity_id == "" or legalEntity_id is None:
+                instance.legalEntity_id = None
+            else:
+                try:
+                    instance.legalEntity_id = Counterparty.objects.get(id=legalEntity_id)
+                except Counterparty.DoesNotExist:
+                    raise serializers.ValidationError(
+                        {
+                            "legalEntity_id": "Юр. лицо с таким ID не найден"
+                        }
+                    )
+                
 
         if brand_id is not None:
             if brand_id == "" or brand_id is None:
@@ -427,6 +440,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "version": obj.version,
             "created": f"{obj.created:%Y-%m-%d %H:%M:%S}",
         }
+        repr_["broadcast"] = obj.legalEntity.broadcast
         # чтобы поля не дублировались
         for field in repr_["main_info"]:
             repr_.pop(field)
@@ -453,7 +467,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     last_answer = serializers.SerializerMethodField()
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
-    tenants = CounterpartiesShortSerializer(many=True)
+    tenants = CounterpartiesSerializer(many=True)
     exterior = serializers.SerializerMethodField()
     address = AddressReadSerializer(source="address.address")
     contentType = serializers.ChoiceField(
@@ -505,6 +519,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_["timezone"] = TIMEZONES[value.timezone]
+        repr_["broadcast"] = value.legalEntity.broadcast
         if "contentType" in repr_:
             key = repr_["contentType"]
             repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)

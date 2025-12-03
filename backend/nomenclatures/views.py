@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST,
+    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN,
 )
 
 from api.constants import (
@@ -18,6 +18,7 @@ from api.constants import (
     DetailSerializer,
     VersionsSerializer,
 )
+from api.filters import UniversalSearchFilter
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -64,9 +65,15 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     queryset = Nomenclature.active.select_related(
         "owner", "availability", "brand", "address"
     ).prefetch_related("images")
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = NomenclatureFilter
+    serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
+
+    filter_backends = [DjangoFilterBackend, UniversalSearchFilter]
+
+    filterset_class = NomenclatureFilter
+
+    search_depth = 3  # глубина вложенности связей
+    search_excluded_fields = ["brand__description"] # допонительно исключаем поля в UniversalSearchFilter
 
     def get_serializer(self, *args, **kwargs):
         if self.action == "list":
@@ -84,12 +91,67 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+    # def get_queryset(self):
+    #     return (
+    #         Nomenclature.active
+    #         .select_related("owner", "availability", "brand", "address")
+    #         .prefetch_related("images")
+    #         .exclude(legalEntity__broadcast=True)
+    #     )
+
+    @action(detail=False, methods=["GET"], url_path="broadcast")
+    def broadcast(self, request):
+        user = request.user
+        is_broadcast = user.is_contact_person_broadcast
+        is_ad = user.is_contact_person_ad
+        is_admin = (
+                user.is_admin
+                or user.is_superuser
+                or user.is_manager
+        )
+
+        if (not user.is_authenticated and not is_admin) or (not user.is_authenticated and not is_broadcast):
+            return Response({f'message': 'Недостаточно прав.',
+                                         'is_admin': f'{is_admin}'}, status=HTTP_403_FORBIDDEN)
+
+        # --- ключевая логика ---
+        if is_admin:
+            qs = (
+                Nomenclature.active
+                .select_related("owner", "availability", "brand", "address")
+                .prefetch_related("images")
+                .filter(legalEntity__broadcast=True)
+            )
+        if is_broadcast:
+            # только номенклатура его контрагентов
+            user_counterparties = user.counterparties.all()
+            qs = (
+                self.get_queryset()
+                .filter(legalEntity__in=user_counterparties)
+            )
+        else:
+            return Response({f'message': 'Недостаточно прав.'}, status=HTTP_403_FORBIDDEN)
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
     def update(self, request, *args, **kwargs):
         error_message = (
             "Изменить можно только название, описание, "
             "часовой пояс и настройки вещания. Лишние ключи: {keys}."
         )
-        updatable_fields = ("name", "description", "timezone", "settings", "brand_id")
+        updatable_fields = (
+            "name", "description", "timezone", "settings", "brand_id", "legalEntity_id", "tenants",
+            # "floor_space", "traffic",
+            "responsible_radio", "responsible_ad", "media", "contentType",
+            "typeOfPlace", "pricePerMonth"
+        )
+
         kwargs.update(
             updatable_fields=updatable_fields, error_message=error_message
         )

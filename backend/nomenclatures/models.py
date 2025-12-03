@@ -3,6 +3,7 @@ from uuid import uuid4
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
+from django.core.validators import MinValueValidator
 from django.db import models
 from django_minio_backend import MinioBackend
 
@@ -57,12 +58,6 @@ STATUSES = {
 }
 
 
-class Address(models.Model):
-    """Адреса."""
-
-    class Meta:
-        abstract = True
-
 
 class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
@@ -72,13 +67,19 @@ class Nomenclature(APIBaseObjectModel):
         strict=True
     )
 
-    floor_space = models.CharField(
-        blank=True, null=True, verbose_name="Площадь"
-    )
-
-    traffic = models.CharField(
-        blank=True, null=True, verbose_name="Проходимость"
-    )
+    # floor_space = models.DecimalField(
+    #     max_digits=10,
+    #     decimal_places=2,
+    #     validators=[MinValueValidator(0)],
+    #     verbose_name="Площадь (м²)"
+    # )
+    #
+    # traffic = models.DecimalField(
+    #     max_digits=10,
+    #     decimal_places=2,
+    #     validators=[MinValueValidator(0)],
+    #     verbose_name="Проходимость"
+    # )
 
     article = Article()
 
@@ -86,12 +87,23 @@ class Nomenclature(APIBaseObjectModel):
         blank=True, null=True, verbose_name="Описание"
     )
 
-    responsible_radio = models.TextField(
-        blank=True, null=True, verbose_name="Ответсвенный за радио"
+    responsible_radio = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="radio_nomenclature",
+        verbose_name="Ответсвенный за радио"
     )
 
-    responsible_ad = models.TextField(
-        blank=True, null=True, verbose_name="Ответсвенный за размещение"
+    responsible_ad = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ad_nomenclature",
+        verbose_name="Ответсвенный за размещение"
+
     )
 
     media = ArrayField(
@@ -143,7 +155,7 @@ class Nomenclature(APIBaseObjectModel):
     )
 
     legalEntity = models.ForeignKey(
-        'counterparties.Counterparties',
+        'counterparties.Counterparty',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -152,7 +164,7 @@ class Nomenclature(APIBaseObjectModel):
     )
 
     tenants = models.ManyToManyField(
-        'counterparties.Counterparties',
+        'counterparties.Counterparty',
         blank=True,
         verbose_name="Арендаторы",
         related_name="rented_nomenclatures"
@@ -192,9 +204,9 @@ class Nomenclature(APIBaseObjectModel):
         verbose_name_plural = "Номенклатуры"
         constraints = [
             models.UniqueConstraint(
-                fields=["name"],
+                fields=["code1c"],
                 name="unique_nomenclature_name",
-                violation_error_message="Номенклатура с таким названием "
+                violation_error_message="Номенклатура с таким кодом "
                                         "уже существует",
             )
         ]

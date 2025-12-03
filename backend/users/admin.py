@@ -12,7 +12,6 @@ class CustomUserAdmin(admin.ModelAdmin):
         """Возвращает полное имя пользователя одним полем."""
         return (f'{obj.full_name["full_name"]} '
                 f'{obj.middle_name if obj.middle_name else ""}')
-
     list_display = (
         'id',
         'full_name',
