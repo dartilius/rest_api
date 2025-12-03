@@ -23,6 +23,8 @@ urlpatterns = [
     path('api/', include('nomenclatures.urls')),
     path('api/', include('counterparties.urls')),
 
+    path('api/', include('promotions.urls')),
+
     path('api/', include('brands.urls')),
 
     path('api/', include('users.urls')),

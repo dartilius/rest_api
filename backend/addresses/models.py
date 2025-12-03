@@ -11,7 +11,7 @@ from drf_spectacular.types import OpenApiTypes
 class Country(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     code1c = models.CharField("Код 1С", max_length=31, unique=True, null=True, blank=True)
-    name = models.CharField("Название", max_length=255, unique=True)
+    name = models.CharField("Страна", max_length=255, unique=True)
 
     class Meta:
         verbose_name = "Страна"
@@ -26,7 +26,7 @@ class Country(models.Model):
 class FederalDistrict(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     code1c = models.CharField("Код 1С", max_length=31, unique=True, null=True, blank=True)
-    country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name="federal_districts")
+    country = models.ForeignKey('addresses.Country', on_delete=models.PROTECT, related_name="federal_districts")
     name = models.CharField("Федеральный округ", max_length=255, unique=True)
     abbreviated_name = models.CharField("Сокращённое наименование", max_length=255, unique=True)
 

@@ -1,54 +1,126 @@
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
-from contact_persons.models import Contact
-from contact_persons.serializers import ContactSerializer
-from counterparties.models import Counterparties
+from addresses.models import Address
+from brands.models import Brand
+from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG
+from users.models import CustomUser
 
 
-class CounterpartiesCreateSerializer(serializers.ModelSerializer):
-    contact_persons = ContactSerializer(read_only=True, many=True)
-    contact_persons_id = serializers.PrimaryKeyRelatedField(
+class CreateCounterpartySerializer(serializers.ModelSerializer):
+
+    brands = serializers.PrimaryKeyRelatedField(
         many=True,
+        queryset=Brand.objects.all(),
         required=False,
-        source='contact_person',
-        allow_null=True,
-        queryset=Contact.active.all()
+        write_only=True,
     )
+    address = serializers.PrimaryKeyRelatedField(
+        queryset=Address.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    contact_persons = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=CustomUser.objects.all(),
+        write_only=True,
+    )
+
     class Meta:
-        model = Counterparties
-        fields = '__all__'
-        read_only_fields = ('id', 'code1c', 'created', 'contact_persons')
+        model = Counterparty
+        fields = [
+            'id', 'code1c', 'opf', "first_name",
+            'description', 'keyword', "last_name", "middle_name",
+            'contact_persons', 'brands', 'address', 'name', 'inn'
+        ]
+        # extra_kwargs = {
+        #     "first_name": {"required": False},
+        #     "last_name": {"required": False},
+        #     "middle_name": {"required": False},
+        #     "keyword": {"required": False},
+        # }
 
-    def validate(self, attrs):
-        code1c = attrs.get("code1c")
-        name = attrs.get("name")
-        if code1c:
-            old_counterparties = Counterparties.active().filter(code1c=code1c)
-            if old_counterparties:
-                # Логируем попытку
-                with open('/app/network_logs/counterparties_conflicts.log', 'a', encoding='utf-8') as f:
-                    f.write(f'{name}: {old_counterparties.id}, {getattr(old_counterparties, "code1c", "—")}\n')
+    # def to_internal_value(self, data):
+    #     """
+    #     кастомные поля для создания имени КА (для фронта)
+    #     - ФЛ: fullName {first_name, middle_name, last_name}
+    #     - ЮрЛица: без изменений
+    #     """
+    #     opf = data.get('opf')
+    #     data = data.copy()
+    #     data['contact_persons'] = data.get('contactPersons')
+    #     # FL — fullName → поля модели
+    #     if opf in TYPE_FL:
+    #         data["first_name"] = data.get("firstName")
+    #         data["middle_name"] = data.get("middleName")
+    #         data["last_name"] = data.get("lastName")
+    #
+    #         # keyword создаём автоматически
+    #         data["keyword"] = " ".join(filter(None, [
+    #             data.get("first_name"),
+    #             data.get("middle_name"),
+    #             data.get("last_name"),
+    #         ]))
+    #
+    #     return super().to_internal_value(data)
 
-                # Ошибка валидации
-                raise ValidationError({
-                    "error": "Brand with this code1c already exists",
-                    "existing_brand_id": old_counterparties.id,
-                    "existing_brand_name": old_counterparties.name,
-                    "existing_brand_code1c": old_counterparties.code1c,
-                    "message": f"Бренд с кодом '{code1c}' уже существует (id={old_counterparties.id}, name='{old_counterparties.name}')",
+    def validate(self, data):
+        opf = data.get('opf')
+
+        if not opf:
+            raise serializers.ValidationError({
+                "opf": "ОПФ обязательно"
+            })
+
+        if opf in TYPE_FL:
+            required = ["first_name", "last_name", "contact_persons"]
+            missing = [f for f in required if not data.get(f)]
+            if missing:
+                raise serializers.ValidationError({
+                    f: "Обязательное поле" for f in missing
                 })
-        return attrs
+
+            # ---------- ЮрЛицо ----------
+        elif opf in TYPE_ORG:
+            required = ["keyword", "contact_persons"]
+            missing = [f for f in required if not data.get(f)]
+            if missing:
+                raise serializers.ValidationError({
+                    f: "Обязательное поле" for f in missing
+                })
+
+        else:
+            raise serializers.ValidationError("Неверный ОПФ")
+
+        return data
+
+    def to_representation(self, value):
+        repr_ = super().to_representation(value)
+        repr_['opf'] = value.get_opf_display()
+        return repr_
+
 
 class CounterpartiesSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Counterparties
+        model = Counterparty
         fields = '__all__'
         read_only_fields = ('id', 'code1c', 'created')
+
 
 class CounterpartiesShortSerializer(serializers.ModelSerializer):
     """Короткий сериализатор — только id и name."""
 
     class Meta:
-        model = Counterparties
-        fields = ("id", "name", "code1c")
+        model = Counterparty
+        fields = ("id", "name")
+
+
+class CounterpartiesListSerializer(serializers.ModelSerializer):
+    """Короткий сериализатор"""
+    contactPersons = serializers.PrimaryKeyRelatedField(
+        read_only=True,
+        many=True,
+    )
+
+    class Meta:
+        model = Counterparty
+        fields = ("id", "name", 'contactPersons', 'brands', 'inn')

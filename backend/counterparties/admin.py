@@ -1,11 +1,12 @@
 from django.contrib import admin
 from django.utils.html import format_html, format_html_join
-from counterparties.models import Counterparties
+
+from counterparties.models import Counterparty
 
 STATUSES = {0: True, 1: False}
 
 
-@admin.register(Counterparties)
+@admin.register(Counterparty)
 class CounterpartiesAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -14,6 +15,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
         "code1c",
         "owned_count",
         "rented_count",
+        "counter_parties_count"
     )
     search_fields = ("name",)
     show_full_result_count = False
@@ -30,10 +32,14 @@ class CounterpartiesAdmin(admin.ModelAdmin):
         ("Арендованные номенклатуры (tenants)", {
             "fields": ("show_rented",),
         }),
+        ("Контактные лица", {
+            "fields": ("contact_persons",)
+        }),
     )
 
+
     def get_queryset(self, request):
-        return Counterparties.active.all()
+        return Counterparty.active.all()
 
     # ==== Counts in list display ====
     @admin.display(description="Своих")
@@ -68,4 +74,15 @@ class CounterpartiesAdmin(admin.ModelAdmin):
             ((n.id, n.name) for n in qs),
         )
         return format_html("<ul>{}</ul>", links)
+
+
+    @admin.display(description="Контактное лицо")
+    def show_counter_parties(self, obj):
+        return ", ".join([n.get_full_name() or n.username for n in obj.contact_persons.all()]) or "Нет КЛ"
+
+
+    @admin.display(description="КЛ")
+    def counter_parties_count(self, obj):
+        return obj.contact_persons.count()
+
 

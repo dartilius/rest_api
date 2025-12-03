@@ -1,7 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
@@ -9,6 +9,7 @@ from rest_framework.status import (
 )
 from rest_framework.views import APIView
 
+from counterparties.serializers import CounterpartiesSerializer
 from users.filters import CustomUserFilter
 from users.models import CustomUser
 from users.permissions import SuperuserCUDAuthRetrieve
@@ -24,6 +25,25 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = CustomUserFilter
     permission_classes = [SuperuserCUDAuthRetrieve]
+
+    @action(detail=False, methods=['get'])
+    def get_mine_counterparties(self, request):
+        """Получить контрагентов текущего пользователя."""
+        user = request.user
+        if not user.is_authenticated:
+            return Response({'message': 'Пользователь не авторизован.'}, status=HTTP_401_UNAUTHORIZED)
+
+        mine_counterparties = user.counterparties.all()
+
+        # Пагинация, если настроена
+        page = self.paginate_queryset(mine_counterparties)
+        if page is not None:
+            serializer = CounterpartiesSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        # Без пагинации
+        serializer = CounterpartiesSerializer(mine_counterparties, many=True)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         user = serializer.save()
