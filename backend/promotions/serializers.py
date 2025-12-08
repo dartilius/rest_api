@@ -2,6 +2,45 @@ from rest_framework import serializers
 
 from promotions.models import Promotion
 
+class PromotionOutputSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    logotype = serializers.CharField(allow_null=True)
+    code1c = serializers.CharField()
+    created = serializers.DateTimeField()
+
+    main_info = serializers.SerializerMethodField()
+    timeline = serializers.SerializerMethodField()
+    counterparty = serializers.SerializerMethodField()
+
+    def get_main_info(self, obj):
+        return {
+            "name": obj.name,
+            "description": obj.description,
+            "relevance": obj.is_active,
+        }
+
+    def get_timeline(self, obj):
+        return {
+            "start": obj.start_period,
+            "end": obj.end_period,
+            "created": obj.created,
+        }
+
+    def get_counterparty(self, obj):
+        if not obj.counterparty:
+            return None
+        cp = obj.counterparty
+        return {
+            "id": cp.id,
+            "name": cp.name,
+            "brands": [
+                {
+                    "id": cp.brand_id,
+                    "name": cp.brand_name,
+                }
+            ]
+        }
+
 
 class PromotionSerializer(serializers.ModelSerializer):
     """Сериализация одной акции"""
