@@ -8,7 +8,8 @@ from rest_framework.status import (
     HTTP_204_NO_CONTENT
 )
 from rest_framework.views import APIView
-
+from rest_framework.exceptions import NotFound
+from uuid import UUID
 from counterparties.serializers import CounterpartiesSerializer
 from users.filters import CustomUserFilter
 from users.models import CustomUser
@@ -19,7 +20,7 @@ from users.serializers import CustomUserSerializer, CustomUserListSerializer
 @extend_schema(tags=['users'])
 class CustomUserViewSet(viewsets.ModelViewSet):
     """Работа с пользователями."""
-
+    lookup_field = "id_or_code1c"
     queryset = CustomUser.objects.all().order_by('id')
     serializer_class = CustomUserSerializer
     filter_backends = [DjangoFilterBackend]
@@ -57,6 +58,30 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             data={'detail': data} if data else None,
             status=400 if data else 204
         )
+
+    def get_object(self):
+        identifier = self.kwargs.get(self.lookup_field)
+        if not identifier:
+            raise NotFound("Не указан идентификатор пользователя.")
+
+        # пробуем UUID
+        try:
+            uuid_obj = UUID(str(identifier))
+            customUser = CustomUser.objects.all().get(id=uuid_obj)
+            if customUser.is_deleted:
+                raise NotFound("Пользователь не найден.")
+            return customUser
+        except (ValueError, CustomUser.DoesNotExist):
+            pass
+
+        # пробуем code1c
+        try:
+            customUser = CustomUser.objects.all()(code1c=identifier)
+            if customUser.is_deleted:
+                raise NotFound("Пользователь не найден.")
+            return customUser
+        except CustomUser.DoesNotExist:
+            raise NotFound("Пользователь не найден.")
 
     def perform_destroy(self, instance):
         if instance.is_active is True:
