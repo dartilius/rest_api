@@ -1,13 +1,25 @@
+from drf_spectacular.utils import extend_schema_view, extend_schema
 from rest_framework import viewsets
+from uuid import UUID
 
+from rest_framework.exceptions import NotFound
 from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesSerializer, CounterpartiesListSerializer, \
     CreateCounterpartySerializer
 
 
-# Create your views here.
+# @extend_schema_view(
+#     list=extend_schema(
+#         summary="Пагинированный список Контрагентов",
+#         description="",
+#         parameters=[],
+#         responses={},
+#         examples=[],
+#     )
+# )
 class CounterpartiesViewSet(viewsets.ModelViewSet):
     queryset = Counterparty.objects.all()
+    lookup_field = "id_or_code1c"
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
@@ -17,6 +29,30 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
             return CounterpartiesListSerializer
         else:
             return CounterpartiesSerializer
+
+    def get_object(self):
+        identifier = self.kwargs.get(self.lookup_field)
+        if not identifier:
+            raise NotFound("Не указан идентификатор КА.")
+
+        # пробуем UUID
+        try:
+            uuid_obj = UUID(str(identifier))
+            counterparty = Counterparty.active.get(id=uuid_obj)
+            if counterparty.is_deleted:
+                raise NotFound("КА не найден.")
+            return counterparty
+        except (ValueError, Counterparty.DoesNotExist):
+            pass
+
+        # пробуем code1c
+        try:
+            counterparty = Counterparty.active.get(code1c=identifier)
+            if counterparty.is_deleted:
+                raise NotFound("КА не найден.")
+            return counterparty
+        except Counterparty.DoesNotExist:
+            raise NotFound("КА не найден.")
 
 # class CounterpartiesViewSet(viewsets.ModelViewSet):
 #     permission_classes = [IsAuthenticatedOrReadOnly]
