@@ -116,11 +116,11 @@ class CounterpartiesShortSerializer(serializers.ModelSerializer):
 
 class CounterpartiesListSerializer(serializers.ModelSerializer):
     """Короткий сериализатор"""
-    contactPersons = serializers.PrimaryKeyRelatedField(
-        read_only=True,
-        many=True,
-    )
+    # contact_persons = serializers.PrimaryKeyRelatedField(
+    #     read_only=True,
+    #     many=True,
+    # )
 
     class Meta:
         model = Counterparty
-        fields = ("id", "name", 'contactPersons', 'brands', 'inn')
+        fields = ("id", "name", 'contact_persons', 'brands', 'inn')
