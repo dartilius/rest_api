@@ -68,7 +68,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         try:
             uuid_obj = UUID(str(identifier))
             customUser = CustomUser.objects.get(id=uuid_obj)
-            if customUser.is_deleted:
+            if customUser.is_active is False:
                 raise NotFound("Пользователь не найден.")
             return customUser
         except (ValueError, CustomUser.DoesNotExist):
@@ -77,7 +77,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         # пробуем code1c
         try:
             customUser = CustomUser.objects.get(code1c=identifier)
-            if customUser.is_deleted:
+            if customUser.is_active is False:
                 raise NotFound("Пользователь не найден.")
             return customUser
         except CustomUser.DoesNotExist:
