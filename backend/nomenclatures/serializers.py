@@ -440,7 +440,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "version": obj.version,
             "created": f"{obj.created:%Y-%m-%d %H:%M:%S}",
         }
-        repr_["broadcast"] = getattr(instance.legalEntity, "broadcast", None)
+        repr_["broadcast"] = getattr(obj.legalEntity, "broadcast", None)
         # чтобы поля не дублировались
         for field in repr_["main_info"]:
             repr_.pop(field)
