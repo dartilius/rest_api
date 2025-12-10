@@ -67,7 +67,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         # пробуем UUID
         try:
             uuid_obj = UUID(str(identifier))
-            customUser = CustomUser.objects.all().get(id=uuid_obj)
+            customUser = CustomUser.objects.get(id=uuid_obj)
             if customUser.is_deleted:
                 raise NotFound("Пользователь не найден.")
             return customUser
@@ -76,7 +76,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
         # пробуем code1c
         try:
-            customUser = CustomUser.objects.all()(code1c=identifier)
+            customUser = CustomUser.objects.get(code1c=identifier)
             if customUser.is_deleted:
                 raise NotFound("Пользователь не найден.")
             return customUser

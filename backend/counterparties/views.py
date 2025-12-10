@@ -4,9 +4,9 @@ from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResp
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK
 
-from counterparties.models import Counterparty
+from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG
 from counterparties.serializers import CounterpartiesSerializer, CounterpartiesListSerializer, \
     CreateCounterpartySerializer, CounterpartiesShortSerializer
 
@@ -130,6 +130,41 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
             return counterparty
         except Counterparty.DoesNotExist:
             raise NotFound("КА не найден.")
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+
+        instance = self.get_object()
+        old_opf = instance.opf
+        new_opf = request.data.get("opf", old_opf)
+
+        # Если ОПФ меняется — применяем пересборку полей
+        if old_opf != new_opf:
+
+            # 1) INN ВСЕГДА сбрасывается
+            instance.inn = ""
+
+            # 2) Физлица → Юрлица
+            if old_opf in TYPE_FL and new_opf in TYPE_ORG:
+                instance.first_name = ""
+                instance.middle_name = ""
+                instance.last_name = ""
+                # keyword и description оставляем — их перезапишет сериализатор
+
+            # 3) Юрлица → Физлица
+            elif old_opf in TYPE_ORG and new_opf in TYPE_FL:
+                instance.keyword = ""
+                # ФИО пропишутся сериализатором
+
+            instance.opf = new_opf
+            instance.save()
+
+        # Далее обычный апдейт
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        updated = serializer.save()
+
+        return Response(self.get_serializer(updated).data, status=HTTP_200_OK)
 
 # class CounterpartiesViewSet(viewsets.ModelViewSet):
 #     permission_classes = [IsAuthenticatedOrReadOnly]

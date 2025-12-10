@@ -116,6 +116,7 @@ class PromotionViewSet(viewsets.ModelViewSet):
             qs = Counterparty.objects.none()
         return qs
 
+
     def get_object(self):
         identifier = self.kwargs.get(self.lookup_field)
         if not identifier:
@@ -128,7 +129,7 @@ class PromotionViewSet(viewsets.ModelViewSet):
             if promotion.is_deleted:
                 raise NotFound("Акция не найдена.")
             return promotion
-        except (ValueError, Promotion.DoesNotExist):
+        except (ValueError, Counterparty.DoesNotExist):
             pass
 
         # пробуем code1c
