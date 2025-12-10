@@ -440,7 +440,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "version": obj.version,
             "created": f"{obj.created:%Y-%m-%d %H:%M:%S}",
         }
-        repr_["broadcast"] = obj.legalEntity.broadcast
+        repr_["broadcast"] = getattr(instance.legalEntity, "broadcast", None)
         # чтобы поля не дублировались
         for field in repr_["main_info"]:
             repr_.pop(field)
@@ -519,7 +519,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_["timezone"] = TIMEZONES[value.timezone]
-        repr_["broadcast"] = value.legalEntity.broadcast
+        repr_["broadcast"] = getattr(value.legalEntity, "broadcast", None)
         if "contentType" in repr_:
             key = repr_["contentType"]
             repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
