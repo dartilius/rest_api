@@ -153,9 +153,9 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
                 if not keyword:
                     errors["keyword"] = "Поле обязательно для юридических лиц."
 
-                if not inn:
-                    errors["inn"] = "ИНН обязателен для юридических лиц."
-                elif len(inn) != 10:
+                # if not inn:
+                #     errors["inn"] = "ИНН обязателен для юридических лиц."
+                if len(inn) != 10:
                     errors["inn"] = "ИНН юридического лица должен содержать 10 цифр."
 
             # === ФЛ ===
@@ -170,9 +170,9 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
                 if not last:
                     errors["last_name"] = "Фамилия обязательна для физического лица."
 
-                if not inn:
-                    errors["inn"] = "ИНН обязателен для физического лица."
-                elif len(inn) != 12:
+                # if not inn:
+                #     errors["inn"] = "ИНН обязателен для физического лица."
+                if len(inn) != 12:
                     errors["inn"] = "ИНН физического лица должен содержать 12 цифр."
 
             if errors:
