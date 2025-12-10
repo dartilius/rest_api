@@ -138,33 +138,72 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
         old_opf = instance.opf
         new_opf = request.data.get("opf", old_opf)
 
-        # Если ОПФ меняется — применяем пересборку полей
+        data = request.data
+
+        # Если ОПФ меняется — сперва проверяем, НЕ пустые ли новые данные
         if old_opf != new_opf:
 
-            # 1) INN ВСЕГДА сбрасывается
+            errors = {}
+
+            # === ЮЛ ===
+            if new_opf in TYPE_ORG:
+                keyword = data.get("keyword", "").strip()
+                inn = data.get("inn", "").strip()
+
+                if not keyword:
+                    errors["keyword"] = "Поле обязательно для юридических лиц."
+
+                # if not inn:
+                #     errors["inn"] = "ИНН обязателен для юридических лиц."
+                if len(inn) != 10:
+                    errors["inn"] = "ИНН юридического лица должен содержать 10 цифр."
+
+            # === ФЛ ===
+            elif new_opf in TYPE_FL:
+                first = data.get("first_name", "").strip()
+                last = data.get("last_name", "").strip()
+                inn = data.get("inn", "").strip()
+
+                if not first:
+                    errors["first_name"] = "Имя обязательно для физического лица."
+
+                if not last:
+                    errors["last_name"] = "Фамилия обязательна для физического лица."
+
+                # if not inn:
+                #     errors["inn"] = "ИНН обязателен для физического лица."
+                if len(inn) != 12:
+                    errors["inn"] = "ИНН физического лица должен содержать 12 цифр."
+
+            if errors:
+                return Response(
+                    {"errors": errors, "detail": "Заполните обязательные поля."},
+                    status=400
+                )
+
+            # ===== Затирание старых полей =====
             instance.inn = ""
 
-            # 2) Физлица → Юрлица
+            # ФЛ → ЮЛ
             if old_opf in TYPE_FL and new_opf in TYPE_ORG:
                 instance.first_name = ""
                 instance.middle_name = ""
                 instance.last_name = ""
-                # keyword и description оставляем — их перезапишет сериализатор
 
-            # 3) Юрлица → Физлица
+            # ЮЛ → ФЛ
             elif old_opf in TYPE_ORG and new_opf in TYPE_FL:
                 instance.keyword = ""
-                # ФИО пропишутся сериализатором
 
             instance.opf = new_opf
             instance.save()
 
-        # Далее обычный апдейт
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        # Далее обычный апдейт сериализатором
+        serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        updated = serializer.save()
+        counterparty = serializer.save()
+        short = CounterpartiesShortSerializer(counterparty)
 
-        return Response(self.get_serializer(updated).data, status=HTTP_200_OK)
+        return Response(short.data, status=HTTP_200_OK)
 
 # class CounterpartiesViewSet(viewsets.ModelViewSet):
 #     permission_classes = [IsAuthenticatedOrReadOnly]
