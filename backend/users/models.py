@@ -42,10 +42,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, ContactInformation):
     last_name = models.CharField(
         max_length=150,
         verbose_name='Фамилия',
+        null=True,
+        blank=True
     )
     first_name = models.CharField(
         max_length=150,
         verbose_name='Имя',
+        null=True,
+        blank=True
     )
     middle_name = models.CharField(
         max_length=150,
