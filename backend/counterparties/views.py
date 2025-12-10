@@ -1,22 +1,92 @@
-from drf_spectacular.utils import extend_schema_view, extend_schema
-from rest_framework import viewsets
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse, OpenApiRequest, OpenApiExample
+from rest_framework import viewsets
 from rest_framework.exceptions import NotFound
-from counterparties.models import Counterparty
+from rest_framework.response import Response
+from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK
+
+from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG
 from counterparties.serializers import CounterpartiesSerializer, CounterpartiesListSerializer, \
-    CreateCounterpartySerializer
+    CreateCounterpartySerializer, CounterpartiesShortSerializer
 
 
-# @extend_schema_view(
-#     list=extend_schema(
-#         summary="Пагинированный список Контрагентов",
-#         description="",
-#         parameters=[],
-#         responses={},
-#         examples=[],
-#     )
-# )
+@extend_schema_view(
+    list=extend_schema(
+        summary="Пагинированный список Контрагентов",
+        description=(
+            "Возвращает постраничный список КА. "
+            "Использует `CounterpartiesListSerializer`."
+        ),
+        responses={
+            200: OpenApiResponse(
+                response=CounterpartiesListSerializer,
+                description="Успешное получение списка КА."
+            )
+        }
+    ),
+
+    retrieve=extend_schema(
+        summary="Расшифровка КА",
+        description="Возвращает полный перечень данных КА по коду 1с или id (UUID)",
+        responses={
+            200: OpenApiResponse(
+                response=CounterpartiesSerializer,
+                description="Успешное получение КА."
+            )
+        }
+    ),
+
+    create=extend_schema(
+        summary="Создание КА",
+        description=(
+                "Создает контрагента. "
+                "В зависимости от ОПФ требуется различный набор полей.\n\n"
+                "ОПФ физлиц: IP, FL, SE\n"
+                "ОПФ юрлиц: AO, BF, ZAO, MAU, MP, OAO, OOO, PAO, TCN\n\n"
+                "Использует `CreateCounterpartySerializer`."
+        ),
+        request=CreateCounterpartySerializer,
+        responses={
+            201: OpenApiResponse(
+                response=CounterpartiesShortSerializer,
+                description="Контрагент успешно создан"
+            )
+        },
+        examples=[
+            # ------ ФИЗЛИЦО ------
+            OpenApiExample(
+                name="Пример ФизЛицо (FL)",
+                summary="Создание Контрагента — ФЛ",
+                description="Пример тела запроса для ОПФ FL",
+                value={
+                    "opf": "FL",
+                    "first_name": "Иван",
+                    "middle_name": "Иванович",
+                    "last_name": "Петров",
+                    "contact_persons": ["uuid"],
+                    "brands": ["uuid", "uuid"],
+                    "description": "Поставщик овощей",
+                },
+            ),
+            # ------ ЮРЛИЦО ------
+            OpenApiExample(
+                name="Пример ЮрЛицо (OOO)",
+                summary="Создание Контрагента — ООО",
+                description="Пример тела запроса для ОПФ OOO",
+                value={
+                    "opf": "OOO",
+                    "keyword": "ООО Ромашка",
+                    "contact_persons": ["uuid"],
+                    "brands": ["uuid"],
+                    "inn": "7734567890",
+                    "description": "Официальный дилер"
+                },
+            ),
+        ]
+    )
+)
+@extend_schema(tags=["Контрагенты"])
 class CounterpartiesViewSet(viewsets.ModelViewSet):
     queryset = Counterparty.objects.all()
     lookup_field = "id_or_code1c"
@@ -30,6 +100,13 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
         else:
             return CounterpartiesSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        counterparty = serializer.save()
+        short = CounterpartiesShortSerializer(counterparty)
+        return Response(short.data, status=HTTP_201_CREATED)
+
     def get_object(self):
         identifier = self.kwargs.get(self.lookup_field)
         if not identifier:
@@ -39,7 +116,7 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
         try:
             uuid_obj = UUID(str(identifier))
             counterparty = Counterparty.active.get(id=uuid_obj)
-            if counterparty.is_deleted:
+            if counterparty.is_active is False:
                 raise NotFound("КА не найден.")
             return counterparty
         except (ValueError, Counterparty.DoesNotExist):
@@ -53,6 +130,41 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
             return counterparty
         except Counterparty.DoesNotExist:
             raise NotFound("КА не найден.")
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+
+        instance = self.get_object()
+        old_opf = instance.opf
+        new_opf = request.data.get("opf", old_opf)
+
+        # Если ОПФ меняется — применяем пересборку полей
+        if old_opf != new_opf:
+
+            # 1) INN ВСЕГДА сбрасывается
+            instance.inn = ""
+
+            # 2) Физлица → Юрлица
+            if old_opf in TYPE_FL and new_opf in TYPE_ORG:
+                instance.first_name = ""
+                instance.middle_name = ""
+                instance.last_name = ""
+                # keyword и description оставляем — их перезапишет сериализатор
+
+            # 3) Юрлица → Физлица
+            elif old_opf in TYPE_ORG and new_opf in TYPE_FL:
+                instance.keyword = ""
+                # ФИО пропишутся сериализатором
+
+            instance.opf = new_opf
+            instance.save()
+
+        # Далее обычный апдейт
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        updated = serializer.save()
+
+        return Response(self.get_serializer(updated).data, status=HTTP_200_OK)
 
 # class CounterpartiesViewSet(viewsets.ModelViewSet):
 #     permission_classes = [IsAuthenticatedOrReadOnly]
