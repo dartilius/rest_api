@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
-    HTTP_204_NO_CONTENT
+    HTTP_204_NO_CONTENT, HTTP_201_CREATED
 )
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
@@ -14,7 +14,7 @@ from counterparties.serializers import CounterpartiesSerializer
 from users.filters import CustomUserFilter
 from users.models import CustomUser
 from users.permissions import SuperuserCUDAuthRetrieve
-from users.serializers import CustomUserSerializer, CustomUserListSerializer
+from users.serializers import CustomUserSerializer, CustomUserListSerializer, RegisterUserSerializer
 
 
 @extend_schema(tags=['users'])
@@ -46,10 +46,19 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         serializer = CounterpartiesSerializer(mine_counterparties, many=True)
         return Response(serializer.data)
 
-    def perform_create(self, serializer):
-        user = serializer.save()
-        user.set_password(self.request.data['password'])
-        user.save()
+    # def create(self, request, *args, **kwargs):
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #
+    #     user = serializer.save()
+    #
+    #     password = request.data.get("password")
+    #     if password:
+    #         user.set_password(password)
+    #         user.save(update_fields=["password"])
+    #
+    #     headers = self.get_success_headers(serializer.data)
+    #     return Response(serializer.data, status=HTTP_201_CREATED, headers=headers)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -106,6 +115,30 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 kwargs['many'] = True
 
         return serializer(*args, **kwargs)
+
+    @action(methods=['post'], url_path="register", url_name="register", detail=False)
+    def register(self, request, *args, **kwargs):
+        serializer = RegisterUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        validated = serializer.validated_data
+
+        user = CustomUser(
+            email=validated["email"],
+            first_name=validated["first_name"],
+            last_name=validated["last_name"],
+            phone_number=validated["phone_number"],
+        )
+        user.set_password(validated["password"])
+        user.save()
+
+        return Response(
+            {"detail": "Регистрация успешна", "id": str(user.id)},
+            status=HTTP_201_CREATED
+        )
+
+
+
 
 
 @extend_schema(

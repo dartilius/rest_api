@@ -210,12 +210,12 @@ class APIBaseObjectModel(Model):
 class ContactInformation(Model):
     """Контактная информация (телефон, почта, адрес и т.д.)."""
     basic = BooleanField(default=False, verbose_name="Основной")
-    type = CharField(max_length=255, choices=CONTACTINFO, verbose_name="Тип")
+    type = CharField(max_length=255, choices=CONTACTINFO, null=True, blank=True)
 
     vidtel = CharField(max_length=255, null=True, blank=True, choices=TYPEOFPHONE, verbose_name="Вид телефона")
     vidmail = CharField(max_length=255, null=True, blank=True, choices=TYPEMAIL, verbose_name="Вид почты")
 
-    meaning = CharField(max_length=255, verbose_name="Значение")
+    meaning = CharField(max_length=255, null=True, blank=True)
     ext = CharField(max_length=255, null=True, blank=True, verbose_name="Доб.")
     comment = CharField(max_length=255, null=True, blank=True, verbose_name="Комментарий")
 
@@ -228,6 +228,8 @@ class ContactInformation(Model):
         return f"{self.type}: {self.meaning}"
 
     def clean(self):
+        if not self.type:
+            return
         """Валидация значений в зависимости от типа."""
         if self.type == "phone":
             if not match(r"^\+?[0-9\-\(\) ]+$", self.meaning or ""):
