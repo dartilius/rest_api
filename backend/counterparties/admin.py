@@ -10,21 +10,29 @@ STATUSES = {0: True, 1: False}
 class CounterpartiesAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "name",
+        "name",  # OK — property
         "is_active",
         "code1c",
         "owned_count",
         "rented_count",
-        "counter_parties_count"
+        "counter_parties_count",
     )
-    search_fields = ("name",)
-    show_full_result_count = False
+
+    search_fields = ("first_name", "middle_name", "last_name", "keyword")
 
     readonly_fields = ("show_owned", "show_rented", "code1c")
 
     fieldsets = (
         ("Основная информация", {
-            "fields": ("name", "code1c", "is_active"),
+            "fields": (
+                "first_name",
+                "middle_name",
+                "last_name",
+                "keyword",
+                "opf",
+                "code1c",
+                "is_active",
+            ),
         }),
         ("Свои номенклатуры (legalEntity)", {
             "fields": ("show_owned",),

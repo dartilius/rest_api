@@ -23,6 +23,7 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
         many=True,
         queryset=CustomUser.objects.all(),
         write_only=True,
+        required=False
     )
 
     class Meta:
