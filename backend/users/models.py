@@ -5,10 +5,11 @@ from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
+
+from api import ContactInformation
 from api.base_objects import UUIDPKField
 from api.custom_managers import CustomUserManager
 
-from api.base_objects import ContactInformation
 
 CONTACT_PERSON_ROLES = [
     ('broadcast', 'Корп. вещание'),
@@ -23,7 +24,7 @@ ROLES = [
 ] + CONTACT_PERSON_ROLES
 
 
-class CustomUser(AbstractBaseUser, PermissionsMixin, ContactInformation):
+class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Пользователи."""
 
     EMAIL_FIELD = 'email'
@@ -74,7 +75,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, ContactInformation):
         max_length=255,
         unique=True,
         validators=[email_validator],
-        verbose_name='Электронная почта'
+        verbose_name='Электронная почта',
+        blank=True,
+        null=True
     )
     is_active = models.BooleanField(
         verbose_name='Актуальность пользователя',
