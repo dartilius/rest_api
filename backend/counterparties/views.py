@@ -125,7 +125,7 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
         # пробуем code1c
         try:
             counterparty = Counterparty.active.get(code1c=identifier)
-            if counterparty.is_deleted:
+            if counterparty.is_active is False:
                 raise NotFound("КА не найден.")
             return counterparty
         except Counterparty.DoesNotExist:
