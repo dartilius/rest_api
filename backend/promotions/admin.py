@@ -16,7 +16,3 @@ class PromotionAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return Promotion.objects.all()
-
-    @admin.display(description="КА")
-    def counterparty_count(self, obj):
-        return obj.counterparty.count()
