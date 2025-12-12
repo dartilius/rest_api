@@ -11,7 +11,7 @@ logger = logging.getLogger("brands")
 
 class BrandCreateSerializer(serializers.ModelSerializer):
     """Схема создания бренда."""
-    logotype = Base64FileField(write_only=True, required=False)
+    logotype = Base64FileField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = Brand

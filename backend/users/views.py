@@ -1,5 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -116,6 +117,39 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
         return serializer(*args, **kwargs)
 
+    @extend_schema(
+        summary="Регистрация нового пользователя",
+        description=(
+                "Создает нового пользователя в системе по email, имени, фамилии, "
+                "телефону и паролю. Возвращает идентификатор созданного пользователя."
+        ),
+        request=RegisterUserSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[
+                    OpenApiExample(
+                        name="Успешная регистрация",
+                        value={
+                            "detail": "Регистрация успешна",
+                            "id": "0f6130ab-60f8-4e3b-9b01-bcc23f6b8216"
+                        },
+                    )
+                ],
+            ),
+            400: OpenApiResponse(
+                description="Ошибка валидации",
+                examples=[
+                    OpenApiExample(
+                        name="Пример ошибки",
+                        value={
+                            "email": ["Пользователь с таким email уже существует"]
+                        },
+                    )
+                ],
+            ),
+        },
+    )
     @action(methods=['post'], url_path="register", url_name="register", detail=False)
     def register(self, request, *args, **kwargs):
         serializer = RegisterUserSerializer(data=request.data)

@@ -101,7 +101,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     interior = serializers.SerializerMethodField()
     code1c = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     contentType = serializers.ChoiceField(
-        choices=list(AVAILABLE_CONTENT_TYPES.values()),
+        choices=list(AVAILABLE_CONTENT_TYPES.keys()),
         required=False,
     )
     article = serializers.IntegerField(read_only=True)
@@ -120,36 +120,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
 
     class Meta:
-        fields = (
-            "id",
-            "owner",
-            "name",
-            "article",
-            "timezone",
-            "status",
-            "last_answer",
-            "version",
-            "description",
-            "settings",
-            "hw_info",
-            "created",
-            "legalEntity",
-            'tenants',
-            "legalEntity_id",
-            'tenants_id',
-            "brand",
-            "brand_id",
-            "interior",
-            "exterior",
-            "address",
-            "legalEntity",
-            "address_data",
-            "address_id",
-            "contentType",
-            "typeOfPlace",
-            "pricePerMonth",
-            "code1c",
-        )
+        fields = "__all__"
         read_only_fields = (
             "id",
             "owner",

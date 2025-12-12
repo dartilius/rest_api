@@ -31,38 +31,9 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'code1c', 'opf', "first_name",
             'description', 'keyword', "last_name", "middle_name",
-            'contact_persons', 'brands', 'address', 'name', 'inn'
+            'contact_persons', 'brands', 'address', 'name', 'inn',
+            'broadcast'
         ]
-        # extra_kwargs = {
-        #     "first_name": {"required": False},
-        #     "last_name": {"required": False},
-        #     "middle_name": {"required": False},
-        #     "keyword": {"required": False},
-        # }
-
-    # def to_internal_value(self, data):
-    #     """
-    #     кастомные поля для создания имени КА (для фронта)
-    #     - ФЛ: fullName {first_name, middle_name, last_name}
-    #     - ЮрЛица: без изменений
-    #     """
-    #     opf = data.get('opf')
-    #     data = data.copy()
-    #     data['contact_persons'] = data.get('contactPersons')
-    #     # FL — fullName → поля модели
-    #     if opf in TYPE_FL:
-    #         data["first_name"] = data.get("firstName")
-    #         data["middle_name"] = data.get("middleName")
-    #         data["last_name"] = data.get("lastName")
-    #
-    #         # keyword создаём автоматически
-    #         data["keyword"] = " ".join(filter(None, [
-    #             data.get("first_name"),
-    #             data.get("middle_name"),
-    #             data.get("last_name"),
-    #         ]))
-    #
-    #     return super().to_internal_value(data)
 
     def validate(self, data):
         opf = data.get('opf')
