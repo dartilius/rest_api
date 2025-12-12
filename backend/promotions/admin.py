@@ -9,7 +9,6 @@ class PromotionAdmin(admin.ModelAdmin):
         'id',
         'name',
         'is_active',
-        'counterparty_count'
     )
     search_fields = ("name",)
     readonly_fields = ("id", "code1c", "created")
