@@ -44,7 +44,7 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
             })
 
         if opf in TYPE_FL:
-            required = ["first_name", "last_name", "contact_persons"]
+            required = ["first_name", "last_name"]
             missing = [f for f in required if not data.get(f)]
             if missing:
                 raise serializers.ValidationError({
@@ -53,7 +53,7 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
 
             # ---------- ЮрЛицо ----------
         elif opf in TYPE_ORG:
-            required = ["keyword", "contact_persons"]
+            required = ["keyword"]
             missing = [f for f in required if not data.get(f)]
             if missing:
                 raise serializers.ValidationError({
