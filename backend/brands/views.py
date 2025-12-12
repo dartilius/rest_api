@@ -183,6 +183,9 @@ class BrandViewSet(viewsets.ModelViewSet):
         short = BrandShortSerializer(brand)
         return Response(short.data, status=status.HTTP_201_CREATED)
 
+    # def partial_update(self, request, *args, **kwargs):
+
+
     def destroy(self, request, *args, **kwargs):
         """Мягкое удаление бренда."""
 
