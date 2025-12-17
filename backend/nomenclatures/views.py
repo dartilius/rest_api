@@ -146,7 +146,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             "часовой пояс и настройки вещания. Лишние ключи: {keys}."
         )
         updatable_fields = (
-            "name", "description", "timezone", "settings", "brand_id", "legalEntity_id", "tenants",
+            "name", "description", "timezone", "settings", "brand_id", "legalEntity_id", "tenants_id",
             # "floor_space", "traffic",
             "responsible_radio", "responsible_ad", "media", "contentType",
             "typeOfPlace", "pricePerMonth"
