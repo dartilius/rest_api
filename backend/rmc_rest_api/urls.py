@@ -19,7 +19,6 @@ urlpatterns = [
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='docs'),
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('api/', include('addresses.urls')),
-    path('api/', include('contact_persons.urls')),
     path('api/', include('nomenclatures.urls')),
     path('api/', include('counterparties.urls')),
 
