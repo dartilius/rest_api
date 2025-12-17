@@ -73,7 +73,9 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
 
-    filter_backends = [DjangoFilterBackend, UniversalNomenclatureFilter]
+    # Указываем фильтр бэкенд
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = NomenclatureFilter  # вот здесь передаем FilterSet
 
     # filterset_class = NomenclatureFilter
     #
