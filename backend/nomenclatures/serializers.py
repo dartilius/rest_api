@@ -73,7 +73,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
-    tenants = CounterpartiesShortSerializer(read_only=True, many=True)
+    tenants = CounterpartiesShortSerializer(read_only=True)
     legalEntity_id = serializers.PrimaryKeyRelatedField(
         queryset=Counterparty.objects.all(),
         source="legalEntity",
@@ -435,33 +435,25 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
 
     status = serializers.SerializerMethodField()
-    last_answer = serializers.SerializerMethodField()
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
-    tenants = CounterpartiesSerializer(many=True)
     exterior = serializers.SerializerMethodField()
     address = AddressReadSerializer(source="address.address")
     contentType = serializers.ChoiceField(
         choices=list(AVAILABLE_CONTENT_TYPES.values()),
         required=False
     )
-    article = serializers.IntegerField(read_only=True)
 
     class Meta:
         fields = (
             "id",
-            "article",
             "name",
             "timezone",
             "status",
-            "last_answer",
             "legalEntity",
-            'tenants',
-            "version",
             "brand",
             "exterior",
             "address",
-            "legalEntity",
             "contentType",
             "typeOfPlace",
             "pricePerMonth",

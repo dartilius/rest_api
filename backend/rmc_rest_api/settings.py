@@ -42,7 +42,6 @@ INSTALLED_APPS = [
     'ch_statistic',
     'tasks',
     'users',
-    'contact_persons',
     'addresses',
     'promotions'
 ]
