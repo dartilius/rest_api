@@ -7,14 +7,9 @@ from users.models import CustomUser
 class CustomUserAdmin(admin.ModelAdmin):
     """Пользователь."""
 
-    @admin.display(description='ФИО')
-    def full_name(self, obj):
-        """Возвращает полное имя пользователя одним полем."""
-        return (f'{obj.full_name["full_name"]} '
-                f'{obj.middle_name if obj.middle_name else ""}')
     list_display = (
         'id',
-        'full_name',
+        'full_name_display',
         'role',
         'email',
         'phone_number',
@@ -23,8 +18,14 @@ class CustomUserAdmin(admin.ModelAdmin):
     )
     search_fields = (
         'id',
-        'full_name',
+        'last_name',
+        'first_name',
+        'middle_name',
         'role',
-        'is_active'
+        'is_active',
     )
     show_full_result_count = False
+
+    @admin.display(description='ФИО')
+    def full_name_display(self, obj):
+        return obj.full_name

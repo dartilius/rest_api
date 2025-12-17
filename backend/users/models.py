@@ -159,17 +159,17 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def full_name(self):
         return f"{self.last_name} {self.first_name} {self.middle_name or ''}".strip()
 
-    def save(self, *args, **kwargs):
-        self.username = self.email
-        super().save(*args, **kwargs)
-
-    def get_full_name(self):
-        """Возвращает полное имя пользователя для админки и Django."""
-        return f"{self.last_name} {self.first_name} {self.middle_name or ''}".strip()
+    # def get_full_name(self):
+    #     """Возвращает полное имя пользователя для админки и Django."""
+    #     return f"{self.last_name} {self.first_name} {self.middle_name or ''}".strip()
 
     def get_short_name(self):
         """Возвращает короткое имя пользователя для админки и Django."""
         return self.first_name
+
+    def save(self, *args, **kwargs):
+        self.username = self.email
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'custom_user'
