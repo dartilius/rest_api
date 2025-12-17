@@ -1,4 +1,7 @@
+from re import match
 from uuid import uuid4
+
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import DO_NOTHING, ForeignKey, Model, Manager
 from django.db.models.fields import (
@@ -10,6 +13,39 @@ from django.db.models.fields import (
 )
 from django.core import checks, exceptions
 from django.utils.translation import gettext_lazy as _
+
+TYPE_OF_CONTACT = [
+    ("CA", "Контактное лицо контрагента"),
+    ("LK", "Личный контакт"),
+    ("other", "Прочие"),
+]
+
+GENDER = [
+    ("man", "Мужской"),
+    ("women", "Женский"),
+    ("tab", "Табуретка"),
+]
+
+CONTACTINFO = [
+    ("address", "Адрес"),
+    ("phone", "Телефон"),
+    ("mail", "Адрес электронной почты"),
+    ("web", "Веб-страница"),
+    ("messenger", "Мессенджер"),
+    ("other", "Другое"),
+]
+
+TYPEOFPHONE = [
+    ("mobkl", "Телефон мобильный КЛ"),
+    ("dop", "Дополнительный"),
+    ("mobkldop", "Телефон дополнительный КЛ"),
+]
+
+TYPEMAIL = [
+    ("rab", "E-mail рабочий КЛ"),
+    ("dop", "E-mail дополнительный КЛ"),
+    ("lich", "E-mail личный"),
+]
 
 
 class UUIDPKField(UUIDField):
@@ -138,11 +174,10 @@ class APIBaseObjectModel(Model):
     """
 
     from api.custom_managers import ActiveManager
-    from users.models import CustomUser
 
     id = UUIDPKField()
     owner = ForeignKey(
-        CustomUser,
+        "users.CustomUser",
         related_name='%(class)ss',
         verbose_name='Создатель',
         on_delete=DO_NOTHING,
@@ -170,3 +205,44 @@ class APIBaseObjectModel(Model):
 
     def __str__(self):
         return self.name
+
+
+class ContactInformation(Model):
+    """Контактная информация (телефон, почта, адрес и т.д.)."""
+    basic = BooleanField(default=False, verbose_name="Основной")
+    type = CharField(max_length=255, choices=CONTACTINFO, null=True, blank=True)
+
+    vidtel = CharField(max_length=255, null=True, blank=True, choices=TYPEOFPHONE, verbose_name="Вид телефона")
+    vidmail = CharField(max_length=255, null=True, blank=True, choices=TYPEMAIL, verbose_name="Вид почты")
+
+    meaning = CharField(max_length=255, null=True, blank=True)
+    ext = CharField(max_length=255, null=True, blank=True, verbose_name="Доб.")
+    comment = CharField(max_length=255, null=True, blank=True, verbose_name="Комментарий")
+
+    class Meta:
+        abstract = True
+        verbose_name = "Контактная информация"
+        verbose_name_plural = "Контактная информация"
+
+    def __str__(self):
+        return f"{self.type}: {self.meaning}"
+
+    def clean(self):
+        if not self.type:
+            return
+        """Валидация значений в зависимости от типа."""
+        if self.type == "phone":
+            if not match(r"^\+?[0-9\-\(\) ]+$", self.meaning or ""):
+                raise ValidationError("Значение должно быть корректным номером телефона.")
+            if not self.vidtel:
+                raise ValidationError("Для типа 'Телефон' нужно указать вид телефона.")
+            self.vidmail = None
+        elif self.type == "mail":
+            if not match(r"^[\w\.-]+@[\w\.-]+\.\w+$", self.meaning or ""):
+                raise ValidationError("Значение должно быть корректным адресом электронной почты.")
+            if not self.vidmail:
+                raise ValidationError("Для типа 'Почта' нужно указать вид почты.")
+            self.vidtel = None
+        else:
+            self.vidtel = None
+            self.vidmail = None

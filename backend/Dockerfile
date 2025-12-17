@@ -23,6 +23,8 @@ FROM python:3.13.6-slim
 
 WORKDIR /app
 
+RUN mkdir -p /app/network_logs
+
 RUN apt-get update && apt-get install -y \
     curl \
     mediainfo \
@@ -32,6 +34,7 @@ COPY --from=builder /app/wheels /wheels
 
 RUN pip install --no-cache /wheels/*
 RUN rm -rf /root/.cache/pip
+
 
 COPY . .
 

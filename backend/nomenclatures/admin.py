@@ -72,8 +72,8 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
 class NomenclatureAddressAdmin(admin.ModelAdmin):
     """Администрирование адресов номенклатур."""
 
-    list_display = ("nomenclature__id", "city", "street")
-    chow_full_result_count = False
+    list_display = ("nomenclature_id", "address")
+    show_full_result_count = False
 
     def get_queryset(self, request):
-        return NomenclatureAddress.objects.select_related("nomenclature")
+        return NomenclatureAddress.objects.select_related("nomenclature", "address")

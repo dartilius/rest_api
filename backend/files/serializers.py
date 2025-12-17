@@ -2,6 +2,8 @@ import base64
 
 from django.core.files.base import ContentFile
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.types import OpenApiTypes
 
 from api.constants import Constants
 from files.models import File, Playlist, Tag, TYPES
@@ -82,7 +84,12 @@ class FileSourceSerializer(serializers.ModelSerializer):
 class FileSerializer(serializers.ModelSerializer):
     """Сериализация одного файла."""
 
-    tags = TagFileSerializer(many=True, required=False, allow_empty=True, write_only=True)
+    tags = TagFileSerializer(
+        many=True,
+        required=False,
+        allow_empty=True,
+        write_only=True,
+    )
     source = Base64FileField(write_only=True)
     url = serializers.SerializerMethodField()
 
@@ -104,6 +111,8 @@ class FileSerializer(serializers.ModelSerializer):
         )
         model = File
 
+    # DRF-SPECTACULAR: help to resolve the returned type for OpenAPI generation
+    @extend_schema_field(OpenApiTypes.STR)
     def get_url(self, instance) -> str:
         return instance.url
 

@@ -31,6 +31,9 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'djoser',
     'phonenumber_field',
+    'counterparties',
+    'dal',
+    'dal_select2',
     'docs',
     'files',
     'nomenclatures',
@@ -40,6 +43,8 @@ INSTALLED_APPS = [
     'tasks',
     'users',
     'contact_persons',
+    'addresses',
+    'promotions'
 ]
 
 # Базовый MIDDLEWARE
@@ -167,45 +172,56 @@ SPECTACULAR_SETTINGS = {
 MINIO_REGION = os.environ.get('MINIO_REGION')
 MINIO_ACCESS_KEY = os.environ.get('MINIO_STORAGE_ACCESS_KEY')
 MINIO_SECRET_KEY = os.environ.get('MINIO_STORAGE_SECRET_KEY')
-MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT')  # files:9000 для контейнеров
-MINIO_USE_HTTPS = os.environ.get('MINIO_HTTPS', 'false').lower() == 'true'
-MINIO_EXTERNAL_ENDPOINT = os.environ.get('MINIO_EXTERNAL_ENDPOINT')  # 192.168.0.61
-MINIO_EXTERNAL_ENDPOINT_USE_HTTPS = os.environ.get('MINIO_EXTERNAL_HTTPS', 'false').lower() == 'true'
-
-MINIO_PRIVATE_BUCKETS = ['local-media', 'local-static']
+MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT')
+MINIO_USE_HTTPS = os.environ.get('MINIO_HTTPS').lower() == 'true'
+MINIO_EXTERNAL_ENDPOINT = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
+MINIO_EXTERNAL_ENDPOINT_USE_HTTPS = os.environ.get('MINIO_EXTERNAL_HTTPS').lower() == 'true'
+MINIO_PRIVATE_BUCKETS = [
+    'local-media',
+    'local-static'
+]
 MINIO_MEDIA_FILES_BUCKET = 'local-media'
 MINIO_STATIC_FILES_BUCKET = 'local-static'
-
-# URL для статики (для браузера)
-STATIC_URL = (
-    f"{'https' if MINIO_EXTERNAL_ENDPOINT_USE_HTTPS else 'http'}://"
-    f"{MINIO_EXTERNAL_ENDPOINT}:9000/local-static/"
-)
-
-MINIO_OPTIONS = {
-    'region': MINIO_REGION,
-    'access_key': MINIO_ACCESS_KEY,
-    'secret_key': MINIO_SECRET_KEY,
-    'endpoint': MINIO_ENDPOINT,   # files:9000 — Django внутри Docker
-    'use_https': MINIO_USE_HTTPS,
+STATIC_URL = 'http://localhost:9000/local-static/'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django_minio_backend.models.MinioBackend'
+    },
+    'staticfiles': {
+        'BACKEND': 'django_minio_backend.models.MinioBackendStatic'
+    },
 }
+# --------------------------------- LOGGING ---------------------------------- #
 
-# Используем MinIO только если не DEBUG
-if DEBUG or not MINIO_ENDPOINT:
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-else:
-    STORAGES = {
-        'default': {
-            'BACKEND': 'django_minio_backend.models.MinioBackend',
-            'OPTIONS': MINIO_OPTIONS
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
         },
-        'staticfiles': {
-            'BACKEND': 'django_minio_backend.models.MinioBackendStatic',
-            'OPTIONS': MINIO_OPTIONS
+    },
+    "handlers": {
+        "brand_conflicts": {
+            "class": "logging.FileHandler",
+            "filename": "/app/network_logs/brand_conflicts.log",
+            "encoding": "utf-8",
+            "formatter": "verbose",
         },
-    }
-
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "brands": {
+            "handlers": ["brand_conflicts", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
 # --------------------------------- CELERY ---------------------------------- #
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER')

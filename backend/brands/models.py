@@ -19,18 +19,17 @@ class Brand(models.Model):
         verbose_name="ИД", primary_key=True, editable=False, default=uuid4
     )
     code1c = models.CharField(
-        verbose_name="Код из 1С", max_length=64, blank=True,
-        null=True
+        verbose_name="Код из 1С", max_length=64, blank=True, unique=True
     )
     name = models.CharField(
         max_length=64, blank=False, null=False, verbose_name="Наименование бренда"
     )
     description = models.TextField(
-        max_length=255, blank=False, null=True, default=None, verbose_name="Описание бренда"
+        max_length=255, blank=True, null=True, default=None, verbose_name="Описание бренда"
     )
     logotype = models.FileField(
         upload_to="brand_logo", storage=MinioBackend(bucket_name="local-media"),
-        verbose_name="Логотип бренда"
+        verbose_name="Логотип бренда", null=True, blank=True
     )
     created = models.DateTimeField(
         verbose_name="Дата создания", auto_now_add=True
