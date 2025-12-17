@@ -67,20 +67,6 @@ class Nomenclature(APIBaseObjectModel):
         strict=True
     )
 
-    # floor_space = models.DecimalField(
-    #     max_digits=10,
-    #     decimal_places=2,
-    #     validators=[MinValueValidator(0)],
-    #     verbose_name="Площадь (м²)"
-    # )
-    #
-    # traffic = models.DecimalField(
-    #     max_digits=10,
-    #     decimal_places=2,
-    #     validators=[MinValueValidator(0)],
-    #     verbose_name="Проходимость"
-    # )
-
     article = Article()
 
     description = models.TextField(
