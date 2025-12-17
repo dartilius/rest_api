@@ -1,24 +1,89 @@
+from uuid import UUID
+
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_204_NO_CONTENT, HTTP_201_CREATED
 )
 from rest_framework.views import APIView
-from rest_framework.exceptions import NotFound
-from uuid import UUID
-from counterparties.serializers import CounterpartiesSerializer
+
+from api.constants import DEFAULT_SCHEMA_RESPONSES, DEFAULT_SCHEMA_EXAMPLES
 from users.filters import CustomUserFilter
 from users.models import CustomUser
 from users.permissions import SuperuserCUDAuthRetrieve
-from users.serializers import CustomUserSerializer, CustomUserListSerializer, RegisterUserSerializer
+from users.serializers import CustomUserSerializer, RegisterUserSerializer, \
+    CustomUserShortSerializer
 
 
-@extend_schema(tags=['users'])
+@extend_schema_view(
+    list=extend_schema(
+        summary="Получить пагинированный список пользователей (кл)",
+        description=(
+                "Возвращает постраничный список пользователей. (кл) "
+                "Использует `CustomUserShortSerializer`."
+        ),
+        responses={
+            200: OpenApiResponse(
+                response=CustomUserShortSerializer,
+                description="Успешное получение списка пользователей (кл)",
+                examples=[
+                    OpenApiExample(
+                        name="Список",
+                        value={
+                            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                            "full_name": {
+                                "last_name": "string",
+                                "first_name": "string",
+                                "middle_name": "string"
+                            }
+                        }
+
+                    )
+
+                ],
+
+            ),
+            **DEFAULT_SCHEMA_RESPONSES
+        },
+    ),
+
+    retrieve=extend_schema(
+        summary="Получить расшифровку пользователя (кл)",
+        description="Возвращает полное описание пользователя (кл) через `CustomUserSerializer`.",
+        responses={
+            200: CustomUserSerializer,
+            **DEFAULT_SCHEMA_RESPONSES
+        }
+    ),
+
+    partial_update=extend_schema(
+        summary="Частичное обновление пользователя (кл)",
+        request=CustomUserSerializer,
+        responses={
+            200: CustomUserShortSerializer,
+            **DEFAULT_SCHEMA_RESPONSES,
+        }
+    ),
+
+    destroy=extend_schema(
+        summary="Удалить пользователя (кл)",
+        examples=[
+                     OpenApiExample(
+                         "Пользователь (кл) успешно удалён",
+                         status_codes=[HTTP_204_NO_CONTENT],
+                         response_only=True,
+                     )
+                 ] + DEFAULT_SCHEMA_EXAMPLES,
+        responses={HTTP_204_NO_CONTENT: {}} | DEFAULT_SCHEMA_RESPONSES,
+    ),
+)
+@extend_schema(tags=['Пользователи (кл)'])
 class CustomUserViewSet(viewsets.ModelViewSet):
     """Работа с пользователями."""
     lookup_field = "id_or_code1c"
@@ -27,39 +92,6 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = CustomUserFilter
     permission_classes = [SuperuserCUDAuthRetrieve]
-
-    @action(detail=False, methods=['get'])
-    def get_mine_counterparties(self, request):
-        """Получить контрагентов текущего пользователя."""
-        user = request.user
-        if not user.is_authenticated:
-            return Response({'message': 'Пользователь не авторизован.'}, status=HTTP_401_UNAUTHORIZED)
-
-        mine_counterparties = user.counterparties.all()
-
-        # Пагинация, если настроена
-        page = self.paginate_queryset(mine_counterparties)
-        if page is not None:
-            serializer = CounterpartiesSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        # Без пагинации
-        serializer = CounterpartiesSerializer(mine_counterparties, many=True)
-        return Response(serializer.data)
-
-    # def create(self, request, *args, **kwargs):
-    #     serializer = self.get_serializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #
-    #     user = serializer.save()
-    #
-    #     password = request.data.get("password")
-    #     if password:
-    #         user.set_password(password)
-    #         user.save(update_fields=["password"])
-    #
-    #     headers = self.get_success_headers(serializer.data)
-    #     return Response(serializer.data, status=HTTP_201_CREATED, headers=headers)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -106,7 +138,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
     def get_serializer(self, *args, **kwargs):
         if self.action == 'list':
-            serializer = CustomUserListSerializer
+            serializer = CustomUserShortSerializer
         else:
             serializer = CustomUserSerializer
         if 'data' in kwargs:
@@ -139,6 +171,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             ),
             400: OpenApiResponse(
                 description="Ошибка валидации",
+                response=OpenApiTypes.OBJECT,
                 examples=[
                     OpenApiExample(
                         name="Пример ошибки",
@@ -172,11 +205,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         )
 
 
-
-
-
 @extend_schema(
-    tags=['users'],
+    tags=['Пользователи (кл)'],
     responses={
         204: None,
         401: None

@@ -39,6 +39,21 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
+
+        # чтобы не попадало в ответ апишки
+        excluded_fields = (
+            "is_active",
+            "last_login",
+            "is_superuser",
+            "is_staff",
+            "created",
+            "groups",
+            "user_permissions",
+        )
+
+        for field in excluded_fields:
+            repr_.pop(field, None)
+
         repr_['role'] = value.get_role_display()
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         repr_['full_name'] = {
@@ -96,7 +111,7 @@ class CustomUserShortSerializer(serializers.ModelSerializer):
             'first_name',
             'middle_name'
         )
-        read_only_fields = 'id'
+        read_only_fields = ('id',)
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
