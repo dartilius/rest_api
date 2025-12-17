@@ -1,6 +1,6 @@
+from django.db.models import Q
 from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
-from api.constants import filter_by_owner_name
 from .models import CustomUser
 
 
@@ -24,5 +24,9 @@ class CustomUserFilter(FilterSet):
         model = CustomUser
         fields = ('id', 'role', 'created', 'name')
 
-    def filter_by_name(self, queryset, name, value):
-        return filter_by_owner_name(queryset, name, value)
+    def filter_by_owner_name(queryset, name, value):
+        return queryset.filter(
+            Q(first_name__icontains=value) |
+            Q(last_name__icontains=value) |
+            Q(middle_name__icontains=value)
+        )

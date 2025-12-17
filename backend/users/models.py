@@ -157,9 +157,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     @property
     def full_name(self):
-        return {
-            'full_name': f'{self.last_name} {self.first_name}'
-        }
+        return f"{self.last_name} {self.first_name} {self.middle_name or ''}".strip()
 
     def save(self, *args, **kwargs):
         self.username = self.email
@@ -180,4 +178,5 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = 'Пользователи'
 
     def __str__(self):
-        return self.full_name['full_name']
+        return self.full_name
+
