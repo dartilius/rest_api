@@ -77,7 +77,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     filterset_class = NomenclatureFilter
 
-    search_depth = 3  # глубина вложенности связей
+    search_depth = 2  # глубина вложенности связей
     search_excluded_fields = ["brand__description"] # допонительно исключаем поля в UniversalSearchFilter
 
     def get_serializer(self, *args, **kwargs):
