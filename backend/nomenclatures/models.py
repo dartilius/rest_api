@@ -206,8 +206,7 @@ class Nomenclature(APIBaseObjectModel):
             models.Index(fields=['responsible_radio']),
             models.Index(fields=['responsible_ad']),
             models.Index(fields=['brand']),
-            models.Index(fields=['legalEntity']),
-            models.Index(fields=['legalEntity']),
+            models.Index(fields=['legalEntity'])
         ]
 
 class NomenclatureAvailability(models.Model):

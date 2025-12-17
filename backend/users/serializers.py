@@ -4,26 +4,23 @@ from users.models import CustomUser, ROLES
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    """Полная сериализация пользователя."""
+
     password = serializers.CharField(
         write_only=True,
-        required=False,        # <-- важно!!!
+        required=False,
         allow_blank=False
     )
-
     email = serializers.CharField(
         write_only=True,
-        required=False,  # <-- важно!!!
+        required=False,
         allow_blank=False
     )
 
     class Meta:
         model = CustomUser
         fields = "__all__"
-        read_only_fields = (
-            'id',
-            'created',
-            'role',
-        )
+        read_only_fields = ('id', 'created', 'role')
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
@@ -40,7 +37,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
 
-        # чтобы не попадало в ответ апишки
+        # Убираем лишние поля
         excluded_fields = (
             "is_active",
             "last_login",
@@ -50,30 +47,32 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "groups",
             "user_permissions",
         )
-
         for field in excluded_fields:
             repr_.pop(field, None)
 
+        # Добавляем role и дату
         repr_['role'] = value.get_role_display()
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
-        repr_['full_name'] = {
+
+        # Собираем full_name как словарь
+        full_name_dict = {
             'first_name': value.first_name,
             'last_name': value.last_name,
             'middle_name': value.middle_name,
         }
+        repr_['full_name'] = full_name_dict
 
-        # удаляем старые плоские поля
-        for field in repr_['full_name']:
+        # Удаляем старые плоские поля
+        for field in full_name_dict.keys():
             repr_.pop(field, None)
 
         return repr_
 
 class CustomUserListSerializer(serializers.ModelSerializer):
-    """Сериализация списка пользователей."""
+    """Список пользователей (короткая форма)."""
 
     class Meta:
         model = CustomUser
-
         fields = (
             'id',
             'last_name',
@@ -81,50 +80,52 @@ class CustomUserListSerializer(serializers.ModelSerializer):
             'middle_name',
             'email',
             'phone_number',
-            'role'
+            'role',
         )
-        read_only_fields = (
-            'id',
-            'created',
-            'role'
-        )
+        read_only_fields = ('id', 'created', 'role')
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         repr_['role'] = value.get_role_display()
-        repr_['full_name'] = {
+
+        full_name_dict = {
             'first_name': value.first_name,
             'last_name': value.last_name,
             'middle_name': value.middle_name,
         }
-        for field in repr_['full_name']:
-            repr_.pop(field)
+        repr_['full_name'] = full_name_dict
+
+        # Удаляем старые плоские поля
+        for field in full_name_dict.keys():
+            repr_.pop(field, None)
+
         return repr_
 
+
 class CustomUserShortSerializer(serializers.ModelSerializer):
+    """Минимальная форма пользователя для списка."""
+
     class Meta:
         model = CustomUser
-        fields = (
-            'id',
-            'last_name',
-            'first_name',
-            'middle_name'
-        )
+        fields = ('id', 'last_name', 'first_name', 'middle_name')
         read_only_fields = ('id',)
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['full_name'] = {
+
+        full_name_dict = {
             'first_name': value.first_name,
             'last_name': value.last_name,
             'middle_name': value.middle_name,
         }
-        for field in repr_['full_name']:
-            repr_.pop(field)
+        repr_['full_name'] = full_name_dict
+
+        # Удаляем плоские поля
+        for field in full_name_dict.keys():
+            repr_.pop(field, None)
 
         return repr_
-
 class RegisterUserSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     first_name = serializers.CharField(required=True)
