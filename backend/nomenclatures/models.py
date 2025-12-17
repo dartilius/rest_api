@@ -192,8 +192,7 @@ class Nomenclature(APIBaseObjectModel):
             models.UniqueConstraint(
                 fields=["code1c"],
                 name="unique_nomenclature_name",
-                violation_error_message="Номенклатура с таким кодом "
-                                        "уже существует",
+                violation_error_message="Номенклатура с таким кодом уже существует",
             )
         ]
         indexes = [
@@ -201,9 +200,15 @@ class Nomenclature(APIBaseObjectModel):
                 name="nomenclature_name_gin_idx",
                 fields=["name"],
                 opclasses=["gin_trgm_ops"],
-            )
+            ),
+            # Добавьте индексы для часто используемых полей поиска
+            models.Index(fields=['typeOfPlace']),
+            models.Index(fields=['responsible_radio']),
+            models.Index(fields=['responsible_ad']),
+            models.Index(fields=['brand']),
+            models.Index(fields=['legalEntity']),
+            models.Index(fields=['legalEntity']),
         ]
-
 
 class NomenclatureAvailability(models.Model):
     """Текущая доступность."""

@@ -72,3 +72,35 @@ class NomenclatureFilter(FilterSet):
             return queryset.filter(availability__status=value)
         else:
             return queryset
+
+
+# filters.py
+import django_filters
+from django.db import models
+from .models import Nomenclature
+
+
+class UniversalNomenclatureFilter(django_filters.FilterSet):
+    search = django_filters.CharFilter(method='universal_search')
+
+    class Meta:
+        model = Nomenclature
+        fields = ['search']
+
+    def universal_search(self, queryset, name, value):
+        if value:
+            return queryset.filter(
+                models.Q(typeOfPlace__icontains=value) |
+                models.Q(brand__name__icontains=value) |
+                models.Q(legalEntity__name__icontains=value) |
+                models.Q(tenants__name__icontains=value) |
+                models.Q(responsible_radio__username__icontains=value) |
+                models.Q(responsible_radio__first_name__icontains=value) |
+                models.Q(responsible_radio__last_name__icontains=value) |
+                models.Q(responsible_radio__email__icontains=value) |
+                models.Q(responsible_ad__username__icontains=value) |
+                models.Q(responsible_ad__first_name__icontains=value) |
+                models.Q(responsible_ad__last_name__icontains=value) |
+                models.Q(responsible_ad__email__icontains=value)
+            ).distinct()
+        return queryset

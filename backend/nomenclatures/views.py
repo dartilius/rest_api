@@ -35,7 +35,7 @@ from ch_statistic.serializers import (
 )
 from ch_statistic.tasks import create_statistic
 from files.models import File
-from nomenclatures.filters import NomenclatureFilter
+from nomenclatures.filters import NomenclatureFilter, UniversalNomenclatureFilter
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
@@ -73,12 +73,12 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
 
-    filter_backends = [DjangoFilterBackend, UniversalSearchFilter]
+    filter_backends = [DjangoFilterBackend, UniversalNomenclatureFilter]
 
-    filterset_class = NomenclatureFilter
-
-    search_depth = 2  # глубина вложенности связей
-    search_excluded_fields = ["brand__description"] # допонительно исключаем поля в UniversalSearchFilter
+    # filterset_class = NomenclatureFilter
+    #
+    # search_depth = 2  # глубина вложенности связей
+    # search_excluded_fields = ["brand__description"] # допонительно исключаем поля в UniversalSearchFilter
 
     def get_serializer(self, *args, **kwargs):
         if self.action == "list":
