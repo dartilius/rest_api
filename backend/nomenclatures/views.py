@@ -35,7 +35,7 @@ from ch_statistic.serializers import (
 )
 from ch_statistic.tasks import create_statistic
 from files.models import File
-from nomenclatures.filters import NomenclatureFilter, UniversalNomenclatureFilter
+from nomenclatures.filters import NomenclatureFilter
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
