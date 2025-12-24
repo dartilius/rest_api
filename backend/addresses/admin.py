@@ -966,4 +966,3 @@ class AddressAdmin(admin.ModelAdmin):
         return format_html('<strong>{}</strong>', obj.full_address)
 
     full_address.short_description = 'Полный адрес (автоматически)'
-    
