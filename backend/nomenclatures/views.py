@@ -59,7 +59,6 @@ from tasks.serializers import TaskListSerializer
 from users.permissions import StaffCUDallRead
 
 
-
 @extend_schema_view(
     list=(),
     retrieve=()
@@ -156,7 +155,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             "name", "description", "timezone", "settings", "brand_id", "legalEntity_id", "tenants_id",
             # "floor_space", "traffic",
             "responsible_radio", "responsible_ad", "media", "contentType",
-            "typeOfPlace", "pricePerMonth"
+            "typeOfPlace", "pricePerMonth", "address_data", "address_id"
         )
 
         kwargs.update(

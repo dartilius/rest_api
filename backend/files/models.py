@@ -2,6 +2,7 @@ from colorfield.fields import ColorField
 from django.db import models
 from django_minio_backend import MinioBackend
 from rest_framework.exceptions import ValidationError
+import os
 
 from api import APIBaseObjectModel
 from api.constants import get_minio_client
@@ -38,16 +39,18 @@ class Tag(models.Model):
         db_table = 'tag'
         ordering = ('name',)
         verbose_name = 'Тэг'
-        verbose_name_plural = 'Тэг'
+        verbose_name_plural = 'Тэги'  # Исправлено с 'Тэг' на 'Тэги'
 
 
 def media_path(instance, filename):
+    """Генерирует путь для сохранения файла в бакете MinIO."""
     return f'{TYPES[instance.type]}/{filename}'
 
 
 class File(APIBaseObjectModel):
     """Файлы."""
 
+    # КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Явно указываем MinioBackend с бакетом
     source = models.FileField(
         verbose_name='Файл',
         upload_to=media_path,
@@ -95,75 +98,83 @@ class File(APIBaseObjectModel):
         ordering = ('-created',)
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
-        # TODO: добавляем это после фикса в джанге
-        # https://github.com/django/django/pull/17723
-        # constraints = [
-        #     models.UniqueConstraint(
-        #         fields=['name'],
-        #         name='unique_file_name',
-        #         violation_error_message='Файл с таким названием уже существует',
-        #         violation_error_code=400
-        #     ),
-        #     models.UniqueConstraint(
-        #         fields=['hash'],
-        #         name='unique_file_hash',
-        #         violation_error_message='Файл с таким хешем уже существует',
-        #         violation_error_code=400
-        #     )
-        # ]
 
     def save(self, *args, **kwargs):
         """
         Сборка информации о файле при его прогрузке на сервер.
-
-        Имя берётся непосредственно с файла.
-        Хэш суммы, размер и продолжительность вычисляются в отдельной функции.
-        Суммированный хэш получается сложением md5 и sha256 хешей.
         """
         from api.constants import get_list_of_file_types
+
+        # Проверяем, есть ли файл для загрузки
+        if not self.source:
+            raise ValidationError('Файл не был передан')
+
         types = get_list_of_file_types()
         file_type = TYPES[self.type]
-        allowed_types: set = types[file_type]
+        allowed_types = types[file_type]
+
+        # Получаем информацию о файле
         file = self.source.file
-        self.name = file.name.split('/')[-1]
-        extension = self.name.split('.')[-1]
+        self.name = os.path.basename(file.name)
+        filename, extension = os.path.splitext(self.name)
+
+        # Проверяем расширение файла
+        if extension:
+            extension = extension[1:].lower()  # Убираем точку и приводим к нижнему регистру
+
         if extension not in allowed_types:
-            self.delete()
             raise ValidationError(
-                'Выбранный тип файла не соответствует его формату.\n'
-                f'Для типа {file_type} допустимы следующие форматы:'
-                f'{allowed_types}'
+                f'Выбранный тип файла не соответствует его формату.\n'
+                f'Для типа "{file_type}" допустимы следующие форматы: {allowed_types}'
             )
+
+        # Рассчитываем хэши и размер
         self.md5hash = GetFileInfo.get_md5(file)
         self.sha256hash = GetFileInfo.get_sha256(file)
         self.hash = f'{self.md5hash}{self.sha256hash}'
         self.length = GetFileInfo.get_length(file)
         self.size = GetFileInfo.get_file_size(file)
+
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        """При удалении файла с базы удаляем его также и в Минио."""
-        from django.conf import settings
+        """При удалении файла с базы удаляем его также и в MinIO."""
+        import logging
 
-        minio_client = get_minio_client()
-        minio_client.remove_object(
-            settings.MINIO_MEDIA_FILES_BUCKET,
-            f'{TYPES[self.type]}/{self.name}'
-        )
+        # Сохраняем путь к файлу до удаления
+        file_path = str(self.source)
+
+        # Сначала удаляем запись из БД
         super().delete(*args, **kwargs)
+
+        # Затем пытаемся удалить файл из MinIO
+        try:
+            minio_client = get_minio_client()
+            # Явное указание бакета
+            minio_client.remove_object('local-media', file_path)
+        except Exception as e:
+            # Логируем ошибку, но не поднимаем исключение
+            logger = logging.getLogger(__name__)
+            logger.warning(f'Не удалось удалить файл из MinIO: {file_path}. Ошибка: {e}')
 
     @property
     def url(self):
-        """Ссылка для скачивания файла."""
+        """Ссылка для скачивания файла. Использует явные параметры."""
         from datetime import timedelta as td
+
         client = get_minio_client(external=True)
+
+        # Явное указание бакета и пути к файлу
         url = client.get_presigned_url(
             'GET',
-            'local-media',
-            f'{self.source}',
+            'local-media',  # Бакет из MinioBackend
+            str(self.source),  # Полный путь к файлу
             expires=td(hours=2)
         )
         return url
+
+    def __str__(self):
+        return f'{self.name} ({TYPES[self.type]})'
 
 
 class Playlist(APIBaseObjectModel):
@@ -176,7 +187,7 @@ class Playlist(APIBaseObjectModel):
     )
     files = models.ManyToManyField(
         File,
-        related_name='files',
+        related_name='playlists',  # Исправлено с 'files' на 'playlists' для ясности
         verbose_name='Файлы'
     )
 
@@ -189,7 +200,9 @@ class Playlist(APIBaseObjectModel):
             models.UniqueConstraint(
                 fields=['name'],
                 name='unique_playlist_name',
-                violation_error_message='Плейлист с таким названием '
-                                        'уже существует'
+                violation_error_message='Плейлист с таким названием уже существует'
             )
         ]
+
+    def __str__(self):
+        return self.name
