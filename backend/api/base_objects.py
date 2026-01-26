@@ -14,6 +14,8 @@ from django.db.models.fields import (
 from django.core import checks, exceptions
 from django.utils.translation import gettext_lazy as _
 
+from api.custom_managers import InactiveManager
+
 TYPE_OF_CONTACT = [
     ("CA", "Контактное лицо контрагента"),
     ("LK", "Личный контакт"),
@@ -198,6 +200,7 @@ class APIBaseObjectModel(Model):
     )
 
     active = ActiveManager()
+    inactive = InactiveManager()
     objects = Manager()
 
     class Meta:
