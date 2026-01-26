@@ -4,7 +4,7 @@ from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResp
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK
+from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND
 
 from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG
 from counterparties.serializers import CounterpartiesSerializer, CounterpartiesListSerializer, \
@@ -99,6 +99,17 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
             return CounterpartiesListSerializer
         else:
             return CounterpartiesSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+
+        if user.is_employee:
+            return qs
+        if user.is_contact_person:
+            return qs.filter(contact_persons=user)
+
+        raise NotFound("Страница не найдена!")
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
