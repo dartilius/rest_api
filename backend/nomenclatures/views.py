@@ -57,10 +57,11 @@ from orders.views import NoDeleteViewSet
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
 from users.permissions import StaffCUDallRead
+from .schemas import nomenclature_list_schema
 
 
 @extend_schema_view(
-    list=(),
+    list=nomenclature_list_schema(),  # ДОБАВЛЯЕМ ЭТОТ ДЕКОРАТОР
     retrieve=()
 )
 @extend_schema(tags=["Номенклатуры"])

@@ -1163,8 +1163,11 @@ class Address(models.Model):
     index : CharField
         Почтовый индекс (6 цифр, необязательно)
 
-    coordinates : CharField
-        Координаты в формате "широта, долгота" (необязательно)
+    latitude : DecimalField
+        Координаты в формате "широта" (необязательно)
+
+    longitude : DecimalField
+        Координаты в формате "долгота" (необязательно)
 
     full_address : property
         Полный адрес в строковом формате (вычисляемое поле)
@@ -1285,12 +1288,22 @@ class Address(models.Model):
         help_text="6-значный почтовый индекс"
     )
 
-    coordinates = models.CharField(
-        "Координаты",
-        max_length=64,
+    latitude = models.DecimalField(
+        "Широта",
+        max_digits=9,
+        decimal_places=6,
         blank=True,
         null=True,
-        help_text="Координаты в формате 'широта, долгота'"
+        help_text="Географическая широта места расположения объекта"
+    )
+
+    longitude = models.DecimalField(
+        "Долгота",
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        help_text="Географическая долгота места расположения объекта"
     )
 
     class Meta:
@@ -1443,7 +1456,8 @@ class Address(models.Model):
                 'building': 'А',
                 'microdistrict': 'Центральный',
                 'index': '101000',
-                'coordinates': '55.7558, 37.6173'
+                'latitude': '55.7558'
+                'longitude': '37.6173'
             }
         """
         return {
@@ -1457,7 +1471,8 @@ class Address(models.Model):
             'building': self.building.number if self.building else None,
             'microdistrict': self.microdistrict,
             'index': self.index,
-            'coordinates': self.coordinates,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
             'full_address': self.full_address
         }
 

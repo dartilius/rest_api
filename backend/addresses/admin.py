@@ -860,7 +860,8 @@ class AddressAdmin(admin.ModelAdmin):
             'fields': (
                 'microdistrict',
                 'index',
-                'coordinates',
+                'latitude',
+                'longitude',
             ),
             'classes': ('collapse',)
         }),

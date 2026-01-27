@@ -1043,7 +1043,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
         • Автоматическое заполнение недостающих полей
 
     ПОЛЯ ДЛЯ СОЗДАНИЯ:
-        • Поля самого адреса (microdistrict, index, coordinates)
+        • Поля самого адреса (microdistrict, index, latitude, longitude)
         • Вложенные сериализаторы для всех компонентов адреса
         • Каждый компонент является необязательным
 
@@ -1061,7 +1061,8 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             "building": {"number": "А"},
             "microdistrict": "Центральный",
             "index": "101000",
-            "coordinates": "55.7558, 37.6173"
+            "latitude": "55.7558
+            "longitude":"37.6173"
         }
     """
 
@@ -1088,7 +1089,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             'locality_type', 'city', 'administrative_territory', 'administrative_unit',
             'street_type', 'street', 'house', 'building',
             # Дополнительные поля
-            'microdistrict', 'index', 'coordinates'
+            'microdistrict', 'index', 'latitude', 'longitude'
         ]
         read_only_fields = ['id']
 
@@ -1321,8 +1322,10 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             address_lookup['microdistrict'] = validated_data['microdistrict']
         if validated_data.get('index'):
             address_lookup['index'] = validated_data['index']
-        if validated_data.get('coordinates'):
-            address_lookup['coordinates'] = validated_data['coordinates']
+        if validated_data.get('latitude'):
+            address_lookup['latitude'] = validated_data['latitude']
+        if validated_data.get('longitude'):
+            address_lookup['longitude'] = validated_data['longitude']
 
         # Ищем существующий адрес
         existing_address = None
@@ -1430,7 +1433,8 @@ class AddressReadSerializer(serializers.ModelSerializer):
             "building": {"id": "...", "number": "А"},
             "microdistrict": "Центральный",
             "index": "101000",
-            "coordinates": "55.7558, 37.6173",
+            "latitude": "55.7558",
+            "longitude":"37.6173",
             "full_address": "101000, Россия, Московская область, г. Москва, ул. Ленина, д. 1, стр. А, Центральный"
         }
     """
@@ -1461,7 +1465,7 @@ class AddressReadSerializer(serializers.ModelSerializer):
             'administrative_territory', 'administrative_unit',
             'street', 'house', 'building',
             # Дополнительные поля
-            'microdistrict', 'index', 'coordinates',
+            'microdistrict', 'index', 'latitude', 'longitude',
             # Вычисляемое поле
             'full_address'
         ]
