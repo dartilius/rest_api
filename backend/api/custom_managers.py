@@ -33,3 +33,7 @@ class CustomUserManager(UserManager):
 class ActiveManager(Manager):
     def get_queryset(self):
         return super().get_queryset().filter(is_active=True)
+
+class InactiveManager(Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=False)
