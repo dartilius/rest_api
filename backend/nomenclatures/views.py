@@ -84,7 +84,6 @@ def _is_admin(user):
                                 "id": "5f21b0b1-d882-40af-9d60-eb9c61811799",
                                 "name": "Testik1 Testov1, FL"
                             },
-                            "tenants": {"name": None},
                             "brand": {
                                 "id": "f0dc2a06-9698-423b-a7f2-b19fcacb17b7",
                                 "name": "тест бренд",
@@ -140,7 +139,16 @@ def _is_admin(user):
                         "id": "5f21b0b1-d882-40af-9d60-eb9c61811799",
                         "name": "Testik1 Testov1, FL"
                     },
-                    "tenants": {"name": None},
+                    "tenants": [
+                        {
+                            "id": "f59e7ddf-001e-41a4-9969-c91412fb4fe9",
+                            "name": "responsible бизнес-логики мп, IP"
+                        },
+                        {
+                            "id": "0d4da644-c6c0-4492-9a72-c3264ed63c29",
+                            "name": "Обсуждение бизнес-логики мп, FL"
+                        }
+                    ],
                     "brand": {
                         "id": "f0dc2a06-9698-423b-a7f2-b19fcacb17b7",
                         "name": "тест бренд",
@@ -163,8 +171,6 @@ def _is_admin(user):
                     "hw_info": None,
                     "typeOfPlace": "Офисное помещение",
                     "pricePerMonth": "15000.00",
-                    "responsible_radio": "5d9f1947-a06d-4620-b4dd-6c7690be841b",
-                    "responsible_ad": "96e701fd-dc0f-4687-ba05-9d402f1062b7",
                     "main_info": {
                         "name": "тест",
                         "description": "тестовое описание",
@@ -174,6 +180,28 @@ def _is_admin(user):
                         "last_answer": "Не выходила в сеть",
                         "version": "111",
                         "created": "2026-01-23 06:35:24"
+                    },
+                    "responsible": {
+                        "ad": {
+                            "id": "74d64029-6adc-4fc6-89fb-ed35a6ba8588",
+                            "full_name": "ad responsible"
+                        },
+                        "radio": {
+                            "id": "785ee155-2c01-4b65-8ee5-c65520cd703d",
+                            "full_name": "radio responsible"
+                        },
+                        "technic": {
+                            "id": "3072ed12-2262-4e89-8d6d-87398f1e470e",
+                            "full_name": "technic responsible"
+                        },
+                        "technic_on_address": {
+                            "id": "a36d79bc-ff1e-4895-9a01-1535d808acd3",
+                            "full_name": "technicAdd responsible"
+                        },
+                        "placment_markentig": {
+                            "id": "55b22afc-df62-4d60-ab75-4345fbec14f5",
+                            "full_name": "placement responsible"
+                        }
                     },
                     "broadcast": True
                 },

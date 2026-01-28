@@ -7,6 +7,38 @@ NO_DELETE_METHODS = (*MUTATE_METHODS, *SAFE_METHODS)
 error_message = "Недостаточно прав." + " %(class)s.__doc__"
 
 
+# class SuperuserCUDAuthRetrieve(BasePermission):
+#     """
+#     Создать, изменить и удалить может только SU,
+#     просмотреть - любой авторизованный.
+#     """
+
+#     message = error_message
+
+#     def has_permission(self, request, view):
+#         if request.method in SAFE_METHODS:
+#             return request.user.is_authenticated
+
+#         return request.user.is_authenticated and request.user.is_super_user
+
+#     def has_object_permission(self, request, view, obj):
+#         if request.method in SAFE_METHODS:
+#             return request.user.is_authenticated
+
+#         return request.user.is_authenticated and request.user.is_super_user
+
+
+# class OnlyStaffCRUD(BasePermission):
+#     """Любые действия разрешены только для сотрудников."""
+
+#     message = error_message
+
+#     def has_permission(self, request, view):
+#         return request.user.is_authenticated and request.user.is_super_user
+
+#     def has_object_permission(self, request, view, obj):
+#         return request.user.is_authenticated and request.user.is_super_user
+
 class SuperuserCUDAuthRetrieve(BasePermission):
     """
     Создать, изменить и удалить может только SU,
@@ -14,17 +46,14 @@ class SuperuserCUDAuthRetrieve(BasePermission):
     """
 
     message = error_message
-
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return request.user.is_authenticated
-
         return request.user.is_authenticated and request.user.is_super_user
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
             return request.user.is_authenticated
-
         return request.user.is_authenticated and request.user.is_super_user
 
 
