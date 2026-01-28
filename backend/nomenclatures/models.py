@@ -79,7 +79,7 @@ class Nomenclature(APIBaseObjectModel):
         null=True,
         blank=True,
         related_name="radio_nomenclature",
-        verbose_name="Ответсвенный за радио"
+        verbose_name="Ответственный за радио"
     )
 
     responsible_ad = models.ForeignKey(
@@ -88,8 +88,34 @@ class Nomenclature(APIBaseObjectModel):
         null=True,
         blank=True,
         related_name="ad_nomenclature",
-        verbose_name="Ответсвенный за размещение"
+        verbose_name="Ответственный за размещение"
+    )
 
+    responsible_technic = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="technic_nomenclature",
+        verbose_name="Ответственный за технику"
+    )
+
+    responsible_technic_on_address = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="technic_on_address_nomenclature",
+        verbose_name="Ответственный за технику на адресе"
+    )
+
+    responsible_placement_marketing = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="placement_marketing_nomenclature",
+        verbose_name="Ответственный за маркетинг размещения"
     )
 
     media = ArrayField(
