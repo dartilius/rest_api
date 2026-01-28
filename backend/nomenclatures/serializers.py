@@ -511,7 +511,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "placment_markentig": self._user_id_name(obj.responsible_placement_marketing),
         }
 
-        repr_["tenants_lenght"] = len(obj.tenants.all()) if obj.tenants else 0
+        repr_["tenants_length"] = len(obj.tenants.all()) if obj.tenants else 0
 
 
         # Добавляем broadcast

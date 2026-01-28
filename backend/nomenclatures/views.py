@@ -203,6 +203,7 @@ def _is_admin(user):
                             "full_name": "placement responsible"
                         }
                     },
+                    "tenants_length": 2,
                     "broadcast": True
                 },
                 response_only=True,
