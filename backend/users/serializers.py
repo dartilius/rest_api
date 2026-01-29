@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from users.models import CustomUser, ROLES
 
+from files.serializers import Base64FileField
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """Полная сериализация пользователя."""
@@ -16,6 +17,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
         required=False,
         allow_blank=False
     )
+
+    avatar = Base64FileField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = CustomUser
@@ -34,6 +37,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             user.save(update_fields=["password"])
         return user
 
+
+
     def to_representation(self, value):
         repr_ = super().to_representation(value)
 
@@ -46,6 +51,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "created",
             "groups",
             "user_permissions",
+            "avatar"
         )
         for field in excluded_fields:
             repr_.pop(field, None)
@@ -55,15 +61,16 @@ class CustomUserSerializer(serializers.ModelSerializer):
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
 
         # Собираем full_name как словарь
-        full_name_dict = {
+        main_info = {
             'first_name': value.first_name,
             'last_name': value.last_name,
             'middle_name': value.middle_name,
+            'avatar': value.avatar.url if value.avatar else None,
         }
-        repr_['full_name'] = full_name_dict
+        repr_['full_name'] = main_info
 
         # Удаляем старые плоские поля
-        for field in full_name_dict.keys():
+        for field in main_info.keys():
             repr_.pop(field, None)
 
         return repr_

@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
+from django_minio_backend import MinioBackend
 
 from api import ContactInformation
 from api.base_objects import UUIDPKField
@@ -36,6 +37,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
+
+    avatar = models.FileField(
+        upload_to='user_avatars',
+        storage=MinioBackend(bucket_name="local-media"),
+        null=True,
+        blank=True,
+        verbose_name='Аватар пользователя'
+    )
 
     email_validator = EmailValidator(
         message='Емэйл уже занят, либо введён некорректно. '
@@ -192,3 +201,4 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.full_name
+
