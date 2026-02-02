@@ -1,11 +1,66 @@
+# from django.contrib import admin
+
+# from users.models import CustomUser
+
+
+# @admin.register(CustomUser)
+# class CustomUserAdmin(admin.ModelAdmin):
+#     """Пользователь."""
+
+#     list_display = (
+#         'id',
+#         'full_name_display',
+#         'role',
+#         'email',
+#         'phone_number',
+#         'is_active',
+#         'created',
+#     )
+#     search_fields = (
+#         'id',
+#         'last_name',
+#         'first_name',
+#         'middle_name',
+#         'role',
+#         'is_active',
+#     )
+#     show_full_result_count = False
+
+#     @admin.display(description='ФИО')
+#     def full_name_display(self, obj):
+#         return obj.full_name
 from django.contrib import admin
 
-from users.models import CustomUser
+from users.models import CustomUser, ContactInfo
+
+
+class ContactInfoInline(admin.TabularInline):
+    """Контактная информация пользователя (inline)."""
+
+    model = ContactInfo
+    extra = 0
+    min_num = 0
+    can_delete = True
+
+    verbose_name = "Контакт"
+    verbose_name_plural = "Контактная информация"
+
+    fields = (
+        "type",
+        "meaning",
+        "vidtel",
+        "vidmail",
+        "ext",
+        "basic",
+        "comment",
+    )
 
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
     """Пользователь."""
+
+    inlines = (ContactInfoInline,)
 
     list_display = (
         'id',
@@ -16,16 +71,38 @@ class CustomUserAdmin(admin.ModelAdmin):
         'is_active',
         'created',
     )
+
     search_fields = (
         'id',
         'last_name',
         'first_name',
         'middle_name',
+        'email',
+        'phone_number',
+    )
+
+    list_filter = (
         'role',
         'is_active',
     )
+
+    ordering = ('-created',)
     show_full_result_count = False
+
+    readonly_fields = ('created',)
 
     @admin.display(description='ФИО')
     def full_name_display(self, obj):
         return obj.full_name
+
+
+@admin.register(ContactInfo)
+class ContactInfoAdmin(admin.ModelAdmin):
+    """Администрирование контактной информации."""
+
+    list_display = ("id", "type", "meaning")
+    show_full_result_count = False
+    raw_id_fields = ("user",)
+
+    def get_queryset(self, request):
+        return ContactInfo.objects.select_related("user")
