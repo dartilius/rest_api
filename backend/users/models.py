@@ -6,10 +6,12 @@ from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 from django_minio_backend import MinioBackend
-
+from django.contrib.postgres.indexes import GinIndex
 from api import ContactInformation
 from api.base_objects import UUIDPKField
 from api.custom_managers import CustomUserManager
+from django.conf import settings
+
 
 CONTACT_PERSON_ROLES = [
     ('broadcast', 'Корп. вещание'),
@@ -29,6 +31,20 @@ ROLES = [
 EMPLOYEE_ROLE_KEYS = {r[0] for r in EMPLOYEE_ROLES}
 CONTACT_PERSON_ROLE_KEYS = {r[0] for r in CONTACT_PERSON_ROLES}
 
+class ContactInfo(ContactInformation):
+    id = UUIDPKField()
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='contacts',
+        verbose_name='Пользователь'
+    )
+    class Meta:
+        db_table = "contact_info"
+        verbose_name = "Контактная информация"
+        verbose_name = 'Контактная информация'
+        verbose_name_plural = 'Контактная информация'
+
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Пользователи."""
 
@@ -37,7 +53,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
-
+    id = UUIDPKField()
     avatar = models.FileField(
         upload_to='user_avatars',
         storage=MinioBackend(bucket_name="local-media"),
@@ -51,8 +67,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                 'Разрешены только буквы, цифры и @/./+/-/_ символы, '
                 'а почта должна иметь такой вид: адрес@домен'
     )
-
-    id = UUIDPKField()
     last_name = models.CharField(
         max_length=150,
         verbose_name='Фамилия',
@@ -105,38 +119,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         auto_now_add=True,
         verbose_name='Дата создания'
     )
-
-    additional_contact_info = ArrayField(
-        base_field=models.JSONField(),
-        default=list,
-        blank=True,
-        verbose_name="Доп. контактная информация"
-    )
     code1c = models.CharField(
         default='',
         blank=True,
         null=True,
         verbose_name='Код 1с'
     )
-
-    def clean(self):
-        """Валидация элементов additional_contact_info через ContactInformation.clean()."""
-        super().clean()
-
-        for i, item in enumerate(self.additional_contact_info):
-            fake = ContactInformation(
-                basic=item.get("basic"),
-                type=item.get("type"),
-                vidtel=item.get("vidtel"),
-                vidmail=item.get("vidmail"),
-                meaning=item.get("meaning"),
-                ext=item.get("ext"),
-                comment=item.get("comment"),
-            )
-            try:
-                fake.clean()
-            except ValidationError as e:
-                raise ValidationError({f"additional_contact_info[{i}]": e})
 
     @property
     def is_manager(self):

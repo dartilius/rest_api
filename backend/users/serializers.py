@@ -1,8 +1,54 @@
 from rest_framework import serializers
-
-from users.models import CustomUser, ROLES
-
+import re
+from users.models import CustomUser, ROLES, ContactInfo
+from django.db import transaction
 from files.serializers import Base64FileField
+
+class ContactInfoSerializer(serializers.ModelSerializer):
+    """Сериализация и валидация контактной информации."""
+
+    class Meta:
+        model = ContactInfo
+        fields = (
+            "id",
+            "type",
+            "vidtel",
+            "vidmail",
+            "meaning",
+            "ext",
+            "comment",
+            "basic",
+        )
+
+    def validate(self, attrs):
+        type_ = attrs.get("type")
+        meaning = attrs.get("meaning")
+        vidtel = attrs.get("vidtel")
+        vidmail = attrs.get("vidmail")
+
+        if not type_:
+            raise serializers.ValidationError({"type": "Поле type обязательно."})
+
+        if type_ == "phone":
+            if not meaning or not re.match(r"^\+?[0-9\-\(\) ]+$", meaning):
+                raise serializers.ValidationError({"meaning": "Значение должно быть корректным номером телефона."})
+            if not vidtel:
+                raise serializers.ValidationError({"vidtel": "Для типа 'Телефон' нужно указать вид телефона."})
+            attrs["vidmail"] = None  # очищаем vidmail
+
+        elif type_ == "mail":
+            if not meaning or not re.match(r"^[\w\.-]+@[\w\.-]+\.\w+$", meaning):
+                raise serializers.ValidationError({"meaning": "Значение должно быть корректным адресом электронной почты."})
+            if not vidmail:
+                raise serializers.ValidationError({"vidmail": "Для типа 'Почта' нужно указать вид почты."})
+            attrs["vidtel"] = None  # очищаем vidtel
+
+        else:
+            # Для остальных типов очищаем поля телефона/почты
+            attrs["vidtel"] = None
+            attrs["vidmail"] = None
+
+        return attrs
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """Полная сериализация пользователя."""
@@ -18,14 +64,30 @@ class CustomUserSerializer(serializers.ModelSerializer):
         allow_blank=False
     )
 
+    contacts = ContactInfoSerializer(many=True, required=False)
+
     avatar = Base64FileField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = CustomUser
-        fields = "__all__"
+        fields = (
+            "id",
+            "email",
+            "phone_number",
+            "first_name",
+            "last_name",
+            "middle_name",
+            "avatar",
+            "role",
+            "created",
+            "code1c",
+            "password",
+            "contacts",   # ← ВАЖНО
+        )
         read_only_fields = ('id', 'created', 'role')
 
     def create(self, validated_data):
+        contacts_data = validated_data.pop("contacts", [])
         password = validated_data.pop("password", None)
         email = validated_data.pop("email", None)
         user = super().create(validated_data)
@@ -35,9 +97,45 @@ class CustomUserSerializer(serializers.ModelSerializer):
         if password:
             user.set_password(password)
             user.save(update_fields=["password"])
+
+        for contact in contacts_data:
+            ContactInfo.objects.create(user=user, **contact)
         return user
 
+    def update(self, instance, validated_data):
+        contacts_data = validated_data.pop("contacts", None)
 
+        # обычные поля
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # ⬇️ ДОБАВЛЯЕМ, А НЕ УДАЛЯЕМ
+        if contacts_data:
+            with transaction.atomic():
+                for contact in contacts_data:
+                    # защита от дублей
+                    exists = instance.contacts.filter(
+                        type=contact["type"],
+                        meaning=contact["meaning"]
+                    ).exists()
+
+                    if exists:
+                        continue
+
+                    # если basic=true — сбрасываем предыдущий
+                    if contact.get("basic"):
+                        instance.contacts.filter(
+                            type=contact["type"],
+                            basic=True
+                        ).update(basic=False)
+
+                    ContactInfo.objects.create(
+                        user=instance,
+                        **contact
+                    )
+
+        return instance
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
@@ -68,6 +166,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'avatar': value.avatar.url if value.avatar else None,
         }
         repr_['full_name'] = main_info
+
+        repr_['contacts'] = ContactInfoSerializer(value.contacts.all(), many=True).data
 
         # Удаляем старые плоские поля
         for field in main_info.keys():
@@ -139,3 +239,4 @@ class RegisterUserSerializer(serializers.Serializer):
     last_name = serializers.CharField(required=True)
     phone_number = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
+

@@ -84,11 +84,11 @@ from users.serializers import CustomUserSerializer, RegisterUserSerializer, \
     ),
 )
 @extend_schema(tags=['Пользователи (кл)'])
+
 class CustomUserViewSet(viewsets.ModelViewSet):
     """Работа с пользователями."""
     lookup_field = "id_or_code1c"
     queryset = CustomUser.objects.all().order_by('id')
-    serializer_class = CustomUserSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = CustomUserFilter
     permission_classes = [SuperuserCUDAuthRetrieve]
@@ -136,18 +136,10 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 'Удалить его можно только через админ-панель.'
             )
 
-    def get_serializer(self, *args, **kwargs):
+    def get_serializer_class(self):
         if self.action == 'list':
-            serializer = CustomUserShortSerializer
-        else:
-            serializer = CustomUserSerializer
-        if 'data' in kwargs:
-            data = kwargs['data']
-
-            if isinstance(data, list):
-                kwargs['many'] = True
-
-        return serializer(*args, **kwargs)
+            return CustomUserShortSerializer
+        return CustomUserSerializer
 
     @extend_schema(
         summary="Регистрация нового пользователя",
