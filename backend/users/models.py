@@ -34,9 +34,9 @@ CONTACT_PERSON_ROLE_KEYS = {r[0] for r in CONTACT_PERSON_ROLES}
 class ContactInfo(ContactInformation):
     id = UUIDPKField()
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'CustomUser',
         on_delete=models.CASCADE,
-        related_name='contacts',
+        related_name='contacts_cp',
         verbose_name='Пользователь'
     )
     class Meta:
