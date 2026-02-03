@@ -1,6 +1,7 @@
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
-
+from api import ContactInformation
+from api.base_objects import UUIDPKField
 from api import APIBaseObjectModel
 
 TYPE_FL = {
@@ -26,6 +27,20 @@ TYPE_OPF_DICT = {**TYPE_FL, **TYPE_ORG}
 
 # превращаем в корректные choices
 TYPE_OPF = [(key, value) for key, value in TYPE_OPF_DICT.items()]
+
+class CounterpartyContactInfo(ContactInformation):
+    id = UUIDPKField()
+    counterparty = models.ForeignKey(
+        'Counterparty',
+        on_delete=models.CASCADE,
+        related_name="contacts",
+        verbose_name="Контрагент"
+    )
+
+    class Meta:
+        db_table = "counterparty_contact_info"
+        verbose_name = "Контактная информация КА"
+        verbose_name_plural = "Контактная информация КА"
 
 
 class Counterparty(APIBaseObjectModel):

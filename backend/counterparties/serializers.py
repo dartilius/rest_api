@@ -2,11 +2,17 @@ from rest_framework import serializers
 
 from addresses.models import Address
 from brands.models import Brand
-from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG
+from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
 from users.models import CustomUser
 
 
+class CounterpartyContactInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CounterpartyContactInfo
+        fields = "__all__"
+
 class CreateCounterpartySerializer(serializers.ModelSerializer):
+    contacts = CounterpartyContactInfoSerializer(many=True, required=False)
 
     brands = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -28,12 +34,39 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Counterparty
-        fields = [
-            'id', 'code1c', 'opf', "first_name",
-            'description', 'keyword', "last_name", "middle_name",
-            'contact_persons', 'brands', 'address', 'name', 'inn',
-            'broadcast'
-        ]
+        fields = "__all__"
+
+    def update(self, instance, validated_data):
+        contacts_data = validated_data.pop('contacts', None)
+        brands_data = validated_data.pop('brands', None)
+        contact_persons_data = validated_data.pop('contact_persons', None)
+
+        # обновляем простые поля
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # добавляем новые контакты, старые остаются
+        if contacts_data:
+            for contact in contacts_data:
+                # проверка на дублирование по type + meaning (можно настроить)
+                exists = instance.contacts.filter(
+                    type=contact.get("type"),
+                    meaning=contact.get("meaning")
+                ).exists()
+                if not exists:
+                    CounterpartyContactInfo.objects.create(
+                        counterparty=instance,
+                        **contact
+                    )
+
+        # обновляем ManyToMany связи
+        if brands_data is not None:
+            instance.brands.set(brands_data)
+        if contact_persons_data is not None:
+            instance.contact_persons.set(contact_persons_data)
+
+        return instance
 
     def validate(self, data):
         opf = data.get('opf')
