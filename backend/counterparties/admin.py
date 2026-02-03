@@ -18,8 +18,6 @@ class ContactInfoInline(admin.TabularInline):
         "comment",
     )
 
-    # 🔥 КРИТИЧНО: не даём выбрать counterparty вручную
-    exclude = ("counterparty",)
 
 
 # ========= Admin для контрагентов =========
