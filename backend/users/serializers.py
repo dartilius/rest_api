@@ -64,7 +64,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         allow_blank=False
     )
 
-    contacts = ContactInfoSerializer(many=True, required=False)
+    contacts_cp = ContactInfoSerializer(many=True, required=False)
 
     avatar = Base64FileField(write_only=True, required=False, allow_null=True)
 
@@ -82,12 +82,12 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "created",
             "code1c",
             "password",
-            "contacts",   # ← ВАЖНО
+            "contacts_cp",   # ← ВАЖНО
         )
         read_only_fields = ('id', 'created', 'role')
 
     def create(self, validated_data):
-        contacts_data = validated_data.pop("contacts", [])
+        contacts_data = validated_data.pop("contacts_cp", [])
         password = validated_data.pop("password", None)
         email = validated_data.pop("email", None)
         user = super().create(validated_data)
@@ -103,7 +103,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        contacts_data = validated_data.pop("contacts", None)
+        contacts_data = validated_data.pop("contacts_cp", None)
 
         # обычные поля
         for attr, value in validated_data.items():
@@ -167,7 +167,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         }
         repr_['full_name'] = main_info
 
-        repr_['contacts'] = ContactInfoSerializer(value.contacts.all(), many=True).data
+        repr_['contacts'] = ContactInfoSerializer(value.contacts_cp.all(), many=True).data
 
         # Удаляем старые плоские поля
         for field in main_info.keys():
