@@ -17,11 +17,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 16G  # Увеличено с 16ГБ до 32ГБ
-          cpus: '8'   # Увеличено с 8 до 12 ядер
+          memory: 16G # Увеличено с 16ГБ до 32ГБ
+          cpus: '8' # Увеличено с 8 до 12 ядер
         reservations:
-          memory: 8G  # Увеличено с 8ГБ до 16ГБ
-          cpus: '4'    # Увеличено с 4 до 6 ядер
+          memory: 8G # Увеличено с 8ГБ до 16ГБ
+          cpus: '4' # Увеличено с 4 до 6 ядер
     ulimits:
       nofile: 262144
 
@@ -38,7 +38,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASS}
       - PGDATA=/var/lib/postgresql/18/docker
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -81,7 +81,7 @@ services:
     command: server /data --console-address ":9001"
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -178,26 +178,43 @@ services:
           memory: 2G
           cpus: '4'
 
+  # frontend:
+  #   env_file: .env
+  #   container_name: frontend
+  #   build: ./frontend
+  #   ports:
+  #     - 3000:3000
+  #   restart: unless-stopped
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+  #   volumes:
+  #     - /file/static:/frontend_static
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 4G
+  #         cpus: '4'
+  #       reservations:
+  #         memory: 2G
+  #         cpus: '2'
+
   frontend:
-    env_file: .env
+    image: registry.krasrm.com/pahapasha11/new-lk:latest
     container_name: frontend
-    build: ./frontend
+
+    env_file: .env
+    restart: unless-stopped
+
     ports:
       - 3000:3000
-    restart: unless-stopped
+
     depends_on:
       backend:
         condition: service_healthy
+
     volumes:
-      - /file/static:/frontend_static
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: '4'
-        reservations:
-          memory: 2G
-          cpus: '2'
+      - ./file/static:/frontend_static
 
   gateway:
     build: ./nginx
@@ -226,7 +243,7 @@ services:
     image: rabbitmq:4.2.2-management
     container_name: rabbit
     hostname: rabbit
-    env_file: .env  # Загружает все переменные из .env
+    env_file: .env # Загружает все переменные из .env
     environment:
       # Явно указываем переменные для RabbitMQ (берутся из .env)
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
@@ -279,7 +296,6 @@ services:
           memory: 512M
           cpus: '0.5'
 
-
   redis:
     image: redis:8.4.0-alpine
     container_name: redis
@@ -323,11 +339,10 @@ services:
           memory: 1G
           cpus: '1'
 
-
 volumes:
   brand_logs:
     driver: local
     driver_opts:
       type: cifs
       o: username=${RM_USER},password=${RM_PASS},vers=3.0
-      device: "//192.168.0.2/rm/brands_logs"
+      device: '//192.168.0.2/rm/brands_logs'
