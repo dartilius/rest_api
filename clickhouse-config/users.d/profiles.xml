@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<yandex>
+    <profiles>
+        <!-- Профиль по умолчанию для всех пользователей -->
+        <default>
+            <!-- ОГРАНИЧЕНИЯ ПАМЯТИ (актуальные для версии 25.x) -->
+            <max_memory_usage>12000000000</max_memory_usage>          <!-- 12 ГБ максимум на один запрос -->
+            <max_memory_usage_for_user>8000000000</max_memory_usage_for_user> <!-- 8 ГБ максимум на пользователя -->
+            <memory_overcommit_ratio_denominator>2</memory_overcommit_ratio_denominator> <!-- Разрешить превышение лимита в 2 раза при нехватке -->
+
+            <!-- ОГРАНИЧЕНИЯ ВРЕМЕНИ И ОБЪЁМА -->
+            <max_execution_time>300</max_execution_time>              <!-- 5 минут на выполнение запроса -->
+            <max_rows_to_read>1000000000</max_rows_to_read>           <!-- 1 млрд строк максимум -->
+            <max_bytes_to_read>100000000000</max_bytes_to_read>       <!-- ~100 ГБ максимум -->
+
+            <!-- ПАРАЛЛЕЛЬНАЯ ОБРАБОТКА (для 12 ядер) -->
+            <max_threads>12</max_threads>                            <!-- Использовать до 12 потоков -->
+            <max_streams_to_max_threads_ratio>2</max_streams_to_max_threads_ratio> <!-- Увеличить параллелизм -->
+            <parallel_distributed_insert_select>1</parallel_distributed_insert_select> <!-- Параллельные вставки -->
+
+            <!-- ОПТИМИЗАЦИЯ JOIN -->
+            <join_algorithm>auto</join_algorithm>                     <!-- Автовыбор алгоритма JOIN -->
+            <partial_merge_join>1</partial_merge_join>               <!-- Включить оптимизацию для больших JOIN -->
+            <max_bytes_in_join>10000000000</max_bytes_in_join>       <!-- 10 ГБ для операций JOIN -->
+            <join_use_nulls>0</join_use_nulls>                       <!-- Не использовать NULLs в JOIN -->
+
+            <!-- НАСТРОЙКИ ЛОГИРОВАНИЯ (чтобы не засорять логи) -->
+            <log_queries>1</log_queries>                             <!-- Логировать запросы -->
+            <log_queries_cut_to_length>5000</log_queries_cut_to_length> <!-- Обрезать длинные запросы до 5000 символов -->
+            <log_query_threads>0</log_query_threads>                 <!-- Не логировать потоки запросов -->
+            <allow_introspection_functions>0</allow_introspection_functions> <!-- Отключить introspection для безопасности -->
+
+            <!-- ОПТИМИЗАЦИЯ ДЛЯ АНАЛИТИЧЕСКИХ ЗАПРОСОВ -->
+            <distributed_aggregation_memory_efficient>1</distributed_aggregation_memory_efficient>
+            <group_by_two_level_threshold>100000</group_by_two_level_threshold>
+            <group_by_two_level_threshold_bytes>100000000</group_by_two_level_threshold_bytes>
+            <prefer_localhost_replica>1</prefer_localhost_replica>    <!-- Предпочитать локальную реплику -->
+
+            <!-- НАСТРОЙКИ ФОРМАТОВ -->
+            <output_format_parallel_formatting>1</output_format_parallel_formatting>
+            <input_format_parallel_parsing>1</input_format_parallel_parsing>
+        </default>
+
+        <!-- Профиль только для чтения (для мониторинга, дашбордов) -->
+        <readonly>
+            <readonly>1</readonly>                                   <!-- Только SELECT запросы -->
+            <max_memory_usage>4000000000</max_memory_usage>          <!-- 4 ГБ для readonly запросов -->
+            <max_execution_time>60</max_execution_time>               <!-- 1 минута максимум -->
+            <allow_ddl>0</allow_ddl>                                 <!-- Запретить DDL команды -->
+        </readonly>
+
+        <!-- Профиль для вставки данных (оптимизирован для INSERT) -->
+        <insert_profile>
+            <max_memory_usage>16000000000</max_memory_usage>          <!-- 16 ГБ для вставок -->
+            <max_insert_block_size>1048576</max_insert_block_size>    <!-- Размер блока для вставки -->
+            <min_insert_block_size_rows>65536</min_insert_block_size_rows>
+            <min_insert_block_size_bytes>67108864</min_insert_block_size_bytes>
+            <input_format_parallel_parsing>1</input_format_parallel_parsing>
+            <parallel_distributed_insert_select>1</parallel_distributed_insert_select>
+        </insert_profile>
+    </profiles>
+
+    <!-- Квоты (лимиты на использование ресурсов) -->
+    <quotas>
+        <default>
+            <interval>
+                <duration>3600</duration>                            <!-- Интервал 1 час -->
+                <queries>0</queries>                                 <!-- Без ограничения на кол-во запросов -->
+                <errors>0</errors>                                   <!-- Без ограничения на ошибки -->
+                <result_rows>0</result_rows>                         <!-- Без ограничения на строки результата -->
+                <read_rows>0</read_rows>                             <!-- Без ограничения на прочитанные строки -->
+                <execution_time>0</execution_time>                   <!-- Без ограничения на время выполнения -->
+            </interval>
+        </default>
+    </quotas>
+</yandex>
