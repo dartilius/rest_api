@@ -57,7 +57,7 @@ from .views import (
     TimezoneViewSet, RegionViewSet, LocalityTypeViewSet,
     CityViewSet, AdministrativeTerritoryViewSet,
     AdministrativeTerritorialUnitViewSet, StreetTypeViewSet,
-    StreetViewSet, HouseViewSet, BuildingViewSet, AddressViewSet
+    StreetViewSet, HouseViewSet, BuildingViewSet, AddressViewSet, CoordinatesViewSet,
 )
 
 
@@ -71,20 +71,21 @@ router.trailing_slash = '/'
 
 # Регистрация всех ViewSets
 router.register("countries", CountryViewSet, basename="countries")
-router.register("federal-districts", FederalDistrictViewSet, basename="federal-districts")
-router.register("type-regions", TypeRegionViewSet, basename="type-regions")
+router.register("federal-districts", FederalDistrictViewSet, basename="federal_districts")
+router.register("type-regions", TypeRegionViewSet, basename="type_regions")
 router.register("timezones", TimezoneViewSet, basename="timezones")
 router.register("regions", RegionViewSet, basename="regions")
-router.register("locality-types", LocalityTypeViewSet, basename="locality-types")
+router.register("locality-types", LocalityTypeViewSet, basename="locality_types")
 router.register("cities", CityViewSet, basename="cities")
-router.register("administrative-territories", AdministrativeTerritoryViewSet,
-                basename="administrative-territories")
-router.register("administrative-territorial-units", AdministrativeTerritorialUnitViewSet,
-                basename="administrative-territorial-units")
-router.register("street-types", StreetTypeViewSet, basename="street-types")
+router.register("administrative_territories", AdministrativeTerritoryViewSet,
+                basename="administrative_territories")
+router.register("administrative_territorial_units", AdministrativeTerritorialUnitViewSet,
+                basename="administrative_territorial_units")
+router.register("street_types", StreetTypeViewSet, basename="street_types")
 router.register("streets", StreetViewSet, basename="streets")
 router.register("houses", HouseViewSet, basename="houses")
 router.register("buildings", BuildingViewSet, basename="buildings")
+router.register("coordinates", CoordinatesViewSet, basename="coordinates")
 router.register("addresses", AddressViewSet, basename="addresses")
 
 
@@ -95,44 +96,49 @@ router.register("addresses", AddressViewSet, basename="addresses")
 # URL для автокомплита (используются в админке и формах)
 autocomplete_urlpatterns = [
     path(
-        "federal-district/",
+        "federal_district/",
         addresses_admin.FederalDistrictAutocomplete.as_view(),
-        name="federal-district-autocomplete"
+        name="federal_district-autocomplete"
     ),
     path(
         "region/",
         addresses_admin.RegionAutocomplete.as_view(),
-        name="region-autocomplete"
+        name="region_autocomplete"
     ),
     path(
         "city/",
         addresses_admin.CityAutocomplete.as_view(),
-        name="city-autocomplete"
+        name="city_autocomplete"
     ),
     path(
-        "administrative-territory/",
+        "administrative_territory/",
         addresses_admin.AdministrativeTerritoryAutocomplete.as_view(),
-        name="administrative-territory-autocomplete"
+        name="administrative_territory_autocomplete"
     ),
     path(
-        "administrative-unit/",
+        "administrative_unit/",
         addresses_admin.AdministrativeUnitAutocomplete.as_view(),
-        name="administrative-unit-autocomplete"
+        name="administrative_unit_autocomplete"
     ),
     path(
         "street/",
         addresses_admin.StreetAutocomplete.as_view(),
-        name="street-autocomplete"
+        name="street_autocomplete"
     ),
     path(
         "house/",
         addresses_admin.HouseAutocomplete.as_view(),
-        name="house-autocomplete"
+        name="house_autocomplete"
     ),
     path(
         "building/",
         addresses_admin.BuildingAutocomplete.as_view(),
-        name="building-autocomplete"
+        name="building_autocomplete"
+    ),
+    path(
+        "coordinates/",
+        addresses_admin.CoordinatesAutocomplete.as_view(),
+        name="coordinates_autocomplete"
     ),
 ]
 

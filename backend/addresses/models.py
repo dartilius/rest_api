@@ -1110,7 +1110,34 @@ class Building(models.Model):
         """Строковое представление строения."""
         return f"{self.house}, стр. {self.number}"
 
+class Coordinates(models.Model):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        verbose_name="Уникальный идентификатор"
+    )
 
+    latitude = models.CharField(
+        verbose_name="Широта",
+        max_length=31,
+        blank=True,
+        null=True,
+        help_text="Географическая широта в градусах (от -90 до 90)"
+    )
+
+    longitude = models.CharField(
+        verbose_name="Долгота",
+        max_length=31,
+        blank=True,
+        null=True,
+        help_text="Географическая долгота в градусах (от -180 до 180)"
+    )
+
+    class Meta:
+        verbose_name = "Координаты"
+        verbose_name_plural = "Координаты"
+        db_table = "addresses_coordinates"
 # ====================================================================================
 # МОДУЛЬ 4: ПОЛНЫЙ АДРЕС И ФИНАЛЬНЫЕ МОДЕЛИ
 # ====================================================================================
@@ -1268,6 +1295,15 @@ class Address(models.Model):
         help_text="Строение или корпус"
     )
 
+    coordinates = models.ForeignKey(
+        "Coordinates",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name="Координаты",
+        help_text= "Координаты расположения магазина "
+    )
+
     # Дополнительные поля
     microdistrict = models.CharField(
         "Микрорайон",
@@ -1286,24 +1322,6 @@ class Address(models.Model):
         blank=True,
         null=True,
         help_text="6-значный почтовый индекс"
-    )
-
-    latitude = models.DecimalField(
-        "Широта",
-        max_digits=9,
-        decimal_places=6,
-        blank=True,
-        null=True,
-        help_text="Географическая широта места расположения объекта"
-    )
-
-    longitude = models.DecimalField(
-        "Долгота",
-        max_digits=9,
-        decimal_places=6,
-        blank=True,
-        null=True,
-        help_text="Географическая долгота места расположения объекта"
     )
 
     class Meta:
@@ -1471,8 +1489,7 @@ class Address(models.Model):
             'building': self.building.number if self.building else None,
             'microdistrict': self.microdistrict,
             'index': self.index,
-            'latitude': self.latitude,
-            'longitude': self.longitude,
+            'coordinates': str(self.coordinates) if self.coordinates else None,
             'full_address': self.full_address
         }
 

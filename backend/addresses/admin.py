@@ -6,23 +6,36 @@
 Этот модуль настраивает отображение моделей адресов в административном интерфейсе Django.
 Использует django-autocomplete-light (DAL) для улучшения пользовательского опыта.
 
+ДОБАВЛЕННАЯ ФУНКЦИОНАЛЬНОСТЬ:
+• Поддержка модели Coordinates (координаты) с автокомплитом
+• Интеграция координат в адресную иерархию
+• Поиск и фильтрация по координатам в админке
+
 СТРУКТУРА МОДУЛЯ:
 ─────────────────────────────────────────────────────────────────────────────────────
 1. Autocomplete Views
    • Для всех моделей с зависимостями
    • Поддержка цепочек зависимостей (например, улица зависит от города)
    • Поиск по текстовым полям
+   • Добавлен CoordinatesAutocomplete для работы с координатами
 
 2. ModelAdmin классы
    • Для каждой модели адреса
    • Настройка отображения, поиска, фильтрации
    • Использование autocomplete_fields для связанных полей
+   • Добавлен CoordinatesAdmin для управления координатами
 
-3. Особенности
-   • Иерархическое отображение адресов
-   • Быстрый поиск по всем полям
-   • Автозаполнение зависимых полей
-   • Валидация целостности данных
+3. Фильтры для админки
+   • CountryFilter - фильтрация по стране
+   • RegionFilter - фильтрация по региону
+   • CityFilter - фильтрация по городу
+
+ОСОБЕННОСТИ:
+• Иерархическое отображение адресов с поддержкой координат
+• Быстрый поиск по всем полям, включая координаты
+• Автозаполнение зависимых полей через autocomplete
+• Валидация целостности данных адресной иерархии
+• Поддержка географических координат в составе адреса
 
 ИСПОЛЬЗУЕМЫЕ БИБЛИОТЕКИ:
 • django.contrib.admin
@@ -38,7 +51,7 @@ from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
     LocalityType, City, AdministrativeTerritory,
     AdministrativeTerritorialUnit, StreetType, Street,
-    House, Building, Address
+    House, Building, Address, Coordinates
 )
 
 
@@ -306,6 +319,61 @@ class BuildingAutocomplete(autocomplete.Select2QuerySetView):
         """Форматирование строения для отображения."""
         return f"{result.house.street}, д. {result.house.number}, стр. {result.number}"
 
+from django.db.models import Q
+class CoordinatesAutocomplete(autocomplete.Select2QuerySetView):
+    """
+    АВТОКОМПЛИТ ДЛЯ КООРДИНАТ.
+
+    ОСОБЕННОСТИ:
+        • Поиск по широте и долготе одновременно
+        • Поддержка частичного совпадения значений координат
+        • Отображение в формате "Широта: X, Долгота: Y"
+
+    ИСПОЛЬЗУЕТСЯ В:
+        • Административном интерфейсе для выбора координат
+        • Формах создания/редактирования адресов с геолокацией
+
+    ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ:
+        • Поиск по "55.7" найдет координаты с широтой или долготой содержащей "55.7"
+        • Отображение: "Широта: 55.7558, Долгота: 37.6173"
+    """
+
+    def get_queryset(self):
+        """
+        ПОЛУЧЕНИЕ QUERYSET ДЛЯ КООРДИНАТ.
+
+        ЛОГИКА:
+            1. Начинаем со всех координат
+            2. Фильтруем по поисковому запросу в обоих полях (широта и долгота)
+            3. Сортируем по широте, затем по долготе
+
+        ВОЗВРАЩАЕТ:
+            QuerySet: Отфильтрованный queryset координат
+        """
+        qs = Coordinates.objects.all()
+
+        # Поиск по координатам
+        if self.q:
+            # Ищем в обоих полях
+            qs = qs.filter(
+                Q(latitude__icontains=self.q) |
+                Q(longitude__icontains=self.q)
+            )
+
+        return qs.order_by('latitude', 'longitude')
+
+    def get_result_label(self, result):
+        """
+        ФОРМАТИРОВАНИЕ КООРДИНАТ ДЛЯ ОТОБРАЖЕНИЯ.
+
+        АРГУМЕНТЫ:
+            result : Coordinates
+                Объект координат
+
+        ВОЗВРАЩАЕТ:
+            str: Отформатированные координаты для пользовательского интерфейса
+        """
+        return f"Широта: {result.latitude}, Долгота: {result.longitude}"
 
 # ====================================================================================
 # МОДУЛЬ 2: КЛАССЫ ФИЛЬТРОВ ДЛЯ АДМИНКИ
@@ -320,6 +388,12 @@ class CountryFilter(SimpleListFilter):
         • Регионах
         • Городах
         • Адресах
+        • Координатах (через связь с адресами)
+
+    ОСОБЕННОСТИ:
+        • Универсальный фильтр для всей адресной иерархии
+        • Автоматически определяет связь с Country в разных моделях
+        • Поддерживает фильтрацию через несколько уровней вложенности
     """
 
     title = 'Страна'
@@ -339,8 +413,16 @@ class CountryFilter(SimpleListFilter):
         """
         ФИЛЬТРАЦИЯ QUERYSET ПО ВЫБРАННОЙ СТРАНЕ.
 
+        ЛОГИКА:
+            Определяет путь до Country в зависимости от модели:
+            • Прямая связь (Country)
+            • Через FederalDistrict
+            • Через Region → FederalDistrict
+            • Через City → Region → FederalDistrict
+            • Через Street → City → Region → FederalDistrict
+
         ВОЗВРАЩАЕТ:
-            QuerySet: Отфильтрованный queryset
+            QuerySet: Отфильтрованный queryset по выбранной стране
         """
         if self.value():
             # Для каждой модели свой способ фильтрации по стране
@@ -358,16 +440,37 @@ class CountryFilter(SimpleListFilter):
 
 
 class RegionFilter(SimpleListFilter):
-    """ФИЛЬТР ПО РЕГИОНУ."""
+    """
+    ФИЛЬТР ПО РЕГИОНУ.
+
+    ОСОБЕННОСТИ:
+        • Фильтрация по региону для связанных моделей
+        • Поддерживает фильтрацию через City и Street
+        • Использует строковое представление региона для отображения
+    """
 
     title = 'Регион'
     parameter_name = 'region'
 
     def lookups(self, request, model_admin):
+        """
+        ВОЗВРАЩАЕТ СПИСОК РЕГИОНОВ ДЛЯ ФИЛЬТРА.
+
+        Использует строковое представление региона (с типом) для удобства пользователя.
+        """
+
         regions = Region.objects.all().order_by('name')
         return [(region.id, str(region)) for region in regions]
 
     def queryset(self, request, queryset):
+        """
+        ФИЛЬТРАЦИЯ ПО ВЫБРАННОМУ РЕГИОНУ.
+
+        ЛОГИКА:
+            • Прямая связь с Region
+            • Через City
+            • Через Street → City
+        """
         if self.value():
             if hasattr(queryset.model, 'region'):
                 return queryset.filter(region_id=self.value())
@@ -379,7 +482,14 @@ class RegionFilter(SimpleListFilter):
 
 
 class CityFilter(SimpleListFilter):
-    """ФИЛЬТР ПО ГОРОДУ."""
+    """
+    ФИЛЬТР ПО ГОРОДУ.
+
+    ОСОБЕННОСТИ:
+        • Фильтрация по городу для связанных моделей
+        • Поддерживает фильтрацию через Street
+        • Использует строковое представление города (с типом населенного пункта)
+    """
 
     title = 'Город'
     parameter_name = 'city'
@@ -389,6 +499,14 @@ class CityFilter(SimpleListFilter):
         return [(city.id, str(city)) for city in cities]
 
     def queryset(self, request, queryset):
+        """
+        ФИЛЬТРАЦИЯ ПО ВЫБРАННОМУ ГОРОДУ.
+
+        ЛОГИКА:
+            • Прямая связь с City
+            • Через Street
+        """
+
         if self.value():
             if hasattr(queryset.model, 'city'):
                 return queryset.filter(city_id=self.value())
@@ -746,6 +864,21 @@ class BuildingAdmin(admin.ModelAdmin):
             'house', 'house__street', 'house__street__city'
         )
 
+@admin.register(Coordinates)
+class CoordinatesAdmin(admin.ModelAdmin):
+    """
+    АДМИНИСТРАТИВНЫЙ КЛАСС ДЛЯ УПРАВЛЕНИЯ Координатами.
+
+    НАСТРОЙКИ:
+        • Отображение: название, сокращение, правило отображения
+        • Поиск: по названию и сокращению
+        • Фильтры: по правилу отображения
+    """
+
+    list_display = ('latitude', 'longitude')
+    search_fields = ('latitude', 'longitude')
+    list_filter = ('latitude', 'longitude')
+    ordering = ('latitude', 'longitude')
 
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
@@ -775,6 +908,7 @@ class AddressAdmin(admin.ModelAdmin):
         'street',
         'house',
         'building',
+        'coordinates',
         'index'
     )
 
@@ -815,7 +949,8 @@ class AddressAdmin(admin.ModelAdmin):
         'administrative_unit',
         'street',
         'house',
-        'building'
+        'building',
+        'coordinates',
     )
 
     # Только для чтения
@@ -856,12 +991,16 @@ class AddressAdmin(admin.ModelAdmin):
                 'building',
             )
         }),
+        ('Координаты', {
+            'fields': (
+                'coordinates',
+            )
+        }),
+
         ('Дополнительная информация', {
             'fields': (
                 'microdistrict',
                 'index',
-                'latitude',
-                'longitude',
             ),
             'classes': ('collapse',)
         }),
@@ -899,7 +1038,8 @@ class AddressAdmin(admin.ModelAdmin):
             'administrative_unit',
             'street',
             'house',
-            'building'
+            'building',
+            'coordinates',
         )
 
     def save_model(self, request, obj, form, change):

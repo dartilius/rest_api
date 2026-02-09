@@ -33,7 +33,7 @@ from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
     LocalityType, City, AdministrativeTerritory,
     AdministrativeTerritorialUnit, StreetType, Street,
-    House, Building, Address
+    House, Building, Address, Coordinates
 )
 
 
@@ -442,6 +442,31 @@ class BuildingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Building
         fields = ['id', 'number', 'house']
+        read_only_fields = ['id']
+
+
+
+class CoordinatesSerializers(serializers.ModelSerializer):
+    """
+    СЕРИАЛИЗАТОР ДЛЯ ЧТЕНИЯ КООРДИНАТ.
+
+    ИСПОЛЬЗУЕТСЯ ДЛЯ:
+        • Отображения Координат
+
+    ПОЛЯ:
+        id : UUID
+            Уникальный идентификатор
+
+        latitude : string
+            Обозначение Широты
+
+        longitude : string
+            Обозначение Долготы
+    """
+
+    class Meta:
+        model = Coordinates
+        fields = ['id', 'latitude', 'longitude']
         read_only_fields = ['id']
 
 
@@ -1023,6 +1048,38 @@ class NestedBuildingSerializer(serializers.ModelSerializer):
         return building
 
 
+class NestedCoordinatesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Coordinates
+        fields = ['latitude', 'longitude']
+        extra_kwargs = {
+            'latitude': {'required': False},
+            'longitude': {'required': False},
+        }
+
+    def validate(self, data):
+        """
+        Кастомная валидация: если указана одна координата,
+        должна быть и вторая.
+        """
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+
+        # Если указана широта, но нет долготы
+        if latitude and not longitude:
+            raise serializers.ValidationError({
+                'longitude': 'Если указана широта, должна быть и долгота'
+            })
+
+        # Если указана долгота, но нет широты
+        if longitude and not latitude:
+            raise serializers.ValidationError({
+                'latitude': 'Если указана долгота, должна быть и широта'
+            })
+
+        return data
+
+
 # ====================================================================================
 # МОДУЛЬ 3: ОСНОВНЫЕ СЕРИАЛИЗАТОРЫ ДЛЯ АДРЕСА
 # ====================================================================================
@@ -1079,6 +1136,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
     street = NestedStreetSerializer(required=False)
     house = NestedHouseSerializer(required=False)
     building = NestedBuildingSerializer(required=False)
+    coordinates = NestedCoordinatesSerializer(required=False)
 
     class Meta:
         model = Address
@@ -1087,9 +1145,9 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             # Компоненты адреса
             'country', 'federal_district', 'type_region', 'region',
             'locality_type', 'city', 'administrative_territory', 'administrative_unit',
-            'street_type', 'street', 'house', 'building',
+            'street_type', 'street', 'house', 'building', 'coordinates',
             # Дополнительные поля
-            'microdistrict', 'index', 'latitude', 'longitude'
+            'microdistrict', 'index',
         ]
         read_only_fields = ['id']
 
@@ -1127,6 +1185,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
         street_data = validated_data.pop('street', None)
         house_data = validated_data.pop('house', None)
         building_data = validated_data.pop('building', None)
+        coordinates_data = validated_data.pop('coordinates', None)
 
         # Создаем объекты в правильном порядке
         country = None
@@ -1141,6 +1200,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
         street = None
         house = None
         building = None
+        coordinates = None
 
         # 1. Страна (если указана)
         if country_data:
@@ -1294,6 +1354,12 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             )
             building_serializer.is_valid(raise_exception=True)
             building = building_serializer.save()
+        # 13 Координаты
+        if coordinates_data:
+            coordinates_serializer = NestedCoordinatesSerializer(data=coordinates_data)
+            coordinates_serializer.is_valid(raise_exception=True)
+            coordinates = coordinates_serializer.save()
+
 
         # Формируем условия для поиска существующего адреса
         address_lookup = {}
@@ -1316,16 +1382,14 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             address_lookup['house'] = house
         if building:
             address_lookup['building'] = building
+        if coordinates:
+            address_lookup['coordinates'] = coordinates
 
         # Добавляем дополнительные поля
         if validated_data.get('microdistrict'):
             address_lookup['microdistrict'] = validated_data['microdistrict']
         if validated_data.get('index'):
             address_lookup['index'] = validated_data['index']
-        if validated_data.get('latitude'):
-            address_lookup['latitude'] = validated_data['latitude']
-        if validated_data.get('longitude'):
-            address_lookup['longitude'] = validated_data['longitude']
 
         # Ищем существующий адрес
         existing_address = None
@@ -1347,65 +1411,11 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             street=street,
             house=house,
             building=building,
+            coordinates=coordinates,
             **validated_data
         )
 
         return address
-
-    def validate(self, data):
-        """
-        ВАЛИДАЦИЯ ВСЕЙ СТРУКТУРЫ АДРЕСА.
-
-        ВЫПОЛНЯЕМЫЕ ПРОВЕРКИ:
-            1. Проверка минимального набора данных для адреса
-            2. Проверка целостности иерархии
-            3. Проверка обязательных полей для зависимых объектов
-
-        АРГУМЕНТЫ:
-            data : dict
-                Данные запроса
-
-        ВОЗВРАЩАЕТ:
-            dict : Валидированные данные
-
-        ИСКЛЮЧЕНИЯ:
-            serializers.ValidationError: При нарушении валидации
-        """
-        errors = {}
-
-        # Проверка 1: Минимальный набор данных
-        if not any([
-            data.get('country'),
-            data.get('region'),
-            data.get('city'),
-            data.get('street'),
-            data.get('house')
-        ]):
-            errors['non_field_errors'] = [
-                'Адрес должен содержать хотя бы один из компонентов: '
-                'страна, регион, город, улица, дом'
-            ]
-
-        # Проверка 2: Строение требует дом
-        if data.get('building') and not data.get('house'):
-            errors['building'] = 'Для указания строения требуется дом'
-
-        # Проверка 3: Дом требует улицу
-        if data.get('house') and not data.get('street'):
-            errors['house'] = 'Для указания дома требуется улица'
-
-        # Проверка 4: Улица требует город
-        if data.get('street') and not data.get('city'):
-            errors['street'] = 'Для указания улицы требуется город'
-
-        # Проверка 5: Город требует регион
-        if data.get('city') and not data.get('region'):
-            errors['city'] = 'Для указания города требуется регион'
-
-        if errors:
-            raise serializers.ValidationError(errors)
-
-        return data
 
 
 class AddressReadSerializer(serializers.ModelSerializer):
@@ -1449,6 +1459,7 @@ class AddressReadSerializer(serializers.ModelSerializer):
     street = StreetSerializer(read_only=True)
     house = HouseSerializer(read_only=True)
     building = BuildingSerializer(read_only=True)
+    coordinates = CoordinatesSerializers(read_only=True)
 
     # Вычисляемое поле для полного адреса
     full_address = serializers.CharField(
@@ -1463,9 +1474,9 @@ class AddressReadSerializer(serializers.ModelSerializer):
             # Компоненты адреса
             'country', 'federal_district', 'region', 'city',
             'administrative_territory', 'administrative_unit',
-            'street', 'house', 'building',
+            'street', 'house', 'building', 'coordinates',
             # Дополнительные поля
-            'microdistrict', 'index', 'latitude', 'longitude',
+            'microdistrict', 'index',
             # Вычисляемое поле
             'full_address'
         ]
@@ -1559,50 +1570,3 @@ class AddressSearchSerializer(serializers.Serializer):
             })
 
         return data
-
-
-class AddressBulkCreateSerializer(serializers.Serializer):
-    """
-    СЕРИАЛИЗАТОР ДЛЯ МАССОВОГО СОЗДАНИЯ АДРЕСОВ.
-
-    ОПИСАНИЕ:
-        Используется для создания нескольких адресов за один запрос.
-        Каждый адрес создается через AddressCreateSerializer.
-
-    ПОЛЯ:
-        addresses : список
-            Список объектов адресов для создания
-
-    ПРИМЕР ЗАПРОСА:
-        {
-            "addresses": [
-                {
-                    "country": {"name": "Россия"},
-                    "city": {"name": "Москва"},
-                    "street": {"name": "Ленина"},
-                    "house": {"number": "1"}
-                },
-                {
-                    "country": {"name": "Россия"},
-                    "city": {"name": "Санкт-Петербург"},
-                    "street": {"name": "Невский проспект"},
-                    "house": {"number": "10"}
-                }
-            ]
-        }
-    """
-
-    addresses = AddressCreateSerializer(many=True)
-
-    def create(self, validated_data):
-        """Массовое создание адресов."""
-        addresses_data = validated_data['addresses']
-        created_addresses = []
-
-        for address_data in addresses_data:
-            serializer = AddressCreateSerializer(data=address_data)
-            serializer.is_valid(raise_exception=True)
-            address = serializer.save()
-            created_addresses.append(address)
-
-        return {'addresses': created_addresses}

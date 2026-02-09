@@ -1,10 +1,9 @@
 """
-Вьюсеты (ViewSets) для справочника адресов с отключенной пагинацией.
+Вьюсеты (ViewSets) для справочника адресов с упрощённой фильтрацией.
 
 МОДУЛЬ VIEWSETS:
 ─────────────────────────────────────────────────────────────────────────────────────
-Все ViewSets возвращают полные наборы данных без пагинации по умолчанию.
-Пагинация доступна только при явном указании параметра ?page=
+Все ViewSets поддерживают единые параметры фильтрации и пагинации.
 
 СТРУКТУРА ОТВЕТА БЕЗ ПАГИНАЦИИ:
 {
@@ -15,16 +14,23 @@
 СТРУКТУРА ОТВЕТА С ПАГИНАЦИЕЙ (?page=2):
 {
     "count": 1250,
-    "next": "http://api/addresses/?page=3",
-    "previous": "http://api/addresses/?page=1",
+    "next": "http://api/addresses/?page=3&limit=100",
+    "previous": "http://api/addresses/?page=1&limit=100",
     "results": [... записи страницы 2 ...]
 }
 
-ОСОБЕННОСТИ:
-• Пагинация отключена глобально в settings.py (DEFAULT_PAGINATION_CLASS: None)
-• Параметр ?page= включает пагинацию с размером страницы 100
-• Параметр ?page_size= меняет размер страницы при использовании ?page=
-• Все остальные параметры работают одинаково с пагинацией и без неё
+📌 ЕДИНЫЕ ПАРАМЕТРЫ ФИЛЬТРАЦИИ:
+• search - текстовый поиск
+• ids - фильтр по ID через запятую (uuid1,uuid2,uuid3)
+• ordering - сортировка (name, -name, city__name)
+• page - номер страницы (включает пагинацию)
+• limit - размер страницы (работает только с ?page=)
+
+📌 ОСОБЕННОСТИ:
+• Пагинация отключена по умолчанию
+• ?page= включает пагинацию с размером 100
+• ?limit= меняет размер страницы при наличии ?page=
+• Все ViewSets используют единый стиль фильтрации
 """
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -38,7 +44,7 @@ from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
     LocalityType, City, AdministrativeTerritory,
     AdministrativeTerritorialUnit, StreetType, Street,
-    House, Building, Address
+    House, Building, Address, Coordinates
 )
 from .serializers import (
     CountrySerializer, FederalDistrictSerializer, TypeRegionSerializer,
@@ -46,14 +52,13 @@ from .serializers import (
     CitySerializer, AdministrativeTerritorySerializer,
     AdministrativeUnitSerializer, StreetTypeSerializer,
     StreetSerializer, HouseSerializer, BuildingSerializer,
-    AddressReadSerializer, AddressCreateSerializer,
-    AddressSearchSerializer, AddressBulkCreateSerializer
+    AddressReadSerializer, AddressCreateSerializer, CoordinatesSerializers
 )
 from .filters import (
-    CountryFilter, CityFilter, StreetFilter, AddressFilter
+    CountryFilter, RegionFilter, CityFilter, StreetFilter, AddressFilter
 )
 from .schemas import (
-    address_list_schema, country_list_schema,
+    country_list_schema,
     city_list_schema, street_list_schema
 )
 
@@ -66,16 +71,20 @@ class OptionalPagination(PageNumberPagination):
     """
     ПАГИНАЦИЯ, КОТОРАЯ ВКЛЮЧАЕТСЯ ТОЛЬКО ПРИ УКАЗАНИИ ПАРАМЕТРА ?page=
 
+    📌 ЕДИНЫЙ СТАНДАРТ ПАРАМЕТРОВ:
+    • page - номер страницы (включает пагинацию)
+    • limit - размер страницы (работает только с ?page=)
+
     ПОВЕДЕНИЕ:
     1. Без параметров → возвращаются ВСЕ данные
     2. С параметром ?page= → включается пагинация
-    3. С параметрами ?page= и ?page_size= → пагинация с указанным размером
+    3. С параметрами ?page= и ?limit= → пагинация с указанным размером
 
     ПРИМЕРЫ:
     • GET /api/addresses/addresses/ → все адреса
     • GET /api/addresses/addresses/?page=2 → пагинация (страница 2, размер 100)
-    • GET /api/addresses/addresses/?page=1&page_size=50 → страница 1, 50 записей
-    • GET /api/addresses/addresses/?search=Москва → все адреса Москвы
+    • GET /api/addresses/addresses/?page=1&limit=50 → страница 1, 50 записей
+    • GET /api/addresses/addresses/?search=Москва → все адреса Москвы (без пагинации)
 
     ОГРАНИЧЕНИЯ:
     • Максимальный размер страницы: 1000 записей
@@ -83,7 +92,7 @@ class OptionalPagination(PageNumberPagination):
     """
 
     page_size = 100  # Размер страницы по умолчанию при включении пагинации
-    page_size_query_param = 'page_size'
+    page_size_query_param = 'limit'
     max_page_size = 1000
 
     def paginate_queryset(self, queryset, request, view=None):
@@ -93,7 +102,7 @@ class OptionalPagination(PageNumberPagination):
         ЛОГИКА:
         1. Если есть параметр ?page= → включаем пагинацию
         2. Если нет параметра ?page= → возвращаем None (все данные)
-        3. Размер страницы берется из ?page_size= или используем page_size
+        3. Размер страницы берется из ?limit= или используем page_size
         """
         page = request.query_params.get(self.page_query_param)
 
@@ -118,11 +127,12 @@ class OptionalPagination(PageNumberPagination):
         С ПАГИНАЦИЕЙ:
         {
             "count": 1250,
-            "next": "http://.../?page=3",
-            "previous": "http://.../?page=1",
+            "next": "https://.../?page=3&limit=100",
+            "previous": "http://.../?page=1&limit=100",
             "results": [... записи страницы ...]
         }
         """
+
         if self.page is None:
             # Без пагинации - возвращаем просто список
             return Response({
@@ -138,7 +148,7 @@ class OptionalPagination(PageNumberPagination):
         ПОЛУЧЕНИЕ РАЗМЕРА СТРАНИЦЫ.
 
         ЛОГИКА:
-        1. Если указан ?page_size= → используем его
+        1. Если указан ?limit= → используем его
         2. Если не указан → используем page_size по умолчанию
         3. Ограничиваем максимальным размером max_page_size
         """
@@ -161,30 +171,35 @@ class OptionalPagination(PageNumberPagination):
     description="""
     Управление странами.
     
-    📌 ПАГИНАЦИЯ: Отключена по умолчанию.
-    Для включения пагинации используйте параметр ?page=
-    
+    📌 ПАРАМЕТРЫ ФИЛЬТРАЦИИ:
+    • search - поиск по названию страны
+    • ids - фильтр по ID через запятую (uuid1,uuid2)
+    • ordering - сортировка (name, -name)
+    • page - номер страницы (включает пагинацию)
+    • limit - размер страницы (только с ?page=)
+
     ПРИМЕРЫ:
     • GET /api/addresses/countries/ → все страны
     • GET /api/addresses/countries/?q=Рос → поиск стран с "Рос"
     • GET /api/addresses/countries/?page=2 → страница 2 (пагинация)
     • GET /api/addresses/countries/?ids=uuid1,uuid2 → фильтр по ID
+    • GET /api/addresses/countries/?page=1&limit=20 → страница 1, 20 записей
     """
 )
 class CountryViewSet(viewsets.ModelViewSet):
     """
     VIEWSET ДЛЯ УПРАВЛЕНИЯ СТРАНАМИ.
 
-    ПАГИНАЦИЯ: Включена только при ?page=
+    📌 ФИЛЬТРАЦИЯ:
+    • Единый стиль фильтрации (search, ids, ordering)
+    • Пагинация только при ?page=
     """
     queryset = Country.objects.all().order_by('name')
     serializer_class = CountrySerializer
-    pagination_class = OptionalPagination  # Пагинация только с ?page=
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    filterset_class = CountryFilter
-    search_fields = ['name']
-    ordering_fields = ['name']
-    ordering = ['name']
+    pagination_class = OptionalPagination
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]  # обращение к глобальному фильтру
+    filterset_class = CountryFilter  # логика фильтра для стран
+    ordering = ['name']  # Дефолтная сортировка
 
     @country_list_schema()
     def list(self, request, *args, **kwargs):
@@ -194,7 +209,15 @@ class CountryViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Федеральные округа"],
-    description="Управление федеральными округами (только для России)"
+    description = """
+    Управление федеральными округами (только для России)
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по названию или аббревиатуре
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+"""
 )
 class FederalDistrictViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ФЕДЕРАЛЬНЫМИ ОКРУГАМИ."""
@@ -210,7 +233,15 @@ class FederalDistrictViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Типы регионов"],
-    description="Управление типами регионов (область, край, республика и т.д.)"
+    description="""
+    Управление типами регионов (область, край, республика и т.д.)
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по названию или аббревиатуре
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+    """
 )
 class TypeRegionViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ТИПАМИ РЕГИОНОВ."""
@@ -225,7 +256,15 @@ class TypeRegionViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Часовые пояса"],
-    description="Управление часовыми поясами для регионов и городов"
+    description="""
+    Управление часовыми поясами для регионов и городов
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по названию
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка (по смещению от UTC)
+    • page, limit - пагинация (опционально)
+    """
 )
 class TimezoneViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ЧАСОВЫМИ ПОЯСАМИ."""
@@ -240,7 +279,21 @@ class TimezoneViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Регионы"],
-    description="Управление регионами (субъектами федерации)"
+    description="""
+    Управление регионами (субъектами федерации)
+
+    📌 ПАРАМЕТРЫ ФИЛЬТРАЦИИ:
+    • search - поиск по названию региона, аббревиатуре или федеральному округу
+    • ids - фильтр по ID через запятую
+    • federal_districts - фильтр по федеральным округам (uuid1,uuid2)
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+
+    ПРИМЕРЫ:
+    • GET /api/addresses/regions/?search=Моск
+    • GET /api/addresses/regions/?federal_districts=uuid-цфо
+    • GET /api/addresses/regions/?ids=uuid1,uuid2
+    """
 )
 class RegionViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ РЕГИОНАМИ."""
@@ -250,16 +303,22 @@ class RegionViewSet(viewsets.ModelViewSet):
 
     serializer_class = RegionSerializer
     pagination_class = OptionalPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    search_fields = ['name', 'abbreviated_name']
-    ordering_fields = ['name', 'federal_district__name', 'type_region__name']
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = RegionFilter  # ← С федеральными округами
     ordering = ['federal_district__name', 'name']
-    filterset_fields = ['federal_district', 'type_region', 'timezone']
 
 
 @extend_schema(
     tags=["Типы населенных пунктов"],
-    description="Управление типами населенных пунктов (город, деревня, поселок и т.д.)"
+    description="""
+    Управление типами населенных пунктов (город, деревня, поселок и т.д.)
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по названию или аббревиатуре
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+    """
 )
 class LocalityTypeViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ТИПАМИ НАСЕЛЕННЫХ ПУНКТОВ."""
@@ -276,13 +335,21 @@ class LocalityTypeViewSet(viewsets.ModelViewSet):
     tags=["Города"],
     description="""
     Управление городами и другими населенными пунктами.
-    
+
+    📌 ПАРАМЕТРЫ ФИЛЬТРАЦИИ:
+    • search - поиск по названию города, региона или федерального округа
+    • ids - фильтр по ID через запятую
+    • regions - фильтр по регионам (uuid1,uuid2)
+    • federal_districts - фильтр по федеральным округам (uuid1,uuid2)
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+
     ПРИМЕРЫ:
     • GET /api/addresses/cities/ → все города
     • GET /api/addresses/cities/?q=Моск → поиск городов
     • GET /api/addresses/cities/?countries=uuid1 → города страны
     • GET /api/addresses/cities/?regions=uuid1,uuid2 → города регионов
-    • GET /api/addresses/cities/?page=2 → пагинация
+    • GET /api/addresses/cities/?page=2&limit=50 → пагинация
     """
 )
 class CityViewSet(viewsets.ModelViewSet):
@@ -293,10 +360,8 @@ class CityViewSet(viewsets.ModelViewSet):
 
     serializer_class = CitySerializer
     pagination_class = OptionalPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    filterset_class = CityFilter
-    search_fields = ['name']
-    ordering_fields = ['name', 'region__name', 'locality_type__name']
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = CityFilter  # ← С регионами и федеральными округами
     ordering = ['region__name', 'name']
 
     @city_list_schema()
@@ -307,7 +372,15 @@ class CityViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Административные округа"],
-    description="Управление административными округами (для крупных городов)"
+    description="""
+    Управление административными округами (для крупных городов)
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по названию
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+    """
 )
 class AdministrativeTerritoryViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ АДМИНИСТРАТИВНЫМИ ОКРУГАМИ."""
@@ -323,7 +396,15 @@ class AdministrativeTerritoryViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Административно-территориальные единицы"],
-    description="Управление районами и округами в городах"
+    description="""
+    Управление районами и округами в городах
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по названию
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+    """
 )
 class AdministrativeTerritorialUnitViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ АДМИНИСТРАТИВНО-ТЕРРИТОРИАЛЬНЫМИ ЕДИНИЦАМИ."""
@@ -342,7 +423,15 @@ class AdministrativeTerritorialUnitViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Типы улиц"],
-    description="Управление типами улиц (улица, проспект, переулок и т.д.)"
+    description="""
+    Управление типами улиц (улица, проспект, переулок и т.д.)
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по названию или аббревиатуре
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+    """
 )
 class StreetTypeViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ТИПАМИ УЛИЦ."""
@@ -359,12 +448,19 @@ class StreetTypeViewSet(viewsets.ModelViewSet):
     tags=["Улицы"],
     description="""
     Управление улицами, проспектами, переулками и т.д.
-    
+
+    📌 ПАРАМЕТРЫ ФИЛЬТРАЦИИ:
+    • search - поиск по названию улицы или города
+    • ids - фильтр по ID через запятую
+    • cities - фильтр по городам (uuid1,uuid2)
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+
     ПРИМЕРЫ:
     • GET /api/addresses/streets/ → все улицы
     • GET /api/addresses/streets/?q=Ленина → поиск улиц
     • GET /api/addresses/streets/?cities=uuid1,uuid2 → улицы городов
-    • GET /api/addresses/streets/?page=2&page_size=50 → пагинация
+    • GET /api/addresses/streets/?page=2&limit=50 → пагинация
     """
 )
 class StreetViewSet(viewsets.ModelViewSet):
@@ -372,10 +468,8 @@ class StreetViewSet(viewsets.ModelViewSet):
     queryset = Street.objects.all().select_related('city', 'street_type').order_by('city__name', 'name')
     serializer_class = StreetSerializer
     pagination_class = OptionalPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    filterset_class = StreetFilter
-    search_fields = ['name']
-    ordering_fields = ['name', 'city__name', 'street_type__name']
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = StreetFilter  # ← С городами
     ordering = ['city__name', 'name']
 
     @street_list_schema()
@@ -386,7 +480,15 @@ class StreetViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Дома"],
-    description="Управление домами (зданиями) на улицах"
+    description="""
+    Управление домами (зданиями) на улицах
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по номеру дома
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+    """
 )
 class HouseViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ДОМАМИ."""
@@ -402,7 +504,15 @@ class HouseViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=["Строения"],
-    description="Управление строениями и корпусами домов"
+    description="""
+    Управление строениями и корпусами домов
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по номеру строения
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+    """
 )
 class BuildingViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ СТРОЕНИЯМИ."""
@@ -416,6 +526,27 @@ class BuildingViewSet(viewsets.ModelViewSet):
     filterset_fields = ['house']
 
 
+@extend_schema(
+    tags=["Координаты"],
+    description="""
+    Управление географическими координатами
+
+    📌 ПАРАМЕТРЫ:
+    • search - поиск по широте или долготе
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация (опционально)
+    """
+)
+class CoordinatesViewSet(viewsets.ModelViewSet):
+    serializer_class = CoordinatesSerializers
+    pagination_class = OptionalPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
+    search_fields = ['latitude', 'longitude']
+    ordering_fields = ['latitude', 'longitude']
+    ordering = ['latitude', 'longitude']
+    filterset_fields = ['latitude', 'longitude']
+
 # ====================================================================================
 # МОДУЛЬ 3: VIEWSET ДЛЯ АДРЕСОВ С ДОПОЛНИТЕЛЬНЫМИ МЕТОДАМИ
 # ====================================================================================
@@ -423,199 +554,81 @@ class BuildingViewSet(viewsets.ModelViewSet):
 @extend_schema(
     tags=["Адреса"],
     description="""
-    Управление полными адресами со всей иерархией.
-    
-    📌 ПАГИНАЦИЯ: Отключена по умолчанию.
-    
-    🔍 ПРИМЕРЫ ЗАПРОСОВ:
-    
-    1. ВСЕ АДРЕСА (без пагинации):
-       GET /api/addresses/addresses/
-    
-    2. УНИВЕРСАЛЬНЫЙ ПОИСК:
-       GET /api/addresses/addresses/?q=Москва Ленина 1
-    
-    3. ФИЛЬТРАЦИЯ ПО СТРАНАМ И ГОРОДАМ:
-       GET /api/addresses/addresses/?countries=uuid1,uuid2&cities=uuid3,uuid4
-    
-    4. ТОЛЬКО С КООРДИНАТАМИ:
-       GET /api/addresses/addresses/?has_coordinates=true
-    
-    5. ГЕОПОИСК (в радиусе 5 км):
-       GET /api/addresses/addresses/?near=55.7558,37.6173,5
-    
-    6. ПАГИНАЦИЯ (если нужно):
-       GET /api/addresses/addresses/?page=2&page_size=50
-       GET /api/addresses/addresses/?page=1&page_size=100&q=Москва
-    
-    7. СОРТИРОВКА:
-       GET /api/addresses/addresses/?ordering=city__name,-street__name
-    
-    📦 ДОПОЛНИТЕЛЬНЫЕ ЭНДПОИНТЫ:
-    
-    • POST /api/addresses/addresses/search/      - расширенный поиск
-    • POST /api/addresses/addresses/bulk_create/ - массовое создание
-    • POST /api/addresses/addresses/create_by_uuid/ - создание по UUID
-    • GET  /api/addresses/addresses/statistics/  - статистика
+    Управление полными адресами.
+
+    📌 ФИЛЬТРАЦИЯ:
+    • search - глобальный поиск по всем компонентам адреса
+    • ids - фильтр по ID через запятую
+    • ordering - сортировка
+    • page, limit - пагинация
+
+    📌 СОЗДАНИЕ АДРЕСОВ:
+
+    1. ПОЛНОЕ СОЗДАНИЕ (со всеми объектами):
+       POST /api/addresses/
+       {
+         "country": {"name": "Россия"},
+         "city": {"name": "Москва"},
+         "street": {"name": "Ленина"},
+         "house": {"number": "1"}
+       }
+
+    2. БЫСТРОЕ СОЗДАНИЕ ПО UUID:
+       POST /api/addresses/create_by_uuid/
+       {
+         "country": "uuid-россия",
+         "city": "uuid-москва",
+         "street": "uuid-ленина", 
+         "house": "uuid-дом1"
+       }
+
+    📌 ПРИМЕРЫ ЗАПРОСОВ:
+    • GET /api/addresses/addresses/?search=Москва Ленина
+    • GET /api/addresses/addresses/?ids=uuid1,uuid2,uuid3
+    • GET /api/addresses/addresses/?ordering=city__name&page=2
     """
 )
 class AddressViewSet(viewsets.ModelViewSet):
     """
-    VIEWSET ДЛЯ УПРАВЛЕНИЯ АДРЕСАМИ.
+    VIEWSET ДЛЯ УПРАВЛЕНИЯ АДРЕСАМИ С УПРОЩЁННОЙ ФИЛЬТРАЦИЕЙ.
 
-    ОСОБЕННОСТИ:
-    • Пагинация отключена по умолчанию (включается только с ?page=)
-    • Упрощенные фильтры для фронтенда
-    • Поддержка массовых операций
-    • Автоматическая проверка дубликатов
+    📌 ОСОБЕННОСТИ:
+    • Только search и ids фильтры
+    • Глобальный поиск по всем полям адреса
+    • Пагинация только при ?page=
+    • Единый стандарт параметров (page, limit)
     """
 
     queryset = Address.objects.all().select_related(
         'country', 'federal_district', 'region', 'city',
         'administrative_territory', 'administrative_unit',
-        'street', 'house', 'building'
+        'street', 'house', 'building', 'coordinates'
     ).order_by(
         'country__name', 'region__name', 'city__name',
         'street__name', 'house__number', 'building__number'
     )
 
     pagination_class = OptionalPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    filterset_class = AddressFilter
-    ordering_fields = [
-        'country__name', 'region__name', 'city__name',
-        'street__name', 'house__number', 'building__number',
-        'index', 'microdistrict', 'latitude', 'longitude'
-    ]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = AddressFilter  # ← Упрощённый фильтр
     ordering = ['country__name', 'region__name', 'city__name']
 
     def get_serializer_class(self):
-        """ВЫБОР СЕРИАЛИЗАТОРА В ЗАВИСИМОСТИ ОТ ДЕЙСТВИЯ."""
+        """ВЫБОР СЕРИАЛИЗАТОРА."""
         if self.action in ['create', 'update', 'partial_update']:
             return AddressCreateSerializer
         return AddressReadSerializer
 
-    @address_list_schema()
-    def list(self, request, *args, **kwargs):
-        """
-        СПИСОК АДРЕСОВ.
-
-        ВОЗВРАЩАЕТ ВСЕ АДРЕСА БЕЗ ПАГИНАЦИИ ПО УМОЛЧАНИЮ.
-        ДЛЯ ВКЛЮЧЕНИЯ ПАГИНАЦИИ ИСПОЛЬЗУЙТЕ ПАРАМЕТР ?page=
-        """
-        return super().list(request, *args, **kwargs)
-
     # ==========================================================================
-    # СПЕЦИАЛЬНЫЕ МЕТОДЫ
+    # СПЕЦИАЛЬНЫЕ МЕТОДЫ (ОСТАВЛЯЕМ ТОЛЬКО НУЖНЫЕ)
     # ==========================================================================
-
-    @extend_schema(
-        summary="Расширенный поиск адресов",
-        description="""
-        Расширенный поиск адресов с поддержкой всех фильтров.
-        Используйте этот метод для сложных запросов.
-        
-        ПРИМЕР ЗАПРОСА:
-        ```json
-        {
-            "q": "Москва Ленина",
-            "countries": ["uuid1", "uuid2"],
-            "has_coordinates": true,
-            "ordering": ["city__name", "-street__name"],
-            "limit": 100,
-            "offset": 0
-        }
-        ```
-        """,
-        request=AddressSearchSerializer,
-        responses={200: AddressReadSerializer(many=True)}
-    )
-    @action(detail=False, methods=['post'])
-    def search(self, request):
-        """Расширенный поиск адресов."""
-        search_serializer = AddressSearchSerializer(data=request.data)
-        search_serializer.is_valid(raise_exception=True)
-
-        validated_data = search_serializer.validated_data
-        queryset = self.get_queryset()
-
-        # Применяем фильтры
-        if validated_data.get('query'):
-            # Используем наш фильтр для поиска
-            address_filter = AddressFilter(
-                {'q': validated_data['query']},
-                queryset=queryset,
-                request=request
-            )
-            queryset = address_filter.qs
-
-        # Применяем другие фильтры
-        if validated_data.get('country'):
-            queryset = queryset.filter(country_id=validated_data['country'])
-
-        if validated_data.get('city'):
-            queryset = queryset.filter(city_id=validated_data['city'])
-
-        if validated_data.get('limit'):
-            limit = validated_data['limit']
-            offset = validated_data.get('offset', 0)
-            queryset = queryset[offset:offset + limit]
-
-        serializer = AddressReadSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @extend_schema(
-        summary="Массовое создание адресов",
-        description="""
-        Создание нескольких адресов за один запрос.
-        Идеально для импорта данных.
-        
-        ПРИМЕР ЗАПРОСА:
-        ```json
-        {
-            "addresses": [
-                {
-                    "country": {"name": "Россия"},
-                    "city": {"name": "Москва"},
-                    "street": {"name": "Ленина"},
-                    "house": {"number": "1"},
-                    "index": "101000"
-                },
-                {
-                    "country": {"name": "Россия"},
-                    "city": {"name": "Санкт-Петербург"},
-                    "street": {"name": "Невский проспект"},
-                    "house": {"number": "10"}
-                }
-            ]
-        }
-        ```
-        """,
-        request=AddressBulkCreateSerializer,
-        responses={201: AddressReadSerializer(many=True)}
-    )
-    @action(detail=False, methods=['post'])
-    def bulk_create(self, request):
-        """Массовое создание адресов."""
-        serializer = AddressBulkCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        result = serializer.save()
-        addresses = result['addresses']
-        read_serializer = AddressReadSerializer(addresses, many=True)
-
-        return Response(
-            {'addresses': read_serializer.data},
-            status=status.HTTP_201_CREATED
-        )
 
     @extend_schema(
         summary="Создание адреса по UUID",
         description="""
-        Создание адреса по UUID существующих объектов.
-        Быстрее, чем создание с полной структурой.
-        
-        ПРИМЕР ЗАПРОСА:
+        Быстрое создание адреса по UUID существующих объектов.
+
+        📌 ПРИМЕР ЗАПРОСА:
         ```json
         {
             "country": "550e8400-e29b-41d4-a716-446655440000",
@@ -623,8 +636,7 @@ class AddressViewSet(viewsets.ModelViewSet):
             "street": "550e8400-e29b-41d4-a716-446655440002",
             "house": "550e8400-e29b-41d4-a716-446655440003",
             "index": "101000",
-            "latitude": "55.7558",
-            "longitude": "37.6173"
+            "coordinates": "550e8400-e29b-41d4-a716-446655440004"
         }
         ```
         """,
@@ -675,15 +687,14 @@ class AddressViewSet(viewsets.ModelViewSet):
                 if not address_data.get('house'):
                     address_data['house'] = address_data['building'].house
 
+            if data.get('coordinates'):
+                address_data['coordinates'] = get_object_or_404(Coordinates, id=data['coordinates'])
+
             # Дополнительные поля
             if data.get('microdistrict'):
                 address_data['microdistrict'] = data['microdistrict']
             if data.get('index'):
                 address_data['index'] = data['index']
-            if data.get('latitude'):
-                address_data['latitude'] = data['latitude']
-            if data.get('longitude'):
-                address_data['longitude'] = data['longitude']
 
             # Создаем адрес
             serializer = AddressCreateSerializer(data=address_data)
@@ -706,29 +717,19 @@ class AddressViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="Статистика по адресам",
         description="""
-        Получение статистической информации по адресам.
-        
-        ВОЗВРАЩАЕТ:
-        • Общее количество адресов
-        • Распределение по странам
-        • Распределение по регионам
-        • Распределение по городам
-        • Процент адресов с координатами
-        • Процент адресов с почтовым индексом
+        Статистическая информация по адресам.
         """
     )
     @action(detail=False, methods=['get'])
     def statistics(self, request):
         """Статистика по адресам."""
-        from django.db.models import Count, Q, F, ExpressionWrapper, FloatField
-        from django.db.models.functions import Cast
+        from django.db.models import Count
 
         total = Address.objects.count()
 
         # Базовые статистики
         with_coordinates = Address.objects.filter(
-            latitude__isnull=False,
-            longitude__isnull=False
+            coordinates__isnull=False
         ).count()
 
         with_index = Address.objects.filter(
