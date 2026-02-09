@@ -9,7 +9,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # Безопасное получение DEBUG
 DEBUG = os.environ.get('DEBUG', '').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '192.168.0.51, localhost').split(', ')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1, localhost').split(', ')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -173,7 +173,7 @@ from datetime import timedelta
 
 # ВАЖНО: Это URL, который будет видеть браузер. Он должен вести через ваш шлюз (gateway)
 # Например, через nginx или cloudfront
-STATIC_URL = f"https://{os.environ.get('MINIO_EXTERNAL_ENDPOINT')}/static/"
+STATIC_URL = f"https://{os.environ.get('MINIO_EXTERNAL_ENDPOINT', 'api1.krasrm.com')}/static/"
 
 # НАСТРОЙКИ ХРАНИЛИЩ DJANGO 4.2+ (СТАНДАРТНЫЙ ФОРМАТ)
 STORAGES = {

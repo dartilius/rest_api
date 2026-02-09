@@ -1288,19 +1288,17 @@ class Address(models.Model):
         help_text="6-значный почтовый индекс"
     )
 
-    latitude = models.DecimalField(
+    latitude = models.CharField(
         "Широта",
-        max_digits=9,
-        decimal_places=6,
+	max_length=20,
         blank=True,
         null=True,
         help_text="Географическая широта места расположения объекта"
     )
 
-    longitude = models.DecimalField(
+    longitude = models.CharField(
         "Долгота",
-        max_digits=9,
-        decimal_places=6,
+        max_length=20,
         blank=True,
         null=True,
         help_text="Географическая долгота места расположения объекта"
