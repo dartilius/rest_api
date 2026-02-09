@@ -10,19 +10,23 @@ from api import ContactInformation
 from api.base_objects import UUIDPKField
 from api.custom_managers import CustomUserManager
 
-
 CONTACT_PERSON_ROLES = [
     ('broadcast', 'Корп. вещание'),
     ('ad', 'Реклама'),
 ]
 
-ROLES = [
+EMPLOYEE_ROLES = [
     ('admin', 'Сотрудник ТО'),
     ('manager', 'Менеджер'),
     ('superuser', 'Суперпользователь'),
-    ('ordinary', 'Пользователь'),
-] + CONTACT_PERSON_ROLES
+]
 
+ROLES = [
+    ('ordinary', 'Пользователь'),
+] + CONTACT_PERSON_ROLES + EMPLOYEE_ROLES
+
+EMPLOYEE_ROLE_KEYS = {r[0] for r in EMPLOYEE_ROLES}
+CONTACT_PERSON_ROLE_KEYS = {r[0] for r in CONTACT_PERSON_ROLES}
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Пользователи."""
@@ -143,7 +147,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     @property
     def is_super_user(self):
         """Проверяем, что это superuser."""
-        return self.role == 'superuser'
+        return self.role in EMPLOYEE_ROLE_KEYS
 
     @property
     def is_contact_person_ad(self):
@@ -154,6 +158,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def is_contact_person_broadcast(self):
         """Контактное лицо — корп. вещание."""
         return self.role == 'broadcast'
+
+    @property
+    def is_employee(self) -> bool:
+        return self.role in EMPLOYEE_ROLE_KEYS
+
+    @property
+    def is_contact_person(self) -> bool:
+        return self.role in CONTACT_PERSON_ROLE_KEYS
+
 
     @property
     def full_name(self):
@@ -179,4 +192,3 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.full_name
-

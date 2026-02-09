@@ -19,13 +19,13 @@ class SuperuserCUDAuthRetrieve(BasePermission):
         if request.method in SAFE_METHODS:
             return request.user.is_authenticated
 
-        return request.user.is_authenticated and request.user.is_superuser
+        return request.user.is_authenticated and request.user.is_super_user
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
             return request.user.is_authenticated
 
-        return request.user.is_authenticated and request.user.is_superuser
+        return request.user.is_authenticated and request.user.is_super_user
 
 
 class OnlyStaffCRUD(BasePermission):
@@ -34,10 +34,10 @@ class OnlyStaffCRUD(BasePermission):
     message = error_message
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and not request.user.is_ordinary
+        return request.user.is_authenticated and request.user.is_super_user
 
     def has_object_permission(self, request, view, obj):
-        return request.user.is_authenticated and not request.user.is_ordinary
+        return request.user.is_authenticated and request.user.is_super_user
 
 
 class StaffCUDAuthRetrieve(BasePermission):

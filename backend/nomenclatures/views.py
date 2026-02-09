@@ -1,15 +1,15 @@
 from datetime import datetime as dt
 
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN,
+    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN,
 )
 
 from api.constants import (
@@ -18,7 +18,6 @@ from api.constants import (
     DetailSerializer,
     VersionsSerializer,
 )
-from api.filters import UniversalSearchFilter
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -53,12 +52,189 @@ from nomenclatures.tasks import (
     custom_task,
     settings_task,
 )
-from orders.views import NoDeleteViewSet
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
-from users.permissions import StaffCUDallRead
+from users.permissions import StaffCUDallRead, OnlyStaffCRUD
 
 
+def _is_admin(user):
+    return (
+            user.is_authenticated and (
+            user.is_admin
+            or user.is_superuser
+            or user.is_manager
+    )
+    )
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список активных номенклатур",
+        examples=[
+            OpenApiExample(
+                "Список номенклатур",
+                value={
+                    "count": 1,
+                    "next": None,
+                    "previous": None,
+                    "results": [
+                        {
+                            "id": "bac7368a-7b67-429e-8e39-e19d956dfe68",
+                            "legalEntity": {
+                                "id": "5f21b0b1-d882-40af-9d60-eb9c61811799",
+                                "name": "Testik1 Testov1, FL"
+                            },
+                            "tenants": {"name": None},
+                            "brand": {
+                                "id": "f0dc2a06-9698-423b-a7f2-b19fcacb17b7",
+                                "name": "тест бренд",
+                                "logotype": "http://example.com/logo.png",
+                                "created": "2026-01-26T15:19:04.607851",
+                                "description": "кекв",
+                                "code1c": ""
+                            },
+                            "exterior": [{"source": "http://example.com/exterior.jpg"}],
+                            "interior": [{"source": "http://example.com/interior.jpg"}],
+                            "code1c": "00000005592",
+                            "contentType": "Аудио",
+                            "article": 2,
+                            "address": {
+                                "full_address": "735847, Россия, kr Krasnoyarskiy, c Krasnoyarsk, street krasnoy armii, д. 10, стр. c3, central"
+                            },
+                            "is_active": False,
+                            "media": ["Телевизор Starwind LED SW-LED43BA201 43\""],
+                            "settings": {},
+                            "hw_info": None,
+                            "typeOfPlace": "Офисное помещение",
+                            "pricePerMonth": "15000.00",
+                            "responsible_radio": "5d9f1947-a06d-4620-b4dd-6c7690be841b",
+                            "responsible_ad": "96e701fd-dc0f-4687-ba05-9d402f1062b7",
+                            "main_info": {
+                                "name": "тест",
+                                "description": "тестовое описание",
+                                "owner": "None одмен",
+                                "timezone": "UTC +7",
+                                "status": None,
+                                "last_answer": "Не выходила в сеть",
+                                "version": "111",
+                                "created": "2026-01-23 06:35:24"
+                            },
+                            "broadcast": True
+                        }
+                    ]
+                },
+                response_only=True,
+                status_codes=[HTTP_200_OK],
+            )
+        ],
+        responses={HTTP_200_OK: 'NomenclatureSerializer(many=True)'}
+    ),
+    retrieve=extend_schema(
+        summary="Получить номенклатуру по ID",
+        examples=[
+            OpenApiExample(
+                "Номенклатура по ID",
+                value={
+                    "id": "bac7368a-7b67-429e-8e39-e19d956dfe68",
+                    "legalEntity": {
+                        "id": "5f21b0b1-d882-40af-9d60-eb9c61811799",
+                        "name": "Testik1 Testov1, FL"
+                    },
+                    "tenants": {"name": None},
+                    "brand": {
+                        "id": "f0dc2a06-9698-423b-a7f2-b19fcacb17b7",
+                        "name": "тест бренд",
+                        "logotype": "http://example.com/logo.png",
+                        "created": "2026-01-26T15:19:04.607851",
+                        "description": "кекв",
+                        "code1c": ""
+                    },
+                    "exterior": [{"source": "http://example.com/exterior.jpg"}],
+                    "interior": [{"source": "http://example.com/interior.jpg"}],
+                    "code1c": "00000005592",
+                    "contentType": "Аудио",
+                    "article": 2,
+                    "address": {
+                        "full_address": "735847, Россия, kr Krasnoyarskiy, c Krasnoyarsk, street krasnoy armii, д. 10, стр. c3, central"
+                    },
+                    "is_active": False,
+                    "media": ["Телевизор Starwind LED SW-LED43BA201 43\""],
+                    "settings": {},
+                    "hw_info": None,
+                    "typeOfPlace": "Офисное помещение",
+                    "pricePerMonth": "15000.00",
+                    "responsible_radio": "5d9f1947-a06d-4620-b4dd-6c7690be841b",
+                    "responsible_ad": "96e701fd-dc0f-4687-ba05-9d402f1062b7",
+                    "main_info": {
+                        "name": "тест",
+                        "description": "тестовое описание",
+                        "owner": "None одмен",
+                        "timezone": "UTC +7",
+                        "status": None,
+                        "last_answer": "Не выходила в сеть",
+                        "version": "111",
+                        "created": "2026-01-23 06:35:24"
+                    },
+                    "broadcast": True
+                },
+                response_only=True,
+                status_codes=[HTTP_200_OK],
+            )
+        ],
+        responses={HTTP_200_OK: 'NomenclatureSerializer()'}
+    ),
+    update=extend_schema(summary="Обновление номенклатуры"),
+    partial_update=extend_schema(summary="Частичное обновление номенклатуры"),
+    destroy=extend_schema(summary="Деактивация номенклатуры"),
+
+    inactive=extend_schema(summary="Список деактивированных номенклатур"),
+    inactive_detail=extend_schema(summary="Работа с деактивированной номенклатурой"),
+    broadcast=extend_schema(summary="Список номенклатур для вещания"),
+    get_one_by_code1c=extend_schema(summary="Получить номенклатуру по code1c"),
+    get_versions=extend_schema(summary="Список всех версий номенклатур"),
+    get_id=extend_schema(summary="Получить UUID номенклатуры по описанию"),
+
+    resend_orders=extend_schema(
+        summary="Переотправка заказов",
+
+    ),
+    send_task=extend_schema(
+        summary="Создать задачу",
+
+    ),
+    get_tasks=extend_schema(
+        summary="Получить список репликаций номенклатуры",
+
+    ),
+    get_ad_stat=extend_schema(
+        summary="Получить статистику рекламы по номенклатуре",
+
+    ),
+    get_music_stat=extend_schema(
+        summary="Получить статистику музыки по номенклатуре",
+
+    ),
+    get_video_stat=extend_schema(
+        summary="Получить статистику фоновых видео по номенклатуре",
+
+    ),
+    get_image_stat=extend_schema(
+        summary="Получить статистику фоновых изображений по номенклатуре",
+
+    ),
+    get_ticker_stat=extend_schema(
+        summary="Получить статистику бегущих строк по номенклатуре",
+
+    ),
+    status_history=extend_schema(
+        summary="Получить историю доступности номенклатуры",
+
+    ),
+    add_photo=extend_schema(
+        summary="Прикрепить фотографии номенклатуры",
+
+    )
+)
 @extend_schema(tags=["Номенклатуры"])
 class NomenclatureViewSet(viewsets.ModelViewSet):
     """Работа с номенклатурами."""
@@ -71,11 +247,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     # Указываем фильтр бэкенд
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter  # вот здесь передаем FilterSet
-
-    # filterset_class = NomenclatureFilter
-    #
-    # search_depth = 2  # глубина вложенности связей
-    # search_excluded_fields = ["brand__description"] # допонительно исключаем поля в UniversalSearchFilter
 
     def get_serializer(self, *args, **kwargs):
         if self.action == "list":
@@ -93,31 +264,75 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    # def get_queryset(self):
-    #     return (
-    #         Nomenclature.active
-    #         .select_related("owner", "availability", "brand", "address")
-    #         .prefetch_related("images")
-    #         .exclude(legalEntity__broadcast=True)
-    #     )
+    @extend_schema(summary="Список деактивированных номенклатур")
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="inactive_list",
+        permission_classes=[OnlyStaffCRUD]
+    )
+    def inactive(self, request):
+        qs = (
+            Nomenclature.inactive
+            .select_related("owner", "availability", "brand", "address")
+            .prefetch_related("images")
+        )
+
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page or qs, many=True)
+        return (
+            self.get_paginated_response(serializer.data)
+            if page is not None
+            else Response(serializer.data)
+        )
+
+    @extend_schema(summary="Работа с деактивированной номенклатурой")
+    @action(
+        detail=True,
+        methods=["get", "patch"],
+        url_path="inactive",
+        permission_classes=[OnlyStaffCRUD]
+    )
+    def inactive_detail(self, request, pk=None):
+        try:
+            instance = (
+                Nomenclature.inactive
+                .select_related("owner", "availability", "brand", "address")
+                .prefetch_related("images")
+                .get(pk=pk)
+            )
+        except Nomenclature.DoesNotExist:
+            return Response(
+                {"detail": "Номенклатура не найдена"},
+                status=404,
+            )
+
+        # GET → расшифровка
+        if request.method == "GET":
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+
+        # PATCH → обновление
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     @action(detail=False, methods=["GET"], url_path="broadcast")
     def broadcast(self, request):
         user = request.user
         is_broadcast = user.is_contact_person_broadcast
-        is_ad = user.is_contact_person_ad
-        is_admin = (
-                user.is_admin
-                or user.is_superuser
-                or user.is_manager
-        )
 
-        if (not user.is_authenticated and not is_admin) or (not user.is_authenticated and not is_broadcast):
-            return Response({f'message': 'Недостаточно прав.',
-                                         'is_admin': f'{is_admin}'}, status=HTTP_403_FORBIDDEN)
+        if (not user.is_authenticated and not _is_admin(request.user)) or (
+                not user.is_authenticated and not is_broadcast):
+            return Response({f'message': 'Недостаточно прав.'}, status=HTTP_403_FORBIDDEN)
 
         # --- ключевая логика ---
-        if is_admin:
+        if _is_admin(request.user):
             qs = (
                 Nomenclature.active
                 .select_related("owner", "availability", "brand", "address")
@@ -149,7 +364,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         )
         updatable_fields = (
             "name", "description", "timezone", "settings", "brand_id", "legalEntity_id", "tenants_id",
-            # "floor_space", "traffic",
+            "floor_space", "traffic",
             "responsible_radio", "responsible_ad", "media", "contentType",
             "typeOfPlace", "pricePerMonth", "address_data", "address_id"
         )
@@ -226,7 +441,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             description=request.data["description"]
         )
         return Response({"id": nomenclature.pk})
-
 
     @action(detail=True, methods=["POST"], permission_classes=[AllowAny])
     def pending_tasks(self, request, pk):
