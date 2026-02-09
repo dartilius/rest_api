@@ -199,22 +199,22 @@ services:
   #         memory: 2G
   #         cpus: '2'
 
-  frontend:
-    image: registry.krasrm.com/pahapasha11/new-lk:latest
-    container_name: frontend
+  # frontend:
+  #   image: registry.krasrm.com/pahapasha11/new-lk:latest
+  #   container_name: frontend
 
-    env_file: .env
-    restart: unless-stopped
+  #   env_file: .env
+  #   restart: unless-stopped
 
-    ports:
-      - 3000:3000
+  #   ports:
+  #     - 3000:3000
 
-    depends_on:
-      backend:
-        condition: service_healthy
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
 
-    volumes:
-      - ./file/static:/frontend_static
+  #   volumes:
+  #     - ./file/static:/frontend_static
 
   gateway:
     build: ./nginx
