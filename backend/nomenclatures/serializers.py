@@ -31,11 +31,18 @@ class PhotoSerializer(serializers.ModelSerializer):
     """Схема добавления фотографий к номенклатуре."""
 
     source = Base64FileField(write_only=True)
+    source_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = NomenclatureImage
-        fields = ("id", "source", "type", "created", "nomenclature")
-        read_only_fields = ("id", "created", "nomenclature")
+        fields = ("id", "source", "source_url", "type", "created", "nomenclature")
+        read_only_fields = ("id", "created", "nomenclature", "source_url")
+
+    def get_source_url(self, obj):
+        """Возвращает URL файла в ответе."""
+        if obj.source:
+            return obj.source.url
+        return None
 
 
 class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
