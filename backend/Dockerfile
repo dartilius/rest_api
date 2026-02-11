@@ -1,4 +1,4 @@
-FROM python:3.13.6-slim AS builder
+FROM python:3.14.2-slim AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r updated_req.tx
 
 # --------------------------------------------------------------------- #
 
-FROM python:3.13.6-slim
+FROM python:3.14.2-slim
 
 WORKDIR /app
 

@@ -37,6 +37,7 @@ from django.db import models
 from django.contrib.postgres.indexes import GinIndex, BTreeIndex
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
+from django.core.exceptions import ValidationError
 
 
 # ====================================================================================
@@ -1324,6 +1325,22 @@ class Address(models.Model):
         help_text="6-значный почтовый индекс"
     )
 
+    latitude = models.CharField(
+        "Широта",
+	max_length=20,
+        blank=True,
+        null=True,
+        help_text="Географическая широта места расположения объекта"
+    )
+
+    longitude = models.CharField(
+        "Долгота",
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="Географическая долгота места расположения объекта"
+    )
+
     class Meta:
         verbose_name = "Адрес"
         verbose_name_plural = "Адреса"
@@ -1510,7 +1527,6 @@ class Address(models.Model):
         ВЫБРАСЫВАЕТ ИСКЛЮЧЕНИЯ:
             ValidationError: При нарушении правил иерархии
         """
-        from django.core.exceptions import ValidationError
 
         errors = {}
 

@@ -9,7 +9,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # Безопасное получение DEBUG
 DEBUG = os.environ.get('DEBUG', '').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '192.168.0.51, localhost').split(', ')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1, localhost').split(', ')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -171,25 +171,32 @@ SPECTACULAR_SETTINGS = {
 # ---------------------------------- MINIO ---------------------------------- #
 from datetime import timedelta
 
-# ВАЖНО: Это URL, который будет видеть браузер. Он должен вести через ваш шлюз (gateway)
-# Например, через nginx или cloudfront
-STATIC_URL = f"https://{os.environ.get('MINIO_EXTERNAL_ENDPOINT')}/static/"
+# =========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===========
+MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT', 'files:9000')
+MINIO_ACCESS_KEY = os.environ.get('MINIO_STORAGE_ACCESS_KEY')
+MINIO_SECRET_KEY = os.environ.get('MINIO_STORAGE_SECRET_KEY')
+MINIO_USE_HTTPS = os.environ.get('MINIO_HTTPS', 'false').lower() == 'true'
+MINIO_EXTERNAL_ENDPOINT = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
+MINIO_EXTERNAL_ENDPOINT_USE_HTTPS = os.environ.get('MINIO_EXTERNAL_HTTPS', 'true').lower() == 'true'
+MINIO_REGION = os.environ.get('MINIO_REGION', 'us-east-1')
 
-# НАСТРОЙКИ ХРАНИЛИЩ DJANGO 4.2+ (СТАНДАРТНЫЙ ФОРМАТ)
+MINIO_PUBLIC_BUCKETS = ['local-static']
+MINIO_PRIVATE_BUCKETS = ['local-media']
+
+# =========== STORAGES ===========
 STORAGES = {
     'default': {
         'BACKEND': 'django_minio_backend.models.MinioBackend',
         'OPTIONS': {
-            'MINIO_ENDPOINT': os.environ.get('MINIO_ENDPOINT', 'files:9000'),
-            'MINIO_ACCESS_KEY': os.environ.get('MINIO_STORAGE_ACCESS_KEY', 'minioadmin'),
-            'MINIO_SECRET_KEY': os.environ.get('MINIO_STORAGE_SECRET_KEY', 'minioadmin'),
-            'MINIO_USE_HTTPS': os.environ.get('MINIO_HTTPS', 'false').lower() == 'true',
-            'MINIO_REGION': os.environ.get('MINIO_REGION', 'us-east-1'),
-            # Ключевой параметр! Говорим Django, какой URL использовать для доступа к файлам
-            'MINIO_EXTERNAL_ENDPOINT': os.environ.get('MINIO_EXTERNAL_ENDPOINT', 'api1.krasrm.com'),
-            'MINIO_EXTERNAL_ENDPOINT_USE_HTTPS': os.environ.get('MINIO_EXTERNAL_HTTPS', 'true').lower() == 'true',
-            'MINIO_PRIVATE_BUCKETS': ['local-media'],
-            'MINIO_PUBLIC_BUCKETS': ['local-static'],
+            'MINIO_ENDPOINT': MINIO_ENDPOINT,
+            'MINIO_ACCESS_KEY': MINIO_ACCESS_KEY,
+            'MINIO_SECRET_KEY': MINIO_SECRET_KEY,
+            'MINIO_USE_HTTPS': MINIO_USE_HTTPS,
+            'MINIO_REGION': MINIO_REGION,
+            'MINIO_EXTERNAL_ENDPOINT': MINIO_EXTERNAL_ENDPOINT,
+            'MINIO_EXTERNAL_ENDPOINT_USE_HTTPS': MINIO_EXTERNAL_ENDPOINT_USE_HTTPS,
+            'MINIO_PRIVATE_BUCKETS': MINIO_PRIVATE_BUCKETS,
+            'MINIO_PUBLIC_BUCKETS': MINIO_PUBLIC_BUCKETS,
             'MINIO_URL_EXPIRY_HOURS': timedelta(days=1),
             'MINIO_CONSISTENCY_CHECK_ON_START': False,
         }
@@ -197,16 +204,15 @@ STORAGES = {
     'staticfiles': {
         'BACKEND': 'django_minio_backend.models.MinioBackendStatic',
         'OPTIONS': {
-            'MINIO_ENDPOINT': os.environ.get('MINIO_ENDPOINT', 'files:9000'),
-            'MINIO_ACCESS_KEY': os.environ.get('MINIO_STORAGE_ACCESS_KEY'),
-            'MINIO_SECRET_KEY': os.environ.get('MINIO_STORAGE_SECRET_KEY'),
-            'MINIO_USE_HTTPS': os.environ.get('MINIO_HTTPS', 'false').lower() == 'true',
-            'MINIO_REGION': os.environ.get('MINIO_REGION', 'us-east-1'),
-            # Для статики тоже нужен внешний endpoint
-            'MINIO_EXTERNAL_ENDPOINT': os.environ.get('MINIO_EXTERNAL_ENDPOINT'),
-            'MINIO_EXTERNAL_ENDPOINT_USE_HTTPS': os.environ.get('MINIO_EXTERNAL_HTTPS', 'true').lower() == 'true',
+            'MINIO_ENDPOINT': MINIO_ENDPOINT,
+            'MINIO_ACCESS_KEY': MINIO_ACCESS_KEY,
+            'MINIO_SECRET_KEY': MINIO_SECRET_KEY,
+            'MINIO_USE_HTTPS': MINIO_USE_HTTPS,
+            'MINIO_REGION': MINIO_REGION,
+            'MINIO_EXTERNAL_ENDPOINT': MINIO_EXTERNAL_ENDPOINT,
+            'MINIO_EXTERNAL_ENDPOINT_USE_HTTPS': MINIO_EXTERNAL_ENDPOINT_USE_HTTPS,
             'MINIO_STATIC_FILES_BUCKET': 'local-static',
-            'MINIO_URL_EXPIRY_HOURS': timedelta(days=365),  # Для статики можно больше
+            'MINIO_URL_EXPIRY_HOURS': timedelta(days=365),
             'MINIO_CONSISTENCY_CHECK_ON_START': True,
         }
     },

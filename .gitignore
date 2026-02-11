@@ -172,4 +172,8 @@ downloaded_files/
 .next
 .vscode
 /node_modules
-.DS_Store
+.DS_Storeclickhouse-config/
+configs/
+*.dump
+*.backup.*
+*.bak*

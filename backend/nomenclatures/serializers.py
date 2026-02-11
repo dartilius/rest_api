@@ -31,11 +31,18 @@ class PhotoSerializer(serializers.ModelSerializer):
     """Схема добавления фотографий к номенклатуре."""
 
     source = Base64FileField(write_only=True)
+    source_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = NomenclatureImage
-        fields = ("id", "source", "type", "created", "nomenclature")
-        read_only_fields = ("id", "created", "nomenclature")
+        fields = ("id", "source", "source_url", "type", "created", "nomenclature")
+        read_only_fields = ("id", "created", "nomenclature", "source_url")
+
+    def get_source_url(self, obj):
+        """Возвращает URL файла в ответе."""
+        if obj.source:
+            return obj.source.url
+        return None
 
 
 class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
@@ -53,7 +60,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
-    tenants = CounterpartiesShortSerializer(read_only=True)
+    tenants = CounterpartiesShortSerializer(read_only=True, many=True)
     legalEntity_id = serializers.PrimaryKeyRelatedField(
         queryset=Counterparty.objects.all(),
         source="legalEntity",
@@ -480,6 +487,14 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             obj.images.filter(type="exterior"), many=True
         ).data
 
+    def _user_id_name(self, user):
+        if not user:
+            return None
+        return {
+            "id": user.id,
+            "full_name": user.full_name,
+    }
+
     def to_representation(self, obj):
         repr_ = super().to_representation(obj)
 
@@ -495,6 +510,17 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "created": f"{obj.created:%Y-%m-%d %H:%M:%S}",
         }
 
+        repr_["responsible"] = {
+            "ad": self._user_id_name(obj.responsible_ad),
+            "radio": self._user_id_name(obj.responsible_radio),
+            "technic": self._user_id_name(obj.responsible_technic),
+            "technic_on_address": self._user_id_name(obj.responsible_technic_on_address),
+            "placment_markentig": self._user_id_name(obj.responsible_placement_marketing),
+        }
+
+        repr_["tenants_length"] = len(obj.tenants.all()) if obj.tenants else 0
+
+
         # Добавляем broadcast
         repr_["broadcast"] = getattr(obj.legalEntity, "broadcast", None)
 
@@ -503,6 +529,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         for field in repr_["main_info"]:
             if field in repr_:
                 repr_.pop(field)
+
+        for field in (
+            "responsible_ad",
+            "responsible_radio",
+            "responsible_technic",
+            "responsible_technic_on_address",
+            "responsible_placement_marketing",
+        ):
+            repr_.pop(field, None)
 
         # Обработка settings (точная копия оригинала)
         if "settings" in repr_ and repr_["settings"]:
