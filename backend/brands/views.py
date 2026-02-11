@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK, HTTP_204_NO_CONTENT,
 )
-
+from rest_framework.decorators import action
 from api.constants import (
     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
 )
@@ -219,3 +219,20 @@ class BrandViewSet(viewsets.ModelViewSet):
             return brand
         except Brand.DoesNotExist:
             raise NotFound("Бренд не найден.")
+
+    @action(
+        methods=["POST"],
+        detail=True,
+        url_path="unpin_logo",
+    )
+    def unpin_logo(self, request, pk=None, *args, **kwargs):
+        """
+        Открепить логотип от бренда. Логотип будет удален из системы, если не прикреплен ни к одному бренду.
+        """
+        identifier = self.kwargs.get(self.lookup_field)
+        uuid_obj = UUID(str(identifier))
+        brand = Brand.all_objects.get(id=uuid_obj)
+        brand.logotype.delete(save=False)
+        brand.logotype = None
+        brand.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
