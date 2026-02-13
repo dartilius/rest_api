@@ -5,7 +5,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from drf_spectacular.utils import extend_schema
-
+from uuid import UUID
+from rest_framework.exceptions import NotFound
 from api.constants import restricted_update, VersionsSerializer
 from users.permissions import StaffCUDallRead
 from ..models import Nomenclature
@@ -257,18 +258,43 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             >>> response.status_code
             200
         """
+        identifier = pk
+        if not identifier:
+            raise NotFound("Не указан идентификатор КА.")
+
+        # Проверяем, валидный ли UUID
+        is_uuid = False
         try:
-            instance = (
-                Nomenclature.inactive
-                .select_related("owner", "availability", "brand", "address")
-                .prefetch_related("images")
-                .get(pk=pk)
-            )
-        except Nomenclature.DoesNotExist:
-            return Response(
-                {"detail": "Номенклатура не найдена"},
-                status=404,
-            )
+            UUID(str(identifier))
+            is_uuid = True
+        except ValueError:
+            is_uuid = False
+
+        instance = None
+
+        # Если UUID — ищем по id
+        if is_uuid:
+            try:
+                instance = (
+                    Nomenclature.inactive
+                    .select_related("owner", "availability", "brand", "address")
+                    .prefetch_related("images")
+                    .get(id=identifier)
+                )
+            except Nomenclature.DoesNotExist:
+                pass
+
+        # Если не UUID или UUID не найден — ищем по code1c
+        if instance is None:
+            try:
+                instance = (
+                    Nomenclature.inactive
+                    .select_related("owner", "availability", "brand", "address")
+                    .prefetch_related("images")
+                    .get(code1c=identifier)
+                )
+            except Nomenclature.DoesNotExist:
+                raise NotFound("Номенклатура не найдена.")
 
         if request.method == "GET":
             serializer = self.get_serializer(instance)
@@ -459,91 +485,34 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         response = restricted_update(self, request, *args, **kwargs)
         return response
 
-    @action(
-        detail=False,
-        methods=["GET"],
-        url_path="get_one_by_code1c",
-        permission_classes=[AllowAny]
-    )
-    def get_one_by_code1c(self, request):
-        """
-        Получить номенклатуру по уникальному коду 1C (внешней системе).
+    def get_object(self):
+        identifier = self.kwargs.get('pk')
+        if not identifier:
+            raise NotFound("Не указан идентификатор КА.")
 
-        Этот метод доступен всем пользователям без аутентификации (AllowAny).
-        Используется для интеграции с системой 1С, где номенклатуры синхронизируются
-        по уникальному коду.
+        # Проверяем, валидный ли UUID
+        is_uuid = False
+        try:
+            UUID(str(identifier))
+            is_uuid = True
+        except ValueError:
+            is_uuid = False
 
-        Параметр 'code1c' представляет строковый идентификатор номенклатуры в системе 1С.
-        Метод выполняет точное совпадение (case-sensitive).
+        # Если UUID — ищем по id
+        if is_uuid:
+            try:
+                nomenclature = Nomenclature.objects.get(id=identifier)
+                return nomenclature
+            except Nomenclature.DoesNotExist:
+                raise NotFound("Номенклатура не найдена.")
 
-        Args:
-            request: HTTP GET запрос.
+        # Если не UUID — ищем по code1c
+        try:
+            nomenclature = Nomenclature.objects.get(code1c=identifier)
+            return nomenclature
+        except Nomenclature.DoesNotExist:
+            raise NotFound("Номенклатура не найдена.")
 
-        Query Parameters:
-            code1c (str, required): Уникальный код номенклатуры в системе 1C.
-                                   Пример: '00000005592'
-
-        Returns:
-            Response: Полные данные номенклатуры (NomenclatureSerializer) if found.
-
-        Status Codes:
-            200 OK: Номенклатура найдена
-            400 BAD REQUEST: Параметр code1c не передан
-            404 NOT FOUND: Номенклатура с таким кодом не найдена
-
-        Data Structure (Success):
-            {
-                'id': '123e4567-e89b-12d3-a456-426614174000',
-                'code1c': '00000005592',
-                'name': 'Display 1',
-                'description': 'Main display',
-                'brand': {...},
-                'address': {...},
-                ...
-            }
-
-        Examples:
-            >>> # Успешный поиск
-            >>> response = client.get('/api/nomenclatures/get_one_by_code1c/?code1c=00000005592')
-            >>> response.status_code
-            200
-            >>> response.data['name']
-            'Display 1'
-
-            >>> # Код не найден
-            >>> response = client.get('/api/nomenclatures/get_one_by_code1c/?code1c=99999999999')
-            >>> response.status_code
-            404
-            >>> response.data['detail']
-            'Номенклатура с таким code1c не найдена.'
-
-            >>> # Параметр не передан
-            >>> response = client.get('/api/nomenclatures/get_one_by_code1c/')
-            >>> response.status_code
-            400
-            >>> response.data['detail']
-            'Параметр code1c обязателен.'
-
-        Note:
-            Этот метод может быть расширен для добавления фильтрации по дополнительным
-            параметрам (например, по дате последнего обновления или активности).
-        """
-        code1c = request.query_params.get("code1c")
-        if not code1c:
-            return Response(
-                {"detail": "Параметр code1c обязателен."},
-                status=HTTP_400_BAD_REQUEST,
-            )
-
-        obj = Nomenclature.objects.filter(code1c=code1c).first()
-        if not obj:
-            return Response(
-                {"detail": "Номенклатура с таким code1c не найдена."},
-                status=HTTP_404_NOT_FOUND,
-            )
-
-        serializer = NomenclatureSerializer(obj)
-        return Response(serializer.data, status=HTTP_200_OK)
 
     @extend_schema(summary="Деактивировать номенклатуру")
     def destroy(self, request, *args, **kwargs):
