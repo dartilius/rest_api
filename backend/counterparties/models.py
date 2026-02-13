@@ -159,8 +159,15 @@ class Counterparty(APIBaseObjectModel):
         brand_list = ', '.join(self.brands.values_list('name', flat=True)) or ''
         desc = self.description or ''
 
+        # Если нет opf, используем формат: keyword (desc, brand_list)
         if not self.opf:
-            return fio
+            if self.keyword:
+                details = ", ".join(filter(None, [desc, brand_list]))
+                if details:
+                    return f"{self.keyword} ({details})"
+                return self.keyword
+            # Если и keyword пустой
+            return " ".join(filter(None, [desc, brand_list]))
 
         # Физлица
         if self.opf in TYPE_FL:

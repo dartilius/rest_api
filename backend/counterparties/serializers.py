@@ -12,8 +12,8 @@ class CounterpartyContactInfoSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class CreateCounterpartySerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField(read_only=True)
     contacts = CounterpartyContactInfoSerializer(many=True, required=False)
-
     brands = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Brand.objects.all(),
@@ -31,6 +31,9 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+
+    def get_name(self, obj):
+        return obj.name
 
     class Meta:
         model = Counterparty
@@ -71,11 +74,6 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
     def validate(self, data):
         opf = data.get('opf')
 
-        if not opf:
-            raise serializers.ValidationError({
-                "opf": "ОПФ обязательно"
-            })
-
         if opf in TYPE_FL:
             required = ["first_name", "last_name"]
             missing = [f for f in required if not data.get(f)]
@@ -93,9 +91,6 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
                     f: "Обязательное поле" for f in missing
                 })
 
-        else:
-            raise serializers.ValidationError("Неверный ОПФ")
-
         return data
 
     def to_representation(self, value):
@@ -105,10 +100,18 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
 
 
 class CounterpartiesSerializer(serializers.ModelSerializer):
+
+    name = serializers.SerializerMethodField(read_only=True)
+
+    def get_name(self, obj):
+        return obj.name
     class Meta:
         model = Counterparty
-        fields = '__all__'
-        read_only_fields = ('id', 'code1c', 'created')
+        fields = (
+            'id', 'name', 'code1c', 'brands', 'contact_persons', 'broadcast',
+            'opf', 'inn', 'address'
+        )
+        read_only_fields = ('id', 'code1c', 'created', 'name')
 
 
 class CounterpartiesShortSerializer(serializers.ModelSerializer):
