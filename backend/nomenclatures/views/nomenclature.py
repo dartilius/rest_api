@@ -20,7 +20,7 @@ from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
 )
-
+from collections import defaultdict
 
 @extend_schema_view(
     grouped=extend_schema(
@@ -185,6 +185,74 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 kwargs["many"] = True
 
         return serializer(*args, **kwargs)
+
+    @action(detail=False, methods=['get'])
+    def grouped(self, request):
+        """
+        /api/nomenclature/grouped/?by=brand
+        /api/nomenclature/grouped/?by=legal
+        /api/nomenclature/grouped/?by=place
+        /api/nomenclature/grouped/?by=address
+        """
+
+        group_by = request.query_params.get('by')
+
+        GROUP_MAP = {
+            'brand': 'brand__name',
+            'legal': 'legalEntity__name',
+            'place': 'typeOfPlace',
+            'address': 'streetHouse',  # или своё поле
+        }
+
+        if group_by not in GROUP_MAP:
+            return Response(
+                {
+                    'error': 'Invalid group param',
+                    'allowed': list(GROUP_MAP.keys())
+                },
+                status=400
+            )
+
+        field = GROUP_MAP[group_by]
+
+        qs = (
+            Nomenclature.objects
+            .select_related('brand', 'legalEntity')
+        )
+
+        serializer = self.get_serializer(qs, many=True)
+        data = serializer.data
+
+        grouped = defaultdict(list)
+
+        for item in data:
+            key = self._get_group_key(item, field)
+            grouped[key].append(item)
+
+        result = [
+            {
+                'name': key,
+                'items': items
+            }
+            for key, items in grouped.items()
+        ]
+
+        return Response(result)
+
+    def _get_group_key(self, item, field):
+
+        # Для вложенных полей: brand__name → brand.name
+        parts = field.split('__')
+
+        value = item
+
+        for part in parts:
+            value = value.get(part)
+
+            if value is None:
+                return 'Без значения'
+
+        return value
 
     def perform_create(self, serializer):
         """
