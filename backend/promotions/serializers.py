@@ -108,7 +108,7 @@ class PromotionListSerializer(serializers.ModelSerializer):
                         "id": b.id,
                         "name": b.name,
                         "description": getattr(b, "description", None),
-                        "logotype": getattr(b, "logotype", None),
+                        # "logotype": getattr(b, "logotype", None),
                     } for b in instance.counterparty.brands.all()
                 ]
             }
