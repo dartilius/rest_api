@@ -54,6 +54,38 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
         read_only_fields = ("source",)
 
 
+class ShortNomenclatureSerializer(serializers.ModelSerializer):
+    """Схема для отображения номенклатуры в списке."""
+    exterior = serializers.SerializerMethodField()
+    interior = serializers.SerializerMethodField()
+    brand = serializers.CharField(source='brand.name', default='Без значения')
+    legalEntity = serializers.CharField(source='legalEntity.name', default='Без значения')
+
+    class Meta:
+        model = Nomenclature
+        fields = (
+            "id",
+            "name",
+            "brand",
+            "legalEntity",
+            "pricePerMonth",
+            "typeOfPlace",
+            "interior",
+            "exterior",
+        )
+        read_only_fields = fields
+
+    def get_interior(self, obj):
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="interior"), many=True
+        ).data
+
+    def get_exterior(self, obj):
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="exterior"), many=True
+        ).data
+
+
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
