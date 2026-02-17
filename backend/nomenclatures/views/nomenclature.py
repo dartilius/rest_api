@@ -197,16 +197,18 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         /api/nomenclature/grouped/?by=address
         """
 
-        qs = Nomenclature.active.select_related('brand', 'legalEntity').prefetch_related('images').all()
+        qs = Nomenclature.active.select_related(
+            'brand', 'legalEntity', 'address__address'
+        ).prefetch_related('images').all()
 
         group_by = request.query_params.get('by')
 
         # функции для получения ключа группы из сериализованных данных
         GROUP_MAP = {
-            'brand': lambda x: x['brand'] or 'Без значения',
+            'brand': lambda x: x['brand']['name'] if x['brand'] else 'Без значения',
             'legal': lambda x: x['legalEntity'] or 'Без значения',
             'place': lambda x: x['typeOfPlace'] or 'Без значения',
-            'address': lambda x: x['address']['city'] or 'Без значения',
+            'address': lambda x: x['city'] or 'Без значения',
         }
 
         if group_by not in GROUP_MAP:
@@ -219,17 +221,12 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         data = serializer.data
 
         grouped = defaultdict(list)
-        key_func = GROUP_MAP[group_by]
-
         for item in data:
-            key = key_func(item)
+            key = GROUP_MAP[group_by](item)
             grouped[key].append(item)
 
         result = [{'name': k, 'items': v} for k, v in grouped.items()]
-
         return Response(result)
-
-
 
 
     def _get_group_key(self, item, field):
