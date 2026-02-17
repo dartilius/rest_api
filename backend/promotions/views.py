@@ -124,7 +124,7 @@ class PromotionViewSet(viewsets.ModelViewSet):
         try:
             uuid_obj = UUID(str(identifier))
             promotion = Promotion.active.get(id=uuid_obj)
-            if promotion.is_deleted:
+            if not promotion.is_active:
                 raise NotFound("Акция не найдена.")
             return promotion
         except (ValueError, Counterparty.DoesNotExist):
@@ -133,7 +133,7 @@ class PromotionViewSet(viewsets.ModelViewSet):
         # пробуем code1c
         try:
             promotion = Promotion.active.get(code1c=identifier)
-            if promotion.is_deleted:
+            if not promotion.is_active:
                 raise NotFound("Акция не найдена.")
             return promotion
         except Promotion.DoesNotExist:
