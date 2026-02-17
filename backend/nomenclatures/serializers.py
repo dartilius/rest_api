@@ -62,6 +62,8 @@ class ShortNomenclatureSerializer(serializers.ModelSerializer):
     legalEntity = serializers.CharField(source='legalEntity.name', default='Без значения')
     address = serializers.CharField(read_only=True)
 
+    #check copmmty
+
     class Meta:
         model = Nomenclature
         fields = (
