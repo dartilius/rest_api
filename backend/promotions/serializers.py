@@ -60,7 +60,6 @@ class PromotionSerializer(serializers.ModelSerializer):
         repr_["timeline"] = {
             "start": obj.start_period,
             "end": obj.end_period,
-            "created": obj.created,
         }
         if obj.counterparty:
             repr_["counterparty"] = {
@@ -83,37 +82,41 @@ class PromotionSerializer(serializers.ModelSerializer):
 
 class PromotionListSerializer(serializers.ModelSerializer):
     class Meta:
+        model = Promotion
         fields = '__all__'
         read_only_fields = ('id', 'code1c', 'created', 'owner')
-        model = Promotion
 
-    def to_representation(self, value):
-        repr_ = super().to_representation(value)
-        repr_["name"] = value.name
-        repr_["timeline"] = {
-            "start": value.start_period,
-            "end": value.end_period,
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # timeline
+        data["timeline"] = {
+            "start": instance.start_period,
+            "end": instance.end_period,
         }
-        repr_["relevance"] = value.is_active
-        repr_["counterparty"] = None
-        if value.counterparty:
-            repr_["counterparty"] = {
-                "id": value.counterparty.id,
-                "name": value.counterparty.name,
+
+        # relevance
+        data["relevance"] = instance.is_active
+
+        # counterparty
+        if instance.counterparty:
+            data["counterparty"] = {
+                "id": instance.counterparty.id,
+                "name": instance.counterparty.name,
                 "brands": [
                     {
-                        "id": value.counterparty.brand_id,
-                        "name": value.counterparty.brand_name,
-                        "description": value.counterparty.brand_description,
-                        "logotype": value.counterparty.brand_logotype,
+                        "id": instance.counterparty.brand_id,
+                        "name": instance.counterparty.brand_name,
+                        "description": instance.counterparty.brand_description,
+                        "logotype": instance.counterparty.brand_logotype,
                     }
                 ]
             }
-        for field in repr_["main_info"]:
-            repr_.pop(field)
-        for field in repr_["relevance"]:
-            repr_.pop(field)
-        for field in repr_["timeline"]:
-            repr_.pop(field)
+        else:
+            data["counterparty"] = None
 
-        return repr_
+        # удаляем лишние поля
+        for field in ["start_period", "end_period", "is_active"]:
+            data.pop(field, None)
+
+        return data
