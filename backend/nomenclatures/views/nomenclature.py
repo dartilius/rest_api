@@ -19,6 +19,7 @@ from ..models import Nomenclature
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
+    ShortNomenclatureSerializer
 )
 from collections import defaultdict
 
@@ -137,6 +138,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     queryset = Nomenclature.active.select_related(
         "owner", "availability", "brand", "address"
     ).prefetch_related("images")
+
     serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
     filter_backends = [DjangoFilterBackend]
@@ -195,55 +197,40 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         /api/nomenclature/grouped/?by=address
         """
 
-        qs = Nomenclature.objects.values(
-                'id',
-                'name',
-                'brand__name',
-                'legalEntity__name',
-                'typeOfPlace',
-                'streetHouse',
-            )
+        qs = Nomenclature.active.select_related('brand', 'legalEntity').prefetch_related('images').all()
 
         group_by = request.query_params.get('by')
 
+        # функции для получения ключа группы из сериализованных данных
         GROUP_MAP = {
-            'brand': 'brand__name',
-            'legal': 'legalEntity__name',
-            'place': 'typeOfPlace',
-            'address': 'streetHouse',  # или своё поле
+            'brand': lambda x: x['brand'] or 'Без значения',
+            'legal': lambda x: x['legalEntity'] or 'Без значения',
+            'place': lambda x: x['typeOfPlace'] or 'Без значения',
+            'address': lambda x: x['streetHouse'] or 'Без значения',
         }
 
         if group_by not in GROUP_MAP:
-            return Response(
-                {
-                    'error': 'Invalid group param',
-                    'allowed': list(GROUP_MAP.keys())
-                },
-                status=400
-            )
+            return Response({
+                'error': 'Invalid group param',
+                'allowed': list(GROUP_MAP.keys())
+            }, status=400)
 
-        field = GROUP_MAP[group_by]
-
-
-
-        serializer = self.get_serializer(qs, many=True)
+        serializer = ShortNomenclatureSerializer(qs, many=True)
         data = serializer.data
 
         grouped = defaultdict(list)
+        key_func = GROUP_MAP[group_by]
 
         for item in data:
-            key = self._get_group_key(item, field)
+            key = key_func(item)
             grouped[key].append(item)
 
-        result = [
-            {
-                'name': key,
-                'items': items
-            }
-            for key, items in grouped.items()
-        ]
+        result = [{'name': k, 'items': v} for k, v in grouped.items()]
 
         return Response(result)
+
+
+
 
     def _get_group_key(self, item, field):
 
