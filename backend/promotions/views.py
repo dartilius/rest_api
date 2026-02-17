@@ -96,25 +96,23 @@ class PromotionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         is_admin = (
-                user.is_admin
-                or user.is_superuser
-                or user.is_ordinary
-                or user.is_manager
+            user.is_admin
+            or user.is_superuser
+            or user.is_ordinary
+            or user.is_manager
         )
 
-        qs = Counterparty.objects.all().order_by('id')
+        qs = Promotion.objects.all().order_by('-created')
 
         if user.role in CONTACT_PERSON_ROLES:
             user_counterparties = Counterparty.objects.filter(contact_person=user)
-            qs = qs.filter(
-                Q(id__in=user_counterparties.values_list('id', flat=True))
-            ).distinct()
+            qs = qs.filter(counterparty__in=user_counterparties)
         elif is_admin:
-            pass  # админы видят всех
-
+            pass  # админы видят все акции
         else:
-            qs = Counterparty.objects.none()
+            qs = Promotion.objects.none()
         return qs
+
 
 
     def get_object(self):
