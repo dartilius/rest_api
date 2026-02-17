@@ -206,7 +206,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             'brand': lambda x: x['brand'] or 'Без значения',
             'legal': lambda x: x['legalEntity'] or 'Без значения',
             'place': lambda x: x['typeOfPlace'] or 'Без значения',
-            'address': lambda x: x['streetHouse'] or 'Без значения',
+            'address': lambda x: x['address']['city'] or 'Без значения',
         }
 
         if group_by not in GROUP_MAP:
