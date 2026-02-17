@@ -60,6 +60,9 @@ class ShortNomenclatureSerializer(serializers.ModelSerializer):
     interior = serializers.SerializerMethodField()
     brand = serializers.CharField(source='brand.name', default='Без значения')
     legalEntity = serializers.CharField(source='legalEntity.name', default='Без значения')
+    address = serializers.CharField(read_only=True)
+
+    #check copmmty
 
     class Meta:
         model = Nomenclature
@@ -72,6 +75,7 @@ class ShortNomenclatureSerializer(serializers.ModelSerializer):
             "typeOfPlace",
             "interior",
             "exterior",
+            "address",
         )
         read_only_fields = fields
 
