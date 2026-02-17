@@ -105,11 +105,11 @@ class PromotionListSerializer(serializers.ModelSerializer):
                 "name": instance.counterparty.name,
                 "brands": [
                     {
-                        "id": instance.counterparty.brand_id,
-                        "name": instance.counterparty.brand_name,
-                        "description": instance.counterparty.brand_description,
-                        "logotype": instance.counterparty.brand_logotype,
-                    }
+                        "id": b.id,
+                        "name": b.name,
+                        "description": getattr(b, "description", None),
+                        "logotype": getattr(b, "logotype", None),
+                    } for b in instance.counterparty.brands.all()
                 ]
             }
         else:
