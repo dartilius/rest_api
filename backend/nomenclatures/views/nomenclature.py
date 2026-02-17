@@ -195,6 +195,15 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         /api/nomenclature/grouped/?by=address
         """
 
+        qs = Nomenclature.objects.values(
+                'id',
+                'name',
+                'brand__name',
+                'legalEntity__name',
+                'typeOfPlace',
+                'streetHouse',
+            )
+
         group_by = request.query_params.get('by')
 
         GROUP_MAP = {
@@ -215,10 +224,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         field = GROUP_MAP[group_by]
 
-        qs = (
-            Nomenclature.objects
-            .select_related('brand', 'legalEntity')
-        )
+
 
         serializer = self.get_serializer(qs, many=True)
         data = serializer.data
