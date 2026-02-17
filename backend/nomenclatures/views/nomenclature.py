@@ -1,36 +1,111 @@
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
+from rest_framework import viewsets, status
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.utils import inline_serializer, OpenApiResponse
+from rest_framework import serializers
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from drf_spectacular.utils import extend_schema
-from uuid import UUID
-from rest_framework.exceptions import NotFound
+from rest_framework.response import Response
+from rest_framework.status import (
+    HTTP_200_OK,
+)
+
 from api.constants import restricted_update, VersionsSerializer
 from users.permissions import StaffCUDallRead
+from ..filters import NomenclatureFilter
 from ..models import Nomenclature
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
 )
-from ..filters import NomenclatureFilter
-from ..tasks import (
-    resend_orders_task,
-    reboot_task,
-    update_task,
-    custom_task,
-    settings_task,
+
+
+@extend_schema_view(
+    grouped=extend_schema(
+        summary="Получить номенклатуры, сгруппированные по полю",
+        description="""
+        Возвращает список номенклатур, сгруппированных по указанному полю.
+
+        Каждая группа содержит:
+        - **name**: Название группы (значение поля группировки)
+        - **items**: Массив номенклатур в этой группе
+
+        Поддерживаемые параметры группировки:
+        - **brand**: группировка по названию бренда
+        - **legal**: группировка по названию юридического лица
+        - **place**: группировка по типу места размещения
+        - **address**: группировка по городу
+        """,
+        parameters=[
+            OpenApiParameter(
+                name='by',
+                description='Поле для группировки (обязательный параметр)',
+                required=True,
+                type=str,
+                enum=['brand', 'legal', 'place', 'address']
+            ),
+        ],
+        responses={
+            200: inline_serializer(
+                name='GroupedNomenclaturesResponse',
+                fields={
+                    'name': serializers.CharField(),
+                    'items': NomenclatureListSerializer(many=True)  # замените на ваш реальный сериализатор
+                }
+            ),
+            400: OpenApiResponse(
+                description='Ошибка валидации - неверный параметр группировки',
+                response=inline_serializer(
+                    name='GroupingErrorResponse',
+                    fields={
+                        'error': serializers.CharField(),
+                        'allowed': serializers.ListField(child=serializers.CharField())
+                    }
+                )
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                'Успешный ответ',
+                value=[
+                    {
+                        'name': 'test brand',
+                        'items': [
+                            {
+                                'id': '123e4567-e89b-12d3-a456-426614174000',
+                                'name': 'Display 1',
+                                'timezone': 'UTC +7',
+                                'status': 0,
+                                'legalEntity': {
+                                    'id': 1,
+                                    'name': 'ООО Рекламное агентство'
+                                },
+                                'brand': {
+                                    'id': 1,
+                                    'name': 'test brand',
+                                    'logotype': 'https://...'
+                                }
+                            }
+                        ]
+                    }
+                ],
+                response_only=True,
+                status_codes=['200']
+            ),
+            OpenApiExample(
+                'Ошибка - неверный параметр',
+                value={
+                    'error': 'Invalid group param',
+                    'allowed': ['brand', 'legal', 'place', 'address']
+                },
+                response_only=True,
+                status_codes=['400']
+            )
+        ],
+        tags=['Номенклатуры']
+    )
 )
-
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_404_NOT_FOUND,
-)
-
-
 @extend_schema(tags=["Номенклатуры"])
 class NomenclatureViewSet(viewsets.ModelViewSet):
     """
@@ -513,7 +588,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         except Nomenclature.DoesNotExist:
             raise NotFound("Номенклатура не найдена.")
 
-
     @extend_schema(summary="Деактивировать номенклатуру")
     def destroy(self, request, *args, **kwargs):
         """
@@ -802,9 +876,9 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             - is_manager: флаг менеджера
         """
         return (
-            user.is_authenticated and (
+                user.is_authenticated and (
                 user.is_admin
                 or user.is_superuser
                 or user.is_manager
-            )
+        )
         )
