@@ -195,17 +195,25 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         /api/nomenclature/grouped/?by=legal
         /api/nomenclature/grouped/?by=place
         /api/nomenclature/grouped/?by=address
+
+        Поддерживает все фильтры из NomenclatureFilter:
+        ?search=..., ?name=..., ?brand_id=..., ?status=..., ?version=...,
+        ?legal_entity_name=..., ?brand_name=..., ?type_of_place=...
         """
 
         qs = Nomenclature.active.select_related(
             'brand', 'legalEntity', 'address__address'
         ).prefetch_related('images').all()
 
+        # Применяем фильтры из NomenclatureFilter
+        filterset = self.filterset_class(request.query_params, queryset=qs, request=request)
+        qs = filterset.qs
+
         group_by = request.query_params.get('by')
 
         # функции для получения ключа группы из сериализованных данных
         GROUP_MAP = {
-            'brand': lambda x: x['brand']['name'] if x['brand'] else 'Без значения',
+            'brand': lambda x: x['brand'] if x['brand'] else 'Без значения',
             'legal': lambda x: x['legalEntity'] or 'Без значения',
             'place': lambda x: x['typeOfPlace'] or 'Без значения',
             'address': lambda x: x['city'] or 'Без значения',
@@ -216,8 +224,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 'error': 'Invalid group param',
                 'allowed': list(GROUP_MAP.keys())
             }, status=400)
-
-        serializer = ShortNomenclatureSerializer(qs, many=True)
+        page = self.paginate_queryset(qs)
+        serializer = ShortNomenclatureSerializer(page or qs, many=True)
         data = serializer.data
 
         grouped = defaultdict(list)
@@ -226,23 +234,11 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             grouped[key].append(item)
 
         result = [{'name': k, 'items': v} for k, v in grouped.items()]
-        return Response(result)
-
-
-    def _get_group_key(self, item, field):
-
-        # Для вложенных полей: brand__name → brand.name
-        parts = field.split('__')
-
-        value = item
-
-        for part in parts:
-            value = value.get(part)
-
-            if value is None:
-                return 'Без значения'
-
-        return value
+        return (
+            self.get_paginated_response(result)
+            if page is not None
+            else Response(result)
+        )
 
     def perform_create(self, serializer):
         """
