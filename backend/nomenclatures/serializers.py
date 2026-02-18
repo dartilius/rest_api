@@ -50,8 +50,8 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NomenclatureImage
-        fields = ("source",)
-        read_only_fields = ("source",)
+        fields = ("source", "id",)
+        read_only_fields = ("source", "id",)
 
 
 class ShortNomenclatureSerializer(serializers.ModelSerializer):
