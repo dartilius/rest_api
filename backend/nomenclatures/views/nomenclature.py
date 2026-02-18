@@ -19,8 +19,10 @@ from ..models import Nomenclature
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    ShortNomenclatureSerializer
+    ShortBrandNomenclatureSerializer
 )
+from django.db.models import Count
+
 from collections import defaultdict
 
 @extend_schema_view(
@@ -188,6 +190,58 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         return serializer(*args, **kwargs)
 
+    # @action(detail=False, methods=['get'])
+    # def grouped(self, request):
+    #     """
+    #     /api/nomenclature/grouped/?by=brand
+    #     /api/nomenclature/grouped/?by=legal
+    #     /api/nomenclature/grouped/?by=place
+    #     /api/nomenclature/grouped/?by=address
+
+    #     Поддерживает все фильтры из NomenclatureFilter:
+    #     ?search=..., ?name=..., ?brand_id=..., ?status=..., ?version=...,
+    #     ?legal_entity_name=..., ?brand_name=..., ?type_of_place=...
+    #     """
+
+    #     qs = Nomenclature.active.select_related(
+    #         'brand', 'legalEntity', 'address__address'
+    #     ).prefetch_related('images').all()
+
+    #     # Применяем фильтры из NomenclatureFilter
+    #     filterset = self.filterset_class(request.query_params, queryset=qs, request=request)
+    #     qs = filterset.qs
+
+    #     group_by = request.query_params.get('by')
+
+    #     # функции для получения ключа группы из сериализованных данных
+    #     GROUP_MAP = {
+    #         'brand': lambda x: x['brand'] if x['brand'] else 'Без значения',
+    #         'legal': lambda x: x['legalEntity'] or 'Без значения',
+    #         'place': lambda x: x['typeOfPlace'] or 'Без значения',
+    #         'address': lambda x: x['city'] or 'Без значения',
+    #     }
+
+    #     if group_by not in GROUP_MAP:
+    #         return Response({
+    #             'error': 'Invalid group param',
+    #             'allowed': list(GROUP_MAP.keys())
+    #         }, status=400)
+    #     page = self.paginate_queryset(qs)
+    #     serializer = ShortNomenclatureSerializer(page or qs, many=True)
+    #     data = serializer.data
+
+    #     grouped = defaultdict(list)
+    #     for item in data:
+    #         key = GROUP_MAP[group_by](item)
+    #         grouped[key].append(item)
+
+    #     result = [{'name': k, 'items': v} for k, v in grouped.items()]
+    #     return (
+    #         self.get_paginated_response(result)
+    #         if page is not None
+    #         else Response(result)
+    #     )
+
     @action(detail=False, methods=['get'])
     def grouped(self, request):
         """
@@ -201,22 +255,22 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         ?legal_entity_name=..., ?brand_name=..., ?type_of_place=...
         """
 
-        qs = Nomenclature.active.select_related(
-            'brand', 'legalEntity', 'address__address'
-        ).prefetch_related('images').all()
+        qs = Nomenclature.active.select_related('brand')
 
         # Применяем фильтры из NomenclatureFilter
-        filterset = self.filterset_class(request.query_params, queryset=qs, request=request)
+        filterset = self.filterset_class(
+            request.query_params,
+            queryset=qs,
+            request=request
+        )
         qs = filterset.qs
 
         group_by = request.query_params.get('by')
 
         # функции для получения ключа группы из сериализованных данных
+        # ShortBrandNomenclatureSerializer возвращает: brand_name, brand_id, brand_logotype
         GROUP_MAP = {
-            'brand': lambda x: x['brand'] if x['brand'] else 'Без значения',
-            'legal': lambda x: x['legalEntity'] or 'Без значения',
-            'place': lambda x: x['typeOfPlace'] or 'Без значения',
-            'address': lambda x: x['city'] or 'Без значения',
+            'brand': lambda x: x['brand_name'] if x['brand_id'] else None,
         }
 
         if group_by not in GROUP_MAP:
@@ -225,15 +279,33 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 'allowed': list(GROUP_MAP.keys())
             }, status=400)
         page = self.paginate_queryset(qs)
-        serializer = ShortNomenclatureSerializer(page or qs, many=True)
+        serializer = ShortBrandNomenclatureSerializer(page or qs, many=True)
         data = serializer.data
 
-        grouped = defaultdict(list)
+        grouped = {}
+
         for item in data:
             key = GROUP_MAP[group_by](item)
-            grouped[key].append(item)
 
-        result = [{'name': k, 'items': v} for k, v in grouped.items()]
+            brand_id = item['brand_id']
+            logo = item['brand_logotype']
+
+            if key not in grouped:
+                # первый элемент группы
+                grouped[key] = {
+                    'name': key,
+                    'items': {
+                        'brand_id': brand_id,
+                        'brand_logotype': logo,
+                        'amount': 1
+                    }
+                }
+            else:
+                # увеличиваем счётчик
+                grouped[key]['items']['amount'] += 1
+
+        result = list(grouped.values())
+
         return (
             self.get_paginated_response(result)
             if page is not None
