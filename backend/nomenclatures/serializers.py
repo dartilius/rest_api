@@ -45,6 +45,25 @@ class PhotoSerializer(serializers.ModelSerializer):
         return None
 
 
+class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
+    """Схема для отображения номенклатуры в списке."""
+
+    brand_name = serializers.CharField(source='brand.name', default='Без значения')
+    brand_id = serializers.CharField(source='brand.id', default=None)
+    brand_logotype = serializers.CharField(source='brand.logotype', default=None)
+
+
+    #check copmmty
+
+    class Meta:
+        model = Nomenclature
+        fields = (
+            "brand_name",
+            "brand_id",
+            "brand_logotype",
+        )
+        read_only_fields = fields
+
 class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
     """Схема для добавления фотографий к номенклатурам."""
 
