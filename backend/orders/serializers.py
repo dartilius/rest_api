@@ -3,7 +3,7 @@ from datetime import time, datetime as dt
 from rest_framework import serializers
 
 from api.constants import Constants
-from files.models import File, Playlist
+from files.models import File, Playlist, TYPES
 from nomenclatures.models import Nomenclature
 from orders.models import AdOrder, BgOrder
 
@@ -469,6 +469,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
             входящих данных и валидируем плейлист.
         2. Возвращаем валидированные данные.
         """
+
         def _validate_playlist(playlist_id: str, order_type: int):
             """
             Валидация плейлиста.
@@ -480,7 +481,11 @@ class BgOrderSerializer(serializers.ModelSerializer):
             """
             empty_values = Constants.empty_values
             # 1
-            playlist_obj = Playlist.objects.get(id=playlist_id)
+            try:
+                playlist_obj = Playlist.objects.get(id=playlist_id)
+            except Playlist.DoesNotExist:
+                raise serializers.ValidationError(f'Плейлист с id {playlist_id} не существует')
+
             files = playlist_obj.files.all()
             # 2
             if files in empty_values:
@@ -490,36 +495,60 @@ class BgOrderSerializer(serializers.ModelSerializer):
                 if file.type != order_type:
                     # 4
                     raise serializers.ValidationError(
-                        f'Плейлист содержит файлы неправильного типа {file.type} != {order_type}'
+                        f'Плейлист содержит файлы неправильного типа. '
+                        f'Тип файла "{TYPES[file.type]}" ({file.type}) '
+                        f'не соответствует типу заказа "{TYPES[order_type]}" ({order_type})'
                     )
+
+        def _get_data_from_initial(key):
+            """Безопасное получение данных из initial_data (может быть словарем или списком)."""
+            if isinstance(self.initial_data, list):
+                if len(self.initial_data) > 0:
+                    return self.initial_data[0].get(key)
+                else:
+                    raise serializers.ValidationError('Получен пустой список данных')
+            else:
+                return self.initial_data.get(key)
+
         # 1
         if self.instance:
             # 1.1
             if 'playlist' in self.initial_data:
-                playlist_id = self.initial_data.get('playlist')
+                playlist_id = _get_data_from_initial('playlist')
                 order_type = self.instance.order_type
                 _validate_playlist(playlist_id, order_type)
         # 1.2
         else:
-            playlist_id = self.initial_data[0].get('playlist')
-            order_type = self.initial_data[0].get('order_type')
+            playlist_id = _get_data_from_initial('playlist')
+            order_type = _get_data_from_initial('order_type')
+
+            if not playlist_id:
+                raise serializers.ValidationError('Не указан плейлист')
+            if order_type is None:
+                raise serializers.ValidationError('Не указан тип заказа')
+
             _validate_playlist(playlist_id, order_type)
         # 2
         return data
 
     def create(self, validated_data):
-        """Внесение клиентов из списка айди."""
+        """Внесение клиентов из списка айди. Возвращает список созданных заказов."""
         client_ids = validated_data.pop('clients')
         clients = Nomenclature.active.filter(id__in=client_ids)
+
+        if not clients.exists():
+            raise serializers.ValidationError('Не найдено ни одной активной номенклатуры с указанными ID')
+
         order_list = []
         for client in clients:
             order_list.append(BgOrder(client=client,
                                       **validated_data))
         saved_orders = BgOrder.objects.bulk_create(order_list)
-        return saved_orders
+        return saved_orders  # Возвращаем список для внутреннего использования
 
     def to_representation(self, value):
         """Десериализация с поддержкой списка объектов."""
+
         def _serialize_order(obj):
             repr_ = super(self.__class__, self).to_representation(obj)
             repr_['owner'] = obj.owner.full_name

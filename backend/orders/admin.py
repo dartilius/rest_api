@@ -2,7 +2,12 @@ from django.contrib import admin, messages
 from django.utils.translation import ngettext
 
 from orders.models import AdOrder, BgOrder, ORDER_TYPES
-from orders.tasks import cancel_ad_order_task, cancel_bg_order_task
+from orders.tasks import (
+    cancel_ad_order_task,
+    cancel_bg_order_task,
+    create_ad_order_task,
+    create_bg_order_task
+)
 
 
 @admin.register(AdOrder)
@@ -35,6 +40,40 @@ class AdOrderAdmin(admin.ModelAdmin):
             'owner', 'client', 'playlist'
         )
 
+    def save_model(self, request, obj, form, change):
+        """
+        Сохранение модели и создание репликации для нового заказа.
+
+        1. Сохраняем объект
+        2. Если это создание нового заказа (не изменение)
+        3. И статус заказа 0 (Ожидает эфира) или 1 (В эфире)
+        4. Запускаем создание репликации
+        """
+        # 1
+        super().save_model(request, obj, form, change)
+
+        # 2, 3
+        if not change and obj.status in [0, 1]:
+            # 4
+            create_ad_order_task.delay([str(obj.id)])
+
+    def save_related(self, request, form, formsets, change):
+        """
+        Сохранение связанных объектов и создание репликаций
+        для множества созданных заказов (если есть).
+        """
+        super().save_related(request, form, formsets, change)
+
+        # Если это создание и есть сохраненные объекты
+        if not change and hasattr(form, 'saved_objects'):
+            order_ids = []
+            for obj in form.saved_objects:
+                if isinstance(obj, AdOrder) and obj.status in [0, 1]:
+                    order_ids.append(str(obj.id))
+
+            if order_ids:
+                create_ad_order_task.delay(order_ids)
+
     @admin.action(description='Отменить выбранные заказы')
     def cancel(self, request, queryset):
         """
@@ -59,7 +98,7 @@ class AdOrderAdmin(admin.ModelAdmin):
             # 2
             updated = queryset.update(status=3)
             # 3
-            order_ids = [order.id for order in queryset]
+            order_ids = [str(order.id) for order in queryset]
             cancel_ad_order_task.delay(order_ids)
             self.message_user(
                 request,
@@ -114,6 +153,43 @@ class BgOrderAdmin(admin.ModelAdmin):
             'owner', 'client', 'playlist'
         )
 
+    def save_model(self, request, obj, form, change):
+        """
+        Сохранение модели и создание репликации для нового заказа.
+
+        1. Сохраняем объект
+        2. Если это создание нового заказа (не изменение)
+        3. И статус заказа 0 (Ожидает эфира) или 1 (В эфире)
+        4. Запускаем создание репликации
+        """
+        # 1
+        super().save_model(request, obj, form, change)
+
+        # 2, 3
+        if not change and obj.status in [0, 1]:
+            # 4
+            create_bg_order_task.delay([str(obj.id)])
+
+    def save_related(self, request, form, formsets, change):
+        """
+        Сохранение связанных объектов и создание репликаций
+        для множества созданных заказов (если есть).
+
+        Это может пригодиться при использовании inline-форм
+        или при массовом создании через админку.
+        """
+        super().save_related(request, form, formsets, change)
+
+        # Если это создание и есть сохраненные объекты
+        if not change and hasattr(form, 'saved_objects'):
+            order_ids = []
+            for obj in form.saved_objects:
+                if isinstance(obj, BgOrder) and obj.status in [0, 1]:
+                    order_ids.append(str(obj.id))
+
+            if order_ids:
+                create_bg_order_task.delay(order_ids)
+
     @admin.action(description='Отменить выбранные заказы')
     def cancel(self, request, queryset):
         """
@@ -138,7 +214,7 @@ class BgOrderAdmin(admin.ModelAdmin):
             # 2
             updated = queryset.update(status=3)
             # 3
-            order_ids = [order.id for order in queryset]
+            order_ids = [str(order.id) for order in queryset]
             cancel_bg_order_task.delay(order_ids)
             self.message_user(
                 request,

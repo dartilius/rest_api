@@ -763,8 +763,8 @@ class AdOrderViewSet(NoDeleteViewSet):
     list=extend_schema(
         summary='Получить пагинированный список фоновых заказов',
         responses={
-            HTTP_200_OK: BgOrderSerializer(many=True)
-        } | DEFAULT_SCHEMA_RESPONSES
+                      HTTP_200_OK: BgOrderListSerializer(many=True)
+                  } | DEFAULT_SCHEMA_RESPONSES
     ),
     retrieve=extend_schema(
         summary='Получить расшифровку фонового заказа',
@@ -772,9 +772,7 @@ class AdOrderViewSet(NoDeleteViewSet):
             OpenApiExample(
                 'Заказ с типом 0 (фоновая музыка)',
                 response_only=True,
-                description=(
-                    'Заказ фоновой музыки который еще не находится в эфире'
-                ),
+                description='Заказ фоновой музыки который еще не находится в эфире',
                 value={
                     'id': '0fc26d0e-6a12-4481-8edf-dfdbd374c3e6',
                     'name': 'Наименование заказа фоновой музыки',
@@ -863,10 +861,7 @@ class AdOrderViewSet(NoDeleteViewSet):
             OpenApiExample(
                 'Создать заказ фоновой музыки на 1 номенклатуру',
                 request_only=True,
-                description=(
-                    'Пример данных для создания заказа фоновой музыки '
-                    'на одну номенклатуру'
-                ),
+                description='Пример данных для создания заказа фоновой музыки на одну номенклатуру',
                 value={
                     'playlist': '3d29a71c-1cfc-4f4b-8f90-3d736bf15f6c',
                     'clients': ['d6578da7-50e0-49f4-81bd-eba08474b950'],
@@ -883,11 +878,7 @@ class AdOrderViewSet(NoDeleteViewSet):
             OpenApiExample(
                 'Создать заказ фоновой музыки на несколько номенклатур',
                 request_only=True,
-                description=(
-                    'Пример данных для создания заказа фоновой музыки '
-                    'на 3 номенклатуры, при выполнении запроса '
-                    'создастся 3 заказа.'
-                ),
+                description='Пример данных для создания заказа фоновой музыки на 3 номенклатуры',
                 value={
                     'playlist': '3d29a71c-1cfc-4f4b-8f90-3d736bf15f6c',
                     'clients': [
@@ -903,54 +894,6 @@ class AdOrderViewSet(NoDeleteViewSet):
                     },
                     'parameters': {},
                     'order_type': 0
-                }
-            ),
-            OpenApiExample(
-                'Создать заказ фоновых изображений на несколько номенклатур',
-                request_only=True,
-                description=(
-                    'Пример данных для создания заказа фоновых изображений '
-                    'на 3 номенклатуры, при выполнении запроса '
-                    'создастся 3 заказа.'
-                ),
-                value={
-                    'playlist': '3d29a71c-1cfc-4f4b-8f90-3d736bf15f6c',
-                    'clients': [
-                        'd6578da7-50e0-49f4-81bd-eba08474b950',
-                        '163280f9-f40d-4d08-ac57-5fa2e63f479d',
-                        'e6a58506-d03a-4880-923c-011490b03f96'
-                    ],
-                    'name': 'Заказ фоновых изображений на 3 номенклатуры',
-                    'broadcast_interval': {
-                        'lower': '2025-05-05 09:00:00',
-                        'upper': '2025-05-11 18:00:00'
-                    },
-                    'parameters': {},
-                    'order_type': 2
-                }
-            ),
-            OpenApiExample(
-                'Создать заказ фоновых видео на несколько номенклатур',
-                request_only=True,
-                description=(
-                    'Пример данных для создания заказа фоновых видео '
-                    'на 3 номенклатуры, при выполнении запроса '
-                    'создастся 3 заказа.'
-                ),
-                value={
-                    'playlist': 'a66f3388-6b84-4513-99e5-f47c64bd9ef4',
-                    'clients': [
-                        'd6578da7-50e0-49f4-81bd-eba08474b950',
-                        '163280f9-f40d-4d08-ac57-5fa2e63f479d',
-                        'e6a58506-d03a-4880-923c-011490b03f96'
-                    ],
-                    'name': 'Заказ фоновых видео',
-                    'broadcast_interval': {
-                        'lower': '2025-05-05 09:00:00',
-                        'upper': '2025-05-11 18:00:00'
-                    },
-                    'parameters': {},
-                    'order_type': 1
                 }
             )
         ]
@@ -973,7 +916,6 @@ class BgOrderViewSet(NoDeleteViewSet):
     - `2` Завершен
     - `3` Отменен
     - `4` Ошибка
-
 
     ## Плейлист `playlist`
     - Тип контента плейлиста должен совпадать с типом заказа при его создании
@@ -1004,28 +946,34 @@ class BgOrderViewSet(NoDeleteViewSet):
     permission_classes = [StaffCUDAuthRetrieve]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
         """
-        Создание заказов.
+        Создание одного или нескольких фоновых заказов.
 
-        0. Получаем данные из сериализатора.
-        1. Сохраняем заказы, владельца берём из запроса.
-        2. Собираем айди заказов.
-        3. Передаём список айди в целери для создания репликаций в фоне.
+        Returns:
+            - При создании одного заказа: один объект (BgOrderSerializer)
+            - При создании нескольких заказов: список объектов (BgOrderListSerializer)
         """
-        # 0
+        # Валидируем данные
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # 1
-        orders_list = serializer.save(owner=self.request.user)
-        orders_ids = []
-        # 2
-        for orders in orders_list:
-            orders_ids.append(
-                [str(order.id) for order in orders]
-                if len(orders) > 1 else str(orders[0].id)
-            )
-        # 3
+
+        # Сохраняем заказы - получаем список созданных объектов
+        orders = serializer.save(owner=self.request.user)
+
+        # Запускаем Celery задачу с ID всех созданных заказов
+        orders_ids = [str(order.id) for order in orders]
         create_bg_order_task.delay(orders_ids)
+
+        # Сериализуем ответ в зависимости от количества созданных заказов
+        if len(orders) > 1:
+            # Для нескольких заказов используем ListSerializer
+            response_serializer = BgOrderListSerializer(orders, many=True)
+        else:
+            # Для одного заказа используем полный сериализатор
+            response_serializer = BgOrderSerializer(orders[0])
+
+        return Response(response_serializer.data, status=HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         error_message = (
