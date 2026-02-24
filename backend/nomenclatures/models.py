@@ -1,12 +1,12 @@
+import hashlib
 from uuid import uuid4
 
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
-from django.core.validators import MinValueValidator
 from django.db import models
 from django_minio_backend import MinioBackend
-
+from django.utils.translation import gettext_lazy as _
 from addresses.models import Address as AddressBook
 from api import APIBaseObjectModel, Article
 
@@ -322,34 +322,60 @@ def media_path(instance, filename):
 class NomenclatureImage(models.Model):
     """Фотографии экстерьера и интерьера номенклатур."""
 
+    class PhotoType(models.TextChoices):
+        INTERIOR = "interior", _("Интерьер")
+        EXTERIOR = "exterior", _("Экстерьер")
+        SIGNAGE = "signage", _("Вывеска")
+        INSTALLATION = "installation", _("Установка")
+
     id = models.UUIDField(
-        verbose_name="ИД", editable=False, primary_key=True, default=uuid4()
+        primary_key=True,
+        default=uuid4,
+        editable=False,
+        verbose_name="ИД"
     )
+
     source = models.FileField(
         verbose_name="Файл",
         upload_to=media_path,
         storage=MinioBackend(bucket_name="local-media"),
     )
+
     type = models.CharField(
         max_length=31,
-        choices=TYPES,
+        choices=PhotoType.choices,
         verbose_name="Тип фотографии"
     )
+
     created = models.DateTimeField(
-        verbose_name="Дата создания",
-        auto_now_add=True
+        auto_now_add=True,
+        verbose_name="Дата создания"
     )
+
     nomenclature = models.ForeignKey(
-        Nomenclature,
+        "Nomenclature",
         related_name="images",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
         verbose_name="Номенклатура",
     )
+
+    hash = models.CharField(max_length=64, editable=False, db_index=True)
+
+    def save(self, *args, **kwargs):
+        if self.source:
+            # читаем файл в бинарном режиме и считаем MD5
+            file_data = self.source.read()
+            self.hash = hashlib.md5(file_data).hexdigest()
+            # возвращаем курсор файла в начало, иначе Django не сможет сохранить
+            self.source.seek(0)
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = "nomenclature_images"
         ordering = ("-created",)
         verbose_name = "Фотография номенклатуры"
         verbose_name_plural = "Фотографии номенклатур"
+
+
+    def __str__(self):
+        return f"{self.nomenclature} - {self.type}"
