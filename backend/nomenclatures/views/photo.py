@@ -98,7 +98,7 @@ class NomenclaturePhotoViewSet(viewsets.ModelViewSet):
             - Формат: JPEG или PNG (рекомендуется JPEG для компактности)
 
         Examples:
-            >>> # Загрузить фото интерьера
+            # Загрузить фото интерьера
             >>> with open('interior.jpg', 'rb') as f:
             ...     files = {'source': f}
             ...     data = {'type': 'interior'}
@@ -148,13 +148,19 @@ class NomenclaturePhotoViewSet(viewsets.ModelViewSet):
             - Фотографии можно удалять отдельно через DELETE
             - Типы фото помогают организовать изображения по назначению
         """
-        nomenclature = get_instance_or_404(Nomenclature, pk)
-        serializer = PhotoSerializer(data=request.data)
+        nomenclature = get_instance_or_404(Nomenclature, pk=pk)
+
+        serializer = PhotoSerializer(
+            data=request.data,
+            context={"nomenclature": nomenclature}
+        )
+
         serializer.is_valid(raise_exception=True)
         photo = serializer.save()
-        nomenclature.images.add(photo)
+
         return Response(
-            {"detail": "Фотографии прикреплены"}, status=HTTP_201_CREATED
+            PhotoSerializer(photo).data,
+            status=HTTP_201_CREATED
         )
 
     @action(methods=["GET"], detail=False)

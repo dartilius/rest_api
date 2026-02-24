@@ -1,3 +1,4 @@
+import hashlib
 from datetime import time
 
 from rest_framework import serializers
@@ -25,24 +26,73 @@ from api.base_objects import Article
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
-
+ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
 
 class PhotoSerializer(serializers.ModelSerializer):
-    """Схема добавления фотографий к номенклатуре."""
-
-    source = Base64FileField(write_only=True)
-    source_url = serializers.SerializerMethodField(read_only=True)
+    source = Base64FileField()
 
     class Meta:
         model = NomenclatureImage
-        fields = ("id", "source", "source_url", "type", "created", "nomenclature")
-        read_only_fields = ("id", "created", "nomenclature", "source_url")
+        fields = ("id", "source", "type", "created")
+        read_only_fields = ("id", "created")
 
-    def get_source_url(self, obj):
-        """Возвращает URL файла в ответе."""
-        if obj.source:
-            return obj.source.url
-        return None
+    def validate_source(self, file):
+        ext = file.name.split(".")[-1].lower()
+        if ext not in ALLOWED_FORMATS:
+            raise serializers.ValidationError(
+                f"Недопустимый формат файла. Разрешены: {', '.join(ALLOWED_FORMATS)}"
+            )
+
+        # Проверка размера (пример 15MB)
+        if file.size > 15 * 1024 * 1024:
+            raise serializers.ValidationError("Максимальный размер файла 15MB")
+
+        return file
+
+    # def validate(self, attrs):
+    #     nomenclature = self.context.get("nomenclature")
+    #     if not nomenclature:
+    #         raise serializers.ValidationError("Номенклатура не передана")
+    #
+    #     # Проверка дубликата по имени файла
+    #     if NomenclatureImage.objects.filter(
+    #         nomenclature=nomenclature,
+    #         source=attrs["source"].name
+    #     ).exists():
+    #         raise serializers.ValidationError("Этот файл уже прикреплён к номенклатуре")
+    #
+    #     # Проверка формата
+    #     ext = attrs["source"].name.split(".")[-1].lower()
+    #     if ext not in ("jpg", "jpeg", "png", "webp"):
+    #         raise serializers.ValidationError(
+    #             f"Недопустимый формат файла {ext}"
+    #         )
+    #
+    #     # Проверка размера (например 15MB)
+    #     if attrs["source"].size > 15 * 1024 * 1024:
+    #         raise serializers.ValidationError("Максимальный размер файла 15MB")
+    #
+    #     return attrs
+
+    def validate(self, attrs):
+        nomenclature = self.context.get("nomenclature")
+        if not nomenclature:
+            raise serializers.ValidationError("Номенклатура не передана")
+
+        # вычисляем md5 хэш для файла
+        file_data = attrs["source"].read()
+        file_hash = hashlib.md5(file_data).hexdigest()
+        attrs["source"].seek(0)  # обязательно вернуть курсор
+
+        # проверка дубликата по содержимому
+        if NomenclatureImage.objects.filter(nomenclature=nomenclature, hash=file_hash).exists():
+            raise serializers.ValidationError("Эта фотография уже прикреплена к номенклатуре")
+
+        return attrs
+
+    def create(self, validated_data):
+        validated_data["nomenclature"] = self.context["nomenclature"]
+        return super().create(validated_data)
 
 
 class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
@@ -54,40 +104,24 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
         read_only_fields = ("source", "id",)
 
 
-class ShortNomenclatureSerializer(serializers.ModelSerializer):
+class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
     """Схема для отображения номенклатуры в списке."""
-    exterior = serializers.SerializerMethodField()
-    interior = serializers.SerializerMethodField()
-    brand = serializers.CharField(source='brand.name', default='Без значения')
-    legalEntity = serializers.CharField(source='legalEntity.name', default='Без значения')
-    city = serializers.CharField(source='address.address.city', default='Без значения', read_only=True)
+
+    brand_name = serializers.CharField(source='brand.name', default='Без значения')
+    brand_id = serializers.CharField(source='brand.id', default=None)
+    brand_logotype = serializers.CharField(source='brand.logotype', default=None)
+
 
     #check copmmty
 
     class Meta:
         model = Nomenclature
         fields = (
-            "id",
-            "name",
-            "brand",
-            "legalEntity",
-            "pricePerMonth",
-            "typeOfPlace",
-            "interior",
-            "exterior",
-            "city",
+            "brand_name",
+            "brand_id",
+            "brand_logotype",
         )
         read_only_fields = fields
-
-    def get_interior(self, obj):
-        return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="interior"), many=True
-        ).data
-
-    def get_exterior(self, obj):
-        return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="exterior"), many=True
-        ).data
 
 
 class NomenclatureSerializer(serializers.ModelSerializer):
