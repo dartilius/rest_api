@@ -49,31 +49,6 @@ class PhotoSerializer(serializers.ModelSerializer):
 
         return file
 
-    # def validate(self, attrs):
-    #     nomenclature = self.context.get("nomenclature")
-    #     if not nomenclature:
-    #         raise serializers.ValidationError("Номенклатура не передана")
-    #
-    #     # Проверка дубликата по имени файла
-    #     if NomenclatureImage.objects.filter(
-    #         nomenclature=nomenclature,
-    #         source=attrs["source"].name
-    #     ).exists():
-    #         raise serializers.ValidationError("Этот файл уже прикреплён к номенклатуре")
-    #
-    #     # Проверка формата
-    #     ext = attrs["source"].name.split(".")[-1].lower()
-    #     if ext not in ("jpg", "jpeg", "png", "webp"):
-    #         raise serializers.ValidationError(
-    #             f"Недопустимый формат файла {ext}"
-    #         )
-    #
-    #     # Проверка размера (например 15MB)
-    #     if attrs["source"].size > 15 * 1024 * 1024:
-    #         raise serializers.ValidationError("Максимальный размер файла 15MB")
-    #
-    #     return attrs
-
     def validate(self, attrs):
         nomenclature = self.context.get("nomenclature")
         if not nomenclature:
