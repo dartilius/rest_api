@@ -7,9 +7,13 @@ from users.models import CustomUser
 
 
 class CounterpartyContactInfoSerializer(serializers.ModelSerializer):
+    counterparty_name = serializers.SerializerMethodField()
     class Meta:
         model = CounterpartyContactInfo
         fields = "__all__"
+
+    def get_counterparty_name(self, obj):
+        return obj.counterparty.name
 
 class CreateCounterpartySerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField(read_only=True)

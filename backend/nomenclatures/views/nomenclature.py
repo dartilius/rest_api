@@ -1,29 +1,30 @@
-from rest_framework import viewsets, status
+from uuid import UUID
+from typing import Callable, Optional
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.utils import inline_serializer, OpenApiResponse
 from rest_framework import serializers
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
 )
-from rest_framework.exceptions import NotFound
-from uuid import UUID
+
 from api.constants import restricted_update, VersionsSerializer
+from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
 from users.permissions import StaffCUDallRead
+from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
 from ..models import Nomenclature
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    ShortBrandNomenclatureSerializer
+    ShortBrandNomenclatureSerializer, PhotoSerializer
 )
-from django.db.models import Count
 
-from collections import defaultdict
 
 @extend_schema_view(
     grouped=extend_schema(
@@ -138,8 +139,18 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Nomenclature.active.select_related(
-        "owner", "availability", "brand", "address"
-    ).prefetch_related("images")
+        "owner", "availability", "brand",
+        "address", "legalEntity", "responsible_ad",
+        "responsible_placement_marketing",
+    ).prefetch_related(
+        "images",
+        "legalEntity__contact_persons__contacts_cp",
+        "legalEntity__contact_persons",
+        "responsible_placement_marketing__contacts_cp",
+        "responsible_ad__contacts_cp",
+        "images",
+        "tenants",
+    )
 
     serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
@@ -190,57 +201,91 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         return serializer(*args, **kwargs)
 
-    # @action(detail=False, methods=['get'])
-    # def grouped(self, request):
-    #     """
-    #     /api/nomenclature/grouped/?by=brand
-    #     /api/nomenclature/grouped/?by=legal
-    #     /api/nomenclature/grouped/?by=place
-    #     /api/nomenclature/grouped/?by=address
+    @action(detail=True, methods=["get"], url_path="tabs")
+    def tabs(self, request, pk):
+        nomenclature = self.get_object()
+        tab = request.query_params.get("q")
 
-    #     Поддерживает все фильтры из NomenclatureFilter:
-    #     ?search=..., ?name=..., ?brand_id=..., ?status=..., ?version=...,
-    #     ?legal_entity_name=..., ?brand_name=..., ?type_of_place=...
-    #     """
+        if not tab:
+            raise ValidationError({"q": "Query-параметр 'q' обязателен. Например: ?q=tenants"})
 
-    #     qs = Nomenclature.active.select_related(
-    #         'brand', 'legalEntity', 'address__address'
-    #     ).prefetch_related('images').all()
+        handler = self._get_tab_handler(tab)
+        if not handler:
+            raise ValidationError({"q": f"Неподдерживаемая вкладка '{tab}'"})
 
-    #     # Применяем фильтры из NomenclatureFilter
-    #     filterset = self.filterset_class(request.query_params, queryset=qs, request=request)
-    #     qs = filterset.qs
+        return handler(nomenclature)
 
-    #     group_by = request.query_params.get('by')
+    def _get_tab_handler(
+            self, tab: str
+    ) -> Optional[Callable[[Nomenclature], Response]]:
+        return {
+            "tenants": self._tenants_tab,
+            "contacts": self._contacts_tab,
+            "photos": self._photos_tab,
+        }.get(tab)
 
-    #     # функции для получения ключа группы из сериализованных данных
-    #     GROUP_MAP = {
-    #         'brand': lambda x: x['brand'] if x['brand'] else 'Без значения',
-    #         'legal': lambda x: x['legalEntity'] or 'Без значения',
-    #         'place': lambda x: x['typeOfPlace'] or 'Без значения',
-    #         'address': lambda x: x['city'] or 'Без значения',
-    #     }
+    def _tenants_tab(self, nomenclature):
+        serializer = CounterpartiesShortSerializer(
+            nomenclature.tenants.all(),
+            many=True
+        )
+        return Response(serializer.data)
 
-    #     if group_by not in GROUP_MAP:
-    #         return Response({
-    #             'error': 'Invalid group param',
-    #             'allowed': list(GROUP_MAP.keys())
-    #         }, status=400)
-    #     page = self.paginate_queryset(qs)
-    #     serializer = ShortNomenclatureSerializer(page or qs, many=True)
-    #     data = serializer.data
+    def _contacts_tab(self, nomenclature):
+        result = {
+            "legal_entity": None,
+            "legal_entity_cp": [],
+            "marketing": None,
+            "ad": None,
+        }
 
-    #     grouped = defaultdict(list)
-    #     for item in data:
-    #         key = GROUP_MAP[group_by](item)
-    #         grouped[key].append(item)
+        legal_entity = nomenclature.legalEntity
 
-    #     result = [{'name': k, 'items': v} for k, v in grouped.items()]
-    #     return (
-    #         self.get_paginated_response(result)
-    #         if page is not None
-    #         else Response(result)
-    #     )
+        if legal_entity:
+            result["legal_entity"] = CounterpartyContactInfoSerializer(
+                legal_entity.contacts.all(),
+                many=True
+            ).data
+
+            # контактные лица юрлица
+            contacts = []
+
+            for user in legal_entity.contact_persons.all():
+                contacts.extend(user.contacts_cp.all())
+
+            result["legal_entity_cp"] = UserContactInfoSerializer(
+                contacts,
+                many=True
+            ).data
+
+        # -------------------------
+        # Marketing responsible
+        # -------------------------
+        if nomenclature.responsible_placement_marketing:
+            contacts = nomenclature.responsible_placement_marketing.contacts_cp.all()
+            result["marketing"] = UserContactInfoSerializer(
+                contacts,
+                many=True
+            ).data
+
+        # -------------------------
+        # AD responsible
+        # -------------------------
+        if nomenclature.responsible_ad:
+            contacts = nomenclature.responsible_ad.contacts_cp.all()
+            result["ad"] = UserContactInfoSerializer(
+                contacts,
+                many=True
+            ).data
+
+        return Response(result)
+
+    def _photos_tab(self, nomenclature):
+        serializer = PhotoSerializer(
+            nomenclature.images.all(),
+            many=True
+        )
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def grouped(self, request):
