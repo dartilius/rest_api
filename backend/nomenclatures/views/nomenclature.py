@@ -722,7 +722,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         updatable_fields = (
             "name", "description", "timezone", "settings", "brand_id",
             "legalEntity_id", "tenants_id", "floor_space", "traffic",
-            "responsible_radio", "responsible_ad", "media", "contentType",
+            "responsible_radio", "responsible_ad", "responsible_technic", "responsible_technic_on_address",
+            "responsible_placement_marketing", "media", "contentType",
             "typeOfPlace", "pricePerMonth", "address_data", "address_id"
         )
 
