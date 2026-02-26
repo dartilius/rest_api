@@ -42,7 +42,6 @@ class ContactInfo(ContactInformation):
     class Meta:
         db_table = "contact_info"
         verbose_name = "Контактная информация"
-        verbose_name = 'Контактная информация'
         verbose_name_plural = 'Контактная информация'
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
