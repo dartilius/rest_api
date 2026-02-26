@@ -70,25 +70,6 @@ class PhotoSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
-    """Схема для отображения номенклатуры в списке."""
-
-    brand_name = serializers.CharField(source='brand.name', default='Без значения')
-    brand_id = serializers.CharField(source='brand.id', default=None)
-    brand_logotype = serializers.CharField(source='brand.logotype', default=None)
-
-
-    #check copmmty
-
-    class Meta:
-        model = Nomenclature
-        fields = (
-            "brand_name",
-            "brand_id",
-            "brand_logotype",
-        )
-        read_only_fields = fields
-
 class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
     """Схема для добавления фотографий к номенклатурам."""
 
@@ -579,7 +560,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "radio": self._user_id_name(obj.responsible_radio),
             "technic": self._user_id_name(obj.responsible_technic),
             "technic_on_address": self._user_id_name(obj.responsible_technic_on_address),
-            "placment_markentig": self._user_id_name(obj.responsible_placement_marketing),
+            "placement_marketing": self._user_id_name(obj.responsible_placement_marketing),
         }
 
         repr_["tenants_length"] = len(obj.tenants.all()) if obj.tenants else 0
