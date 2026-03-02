@@ -529,43 +529,28 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             obj.images.filter(type="exterior"), many=True
         ).data
 
-    # def _user_id_name(self, user):
-    #     if not user:
-    #         return None
-    #     # ищем основной телефон
-    #     basic_phones = list(
-    #         user.contacts_cp
-    #         .filter(type="phone", basic=True)
-    #         .values_list("meaning", flat=True)
-    #     )
-    #
-    #     return {
-    #         "id": user.id,
-    #         "full_name": user.full_name,
-    #         "phone_number": basic_phones or user.phone_number,
-    #     }
-
     def _user_id_name(self, user):
         if not user:
             return None
 
-        basic_phone = (
+        # Берём ВСЕ basic телефоны
+        basic_phones = list(
             user.contacts_cp
             .filter(type="phone", basic=True)
             .values_list("meaning", flat=True)
-            .first()
         )
 
-        phone = basic_phone or user.phone_number
+        # fallback — если basic нет, но есть phone_number в CustomUser
+        if not basic_phones and user.phone_number:
+            basic_phones = [str(user.phone_number)]
 
-        # приведение к строке обязательно
-        if phone:
-            phone = str(phone)
+        # гарантируем строки
+        phones = [str(p) for p in basic_phones if p]
 
         return {
-            "id": str(user.id),  # UUID тоже лучше явно строкой
+            "id": str(user.id),
             "full_name": user.full_name,
-            "phone_number": phone,
+            "phone_number": phones,
         }
 
     def to_representation(self, obj):
