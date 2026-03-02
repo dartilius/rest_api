@@ -10,7 +10,7 @@ from ch_statistic.models import ADStat, MusicStat, VideoStat, ImageStat, TickerS
 from ch_statistic.serializers import NomenclatureAdStatSerializer, NomenclatureMusicStatSerializer, \
     NomenclatureVideoStatSerializer, NomenclatureImageStatSerializer, NomenclatureTickerStatSerializer
 from nomenclatures.models import Nomenclature
-from nomenclatures.serializers import StatusHistorySerializer
+from nomenclatures.serializers import StatusHistorySerializer, NomenclatureSerializer
 from users.permissions import StaffCUDallRead
 
 
@@ -40,6 +40,8 @@ class NomenclatureStatisticViewSet(viewsets.ModelViewSet):
         - Фильтрация по датам (для ad_stat)
         - Оптимизированные SQL запросы
     """
+    queryset = Nomenclature.objects.all()
+    serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
 
     @extend_schema(summary="Получить статистику рекламы по номенклатуре")
