@@ -86,9 +86,6 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
     brand_id = serializers.CharField(source='brand.id', default=None)
     brand_logotype = serializers.CharField(source='brand.logotype', default=None)
 
-
-    #check copmmty
-
     class Meta:
         model = Nomenclature
         fields = (
@@ -535,10 +532,18 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     def _user_id_name(self, user):
         if not user:
             return None
+        # ищем основной телефон
+        basic_phones = list(
+            user.contacts_cp
+            .filter(type="phone", basic=True)
+            .values_list("meaning", flat=True)
+        )
+
         return {
             "id": user.id,
             "full_name": user.full_name,
-    }
+            "phone_number": basic_phones or user.phone_number,
+        }
 
     def to_representation(self, obj):
         repr_ = super().to_representation(obj)
