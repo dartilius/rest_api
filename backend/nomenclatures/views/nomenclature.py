@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
 )
-
+from django.db.models import Count, Case, When, Value, IntegerField
 from api.constants import restricted_update, VersionsSerializer
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
 from users.permissions import StaffCUDallRead
@@ -156,6 +156,25 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     permission_classes = [StaffCUDallRead]
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
+
+    def get_queryset(self):
+        base_qs = super().get_queryset()
+
+        return (
+            base_qs
+            .annotate(
+                tenants_count=Count("tenants", distinct=True),
+            )
+            .order_by(
+                Case(
+                    When(typeOfPlace="Торговый центр", then=Value(0)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                ),
+                "-tenants_count",
+                "-created",  # если хочешь сохранить вторичную сортировку
+            )
+        )
 
     def get_serializer(self, *args, **kwargs):
         """
