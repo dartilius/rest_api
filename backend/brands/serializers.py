@@ -32,4 +32,4 @@ class BrandShortSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Brand
-        fields = ("id", "name", "code1c")
+        fields = ("id", "name")
