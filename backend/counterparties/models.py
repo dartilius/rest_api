@@ -173,31 +173,31 @@ class Counterparty(APIBaseObjectModel):
         if self.opf in TYPE_FL:
             # если брендов и описания нет → выводить только ФИО + ОПФ
             if not brand_list and not desc:
-                return f"{fio}, {self.opf}"
+                return f"{fio}"
 
             # если бренды есть, но описания нет
             if brand_list and not desc:
-                return f"{fio}, {self.opf} ({brand_list})"
+                return f"{fio}, ({brand_list})"
 
             # если описание есть, но брендов нет
             if desc and not brand_list:
-                return f"{fio}, {self.opf} ({desc})"
+                return f"{fio}, ({desc})"
 
             # есть и бренды и описание
-            return f"{fio}, {self.opf} ({brand_list}, {desc})"
+            return f"{fio}, ({brand_list}, {desc})"
 
         # Юр. лица
         if self.opf in TYPE_ORG:
             if not brand_list and not desc:
-                return f"{self.keyword}, {self.opf}"
+                return f"{self.keyword}"
 
             if brand_list and not desc:
-                return f"{self.keyword}, {self.opf} ({brand_list})"
+                return f"{self.keyword}, ({brand_list})"
 
             if desc and not brand_list:
-                return f"{self.keyword}, {self.opf} ({desc})"
+                return f"{self.keyword}, ({desc})"
 
-            return f"{self.keyword}, {self.opf} ({brand_list}, {desc})"
+            return f"{self.keyword}, ({brand_list}, {desc})"
 
         return fio
 

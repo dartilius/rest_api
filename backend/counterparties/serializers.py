@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from addresses.models import Address
 from brands.models import Brand
+from brands.serializers import BrandShortSerializer
 from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
 from users.models import CustomUser
 
@@ -121,9 +122,11 @@ class CounterpartiesSerializer(serializers.ModelSerializer):
 class CounterpartiesShortSerializer(serializers.ModelSerializer):
     """Короткий сериализатор — только id и name."""
 
+    brands = BrandShortSerializer(read_only=True, many=True)
+
     class Meta:
         model = Counterparty
-        fields = ("id", "name")
+        fields = ("id", "brands", "name", "opf")
 
 
 class CounterpartiesListSerializer(serializers.ModelSerializer):
