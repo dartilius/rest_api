@@ -744,7 +744,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             "legalEntity_id", "tenants_id", "floor_space", "traffic",
             "responsible_radio", "responsible_ad", "responsible_technic", "responsible_technic_on_address",
             "responsible_placement_marketing", "media", "contentType",
-            "typeOfPlace", "pricePerMonth", "address_data", "address_id"
+            "typeOfPlace", "typeOfPlace_id","pricePerMonth", "address_data", "address_id"
         )
 
         kwargs.update(

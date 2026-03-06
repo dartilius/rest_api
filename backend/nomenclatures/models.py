@@ -67,10 +67,6 @@ def get_morph():
     return pymorphy3.MorphAnalyzer()
 
 
-def generate_abbreviation(name: str):
-    words = re.findall(r"[А-Яа-яA-Za-z]+", name)
-    return "".join(word[0].upper() for word in words)
-
 
 def inflect_words(name: str, case: str):
     words = name.split()
@@ -104,6 +100,14 @@ class TypeOfPlace(models.Model):
         blank=True,
         null=True,
         verbose_name="Аббревиатура"
+    )
+
+    code1c = models.CharField(
+        verbose_name="Код из 1С",
+        max_length=64,
+        blank=True,
+        null=True,
+        unique=True
     )
 
     genitive = models.CharField(
@@ -140,9 +144,6 @@ class TypeOfPlace(models.Model):
         return self.abbreviation or self.name
 
     def save(self, *args, **kwargs):
-
-        if not self.abbreviation and self.name:
-            self.abbreviation = generate_abbreviation(self.name)
 
         if not self.genitive and self.name:
             self.genitive = inflect_words(self.name, "gent")
@@ -283,6 +284,12 @@ class Nomenclature(APIBaseObjectModel):
         default="audio",
     )
 
+    typeOfPlaceOld = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
+
     typeOfPlace = models.ForeignKey(
         "TypeOfPlace",
         on_delete=models.SET_NULL,
@@ -302,6 +309,27 @@ class Nomenclature(APIBaseObjectModel):
     @property
     def brand_logo(self):
         return self.brand.logotype
+
+    @property
+    def type_of_place_display(self):
+        if not self.typeOfPlace:
+            return None
+        return self.typeOfPlace.abbreviation or self.typeOfPlace.name
+
+    @property
+    def name_for_front(self):
+        if not self.typeOfPlace:
+            return None
+
+        place = self.typeOfPlace
+
+        if place.abbreviation:
+            return f"Размещение в {place.abbreviation}"
+
+        if place.prepositional:
+            return f"Размещение {place.prepositional}"
+
+        return f"Размещение в {place.name}"
 
     def __str__(self):
         return self.name

@@ -106,8 +106,8 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
-    typeOfPlace = serializers.SerializerMethodField()
-    nameForFront = serializers.SerializerMethodField()
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
@@ -176,29 +176,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "nameForFront"
         )
         model = Nomenclature
-
-    def get_typeOfPlace(self, obj):
-        if not obj.typeOfPlace:
-            return None
-
-        return obj.typeOfPlace.display_name
-
-    def get_nameForFront(self, obj):
-        if not obj.typeOfPlace:
-            return None
-
-        place = obj.typeOfPlace
-
-        # Если есть аббревиатура
-        if place.abbreviation:
-            return f"Размещение в {place.abbreviation}"
-
-        # Если нет аббревиатуры — используем предложный падеж
-        if place.prepositional:
-            return f"Размещение в {place.prepositional}"
-
-        # fallback
-        return f"Размещение в {place.name}"
 
     def validate_settings(self, value):
         """
@@ -591,7 +568,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         # Создаем main_info точно как в оригинале
         repr_["main_info"] = {
-            "name": obj.name,
             "description": obj.description,
             "owner": obj.owner.full_name,
             "timezone": TIMEZONES[obj.timezone],
@@ -609,7 +585,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "placement_marketing": self._user_id_name(obj.responsible_placement_marketing),
         }
 
-        repr_["tenants_length"] = len(obj.tenants.all()) if obj.tenants else 0
+        repr_["tenants_length"] = obj.tenants.count()
 
 
         # Добавляем broadcast
@@ -653,6 +629,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     abbreviation = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     brand = BrandSerializer()
@@ -682,12 +659,6 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
         model = Nomenclature
-
-    def get_abbreviation(self, obj):
-        if not obj.typeOfPlace:
-            return None
-
-        return obj.typeOfPlace.display_name
 
     def get_exterior(self, obj):
         return InNomenclaturePhotoSerializer(

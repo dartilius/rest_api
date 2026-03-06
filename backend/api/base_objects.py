@@ -162,6 +162,12 @@ class Article(Field):
         return None
 
 
+class FirstName(Model):
+    first_name = CharField()
+    class Meta:
+        abstract = True
+
+
 class APIBaseObjectModel(Model):
     """
     Базовая модель объекта.
