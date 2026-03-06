@@ -142,6 +142,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         "owner", "availability", "brand",
         "address", "legalEntity", "responsible_ad",
         "responsible_placement_marketing",
+        "typeOfPlace"
     ).prefetch_related(
         "images",
         "legalEntity__contact_persons__contacts_cp",

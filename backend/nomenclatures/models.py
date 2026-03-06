@@ -1,4 +1,6 @@
 import hashlib
+import re
+from functools import lru_cache
 from uuid import uuid4
 
 from django.contrib.postgres.fields import ArrayField
@@ -8,7 +10,9 @@ from django.db import models
 from django_minio_backend import MinioBackend
 from django.utils.translation import gettext_lazy as _
 from addresses.models import Address as AddressBook
-from api import APIBaseObjectModel, Article
+from api import APIBaseObjectModel, Article, UUIDPKField
+
+# from api.base_objects import UUIDPKField
 
 TIMEZONES = {
     "Etc/GMT+11": "UTC -11",
@@ -56,6 +60,97 @@ STATUSES = {
     1: "Offline 5+ minutes",
     2: "Offline 1+ hour"
 }
+
+@lru_cache
+def get_morph():
+    import pymorphy3
+    return pymorphy3.MorphAnalyzer()
+
+
+def generate_abbreviation(name: str):
+    words = re.findall(r"[А-Яа-яA-Za-z]+", name)
+    return "".join(word[0].upper() for word in words)
+
+
+def inflect_words(name: str, case: str):
+    words = name.split()
+    result = []
+    morph = get_morph()
+
+    for word in words:
+        parsed = morph.parse(word)[0]
+        inflected = parsed.inflect({case})
+
+        if inflected:
+            result.append(inflected.word)
+        else:
+            result.append(word)
+
+    return " ".join(result)
+
+
+class TypeOfPlace(models.Model):
+
+    id = UUIDPKField()
+
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        verbose_name="Полное наименование"
+    )
+
+    abbreviation = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name="Аббревиатура"
+    )
+
+    genitive = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Название в родительном падеже"
+    )
+
+    prepositional = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Название в предложном падеже"
+    )
+
+    is_mall = models.BooleanField(
+        default=False,
+        verbose_name="Является торговым центром"
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Активно"
+    )
+
+    class Meta:
+        db_table = "type_of_place"
+        verbose_name = "Тип места"
+        verbose_name_plural = "Типы мест"
+
+    @property
+    def display_name(self):
+        return self.abbreviation or self.name
+
+    def save(self, *args, **kwargs):
+
+        if not self.abbreviation and self.name:
+            self.abbreviation = generate_abbreviation(self.name)
+
+        if not self.genitive and self.name:
+            self.genitive = inflect_words(self.name, "gent")
+
+        if not self.prepositional and self.name:
+            self.prepositional = "в " + inflect_words(self.name, "loct")
+
+        super().save(*args, **kwargs)
 
 
 
@@ -188,11 +283,13 @@ class Nomenclature(APIBaseObjectModel):
         default="audio",
     )
 
-    typeOfPlace = models.CharField(
-        max_length=255,
-        verbose_name="Тип места размещения",
+    typeOfPlace = models.ForeignKey(
+        "TypeOfPlace",
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name="nomenclatures",
+        verbose_name="Тип места размещения"
     )
 
     pricePerMonth = models.DecimalField(

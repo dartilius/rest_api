@@ -7,6 +7,7 @@ from nomenclatures.models import (
     STATUSES,
     NomenclatureImage,
     NomenclatureAddress,
+    TypeOfPlace
 )
 
 
@@ -32,6 +33,17 @@ class NomenclatureAdmin(admin.ModelAdmin):
         )
 
 
+@admin.register(TypeOfPlace)
+class TypeOfPlaceAdmin(admin.ModelAdmin):
+    """Тип места вещания"""
+
+    list_display = ("id", "name", "is_active")
+    search_fields = ("name", "prepositional", "genitive", "abbreviation")
+    show_full_result_count = True
+
+    def get_queryset(self, request):
+        return TypeOfPlace.objects.all()
+
 @admin.register(NomenclatureAvailability)
 class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
     """Доступность."""
@@ -54,6 +66,7 @@ class StatusHistoryAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return StatusHistory.objects.all().select_related("client")
+
 
 @admin.register(NomenclatureImage)
 class NomenclatureImageAdmin(admin.ModelAdmin):

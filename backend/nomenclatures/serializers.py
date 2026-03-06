@@ -12,21 +12,28 @@ from nomenclatures.models import (
     StatusHistory,
     TIMEZONES,
     NomenclatureImage,
-    NomenclatureAddress, AVAILABLE_CONTENT_TYPES,
+    NomenclatureAddress,
+    AVAILABLE_CONTENT_TYPES,
+    TypeOfPlace
 )
-
+from addresses.models import Address as AddressBook
+from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
 from api.base_objects import Article
+
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
-from addresses.models import Address as AddressBook
-from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
 
-from api.base_objects import Article
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
 ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
+
+class TypeOfPlaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TypeOfPlace
+        fields = "__all__"
+        read_only_fields = ("id",)
 
 class PhotoSerializer(serializers.ModelSerializer):
     source = Base64FileField()
@@ -99,6 +106,8 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
+    typeOfPlace = serializers.SerializerMethodField()
+    nameForFront = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
@@ -150,6 +159,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = "__all__"
+        extra_fields = ("nameForFront",)
         read_only_fields = (
             "id",
             "owner",
@@ -163,9 +173,32 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "brand",
             "interior",
             "exterior",
-            "article"
+            "nameForFront"
         )
         model = Nomenclature
+
+    def get_typeOfPlace(self, obj):
+        if not obj.typeOfPlace:
+            return None
+
+        return obj.typeOfPlace.display_name
+
+    def get_nameForFront(self, obj):
+        if not obj.typeOfPlace:
+            return None
+
+        place = obj.typeOfPlace
+
+        # Если есть аббревиатура
+        if place.abbreviation:
+            return f"Размещение в {place.abbreviation}"
+
+        # Если нет аббревиатуры — используем предложный падеж
+        if place.prepositional:
+            return f"Размещение в {place.prepositional}"
+
+        # fallback
+        return f"Размещение в {place.name}"
 
     def validate_settings(self, value):
         """
@@ -620,7 +653,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
-
+    abbreviation = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
@@ -644,10 +677,17 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
-            "code1c"
+            "code1c",
+            "abbreviation",
         )
         read_only_fields = fields
         model = Nomenclature
+
+    def get_abbreviation(self, obj):
+        if not obj.typeOfPlace:
+            return None
+
+        return obj.typeOfPlace.display_name
 
     def get_exterior(self, obj):
         return InNomenclaturePhotoSerializer(
