@@ -289,7 +289,7 @@ class Nomenclature(APIBaseObjectModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="nomenclatures",
+        related_name="type_nomenclature",
         verbose_name="Тип места размещения"
     )
 
