@@ -284,12 +284,6 @@ class Nomenclature(APIBaseObjectModel):
         default="audio",
     )
 
-    typeOfPlaceOld = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True
-    )
-
     typeOfPlace = models.ForeignKey(
         "TypeOfPlace",
         on_delete=models.SET_NULL,
