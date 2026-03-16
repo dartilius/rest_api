@@ -329,8 +329,8 @@ class Nomenclature(APIBaseObjectModel):
 
         place = self.typeOfPlace
         brand = self.brand
-        city = self.address.address.city.name
-        street = self.address.address.street.name
+        city = f"г. {self.address.address.city.name}"
+        street = f"ул. {self.address.address.street.name}"
         house = self.address.address.house.number
 
 
