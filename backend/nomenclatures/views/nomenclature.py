@@ -18,7 +18,7 @@ from counterparties.serializers import CounterpartiesShortSerializer, Counterpar
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
-from ..models import Nomenclature
+from ..models import Nomenclature, TypeOfPlace
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
