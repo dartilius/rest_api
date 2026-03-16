@@ -143,13 +143,9 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         "brand",
         "responsible_ad",
         "typeOfPlace",
-        "tenants",  # M2M
-        "legalEntity",
     ).prefetch_related(
         "images",
-        "tenants",  # M2M
-        "legalEntity",
-        "responsible_ad",
+        "tenants",
     )
 
     serializer_class = NomenclatureSerializer
