@@ -31,7 +31,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
         "owned_count",
         "rented_count",
         "counter_parties_count",
-        "brands"
+        "display_brands"
     )
 
     search_fields = ("first_name", "middle_name", "last_name", "keyword")
@@ -50,9 +50,6 @@ class CounterpartiesAdmin(admin.ModelAdmin):
                 "is_active",
             ),
         }),
-        ("Бренды", {
-            "fields": ("brands",),
-        }),
         ("Свои номенклатуры (legalEntity)", {
             "fields": ("show_owned",),
         }),
@@ -67,6 +64,14 @@ class CounterpartiesAdmin(admin.ModelAdmin):
     # ========= Queryset =========
     def get_queryset(self, request):
         return Counterparty.active.all()
+
+    @admin.display(description="Бренды КА")
+    def display_brands(self, obj):
+        if not obj.pk:
+            return "—"
+        # получаем названия брендов и соединяем через запятую
+        brands = obj.brands.values_list("name", flat=True)
+        return ", ".join(brands) if brands else "—"
 
     # ========= Счётчики (ВАЖНО: obj может быть None) =========
     @admin.display(description="Своих")
