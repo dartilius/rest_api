@@ -1,6 +1,7 @@
 import hashlib
 from datetime import time
 
+from django.db.models import Count
 from rest_framework import serializers
 from brands.models import Brand
 from brands.serializers import BrandSerializer
@@ -111,7 +112,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
-    tenants = CounterpartiesShortSerializer(read_only=True, many=True)
+    tenants = serializers.SerializerMethodField()
     legalEntity_id = serializers.PrimaryKeyRelatedField(
         queryset=Counterparty.objects.all(),
         source="legalEntity",
@@ -516,6 +517,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+    def get_tenants(self, obj) -> list:
+        tenants = obj.tenants.annotate(
+            places_count=Count("nomenclature")
+        ).order_by("-places_count")
+
+        return CounterpartiesShortSerializer(tenants, many=True).data
 
     def get_status(self, obj) -> int | None:
         try:
