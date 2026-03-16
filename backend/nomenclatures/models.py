@@ -342,7 +342,7 @@ class Nomenclature(APIBaseObjectModel):
         else:
             place_name = ""
 
-        return f"Размещение в {place_name} {brand.name}, {city}, {street}, {house}"
+        return f"Размещение ролика в {place_name} {brand.name}, {city}, {street}, {house}"
 
     def __str__(self):
         return self.name
