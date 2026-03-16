@@ -31,6 +31,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
         "owned_count",
         "rented_count",
         "counter_parties_count",
+        "brands"
     )
 
     search_fields = ("first_name", "middle_name", "last_name", "keyword")
@@ -48,6 +49,9 @@ class CounterpartiesAdmin(admin.ModelAdmin):
                 "code1c",
                 "is_active",
             ),
+        }),
+        ("Бренды", {
+            "fields": ("brands",),
         }),
         ("Свои номенклатуры (legalEntity)", {
             "fields": ("show_owned",),
