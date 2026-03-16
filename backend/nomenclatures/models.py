@@ -338,9 +338,9 @@ class Nomenclature(APIBaseObjectModel):
             return f"Размещение в {place.abbreviation} {brand.name}, {city}, {street}, {house}"
 
         if place.prepositional:
-            return f"Размещение {place.prepositional}"
+            return f"Размещение в {place.prepositional} {brand.name}, {city}, {street}, {house}"
 
-        return f"Размещение в {place.name}"
+        return f"Размещение в {place.name} {brand.name}, {city}, {street}, {house}"
 
     def __str__(self):
         return self.name
