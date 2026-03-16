@@ -161,19 +161,27 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         base_qs = super().get_queryset()
 
+        # Пытаемся найти TypeOfPlace с именем "Торговый центр"
+        tc = TypeOfPlace.objects.filter(name="Торговый центр").first()
+
+        # Если есть, используем Case для сортировки, иначе просто по умолчанию
+        if tc:
+            ordering_case = Case(
+                When(typeOfPlace_id=tc.id, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        else:
+            ordering_case = Value(1)
+
+        # Аннотируем количество арендаторов и делаем сортировку
         return (
             base_qs
-            .annotate(
-                tenants_count=Count("tenants", distinct=True),
-            )
+            .annotate(tenants_count=Count("tenants", distinct=True))
             .order_by(
-                Case(
-                    When(typeOfPlace="Торговый центр", then=Value(0)),
-                    default=Value(1),
-                    output_field=IntegerField(),
-                ),
-                "-tenants_count",
-                "-created",  # если хочешь сохранить вторичную сортировку
+                ordering_case,  # "Торговый центр" сверху
+                "-tenants_count",  # потом по количеству арендаторов
+                "-created",  # потом по дате создания
             )
         )
 
