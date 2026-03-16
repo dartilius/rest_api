@@ -160,7 +160,7 @@ class Counterparty(APIBaseObjectModel):
             models.Index(fields=['inn']),
             models.Index(fields=['code1c']),
             models.Index(fields=['address']),
-            models.Index(fields=['contact_persons']),
+            # models.Index(fields=['contact_persons']),
             models.Index(fields=['additional_name']),
         ]
 
