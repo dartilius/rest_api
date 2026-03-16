@@ -52,9 +52,9 @@ class NomenclatureFilter(FilterSet):
         lookup_expr='icontains',
         label='Название бренда'
     )
-    
+
     type_of_place = CharFilter(
-        field_name='typeOfPlace',
+        field_name='typeOfPlace__name',
         lookup_expr='icontains',
         label='Тип места размещения'
     )
@@ -133,7 +133,7 @@ class NomenclatureFilter(FilterSet):
         q |= models.Q(name__icontains=value)
         q |= models.Q(version__icontains=value)
         q |= models.Q(code1c__icontains=value)
-        q |= models.Q(typeOfPlace__icontains=value)
+        q |= models.Q(typeOfPlace__name__icontains=value)
         
         # =========================
         # Brand
@@ -159,26 +159,15 @@ class NomenclatureFilter(FilterSet):
         q |= models.Q(tenants__keyword__icontains=value)
         q |= models.Q(tenants__description__icontains=value)
         q |= models.Q(tenants__brands__name__icontains=value)
-        
-        # =========================
-        # Responsible radio
-        # =========================
-        q |= models.Q(responsible_radio__email__icontains=value)
-        q |= models.Q(responsible_radio__first_name__icontains=value)
-        q |= models.Q(responsible_radio__middle_name__icontains=value)
-        q |= models.Q(responsible_radio__last_name__icontains=value)
-        q |= models.Q(responsible_radio__phone_number__icontains=value)
-        q |= models.Q(responsible_radio__code1c__icontains=value)
-        
-        # =========================
-        # Responsible ad
-        # =========================
-        q |= models.Q(responsible_ad__email__icontains=value)
-        q |= models.Q(responsible_ad__first_name__icontains=value)
-        q |= models.Q(responsible_ad__middle_name__icontains=value)
-        q |= models.Q(responsible_ad__last_name__icontains=value)
-        q |= models.Q(responsible_ad__phone_number__icontains=value)
-        q |= models.Q(responsible_ad__code1c__icontains=value)
+
+        # Ответственные
+        for field in ['responsible_radio', 'responsible_ad']:
+            q |= models.Q(**{f"{field}__email__icontains": value})
+            q |= models.Q(**{f"{field}__first_name__icontains": value})
+            q |= models.Q(**{f"{field}__middle_name__icontains": value})
+            q |= models.Q(**{f"{field}__last_name__icontains": value})
+            q |= models.Q(**{f"{field}__phone_number__icontains": value})
+            q |= models.Q(**{f"{field}__code1c__icontains": value})
         
         # =========================
         # АДРЕСЫ (ОСНОВНОЙ ПОИСК)
