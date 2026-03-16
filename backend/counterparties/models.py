@@ -151,7 +151,7 @@ class Counterparty(APIBaseObjectModel):
                 opclasses=["gin_trgm_ops"],
             ),
             GinIndex(
-                name="counterparty_description_gin_idx",
+                name="counterparty_desc_gin_idx",
                 fields=["description"],
                 opclasses=["gin_trgm_ops"],
             ),

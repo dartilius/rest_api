@@ -366,6 +366,11 @@ class Nomenclature(APIBaseObjectModel):
                 fields=["name"],
                 opclasses=["gin_trgm_ops"],
             ),
+            GinIndex(
+                name="nomenclature_tenants_gin_idx",
+                fields=["tenants"],
+                opclasses=["gin_trgm_ops"],
+            ),
             models.Index(fields=['typeOfPlace']),
             models.Index(fields=['responsible_radio']),
             models.Index(fields=['responsible_ad']),
