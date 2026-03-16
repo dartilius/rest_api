@@ -638,7 +638,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
-    abbreviation = serializers.SerializerMethodField()
+    # abbreviation = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
@@ -663,7 +663,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "typeOfPlace",
             "pricePerMonth",
             "code1c",
-            "abbreviation",
+            # "abbreviation",
         )
         read_only_fields = fields
         model = Nomenclature
