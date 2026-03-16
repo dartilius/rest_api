@@ -52,6 +52,9 @@ class CounterpartiesAdmin(admin.ModelAdmin):
         ("Бренды", {
             "fields": ("display_brands",),
         }),
+        ("Описание", {
+            "fields": ("description",),
+        }),
         ("Свои номенклатуры (legalEntity)", {
             "fields": ("show_owned",),
         }),
