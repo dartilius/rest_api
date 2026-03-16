@@ -340,7 +340,7 @@ class Nomenclature(APIBaseObjectModel):
             else:
                 place_name = place.name
         else:
-            place_name = "месте"
+            place_name = ""
 
         return f"Размещение в {place_name} {brand.name}, {city}, {street}, {house}"
 
