@@ -360,17 +360,36 @@ class Nomenclature(APIBaseObjectModel):
             )
         ]
         indexes = [
+            # СУЩЕСТВУЮЩИЕ ИНДЕКСЫ
             GinIndex(
                 name="nomenclature_name_gin_idx",
                 fields=["name"],
                 opclasses=["gin_trgm_ops"],
             ),
-            # Добавьте индексы для часто используемых полей поиска
             models.Index(fields=['typeOfPlace']),
             models.Index(fields=['responsible_radio']),
             models.Index(fields=['responsible_ad']),
             models.Index(fields=['brand']),
-            models.Index(fields=['legalEntity'])
+            models.Index(fields=['legalEntity']),
+
+            # ДОБАВЛЯЕМ НЕДОСТАЮЩИЕ FK
+            models.Index(fields=['responsible_technic']),
+            models.Index(fields=['responsible_technic_on_address']),
+            models.Index(fields=['responsible_placement_marketing']),
+
+            # ИНДЕКСЫ ДЛЯ ПОИСКА ПО ТОЧНОМУ СОВПАДЕНИЮ
+            models.Index(fields=['code1c']),
+            models.Index(fields=['timezone']),
+            models.Index(fields=['version']),
+
+            # ИНДЕКС ДЛЯ СОРТИРОВКИ
+            models.Index(fields=['pricePerMonth']),
+            models.Index(fields=['-created']),
+
+            # СОСТАВНЫЕ ИНДЕКСЫ ДЛЯ ЧАСТЫХ КОМБИНАЦИЙ
+            models.Index(fields=['brand', 'typeOfPlace']),
+            models.Index(fields=['legalEntity', 'brand']),
+
         ]
 
 class NomenclatureAvailability(models.Model):

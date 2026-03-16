@@ -144,7 +144,24 @@ class Counterparty(APIBaseObjectModel):
                     name="counterparty_name_gin_idx",
                     fields=["first_name", "middle_name", "last_name"],
                     opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
-                )
+                ),
+                GinIndex(
+                    name="counterparty_keyword_gin_idx",
+                    fields=["keyword"],
+                    opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
+                ),
+                GinIndex(
+                    name="counterparty_description_gin_idx",
+                    fields=["description"],
+                    opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
+                ),
+                models.Index(fields=['keyword']),
+                models.Index(fields=['description']),
+                models.Index(fields=['inn']),
+                models.Index(fields=['code1c']),
+                models.Index(fields=['address']),
+                models.Index(fields=['contact_persons']),
+                models.Index(fields=['additional_name']),
             ]
 
     @property
