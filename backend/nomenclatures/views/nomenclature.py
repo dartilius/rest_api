@@ -141,19 +141,15 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     queryset = Nomenclature.active.select_related(
         "legalEntity",
         "brand",
-        "responsible_radio",
         "responsible_ad",
-        "responsible_technic",
-        "responsible_technic_on_address",
-        "responsible_placement_marketing",
         "typeOfPlace",
+        "tenants",  # M2M
+        "legalEntity",
     ).prefetch_related(
         "images",
         "tenants",  # M2M
-        "legalEntity__contact_persons__contacts",
-        "legalEntity__contact_persons",
-        "responsible_placement_marketing__contacts",
-        "responsible_ad__contacts",
+        "legalEntity",
+        "responsible_ad",
     )
 
     serializer_class = NomenclatureSerializer
