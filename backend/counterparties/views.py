@@ -88,7 +88,7 @@ from counterparties.serializers import CounterpartiesSerializer, CounterpartiesL
 )
 @extend_schema(tags=["Контрагенты"])
 class CounterpartiesViewSet(viewsets.ModelViewSet):
-    queryset = Counterparty.objects.all()
+    queryset = Counterparty.objects.prefetch_related("brands", "contact_persons").select_related("contacts", "address").all()
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
