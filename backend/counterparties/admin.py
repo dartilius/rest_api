@@ -34,7 +34,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
     )
 
     search_fields = ("first_name", "middle_name", "last_name", "keyword")
-    readonly_fields = ("show_owned", "show_rented", "code1c")
+    readonly_fields = ("show_owned", "show_rented", "code1c", "display_brands")
     inlines = [ContactInfoInline]
 
     fieldsets = (
