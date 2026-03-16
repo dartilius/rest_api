@@ -315,10 +315,27 @@ class Nomenclature(APIBaseObjectModel):
         if not self.typeOfPlace:
             return None
 
+        if not self.brand:
+            return None
+
+        if not self.address.address.city.name:
+            return None
+
+        if not self.address.address.city.name:
+            return None
+
+        if not self.address.address.house.number:
+            return None
+
         place = self.typeOfPlace
+        brand = self.brand
+        city = self.address.address.city.name
+        street = self.address.address.street.name
+        house = self.address.address.house.number
+
 
         if place.abbreviation:
-            return f"Размещение в {place.abbreviation}"
+            return f"Размещение в {place.abbreviation} {brand.name}, {city}, {street}, {house}"
 
         if place.prepositional:
             return f"Размещение {place.prepositional}"
