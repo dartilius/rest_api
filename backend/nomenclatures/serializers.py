@@ -1,6 +1,7 @@
 import hashlib
 from datetime import time
 
+from django.db.models import Count
 from rest_framework import serializers
 from brands.models import Brand
 from brands.serializers import BrandSerializer
@@ -12,21 +13,28 @@ from nomenclatures.models import (
     StatusHistory,
     TIMEZONES,
     NomenclatureImage,
-    NomenclatureAddress, AVAILABLE_CONTENT_TYPES,
+    NomenclatureAddress,
+    AVAILABLE_CONTENT_TYPES,
+    TypeOfPlace
 )
-
+from addresses.models import Address as AddressBook
+from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
 from api.base_objects import Article
+
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
-from addresses.models import Address as AddressBook
-from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
 
-from api.base_objects import Article
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
 ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
+
+class TypeOfPlaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TypeOfPlace
+        fields = "__all__"
+        read_only_fields = ("id",)
 
 class PhotoSerializer(serializers.ModelSerializer):
     source = Base64FileField()
@@ -99,10 +107,12 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
-    tenants = CounterpartiesShortSerializer(read_only=True, many=True)
+    tenants = serializers.SerializerMethodField()
     legalEntity_id = serializers.PrimaryKeyRelatedField(
         queryset=Counterparty.objects.all(),
         source="legalEntity",
@@ -150,6 +160,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = "__all__"
+        extra_fields = ("nameForFront",)
         read_only_fields = (
             "id",
             "owner",
@@ -163,7 +174,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "brand",
             "interior",
             "exterior",
-            "article"
+            "nameForFront"
         )
         model = Nomenclature
 
@@ -507,6 +518,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         return instance
 
+    def get_tenants(self, obj) -> list:
+        tenants = obj.tenants.annotate(
+            places_count=Count("nomenclature")
+        ).order_by("-places_count")
+
+        return CounterpartiesShortSerializer(tenants, many=True).data
+
     def get_status(self, obj) -> int | None:
         try:
             return obj.availability.status
@@ -558,7 +576,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         # Создаем main_info точно как в оригинале
         repr_["main_info"] = {
-            "name": obj.name,
             "description": obj.description,
             "owner": obj.owner.full_name,
             "timezone": TIMEZONES[obj.timezone],
@@ -576,7 +593,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "placement_marketing": self._user_id_name(obj.responsible_placement_marketing),
         }
 
-        repr_["tenants_length"] = len(obj.tenants.all()) if obj.tenants else 0
+        repr_["tenants_length"] = obj.tenants.count()
 
 
         # Добавляем broadcast
@@ -620,7 +637,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
-
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    abbreviation = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
@@ -644,7 +662,8 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
-            "code1c"
+            "code1c",
+            "abbreviation",
         )
         read_only_fields = fields
         model = Nomenclature
