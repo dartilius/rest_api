@@ -312,35 +312,37 @@ class Nomenclature(APIBaseObjectModel):
 
     @property
     def name_for_front(self):
-        if not self.typeOfPlace:
-            return None
 
         if not self.brand:
             return None
 
-        if not self.address.address.city.name:
+        if not self.address or not self.address.address:
             return None
 
-        if not self.address.address.city.name:
+        if not self.address.address.city:
             return None
 
-        if not self.address.address.house.number:
+        if not self.address.address.house:
             return None
 
-        place = self.typeOfPlace
         brand = self.brand
         city = f"г. {self.address.address.city.name}"
         street = f"ул. {self.address.address.street.name}"
         house = self.address.address.house.number
 
+        place = self.typeOfPlace
 
-        if place.abbreviation:
-            return f"Размещение в {place.abbreviation} {brand.name}, {city}, {street}, {house}"
+        if place:
+            if place.abbreviation:
+                place_name = place.abbreviation
+            elif place.prepositional:
+                place_name = place.prepositional
+            else:
+                place_name = place.name
+        else:
+            place_name = "месте"
 
-        if place.prepositional:
-            return f"Размещение в {place.prepositional} {brand.name}, {city}, {street}, {house}"
-
-        return f"Размещение в {place.name} {brand.name}, {city}, {street}, {house}"
+        return f"Размещение в {place_name} {brand.name}, {city}, {street}, {house}"
 
     def __str__(self):
         return self.name
