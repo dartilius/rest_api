@@ -148,12 +148,12 @@ class Counterparty(APIBaseObjectModel):
             GinIndex(
                 name="counterparty_keyword_gin_idx",
                 fields=["keyword"],
-                opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
+                opclasses=["gin_trgm_ops"],
             ),
             GinIndex(
                 name="counterparty_description_gin_idx",
                 fields=["description"],
-                opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
+                opclasses=["gin_trgm_ops"],
             ),
             models.Index(fields=['keyword']),
             models.Index(fields=['description']),

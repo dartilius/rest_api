@@ -189,7 +189,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             GinIndex(
                 name="user_name_gin_idx",
                 fields=["first_name", "middle_name", "last_name"],
-                opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
+                opclasses=["gin_trgm_ops"],
             ),
             models.Index(fields=['email']),
             models.Index(fields=['first_name']),
