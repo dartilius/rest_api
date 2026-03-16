@@ -6,6 +6,7 @@ from rest_framework import serializers
 from brands.models import Brand
 from brands.serializers import BrandSerializer
 from counterparties.models import Counterparty
+from counterparties.serializers import CounterpartiesShortSerializer
 from files.serializers import Base64FileField
 from nomenclatures.models import (
     Nomenclature,
@@ -525,8 +526,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             places_count=Count("rented_nomenclatures")  # Исправлено!
         ).order_by("-places_count")
 
-        # Если нужно сериализовать данные
-        from counterparties.serializers import CounterpartiesShortSerializer
         return CounterpartiesShortSerializer(tenants, many=True, context=self.context).data
 
     def get_status(self, obj) -> int | None:
