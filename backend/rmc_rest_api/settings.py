@@ -167,6 +167,30 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
+# ---------------------------------- REDIS ---------------------------------- #
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://redis:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'KEY_PREFIX': 'django_cache',
+            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+
+            # Временно убираем hiredis, используем стандартный парсер
+            # 'CONNECTION_POOL_KWARGS': {
+            #     'parser_class': 'redis.connection.HiredisParser',
+            # },
+
+            'SOCKET_CONNECT_TIMEOUT': 5,
+            'SOCKET_TIMEOUT': 5,
+            'IGNORE_EXCEPTIONS': True,
+        }
+    }
+}
+# Время жизни кэша по умолчанию (в секундах)
+CACHE_TTL = 60 * 5  # 5 минут
+
 
 # ---------------------------------- MINIO ---------------------------------- #
 from datetime import timedelta
