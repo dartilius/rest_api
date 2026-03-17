@@ -1,4 +1,3 @@
-from counterparty.models import Counterparty
 from nomenclatures.models import Nomenclature, NomenclatureTenant
 
 def migrate_tenants_to_through_table(batch_size=500):
