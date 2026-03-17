@@ -46,28 +46,28 @@ INSTALLED_APPS = [
     'promotions',
 ]
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
 
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
+#     'handlers': {
+#         'console': {
+#             'class': 'logging.StreamHandler',
+#         },
+#     },
 
-    'loggers': {
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-        },
-    },
-    'formatters': {
-        'verbose': {
-            'format': '%(asctime)s %(duration)s %(sql)s',
-        },
-    },
-}
+#     'loggers': {
+#         'django.db.backends': {
+#             'handlers': ['console'],
+#             'level': 'DEBUG',
+#         },
+#     },
+#     'formatters': {
+#         'verbose': {
+#             'format': '%(asctime)s %(duration)s %(sql)s',
+#         },
+#     },
+# }
 
 # Базовый MIDDLEWARE
 MIDDLEWARE = [
