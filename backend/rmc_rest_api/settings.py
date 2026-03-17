@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -60,7 +61,6 @@ MIDDLEWARE = [
 
 # Добавляем debug toolbar только в DEBUG режиме
 if DEBUG:
-    MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
     MIDDLEWARE.append('api.middleware.IntegrityMiddleware')
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
