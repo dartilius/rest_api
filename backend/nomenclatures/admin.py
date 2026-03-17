@@ -13,7 +13,8 @@ from nomenclatures.models import (
     STATUSES,
     NomenclatureImage,
     NomenclatureAddress,
-    TypeOfPlace
+    TypeOfPlace,
+    NomenclatureTenant
 )
 
 
@@ -269,6 +270,23 @@ class NomenclatureAdmin(admin.ModelAdmin):
         cache.delete_pattern("nomenclature_admin_qs_*")
         self.message_user(request, 'Кэш очищен')
     clear_cache.short_description = "Очистить кэш"
+
+
+@admin.register(NomenclatureTenant)
+class NomenclatureTenantAdmin(admin.ModelAdmin):
+    """Арендаторы номенклатур — оптимизированная версия с сохранением подсчета"""
+
+    list_display = ("nomenclature_name", "tenant_id", "floor")
+    search_fields = ("nomenclature__name", "tenant_id")
+    show_full_result_count = True  # Подсчет включен
+    list_per_page = 50
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("nomenclature")
+
+    @admin.display(description="Номенклатура", ordering="nomenclature__name")
+    def nomenclature_name(self, obj):
+        return obj.nomenclature.name if obj.nomenclature else "-"
 
 
 @admin.register(TypeOfPlace)
