@@ -2,6 +2,7 @@ import hashlib
 import re
 from functools import lru_cache
 from uuid import uuid4
+from django.contrib.postgres.search import SearchVectorField
 
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.indexes import GinIndex
@@ -152,7 +153,42 @@ class TypeOfPlace(models.Model):
 
         super().save(*args, **kwargs)
 
+class NomenclatureTenant(models.Model):
+    nomenclature = models.ForeignKey(
+        'Nomenclature',
+        on_delete=models.CASCADE,
+        related_name='tenant_links'
+    )
+    tenant = models.ForeignKey(
+        'counterparties.Counterparty',
+        on_delete=models.CASCADE,
+        related_name='nomenclature_links'
+    )
 
+    floor = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Этаж"
+    )
+
+    class Meta:
+        db_table = "nomenclature_tenant"
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=['nomenclature', 'tenant'],
+                name='unique_nomenclature_tenant'
+            )
+        ]
+
+        indexes = [
+            models.Index(fields=['nomenclature']),
+
+            models.Index(fields=['tenant']),
+
+            models.Index(fields=['tenant', 'nomenclature']),
+        ]
 
 class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
@@ -167,6 +203,7 @@ class Nomenclature(APIBaseObjectModel):
     description = models.TextField(
         blank=True, null=True, verbose_name="Описание"
     )
+    search_vector = SearchVectorField(null=True)
 
     responsible_radio = models.ForeignKey(
         'users.CustomUser',
@@ -272,8 +309,8 @@ class Nomenclature(APIBaseObjectModel):
 
     tenants = models.ManyToManyField(
         'counterparties.Counterparty',
+        through='NomenclatureTenant',
         blank=True,
-        verbose_name="Арендаторы",
         related_name="rented_nomenclatures"
     )
 
@@ -348,7 +385,6 @@ class Nomenclature(APIBaseObjectModel):
 
     class Meta:
         db_table = "nomenclature"
-        ordering = ("-created",)
         verbose_name = "Номенклатура"
         verbose_name_plural = "Номенклатуры"
         constraints = [
@@ -359,16 +395,32 @@ class Nomenclature(APIBaseObjectModel):
             )
         ]
         indexes = [
-            # СУЩЕСТВУЮЩИЕ ИНДЕКСЫ
+            GinIndex(fields=['search_vector'], name='nomenclature_search_gin'),
             GinIndex(
                 name="nomenclature_name_gin_idx",
                 fields=["name"],
                 opclasses=["gin_trgm_ops"],
             ),
+            GinIndex(
+                name="nomenclature_code1c_gin_idx",
+                fields=["code1c"],
+                opclasses=["gin_trgm_ops"],
+            ),
+            GinIndex(
+                name="nomenclature_version_gin_idx",
+                fields=["version"],
+                opclasses=["gin_trgm_ops"],
+            ),
+            GinIndex(fields=['settings'], name='settings_gin_idx'),
+            GinIndex(fields=['media'], name='media_gin_idx'),
             models.Index(fields=['typeOfPlace']),
             models.Index(fields=['responsible_radio']),
             models.Index(fields=['responsible_ad']),
-            models.Index(fields=['brand']),
+            models.Index(
+                fields=['brand'],
+                name='idx_active_brand',
+                condition=models.Q(is_active=True)
+            ),
             models.Index(fields=['legalEntity']),
 
             # ДОБАВЛЯЕМ НЕДОСТАЮЩИЕ FK

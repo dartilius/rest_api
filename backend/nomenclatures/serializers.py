@@ -15,7 +15,8 @@ from nomenclatures.models import (
     NomenclatureImage,
     NomenclatureAddress,
     AVAILABLE_CONTENT_TYPES,
-    TypeOfPlace
+    TypeOfPlace,
+    NomenclatureTenant
 )
 from addresses.models import Address as AddressBook
 from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
@@ -127,13 +128,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    tenants_id = serializers.PrimaryKeyRelatedField(
-        queryset=Counterparty.objects.all(),
-        source="tenants",
+    tenants_data = serializers.ListField(
+        child=serializers.DictField(),  # {"id": tenant_id, "floor": "2"}
         write_only=True,
-        required=False,
-        allow_null=True,
-        many=True
+        required=False
     )
     brand = BrandSerializer(read_only=True)  # чисто чтение
     brand_id = serializers.PrimaryKeyRelatedField(
@@ -185,6 +183,18 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "typeOfPlace"
         )
         model = Nomenclature
+
+    def get_tenants(self, obj):
+        """Возвращаем арендаторов с этажом"""
+        return [
+            {
+                "id": link.tenant.id,
+                "first_name": link.tenant.first_name,
+                "last_name": link.tenant.last_name,
+                "floor": link.floor
+            }
+            for link in obj.tenant_links.select_related('tenant').all()
+        ]
 
     def validate_settings(self, value):
         """
@@ -298,7 +308,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # Извлекаем данные адреса из разных источников
         address_data = None
         address_id = None
-
+        tenants_data = validated_data.pop("tenants_data", [])
+        instance = super().create(validated_data)
         # Вариант 1: через address_data
         if "address_data" in validated_data:
             address_data = validated_data.pop("address_data")
@@ -315,7 +326,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # --- Оригинальная обработка brand ---
         brand = validated_data.pop("brand_id", None)
 
-        tenants = validated_data.pop("tenants", None)
         name = validated_data.get("name")
         code1c = validated_data.get("code1c")
         price_of_month = validated_data.get("pricePerMonth")
@@ -357,8 +367,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             })
 
         # --- Обработка арендаторов ---
-        if tenants is not None:
-            nomenclature.tenants.set(tenants)
+        if tenants_data:
+            for t in tenants_data:
+                NomenclatureTenant.objects.create(
+                    nomenclature=nomenclature,
+                    tenant_id=t['id'],
+                    floor=t.get('floor', '')
+                )
 
         # --- ОБРАБОТКА АДРЕСА ПРИ СОЗДАНИИ ---
 
@@ -397,12 +412,16 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     address=address_data
                 )
 
+
+
         return nomenclature
 
     def update(self, instance, validated_data):
         # Инициализация переменных для адреса
         address_data = None
         address_id = None
+        tenants_data = validated_data.pop("tenants_data", None)
+        instance = super().update(instance, validated_data)
 
         # Вариант 1: через address_data
         if "address_data" in validated_data:
@@ -425,7 +444,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         legalEntity_id = validated_data.pop("legalEntity_id", None) if "legalEntity_id" in validated_data else None
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
-        tenants = validated_data.pop("tenants", None)
 
         # Валидация code1c
         if code1c is not None:
@@ -515,8 +533,16 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
 
         # Обработка арендаторов
-        if tenants is not None:
-            instance.tenants.set(tenants)
+        if tenants_data is not None:
+            # Удаляем старые связи
+            NomenclatureTenant.objects.filter(nomenclature=instance).delete()
+            # Создаем новые связи
+            for t in tenants_data:
+                NomenclatureTenant.objects.create(
+                    nomenclature=instance,
+                    tenant_id=t["id"],
+                    floor=t.get("floor", "")
+                )
 
         # Обновляем остальные поля
         for attr, value in validated_data.items():
