@@ -46,29 +46,6 @@ INSTALLED_APPS = [
     'promotions',
 ]
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-
-#     'handlers': {
-#         'console': {
-#             'class': 'logging.StreamHandler',
-#         },
-#     },
-
-#     'loggers': {
-#         'django.db.backends': {
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#         },
-#     },
-#     'formatters': {
-#         'verbose': {
-#             'format': '%(asctime)s %(duration)s %(sql)s',
-#         },
-#     },
-# }
-
 # Базовый MIDDLEWARE
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -276,29 +253,6 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',)
 }
 
-
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://redis:6379/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'KEY_PREFIX': 'django_cache',
-            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
-
-            # Временно убираем hiredis, используем стандартный парсер
-            # 'CONNECTION_POOL_KWARGS': {
-            #     'parser_class': 'redis.connection.HiredisParser',
-            # },
-
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
-            'IGNORE_EXCEPTIONS': True,
-        }
-    }
-}
-# Время жизни кэша по умолчанию (в секундах)
-CACHE_TTL = 60 * 5  # 5 минут
 
 # ------------------------------ DEBUG TOOLBAR ------------------------------ #
 
