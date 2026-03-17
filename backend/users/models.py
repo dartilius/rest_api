@@ -42,7 +42,6 @@ class ContactInfo(ContactInformation):
     class Meta:
         db_table = "contact_info"
         verbose_name = "Контактная информация"
-        verbose_name = 'Контактная информация'
         verbose_name_plural = 'Контактная информация'
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -186,6 +185,19 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ordering = ('-created',)
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
+        indexes = [
+            GinIndex(
+                name="user_name_gin_idx",
+                fields=["first_name", "middle_name", "last_name"],
+                opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
+            ),
+            models.Index(fields=['email']),
+            models.Index(fields=['first_name']),
+            models.Index(fields=['last_name']),
+            models.Index(fields=['phone_number']),
+            models.Index(fields=['code1c']),
+            models.Index(fields=['role']),
+        ]
 
     def __str__(self):
         return self.full_name

@@ -1,68 +1,83 @@
+import hashlib
 from datetime import time
 
+from django.db.models import Count
 from rest_framework import serializers
 from brands.models import Brand
 from brands.serializers import BrandSerializer
 from counterparties.models import Counterparty
-from counterparties.serializers import CounterpartiesSerializer, CounterpartiesShortSerializer
+from counterparties.serializers import CounterpartiesShortSerializer, TenantsShortSerializer
 from files.serializers import Base64FileField
 from nomenclatures.models import (
     Nomenclature,
     StatusHistory,
     TIMEZONES,
     NomenclatureImage,
-    NomenclatureAddress, AVAILABLE_CONTENT_TYPES,
+    NomenclatureAddress,
+    AVAILABLE_CONTENT_TYPES,
+    TypeOfPlace,
+    NomenclatureTenant
 )
-
-from api.base_objects import Article
-
-serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
-
 from addresses.models import Address as AddressBook
 from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
-
 from api.base_objects import Article
+
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
 
 
-class PhotoSerializer(serializers.ModelSerializer):
-    """Схема добавления фотографий к номенклатуре."""
+serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
-    source = Base64FileField(write_only=True)
-    source_url = serializers.SerializerMethodField(read_only=True)
+ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
+
+class TypeOfPlaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TypeOfPlace
+        fields = "__all__"
+        read_only_fields = ("id",)
+
+class PhotoSerializer(serializers.ModelSerializer):
+    source = Base64FileField()
 
     class Meta:
         model = NomenclatureImage
-        fields = ("id", "source", "source_url", "type", "created", "nomenclature")
-        read_only_fields = ("id", "created", "nomenclature", "source_url")
+        fields = ("id", "source", "type", "created")
+        read_only_fields = ("id", "created")
 
-    def get_source_url(self, obj):
-        """Возвращает URL файла в ответе."""
-        if obj.source:
-            return obj.source.url
-        return None
+    def validate_source(self, file):
+        ext = file.name.split(".")[-1].lower()
+        if ext not in ALLOWED_FORMATS:
+            raise serializers.ValidationError(
+                f"Недопустимый формат файла. Разрешены: {', '.join(ALLOWED_FORMATS)}"
+            )
 
+        # Проверка размера (пример 15MB)
+        if file.size > 15 * 1024 * 1024:
+            raise serializers.ValidationError("Максимальный размер файла 15MB")
 
-class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
-    """Схема для отображения номенклатуры в списке."""
+        return file
 
-    brand_name = serializers.CharField(source='brand.name', default='Без значения')
-    brand_id = serializers.CharField(source='brand.id', default=None)
-    brand_logotype = serializers.CharField(source='brand.logotype', default=None)
+    def validate(self, attrs):
+        nomenclature = self.context.get("nomenclature")
+        if not nomenclature:
+            raise serializers.ValidationError("Номенклатура не передана")
 
+        # вычисляем md5 хэш для файла
+        file_data = attrs["source"].read()
+        file_hash = hashlib.md5(file_data).hexdigest()
+        attrs["source"].seek(0)  # обязательно вернуть курсор
 
-    #check copmmty
+        # проверка дубликата по содержимому
+        if NomenclatureImage.objects.filter(nomenclature=nomenclature, hash=file_hash).exists():
+            raise serializers.ValidationError("Эта фотография уже прикреплена к номенклатуре")
 
-    class Meta:
-        model = Nomenclature
-        fields = (
-            "brand_name",
-            "brand_id",
-            "brand_logotype",
-        )
-        read_only_fields = fields
+        return attrs
+
+    def create(self, validated_data):
+        validated_data["nomenclature"] = self.context["nomenclature"]
+        return super().create(validated_data)
+
 
 class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
     """Схема для добавления фотографий к номенклатурам."""
@@ -73,49 +88,39 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
         read_only_fields = ("source", "id",)
 
 
-class ShortNomenclatureSerializer(serializers.ModelSerializer):
+class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
     """Схема для отображения номенклатуры в списке."""
-    exterior = serializers.SerializerMethodField()
-    interior = serializers.SerializerMethodField()
-    brand = serializers.CharField(source='brand.name', default='Без значения')
-    legalEntity = serializers.CharField(source='legalEntity.name', default='Без значения')
-    city = serializers.CharField(source='address.address.city', default='Без значения', read_only=True)
 
-    #check copmmty
+    brand_name = serializers.CharField(source='brand.name', default='Без значения')
+    brand_id = serializers.CharField(source='brand.id', default=None)
+    brand_logotype = serializers.CharField(source='brand.logotype', default=None)
 
     class Meta:
         model = Nomenclature
         fields = (
-            "id",
-            "name",
-            "brand",
-            "legalEntity",
-            "pricePerMonth",
-            "typeOfPlace",
-            "interior",
-            "exterior",
-            "city",
+            "brand_name",
+            "brand_id",
+            "brand_logotype",
         )
         read_only_fields = fields
-
-    def get_interior(self, obj):
-        return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="interior"), many=True
-        ).data
-
-    def get_exterior(self, obj):
-        return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="exterior"), many=True
-        ).data
 
 
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    typeOfPlace_id = serializers.PrimaryKeyRelatedField(
+        queryset=TypeOfPlace.objects.all(),
+        source="typeOfPlace",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
-    tenants = CounterpartiesShortSerializer(read_only=True, many=True)
+    tenants = serializers.SerializerMethodField()
     legalEntity_id = serializers.PrimaryKeyRelatedField(
         queryset=Counterparty.objects.all(),
         source="legalEntity",
@@ -123,13 +128,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    tenants_id = serializers.PrimaryKeyRelatedField(
-        queryset=Counterparty.objects.all(),
-        source="tenants",
+    tenants_data = serializers.ListField(
+        child=serializers.DictField(),  # {"id": tenant_id, "floor": "2"}
         write_only=True,
-        required=False,
-        allow_null=True,
-        many=True
+        required=False
     )
     brand = BrandSerializer(read_only=True)  # чисто чтение
     brand_id = serializers.PrimaryKeyRelatedField(
@@ -163,6 +165,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = "__all__"
+        extra_fields = ("nameForFront",)
         read_only_fields = (
             "id",
             "owner",
@@ -176,9 +179,22 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "brand",
             "interior",
             "exterior",
-            "article"
+            "nameForFront",
+            "typeOfPlace"
         )
         model = Nomenclature
+
+    def get_tenants(self, obj):
+        """Возвращаем арендаторов с этажом"""
+        return [
+            {
+                "id": link.tenant.id,
+                "first_name": link.tenant.first_name,
+                "last_name": link.tenant.last_name,
+                "floor": link.floor
+            }
+            for link in obj.tenant_links.select_related('tenant').all()
+        ]
 
     def validate_settings(self, value):
         """
@@ -292,7 +308,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # Извлекаем данные адреса из разных источников
         address_data = None
         address_id = None
-
+        tenants_data = validated_data.pop("tenants_data", [])
+        instance = super().create(validated_data)
         # Вариант 1: через address_data
         if "address_data" in validated_data:
             address_data = validated_data.pop("address_data")
@@ -309,7 +326,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # --- Оригинальная обработка brand ---
         brand = validated_data.pop("brand_id", None)
 
-        tenants = validated_data.pop("tenants", None)
         name = validated_data.get("name")
         code1c = validated_data.get("code1c")
         price_of_month = validated_data.get("pricePerMonth")
@@ -351,8 +367,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             })
 
         # --- Обработка арендаторов ---
-        if tenants is not None:
-            nomenclature.tenants.set(tenants)
+        if tenants_data:
+            for t in tenants_data:
+                NomenclatureTenant.objects.create(
+                    nomenclature=nomenclature,
+                    tenant_id=t['id'],
+                    floor=t.get('floor', '')
+                )
 
         # --- ОБРАБОТКА АДРЕСА ПРИ СОЗДАНИИ ---
 
@@ -391,12 +412,16 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     address=address_data
                 )
 
+
+
         return nomenclature
 
     def update(self, instance, validated_data):
         # Инициализация переменных для адреса
         address_data = None
         address_id = None
+        tenants_data = validated_data.pop("tenants_data", None)
+        instance = super().update(instance, validated_data)
 
         # Вариант 1: через address_data
         if "address_data" in validated_data:
@@ -419,7 +444,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         legalEntity_id = validated_data.pop("legalEntity_id", None) if "legalEntity_id" in validated_data else None
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
-        tenants = validated_data.pop("tenants", None)
 
         # Валидация code1c
         if code1c is not None:
@@ -509,8 +533,16 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
 
         # Обработка арендаторов
-        if tenants is not None:
-            instance.tenants.set(tenants)
+        if tenants_data is not None:
+            # Удаляем старые связи
+            NomenclatureTenant.objects.filter(nomenclature=instance).delete()
+            # Создаем новые связи
+            for t in tenants_data:
+                NomenclatureTenant.objects.create(
+                    nomenclature=instance,
+                    tenant_id=t["id"],
+                    floor=t.get("floor", "")
+                )
 
         # Обновляем остальные поля
         for attr, value in validated_data.items():
@@ -519,6 +551,16 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+    def get_tenants(self, obj):
+        """
+        Возвращает список арендаторов с количеством арендуемых номенклатур
+        """
+        tenants = obj.tenants.annotate(
+            places_count=Count("rented_nomenclatures")  # Исправлено!
+        ).order_by("-places_count")
+
+        return TenantsShortSerializer(tenants, many=True, context=self.context).data
 
     def get_status(self, obj) -> int | None:
         try:
@@ -545,17 +587,32 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     def _user_id_name(self, user):
         if not user:
             return None
+
+        # Берём ВСЕ basic телефоны
+        basic_phones = list(
+            user.contacts_cp
+            .filter(type="phone", basic=True)
+            .values_list("meaning", flat=True)
+        )
+
+        # fallback — если basic нет, но есть phone_number в CustomUser
+        if not basic_phones and user.phone_number:
+            basic_phones = [str(user.phone_number)]
+
+        # гарантируем строки
+        phones = [str(p) for p in basic_phones if p]
+
         return {
-            "id": user.id,
+            "id": str(user.id),
             "full_name": user.full_name,
-    }
+            "phone_number": phones,
+        }
 
     def to_representation(self, obj):
         repr_ = super().to_representation(obj)
 
         # Создаем main_info точно как в оригинале
         repr_["main_info"] = {
-            "name": obj.name,
             "description": obj.description,
             "owner": obj.owner.full_name,
             "timezone": TIMEZONES[obj.timezone],
@@ -570,10 +627,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "radio": self._user_id_name(obj.responsible_radio),
             "technic": self._user_id_name(obj.responsible_technic),
             "technic_on_address": self._user_id_name(obj.responsible_technic_on_address),
-            "placment_markentig": self._user_id_name(obj.responsible_placement_marketing),
+            "placement_marketing": self._user_id_name(obj.responsible_placement_marketing),
         }
 
-        repr_["tenants_length"] = len(obj.tenants.all()) if obj.tenants else 0
+        repr_["tenants_length"] = obj.tenants.count()
 
 
         # Добавляем broadcast
@@ -617,7 +674,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
-
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    # abbreviation = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
@@ -641,7 +699,8 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "contentType",
             "typeOfPlace",
             "pricePerMonth",
-            "code1c"
+            "code1c",
+            # "abbreviation",
         )
         read_only_fields = fields
         model = Nomenclature

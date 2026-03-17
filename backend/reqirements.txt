@@ -18,3 +18,5 @@ typing_extensions==4.10.0
 tzdata==2024.1
 urllib3==2.2.1
 zstandard==0.22.0
+pymorphy3
+pymorphy3-dicts-ru

@@ -134,18 +134,35 @@ class Counterparty(APIBaseObjectModel):
 
 
     class Meta:
-            db_table = "counterparties"
-            verbose_name = "Контрагент"
-            verbose_name_plural = "Контрагенты"
+        db_table = "counterparties"
+        verbose_name = "Контрагент"
+        verbose_name_plural = "Контрагенты"
 
-            ordering = ("-created",)
-            indexes = [
-                GinIndex(
-                    name="counterparty_name_gin_idx",
-                    fields=["first_name", "middle_name", "last_name"],
-                    opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
-                )
-            ]
+        ordering = ("-created",)
+        indexes = [
+            GinIndex(
+                name="counterparty_name_gin_idx",
+                fields=["first_name", "middle_name", "last_name"],
+                opclasses=["gin_trgm_ops", "gin_trgm_ops", "gin_trgm_ops"],
+            ),
+            GinIndex(
+                name="counterparty_keyword_gin_idx",
+                fields=["keyword"],
+                opclasses=["gin_trgm_ops"],
+            ),
+            GinIndex(
+                name="counterparty_desc_gin_idx",
+                fields=["description"],
+                opclasses=["gin_trgm_ops"],
+            ),
+            models.Index(fields=['keyword']),
+            models.Index(fields=['description']),
+            models.Index(fields=['inn']),
+            models.Index(fields=['code1c']),
+            models.Index(fields=['address']),
+            # models.Index(fields=['contact_persons']),
+            models.Index(fields=['additional_name']),
+        ]
 
     @property
     def is_broadcast(self):
@@ -173,31 +190,31 @@ class Counterparty(APIBaseObjectModel):
         if self.opf in TYPE_FL:
             # если брендов и описания нет → выводить только ФИО + ОПФ
             if not brand_list and not desc:
-                return f"{fio}, {self.opf}"
+                return f"{fio}"
 
             # если бренды есть, но описания нет
             if brand_list and not desc:
-                return f"{fio}, {self.opf} ({brand_list})"
+                return f"{fio}, ({brand_list})"
 
             # если описание есть, но брендов нет
             if desc and not brand_list:
-                return f"{fio}, {self.opf} ({desc})"
+                return f"{fio}, ({desc})"
 
             # есть и бренды и описание
-            return f"{fio}, {self.opf} ({brand_list}, {desc})"
+            return f"{fio}, ({brand_list}, {desc})"
 
         # Юр. лица
         if self.opf in TYPE_ORG:
             if not brand_list and not desc:
-                return f"{self.keyword}, {self.opf}"
+                return f"{self.keyword}"
 
             if brand_list and not desc:
-                return f"{self.keyword}, {self.opf} ({brand_list})"
+                return f"{self.keyword}, ({brand_list})"
 
             if desc and not brand_list:
-                return f"{self.keyword}, {self.opf} ({desc})"
+                return f"{self.keyword}, ({desc})"
 
-            return f"{self.keyword}, {self.opf} ({brand_list}, {desc})"
+            return f"{self.keyword}, ({brand_list}, {desc})"
 
         return fio
 

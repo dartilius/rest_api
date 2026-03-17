@@ -34,7 +34,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
     )
 
     search_fields = ("first_name", "middle_name", "last_name", "keyword")
-    readonly_fields = ("show_owned", "show_rented", "code1c")
+    readonly_fields = ("show_owned", "show_rented", "code1c", "display_brands")
     inlines = [ContactInfoInline]
 
     fieldsets = (
@@ -49,6 +49,12 @@ class CounterpartiesAdmin(admin.ModelAdmin):
                 "is_active",
             ),
         }),
+        ("Бренды", {
+            "fields": ("display_brands",),
+        }),
+        ("Описание", {
+            "fields": ("description",),
+        }),
         ("Свои номенклатуры (legalEntity)", {
             "fields": ("show_owned",),
         }),
@@ -62,7 +68,23 @@ class CounterpartiesAdmin(admin.ModelAdmin):
 
     # ========= Queryset =========
     def get_queryset(self, request):
-        return Counterparty.active.all()
+        return Counterparty.active.prefetch_related("brands", "contact_persons", "contacts").select_related("address").all()
+
+    # ========= Бренды =========
+    @admin.display(description="Бренды КА")
+    def display_brands(self, obj):
+        if not obj or not obj.pk:
+            return "—"
+        qs = obj.brands.all()
+        if not qs.exists():
+            return "—"
+        # формируем список ссылок на бренды
+        links = format_html_join(
+            "",
+            "<li><a href='/admin/brands/brand/{}/change/'>{}</a></li>",
+            ((b.id, b.name) for b in qs)
+        )
+        return format_html("<ul>{}</ul>", links)
 
     # ========= Счётчики (ВАЖНО: obj может быть None) =========
     @admin.display(description="Своих")

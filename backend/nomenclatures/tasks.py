@@ -3,12 +3,69 @@ from itertools import chain
 from celery import shared_task
 from celery_singleton import Singleton
 from datetime import datetime, timedelta
-
-from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature
+from django.contrib.postgres.search import SearchVector
+from django.db.models import OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce, Concat
+from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature, NomenclatureTenant
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
+from django.contrib.postgres.aggregates import StringAgg
+@shared_task
+def update_all_search_vectors(batch_size=500):
+    """
+    Массовое обновление поля search_vector для всех номенклатур
+    с учётом M2M tenants через промежуточную таблицу.
+    """
+    qs = Nomenclature.objects.all()
+    total = qs.count()
 
+    for start in range(0, total, batch_size):
+        batch = list(qs[start:start+batch_size])
+
+        tenants_subquery = NomenclatureTenant.objects.filter(
+            nomenclature=OuterRef('pk')
+        ).annotate(
+            tenant_full=Concat(
+                'tenant__first_name', Value(' '),
+                'tenant__last_name', Value(' '),
+                'legalEntity__additional_name', Value(' '),
+                'tenant__keyword', Value(' '),
+                Coalesce('floor', Value(''))
+            )
+        ).values('tenant_full')
+
+        tenants_agg = Subquery(
+            tenants_subquery.annotate(
+                all_text=StringAgg('tenant_full', delimiter=' ')
+            ).values('all_text')
+        )
+
+        # Обновляем search_vector для каждой номенклатуры в батче
+        for n in batch:
+            n.search_vector = (
+                SearchVector('name', weight='A') +
+                SearchVector('contentType', weight='C') +
+                SearchVector('typeOfPlace__name', weight='B') +
+                SearchVector('version', weight='B') +
+                SearchVector('code1c', weight='A') +
+                SearchVector('brand__name', weight='A') +
+                SearchVector('legalEntity__first_name', weight='A') +
+                SearchVector('legalEntity__last_name', weight='B') +
+                SearchVector('legalEntity__keyword', weight='A') +
+                SearchVector('legalEntity__additional_name', weight='C') +
+                SearchVector('responsible_radio__first_name', weight='A') +
+                SearchVector('responsible_ad__first_name', weight='A') +
+                SearchVector('responsible_technic__first_name', weight='A') +
+                SearchVector('responsible_technic_on_address__last_name', weight='B') +
+                SearchVector('responsible_radio__last_name', weight='B') +
+                SearchVector('responsible_ad__last_name', weight='B') +
+                SearchVector('responsible_technic__last_name', weight='B') +
+                SearchVector('responsible_technic_on_address__last_name', weight='B') +
+                SearchVector(Coalesce(tenants_agg, Value('')), weight='B')  # M2M tenants
+
+            )
+        Nomenclature.objects.bulk_update(batch, ['search_vector'])
 
 def get_owner(owner_id):
     return CustomUser.objects.get(pk=owner_id)

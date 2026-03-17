@@ -1,15 +1,22 @@
+from typing import List
+
 from rest_framework import serializers
 
 from addresses.models import Address
 from brands.models import Brand
+from brands.serializers import BrandShortSerializer
 from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
 from users.models import CustomUser
 
 
 class CounterpartyContactInfoSerializer(serializers.ModelSerializer):
+    counterparty_name = serializers.SerializerMethodField()
     class Meta:
         model = CounterpartyContactInfo
         fields = "__all__"
+
+    def get_counterparty_name(self, obj):
+        return obj.counterparty.name
 
 class CreateCounterpartySerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField(read_only=True)
@@ -117,10 +124,26 @@ class CounterpartiesSerializer(serializers.ModelSerializer):
 class CounterpartiesShortSerializer(serializers.ModelSerializer):
     """Короткий сериализатор — только id и name."""
 
+    brands = BrandShortSerializer(read_only=True, many=True)
+
     class Meta:
         model = Counterparty
-        fields = ("id", "name")
+        fields = ("id", "brands", "name", "opf")
 
+
+class TenantsShortSerializer(serializers.ModelSerializer):
+    """Короткий сериализатор — только id и кастомное поле с брендами."""
+
+    brands_list = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Counterparty
+        fields = ("id", "brands_list")
+
+    def get_brands_list(self, obj) -> str:
+        """Возвращает строку с названиями брендов через запятую."""
+        brands: List[str] = [brand.name for brand in obj.brands.all()]
+        return ", ".join(brands)
 
 class CounterpartiesListSerializer(serializers.ModelSerializer):
     """Короткий сериализатор"""

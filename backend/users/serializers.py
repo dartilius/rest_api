@@ -4,21 +4,14 @@ from users.models import CustomUser, ROLES, ContactInfo
 from django.db import transaction
 from files.serializers import Base64FileField
 
-class ContactInfoSerializer(serializers.ModelSerializer):
+class UserContactInfoSerializer(serializers.ModelSerializer):
     """Сериализация и валидация контактной информации."""
-
+    user_name = serializers.SerializerMethodField()
     class Meta:
         model = ContactInfo
-        fields = (
-            "id",
-            "type",
-            "vidtel",
-            "vidmail",
-            "meaning",
-            "ext",
-            "comment",
-            "basic",
-        )
+        fields = "__all__"
+    def get_user_name(self, obj):
+        return obj.user.full_name
 
     def validate(self, attrs):
         type_ = attrs.get("type")
@@ -64,7 +57,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         allow_blank=False
     )
 
-    contacts_cp = ContactInfoSerializer(many=True, required=False)
+    contacts_cp = UserContactInfoSerializer(many=True, required=False)
 
     avatar = Base64FileField(write_only=True, required=False, allow_null=True)
 
@@ -115,7 +108,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             with transaction.atomic():
                 for contact in contacts_data:
                     # защита от дублей
-                    exists = instance.contacts.filter(
+                    exists = instance.contacts_cp.filter(
                         type=contact["type"],
                         meaning=contact["meaning"]
                     ).exists()
@@ -125,7 +118,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
                     # если basic=true — сбрасываем предыдущий
                     if contact.get("basic"):
-                        instance.contacts.filter(
+                        instance.contacts_cp.filter(
                             type=contact["type"],
                             basic=True
                         ).update(basic=False)
@@ -166,8 +159,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'avatar': value.avatar.url if value.avatar else None,
         }
         repr_['full_name'] = main_info
-
-        repr_['contacts'] = ContactInfoSerializer(value.contacts_cp.all(), many=True).data
 
         # Удаляем старые плоские поля
         for field in main_info.keys():

@@ -3,7 +3,11 @@ from django.dispatch import receiver
 
 from counterparties.models import Counterparty
 from nomenclatures.models import Nomenclature
+from nomenclatures.tasks import update_all_search_vectors
 
+@receiver(post_save, sender=Nomenclature)
+def update_search_vector_signal(sender, instance, **kwargs):
+    update_all_search_vectors.delay(batch_size=1)
 
 @receiver(pre_save, sender=Nomenclature)
 def nomenclature_store_old_legal_entity(sender, instance, **kwargs):

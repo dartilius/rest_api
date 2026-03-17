@@ -54,7 +54,9 @@ class Brand(models.Model):
                 name="brand_name_gin_idx",
                 fields=["name"],
                 opclasses=["gin_trgm_ops"],
-            )
+            ),
+            models.Index(fields=["name"]),
+            models.Index(fields=["description"]),
         ]
 
     """Мягкое удаление."""
