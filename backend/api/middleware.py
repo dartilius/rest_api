@@ -20,7 +20,7 @@ class IntegrityMiddleware:
         return response
 
     def process_exception(self, request, exception):
-        # Полностью пропускаем все запросы, связанные с debug toolbar
+        # Полностью пропускаем все запросы, связанные с debug toolbar kfkfkkf
         debug_paths = [
             '/__debug__/',
             '/static/debug_toolbar/',
