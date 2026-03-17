@@ -5,8 +5,8 @@ from rest_framework import viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND
-
-from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG
+from django.db.models import Prefetch
+from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
 from counterparties.serializers import CounterpartiesSerializer, CounterpartiesListSerializer, \
     CreateCounterpartySerializer, CounterpartiesShortSerializer
 
@@ -88,7 +88,19 @@ from counterparties.serializers import CounterpartiesSerializer, CounterpartiesL
 )
 @extend_schema(tags=["Контрагенты"])
 class CounterpartiesViewSet(viewsets.ModelViewSet):
-    queryset = Counterparty.objects.prefetch_related("brands", "contact_persons").select_related("contacts", "address").all()
+
+
+    queryset = Counterparty.objects.select_related(
+        'owner',
+        'address'
+    ).prefetch_related(
+        Prefetch(
+            'contacts',
+            queryset=CounterpartyContactInfo.objects.only('id', 'counterparty_id')
+        ),
+        'brands',
+        'contact_persons'
+    )
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
