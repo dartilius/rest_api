@@ -203,7 +203,7 @@ class Nomenclature(APIBaseObjectModel):
     description = models.TextField(
         blank=True, null=True, verbose_name="Описание"
     )
-    search_vector = SearchVectorField(null=True)
+    search_vector = SearchVectorField(null=True, default='')
 
     responsible_radio = models.ForeignKey(
         'users.CustomUser',
