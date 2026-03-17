@@ -108,6 +108,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
 
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    typeOfPlace_id = serializers.PrimaryKeyRelatedField(
+        queryset=TypeOfPlace.objects.all(),
+        source="typeOfPlace",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
     nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
@@ -174,7 +181,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "brand",
             "interior",
             "exterior",
-            "nameForFront"
+            "nameForFront",
+            "typeOfPlace"
         )
         model = Nomenclature
 

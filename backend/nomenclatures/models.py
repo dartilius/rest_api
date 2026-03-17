@@ -91,7 +91,6 @@ class TypeOfPlace(models.Model):
 
     name = models.CharField(
         max_length=255,
-        unique=True,
         verbose_name="Полное наименование"
     )
 
