@@ -128,7 +128,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    tenants_data = serializers.ListField(
+    tenants_id = serializers.ListField(
         child=serializers.DictField(),  # {"id": tenant_id, "floor": "2"}
         write_only=True,
         required=False
@@ -308,7 +308,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # Извлекаем данные адреса из разных источников
         address_data = None
         address_id = None
-        tenants_data = validated_data.pop("tenants_data", [])
+        tenants_id = validated_data.pop("tenants_id", [])
         instance = super().create(validated_data)
         # Вариант 1: через address_data
         if "address_data" in validated_data:
@@ -367,8 +367,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             })
 
         # --- Обработка арендаторов ---
-        if tenants_data:
-            for t in tenants_data:
+        if tenants_id:
+            for t in tenants_id:
                 NomenclatureTenant.objects.create(
                     nomenclature=nomenclature,
                     tenant_id=t['id'],
@@ -420,7 +420,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # Инициализация переменных для адреса
         address_data = None
         address_id = None
-        tenants_data = validated_data.pop("tenants_data", None)
+        tenants_id = validated_data.pop("tenants_id", None)
         instance = super().update(instance, validated_data)
 
         # Вариант 1: через address_data
@@ -533,11 +533,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
 
         # Обработка арендаторов
-        if tenants_data is not None:
+        if tenants_id is not None:
             # Удаляем старые связи
             NomenclatureTenant.objects.filter(nomenclature=instance).delete()
             # Создаем новые связи
-            for t in tenants_data:
+            for t in tenants_id:
                 NomenclatureTenant.objects.create(
                     nomenclature=instance,
                     tenant_id=t["id"],
