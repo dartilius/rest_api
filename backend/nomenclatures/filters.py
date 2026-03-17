@@ -19,10 +19,15 @@ class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
 def full_text_search(queryset, value):
     if not value:
         return queryset
+
     query = SearchQuery(value)
-    return queryset.annotate(rank=SearchRank('search_vector', query)) \
-                   .filter(search_vector=query) \
-                   .order_by('-rank')
+
+    return (
+        queryset
+        .annotate(rank=SearchRank('search_vector', query))
+        .filter(search_vector__search=query)  # ← ВОТ ЭТО КЛЮЧЕВОЕ
+        .order_by('-rank')
+    )
 
 class NomenclatureFilter(FilterSet):
     """
