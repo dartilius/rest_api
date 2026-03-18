@@ -21,7 +21,6 @@ from nomenclatures.models import (
 from addresses.models import Address as AddressBook
 from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
 from api.base_objects import Article
-from users.serializers import ManagerSerializer
 
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
@@ -153,7 +152,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    responsible_ad = ManagerSerializer(read_only=True)
     # READ
     tenants = NomenclatureTenantSerializer(
         source='nomenclature_tenants',
@@ -696,7 +694,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         return {
             "id": str(user.id),
-            "full_name": user.full_name,
+            "full_name": user.first_name,
             "phone_number": phones,
         }
 
