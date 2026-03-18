@@ -366,7 +366,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         brand_id = validated_data.pop("brand_id", None)
         legalEntity_id = validated_data.pop("legalEntity_id", None)
         typeOfPlace_id = validated_data.pop("typeOfPlace_id", None)
-
+        address = validated_data.pop("address", None)
         # Получаем данные для проверок
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth")
