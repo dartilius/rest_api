@@ -584,15 +584,21 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         {"brand_id": "Бренд с таким ID не найден"}
                     )
 
-        # --- адреса (не трогал) ---
+        # --- КЛЮЧЕВАЯ ЛОГИКА ОБРАБОТКИ АДРЕСА ---
+
+        # Проверяем, нужно ли удалить адрес
+        # Случай 1: явно передано address_id: null
         if address_id is None and "address_id" in self.initial_data:
+            # Удаляем связь, если она существует
             if hasattr(instance, 'address') and instance.address:
                 instance.address.delete()
 
+        # Случай 2: явно передано address_data: null или {}
         elif (address_data is None or address_data == {}) and "address_data" in self.initial_data:
             if hasattr(instance, 'address') and instance.address:
                 instance.address.delete()
 
+        # Случай 3: передан ID существующего адреса
         elif address_id is not None:
             try:
                 address_obj = AddressBook.objects.get(id=address_id)
@@ -605,6 +611,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     {"address_id": "Адрес с таким ID не найден"}
                 )
 
+        # Случай 4: переданы данные адреса
         elif address_data is not None and address_data != {}:
             if isinstance(address_data, dict):
                 address_serializer = AddressCreateSerializer(data=address_data)
@@ -620,6 +627,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     nomenclature=instance,
                     defaults={"address": address_data}
                 )
+
+
 
         # 🔥 ИСПРАВЛЕНО: арендаторы (bulk)
         if tenants_id is not None:
