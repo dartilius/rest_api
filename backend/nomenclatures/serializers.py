@@ -404,12 +404,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "pricePerMonth": "Стоимость аренды должна быть числом."
                 })
 
-        # Проверка обязательных полей
-        if not name:
-            raise serializers.ValidationError({
-                "name": "Название номенклатуры обязательно."
-            })
-
         # СОЗДАЕМ НОМЕНКЛАТУРУ (после всех проверок)
         try:
             nomenclature = Nomenclature.objects.create(**validated_data)
