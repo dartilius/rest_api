@@ -408,6 +408,17 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 "non_field_errors": f"Ошибка при создании номенклатуры: {str(e)}"
             })
 
+        if "address_data" in validated_data:
+            address_data = validated_data.pop("address_data")
+        elif "address_id" in validated_data:
+            address_id = validated_data.pop("address_id")
+        elif "address" in validated_data:
+            address_relation = validated_data.pop("address", {})
+            if isinstance(address_relation, dict):
+                address_data = address_relation.get("address")
+            elif isinstance(address_relation, AddressBook):
+                address_id = address_relation.id
+
         # Обработка brand_id
         if brand_id:
             try:
@@ -461,43 +472,41 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 })
 
         # Обработка адреса
-        if address_data and address_data != {}:
-            try:
-                if isinstance(address_data, dict):
-                    # Создаем адрес через сериализатор
-                    address_serializer = AddressCreateSerializer(data=address_data)
-                    if address_serializer.is_valid():
-                        address_obj = address_serializer.save()
-                    else:
-                        nomenclature.delete()
-                        raise serializers.ValidationError({
-                            "address_data": address_serializer.errors
-                        })
+        if address_id is None and "address_id" in self.initial_data:
+            if hasattr(instance, 'address') and instance.address:
+                instance.address.delete()
 
-                    # Связываем адрес с номенклатурой
-                    NomenclatureAddress.objects.create(
-                        nomenclature=nomenclature,
-                        address=address_obj
-                    )
-                elif isinstance(address_data, AddressBook):
-                    # Если передан готовый объект адреса
-                    NomenclatureAddress.objects.create(
-                        nomenclature=nomenclature,
-                        address=address_data
-                    )
-                else:
-                    nomenclature.delete()
-                    raise serializers.ValidationError({
-                        "address_data": "Неверный формат данных адреса"
-                    })
-            except serializers.ValidationError:
-                # Пробрасываем ValidationError дальше (номенклатура уже удалена)
-                raise
-            except Exception as e:
-                nomenclature.delete()
-                raise serializers.ValidationError({
-                    "address_data": f"Ошибка при создании адреса: {str(e)}"
-                })
+        elif (address_data is None or address_data == {}) and "address_data" in self.initial_data:
+            if hasattr(instance, 'address') and instance.address:
+                instance.address.delete()
+
+        elif address_id is not None:
+            try:
+                address_obj = AddressBook.objects.get(id=address_id)
+                NomenclatureAddress.objects.update_or_create(
+                    nomenclature=instance,
+                    defaults={"address": address_obj}
+                )
+            except AddressBook.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"address_id": "Адрес с таким ID не найден"}
+                )
+
+        elif address_data is not None and address_data != {}:
+            if isinstance(address_data, dict):
+                address_serializer = AddressCreateSerializer(data=address_data)
+                address_serializer.is_valid(raise_exception=True)
+                address_obj = address_serializer.save()
+
+                NomenclatureAddress.objects.update_or_create(
+                    nomenclature=instance,
+                    defaults={"address": address_obj}
+                )
+            elif isinstance(address_data, AddressBook):
+                NomenclatureAddress.objects.update_or_create(
+                    nomenclature=instance,
+                    defaults={"address": address_data}
+                )
 
         # Обработка арендаторов
         if tenants_id:
