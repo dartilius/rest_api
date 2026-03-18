@@ -359,8 +359,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         # Извлекаем все поля, которые нужно обработать отдельно
-        address_data = validated_data.pop("address_data", None)
-        address_id = validated_data.pop("address_id", None)  # ✅ Добавляем address_id
+        address_data = validated_data.pop("address_data", None)  # Это извлекается здесь
+        address_id = validated_data.pop("address_id", None)
         tenants_id = validated_data.pop("tenants_id", [])
 
         # Извлекаем поля внешних ключей для отдельной обработки
@@ -378,7 +378,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         if code1c:
             old_item = Nomenclature.objects.filter(code1c=code1c).first()
             if old_item:
-                # Логирование конфликта
                 log_path = "/app/network_logs/nomenclature_conflicts.log"
                 try:
                     with open(log_path, "a", encoding="utf-8") as f:
@@ -480,10 +479,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "address_id": f"Ошибка при создании адреса: {str(e)}"
                 })
 
-        # Обработка адреса по данным
+        # Обработка адреса по данным - ИСПОЛЬЗУЕМ address_data, который извлекли в начале
         elif address_data is not None and address_data != {}:
             try:
                 if isinstance(address_data, dict):
+                    # Создаем адрес через сериализатор
                     address_serializer = AddressCreateSerializer(data=address_data)
                     if address_serializer.is_valid():
                         address_obj = address_serializer.save()
@@ -493,6 +493,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                             "address_data": address_serializer.errors
                         })
 
+                    # Связываем адрес с номенклатурой
                     NomenclatureAddress.objects.create(
                         nomenclature=nomenclature,
                         address=address_obj
@@ -502,6 +503,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         nomenclature=nomenclature,
                         address=address_data
                     )
+                else:
+                    nomenclature.delete()
+                    raise serializers.ValidationError({
+                        "address_data": "Неверный формат данных адреса"
+                    })
             except serializers.ValidationError:
                 nomenclature.delete()
                 raise
