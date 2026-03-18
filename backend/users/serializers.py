@@ -231,3 +231,23 @@ class RegisterUserSerializer(serializers.Serializer):
     phone_number = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
 
+class ManagerSerializer(serializers.ModelSerializer):
+    """Сериализатор для менеджера — только id и ФИО."""
+
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'first_name',)
+
+    def to_representation(self, value):
+        repr_ = super().to_representation(value)
+
+        full_name_dict = {
+            'name': value.first_name,
+        }
+        repr_['full_name'] = full_name_dict
+
+        # Удаляем плоские поля
+        for field in full_name_dict.keys():
+            repr_.pop(field, None)
+
+        return repr_

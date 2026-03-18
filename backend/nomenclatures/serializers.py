@@ -152,6 +152,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    responsible_ad = ManagerSerializer(read_only=True)
     # READ
     tenants = NomenclatureTenantSerializer(
         source='nomenclature_tenants',
