@@ -360,14 +360,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Извлекаем все поля, которые нужно обработать отдельно
         address_data = validated_data.pop("address_data", None)
+        address_id = validated_data.pop("address_id", None)  # ✅ Добавляем address_id
         tenants_id = validated_data.pop("tenants_id", [])
-        address_id = validated_data.pop("address_id", None)
 
         # Извлекаем поля внешних ключей для отдельной обработки
         brand_id = validated_data.pop("brand_id", None)
         legalEntity_id = validated_data.pop("legalEntity_id", None)
         typeOfPlace_id = validated_data.pop("typeOfPlace_id", None)
         address = validated_data.pop("address", None)
+
         # Получаем данные для проверок
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth")
@@ -383,7 +384,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     with open(log_path, "a", encoding="utf-8") as f:
                         f.write(f"{name}: {old_item.id}, {getattr(old_item, 'code1c', '—')}\n")
                 except Exception:
-                    pass  # Игнорируем ошибки записи в лог
+                    pass
 
                 raise serializers.ValidationError({
                     "code1c": f"Номенклатура с кодом '{code1c}' уже существует (id={old_item.id})"
@@ -409,17 +410,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 "non_field_errors": f"Ошибка при создании номенклатуры: {str(e)}"
             })
 
-        if "address_data" in validated_data:
-            address_data = validated_data.pop("address_data")
-        elif "address_id" in validated_data:
-            address_id = validated_data.pop("address_id")
-        elif "address" in validated_data:
-            address_relation = validated_data.pop("address", {})
-            if isinstance(address_relation, dict):
-                address_data = address_relation.get("address")
-            elif isinstance(address_relation, AddressBook):
-                address_id = address_relation.id
-
         # Обработка brand_id
         if brand_id:
             try:
@@ -427,7 +417,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 nomenclature.brand = brand
                 nomenclature.save(update_fields=['brand'])
             except Brand.DoesNotExist:
-                # Удаляем созданную номенклатуру при ошибке
                 nomenclature.delete()
                 raise serializers.ValidationError({
                     "brand_id": "Бренд с таким ID не найден"
@@ -472,42 +461,55 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "typeOfPlace_id": f"Ошибка при установке типа места: {str(e)}"
                 })
 
-        # Обработка адреса
-        if c is None and "address_id" in self.initial_data:
-            if hasattr(instance, 'address') and instance.address:
-                instance.address.delete()
-
-        elif (address_data is None or address_data == {}) and "address_data" in self.initial_data:
-            if hasattr(instance, 'address') and instance.address:
-                instance.address.delete()
-
-        elif address_id is not None:
+        # Обработка адреса по ID
+        if address_id is not None:
             try:
                 address_obj = AddressBook.objects.get(id=address_id)
-                NomenclatureAddress.objects.update_or_create(
-                    nomenclature=instance,
-                    defaults={"address": address_obj}
+                NomenclatureAddress.objects.create(
+                    nomenclature=nomenclature,
+                    address=address_obj
                 )
             except AddressBook.DoesNotExist:
-                raise serializers.ValidationError(
-                    {"address_id": "Адрес с таким ID не найден"}
-                )
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "address_id": "Адрес с таким ID не найден"
+                })
+            except Exception as e:
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "address_id": f"Ошибка при создании адреса: {str(e)}"
+                })
 
+        # Обработка адреса по данным
         elif address_data is not None and address_data != {}:
-            if isinstance(address_data, dict):
-                address_serializer = AddressCreateSerializer(data=address_data)
-                address_serializer.is_valid(raise_exception=True)
-                address_obj = address_serializer.save()
+            try:
+                if isinstance(address_data, dict):
+                    address_serializer = AddressCreateSerializer(data=address_data)
+                    if address_serializer.is_valid():
+                        address_obj = address_serializer.save()
+                    else:
+                        nomenclature.delete()
+                        raise serializers.ValidationError({
+                            "address_data": address_serializer.errors
+                        })
 
-                NomenclatureAddress.objects.update_or_create(
-                    nomenclature=instance,
-                    defaults={"address": address_obj}
-                )
-            elif isinstance(address_data, AddressBook):
-                NomenclatureAddress.objects.update_or_create(
-                    nomenclature=instance,
-                    defaults={"address": address_data}
-                )
+                    NomenclatureAddress.objects.create(
+                        nomenclature=nomenclature,
+                        address=address_obj
+                    )
+                elif isinstance(address_data, AddressBook):
+                    NomenclatureAddress.objects.create(
+                        nomenclature=nomenclature,
+                        address=address_data
+                    )
+            except serializers.ValidationError:
+                nomenclature.delete()
+                raise
+            except Exception as e:
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "address_data": f"Ошибка при создании адреса: {str(e)}"
+                })
 
         # Обработка арендаторов
         if tenants_id:
