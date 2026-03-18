@@ -135,15 +135,24 @@ class TenantsShortSerializer(serializers.ModelSerializer):
     """Короткий сериализатор — только id и кастомное поле с брендами."""
 
     brands_list = serializers.SerializerMethodField()
+    logotypes = serializers.SerializerMethodField()
 
     class Meta:
         model = Counterparty
-        fields = ("id", "brands_list")
+        fields = ("id", "brands_list", "logotypes")
 
     def get_brands_list(self, obj) -> str:
         """Возвращает строку с названиями брендов через запятую."""
-        brands: List[str] = [brand.name for brand in obj.brands.all()]
+        brands = [brand.name for brand in obj.brands.all()]
         return ", ".join(brands)
+
+    def get_logotypes(self, obj) -> list:
+        """Возвращает массив строк с URL логотипов брендов."""
+        return [
+            brand.logotype.url
+            for brand in obj.brands.all()
+            if brand.logotype
+        ]
 
 class CounterpartiesListSerializer(serializers.ModelSerializer):
     """Короткий сериализатор"""

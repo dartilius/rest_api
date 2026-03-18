@@ -217,16 +217,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         model = Nomenclature
 
     def get_tenants(self, obj):
-        """Возвращаем арендаторов с этажом"""
-        return [
-            {
-                "id": link.tenant.id,
-                "first_name": link.tenant.first_name,
-                "last_name": link.tenant.last_name,
-                "floor": link.floor
-            }
-            for link in obj.tenant_links.select_related('tenant').all()
-        ]
+    """Возвращаем арендаторов с этажом"""
+        return NomenclatureTenantSerializer(
+            obj.nomenclature_tenants.select_related('tenant').prefetch_related('tenant__brands').all(),
+            many=True,
+            context=self.context
+        ).data
 
     def validate_settings(self, value):
         """
