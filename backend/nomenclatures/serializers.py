@@ -21,6 +21,7 @@ from nomenclatures.models import (
 from addresses.models import Address as AddressBook
 from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
 from api.base_objects import Article
+from users.serializers import ManagerSerializer
 
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
