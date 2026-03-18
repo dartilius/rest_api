@@ -217,7 +217,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         model = Nomenclature
 
     def get_tenants(self, obj):
-    """Возвращаем арендаторов с этажом"""
+        """Возвращаем арендаторов с этажом"""
         return NomenclatureTenantSerializer(
             obj.nomenclature_tenants.select_related('tenant').prefetch_related('tenant__brands').all(),
             many=True,
