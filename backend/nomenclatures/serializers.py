@@ -361,6 +361,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # Извлекаем все поля, которые нужно обработать отдельно
         address_data = validated_data.pop("address_data", None)
         tenants_id = validated_data.pop("tenants_id", [])
+        address_id = validated_data.pop("address_id", None)
 
         # Извлекаем поля внешних ключей для отдельной обработки
         brand_id = validated_data.pop("brand_id", None)
@@ -472,7 +473,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 })
 
         # Обработка адреса
-        if address_id is None and "address_id" in self.initial_data:
+        if c is None and "address_id" in self.initial_data:
             if hasattr(instance, 'address') and instance.address:
                 instance.address.delete()
 
