@@ -830,7 +830,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         return repr_
 
-
 class NomenclatureListSerializer(serializers.ModelSerializer):
     typeOfPlace = serializers.SerializerMethodField()  # Изменено
     status = serializers.SerializerMethodField()
@@ -838,7 +837,11 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     legalEntity = serializers.SerializerMethodField()  # Изменено
     exterior = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()  # Изменено
-    contentType = serializers.CharField(source='get_contentType_display', read_only=True)
+    contentType = serializers.CharField(
+        choices=list(AVAILABLE_CONTENT_TYPES.values()),
+        required=False,
+        read_only=True
+    )
 
     class Meta:
         fields = (
@@ -859,76 +862,17 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
         model = Nomenclature
 
-    def get_typeOfPlace(self, obj):
-        """Безопасное получение типа места"""
-        if obj.typeOfPlace:
-            return {
-                'id': str(obj.typeOfPlace.id),
-                'name': obj.typeOfPlace.name,
-                'abbreviation': getattr(obj.typeOfPlace, 'abbreviation', None)
-            }
-        return None
-
-    def get_brand(self, obj):
-        """Упрощенный вывод бренда"""
-        if obj.brand:
-            return {
-                'id': str(obj.brand.id),
-                'name': obj.brand.name,
-                'code1c': obj.brand.code1c
-            }
-        return None
-
-    def get_legalEntity(self, obj):
-        """Упрощенный вывод юрлица"""
-        if obj.legalEntity:
-            return {
-                'id': str(obj.legalEntity.id),
-                'name': ' '.join(filter(None, [
-                    obj.legalEntity.last_name,
-                    obj.legalEntity.first_name,
-                    obj.legalEntity.middle_name
-                ])) or obj.legalEntity.additional_name,
-                'inn': obj.legalEntity.inn,
-                'keyword': obj.legalEntity.keyword
-            }
-        return None
-
-    def get_address(self, obj):
-        """Безопасное получение адреса"""
-        try:
-            if hasattr(obj, 'address') and obj.address:
-                address = obj.address.address if hasattr(obj.address, 'address') else obj.address
-                if address:
-                    return {
-                        'id': str(address.id) if hasattr(address, 'id') else None,
-                        'full_address': str(address)
-                    }
-        except (AttributeError, ValueError):
-            pass
-        return None
-
     def get_exterior(self, obj):
-        """Безопасное получение фото"""
-        try:
-            exterior_images = obj.images.filter(type="exterior")[:5]  # Лимит фото
-            return [
-                {
-                    'id': str(img.id),
-                    'source': img.source if hasattr(img, 'source') else None,
-                    'type': img.type
-                }
-                for img in exterior_images
-            ]
-        except (AttributeError, ValueError):
-            return []
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="exterior"), many=True
+        ).data
 
     def get_status(self, obj):
-        """Безопасное получение статуса"""
         try:
-            return obj.availability.status if hasattr(obj, 'availability') else None
-        except (AttributeError, ValueError):
+            return obj.availability.status
+        except AttributeError:
             return None
+
 
     def get_last_answer(self, obj):
         try:
