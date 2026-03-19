@@ -19,17 +19,15 @@ def full_text_search(queryset, value):
     if not value:
         return queryset
 
-    from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
+    from django.contrib.postgres.search import SearchQuery, SearchRank
 
     query = SearchQuery(value)
 
-    # Создаем вектор поиска из нужных полей
-    vector = SearchVector('name', 'version', 'code1c')
-
+    # Используем существующее поле search_vector, а не создаем новый вектор
     return (
         queryset
-        .annotate(rank=SearchRank(vector, query))
-        .filter(vector=query)
+        .annotate(rank=SearchRank('search_vector', query))
+        .filter(search_vector=query)
         .order_by('-rank')
     )
 

@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
 )
+from rest_framework.filters import SearchFilter
 from django.db.models import Count, Case, When, Value, IntegerField
 from api.constants import restricted_update, VersionsSerializer
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
@@ -150,7 +151,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['search_vector']
     filterset_class = NomenclatureFilter
 
     def get_queryset(self):
