@@ -831,18 +831,17 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         return repr_
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
-    # typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
-    # status = serializers.SerializerMethodField()
-    # brand = serializers.SerializerMethodField()  # Изменено - упрощенный вывод
-    typeOfPlace = serializers.SerializerMethodField()  # Изменено с CharField на SerializerMethodField
-    brand = serializers.SerializerMethodField()
-    legalEntity = serializers.SerializerMethodField()  # Изменено
+    """Сериализация списка номенклатур."""
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    # abbreviation = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    brand = BrandSerializer()
+    legalEntity = CounterpartiesShortSerializer()
     exterior = serializers.SerializerMethodField()
-    address = serializers.SerializerMethodField()  # Изменено
+    address = AddressReadSerializer(source="address.address")
     # contentType = serializers.ChoiceField(
     #     choices=list(AVAILABLE_CONTENT_TYPES.values()),
-    #     required=False,
-    #     read_only=True
+    #     required=False
     # )
 
     class Meta:
@@ -864,39 +863,16 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
         model = Nomenclature
 
-    def get_typeOfPlace(self, obj):
-        """Безопасное получение типа места"""
-        if obj.typeOfPlace:
-            return {
-                'id': str(obj.typeOfPlace.id),
-                'name': obj.typeOfPlace.name,
-                'abbreviation': obj.typeOfPlace.abbreviation if hasattr(obj.typeOfPlace, 'abbreviation') else None,
-                'display': obj.type_of_place_display  # Теперь property работает через метод
-            }
-        return None
-
-    def get_brand(self, obj):
-        """Упрощенный вывод бренда"""
-        if obj.brand:
-            return {
-                'id': str(obj.brand.id),
-                'name': obj.brand.name,
-                'code1c': obj.brand.code1c,
-                'logo': str(obj.brand.logotype) if obj.brand.logotype else None
-            }
-        return None
-
     def get_exterior(self, obj):
         return InNomenclaturePhotoSerializer(
             obj.images.filter(type="exterior"), many=True
         ).data
 
-    # def get_status(self, obj):
-    #     try:
-    #         return obj.availability.status
-    #     except AttributeError:
-    #         return None
-
+    def get_status(self, obj):
+        try:
+            return obj.availability.status
+        except AttributeError:
+            return None
 
     def get_last_answer(self, obj):
         try:
@@ -912,6 +888,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     #         key = repr_["contentType"]
     #         repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
     #     return repr_
+
 
 
 class StatusHistorySerializer(serializers.ModelSerializer):
