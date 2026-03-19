@@ -837,7 +837,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     legalEntity = serializers.SerializerMethodField()  # Изменено
     exterior = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()  # Изменено
-    contentType = serializers.CharField(
+    contentType = serializers.ChoiceField(
         choices=list(AVAILABLE_CONTENT_TYPES.values()),
         required=False,
         read_only=True
