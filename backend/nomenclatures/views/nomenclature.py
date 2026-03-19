@@ -271,43 +271,43 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
         )
 
-    def list(self, request, *args, **kwargs):
-        """
-        Переопределяем list для кэширования результатов поиска.
-        """
+    # def list(self, request, *args, **kwargs):
+    #     """
+    #     Переопределяем list для кэширования результатов поиска.
+    #     """
 
-        search_term = request.query_params.get('search')
+    #     search_term = request.query_params.get('search')
 
-        # --- 🔍 РЕЖИМ ПОИСКА С КЭШЕМ ---
-        if search_term:
-            cache_key = f"nomenclature_search_v2_{hash(search_term)}"
+    #     # --- 🔍 РЕЖИМ ПОИСКА С КЭШЕМ ---
+    #     if search_term:
+    #         cache_key = f"nomenclature_search_v2_{hash(search_term)}"
 
-            cached_result = cache.get(cache_key)
+    #         cached_result = cache.get(cache_key)
 
-            # ✅ важно: проверяем на None + тип
-            if cached_result is not None and isinstance(cached_result, list):
-                return Response(cached_result)
+    #         # ✅ важно: проверяем на None + тип
+    #         if cached_result is not None and isinstance(cached_result, list):
+    #             return Response(cached_result)
 
-            queryset = self.filter_queryset(self.get_queryset())[:50]
+    #         queryset = self.filter_queryset(self.get_queryset())[:50]
 
-            serializer = self.get_serializer(queryset, many=True)
-            data = serializer.data  # ✅ только JSON-safe
+    #         serializer = self.get_serializer(queryset, many=True)
+    #         data = serializer.data  # ✅ только JSON-safe
 
-            # ✅ кладем только сериализованные данные
-            cache.set(cache_key, data, self.CACHE_TIMEOUT)
+    #         # ✅ кладем только сериализованные данные
+    #         cache.set(cache_key, data, self.CACHE_TIMEOUT)
 
-            return Response(data)
+    #         return Response(data)
 
-        # --- 📄 ОБЫЧНЫЙ СПИСОК С ПАГИНАЦИЕЙ ---
-        queryset = self.filter_queryset(self.get_queryset())
+    #     # --- 📄 ОБЫЧНЫЙ СПИСОК С ПАГИНАЦИЕЙ ---
+    #     queryset = self.filter_queryset(self.get_queryset())
 
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response(serializer.data)
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):
