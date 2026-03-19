@@ -831,29 +831,29 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         return repr_
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
-    typeOfPlace = serializers.SerializerMethodField()  # Изменено
-    status = serializers.SerializerMethodField()
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    # status = serializers.SerializerMethodField()
     brand = serializers.SerializerMethodField()  # Изменено - упрощенный вывод
     legalEntity = serializers.SerializerMethodField()  # Изменено
     exterior = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()  # Изменено
-    contentType = serializers.ChoiceField(
-        choices=list(AVAILABLE_CONTENT_TYPES.values()),
-        required=False,
-        read_only=True
-    )
+    # contentType = serializers.ChoiceField(
+    #     choices=list(AVAILABLE_CONTENT_TYPES.values()),
+    #     required=False,
+    #     read_only=True
+    # )
 
     class Meta:
         fields = (
             "id",
             "name",
-            "timezone",
-            "status",
+            # "timezone",
+            # "status",
             "legalEntity",
             "brand",
             "exterior",
             "address",
-            "contentType",
+            # "contentType",
             "typeOfPlace",
             "pricePerMonth",
             "code1c",
@@ -867,11 +867,11 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             obj.images.filter(type="exterior"), many=True
         ).data
 
-    def get_status(self, obj):
-        try:
-            return obj.availability.status
-        except AttributeError:
-            return None
+    # def get_status(self, obj):
+    #     try:
+    #         return obj.availability.status
+    #     except AttributeError:
+    #         return None
 
 
     def get_last_answer(self, obj):
@@ -880,14 +880,14 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         except AttributeError:
             return "Не выходила в сеть"
 
-    def to_representation(self, value):
-        repr_ = super().to_representation(value)
-        repr_["timezone"] = TIMEZONES[value.timezone]
-        repr_["broadcast"] = getattr(value.legalEntity, "broadcast", None)
-        if "contentType" in repr_:
-            key = repr_["contentType"]
-            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
-        return repr_
+    # def to_representation(self, value):
+    #     repr_ = super().to_representation(value)
+    #     repr_["timezone"] = TIMEZONES[value.timezone]
+    #     repr_["broadcast"] = getattr(value.legalEntity, "broadcast", None)
+    #     if "contentType" in repr_:
+    #         key = repr_["contentType"]
+    #         repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
+    #     return repr_
 
 
 class StatusHistorySerializer(serializers.ModelSerializer):
