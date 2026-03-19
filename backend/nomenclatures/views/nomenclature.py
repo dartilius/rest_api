@@ -759,7 +759,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def get_object(self):
         identifier = self.kwargs.get('pk')
         if not identifier:
-            raise NotFound("Не указан идентификатор КА.")
+            raise NotFound("Не указан идентификатор номенклатуры.")
 
         # Проверяем, валидный ли UUID
         is_uuid = False
