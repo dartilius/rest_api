@@ -23,8 +23,10 @@ from ..models import Nomenclature, TypeOfPlace
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    ShortBrandNomenclatureSerializer, PhotoSerializer
+    ShortBrandNomenclatureSerializer, PhotoSerializer,
+    NomenclatureSearchSerializer
 )
+from django.core.cache import cache
 
 
 @extend_schema_view(
@@ -144,9 +146,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         "brand",
         "responsible_ad",
         "typeOfPlace",
-    ).prefetch_related(
-        "images",
-        "tenants",
     )
 
     serializer_class = NomenclatureSerializer
@@ -154,33 +153,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['search_vector']
     filterset_class = NomenclatureFilter
-
-    def get_queryset(self):
-        base_qs = super().get_queryset()
-
-        # Пытаемся найти TypeOfPlace с именем "Торговый центр"
-        tc = TypeOfPlace.objects.filter(name="Торговый центр").first()
-
-        # Если есть, используем Case для сортировки, иначе просто по умолчанию
-        if tc:
-            ordering_case = Case(
-                When(typeOfPlace_id=tc.id, then=Value(0)),
-                default=Value(1),
-                output_field=IntegerField(),
-            )
-        else:
-            ordering_case = Value(1)
-
-        # Аннотируем количество арендаторов и делаем сортировку
-        return (
-            base_qs
-            .annotate(tenants_count=Count("tenants", distinct=True))
-            .order_by(
-                ordering_case,  # "Торговый центр" сверху
-                "-tenants_count",  # потом по количеству арендаторов
-                "-created",  # потом по дате создания
-            )
-        )
+    CACHE_TIMEOUT = 300
 
     def get_serializer(self, *args, **kwargs):
         """
@@ -216,7 +189,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             'NomenclatureSerializer'
         """
         if self.action == "list":
-            serializer = NomenclatureListSerializer
+            # Для списка используем легковесный сериализатор
+            if self.request.query_params.get('search'):
+                return NomenclatureSearchSerializer
+            return NomenclatureListSerializer
         else:
             serializer = NomenclatureSerializer
         if "data" in kwargs:
@@ -225,6 +201,113 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 kwargs["many"] = True
 
         return serializer(*args, **kwargs)
+
+    def get_queryset(self):
+        """
+        Оптимизирует queryset в зависимости от типа запроса.
+        """
+        base_qs = super().get_queryset()
+
+        # Для поиска - максимально легкий queryset
+        if self.action == "list" and self.request.query_params.get('search'):
+            return base_qs.select_related(
+                'brand',
+                'typeOfPlace',
+                'legalEntity',
+                'responsible_ad',
+            ).prefetch_related(
+                # Оптимизированный prefetch для tenants
+                Prefetch(
+                    'tenants',
+                    queryset=Counterparty.objects.only(
+                        'id', 'first_name', 'last_name',
+                        'middle_name', 'additional_name', 'keyword'
+                    )
+                )
+            ).defer(  # Исключаем тяжелые поля
+                'description', 'settings', 'hw_info', 'media'
+            )
+
+        # Для обычного списка - полный queryset с сортировкой
+        tc = TypeOfPlace.objects.filter(name="Торговый центр").first()
+
+        if tc:
+            ordering_case = Case(
+                When(typeOfPlace_id=tc.id, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        else:
+            ordering_case = Value(1)
+
+        return (
+            base_qs
+            .select_related(
+                "legalEntity",
+                "brand",
+                "responsible_ad",
+                "typeOfPlace",
+                "responsible_radio",
+                "responsible_technic",
+                "responsible_technic_on_address",
+                "responsible_placement_marketing",
+            )
+            .prefetch_related(
+                "images",
+                Prefetch(
+                    'tenants',
+                    queryset=Counterparty.objects.only(
+                        'id', 'first_name', 'last_name',
+                        'middle_name', 'additional_name', 'keyword'
+                    )
+                )
+            )
+            .annotate(tenants_count=Count("tenants", distinct=True))
+            .order_by(
+                ordering_case,
+                "-tenants_count",
+                "-created",
+            )
+        )
+
+    def list(self, request, *args, **kwargs):
+        """
+        Переопределяем list для кэширования результатов поиска.
+        """
+        # Если это поиск - используем кэширование
+        if request.query_params.get('search'):
+            search_term = request.query_params.get('search')
+            cache_key = f"nomenclature_search_{hash(search_term)}"
+
+            # Пытаемся получить из кэша
+            cached_result = cache.get(cache_key)
+            if cached_result:
+                return Response(cached_result)
+
+            # Выполняем поиск с ограничением
+            queryset = self.filter_queryset(self.get_queryset())
+
+            # Жесткий лимит для поиска
+            queryset = queryset[:50]
+
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+
+            # Кэшируем результат
+            cache.set(cache_key, data, self.CACHE_TIMEOUT)
+
+            return Response(data)
+
+        # Для обычного списка - стандартная пагинация
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):

@@ -129,6 +129,46 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
+class NomenclatureSearchSerializer(serializers.ModelSerializer):
+    brand_name = serializers.CharField(source='brand.name', read_only=True)
+    type_of_place_name = serializers.CharField(source='typeOfPlace.name', read_only=True)
+    legal_entity_name = serializers.SerializerMethodField()
+    responsible_ad_name = serializers.SerializerMethodField()
+    tenants_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Nomenclature
+        fields = [
+            'id', 'name', 'code1c', 'contentType', 'version',
+            'brand_name', 'type_of_place_name',
+            'legal_entity_name', 'responsible_ad_name', 'tenants_names'
+        ]
+
+    def get_legal_entity_name(self, obj):
+        if not obj.legalEntity:
+            return None
+        return ' '.join(filter(None, [
+            obj.legalEntity.last_name,
+            obj.legalEntity.first_name,
+            obj.legalEntity.middle_name,
+            f"({obj.legalEntity.additional_name})" if obj.legalEntity.additional_name else '',
+            f"[{obj.legalEntity.keyword}]" if obj.legalEntity.keyword else ''
+        ]))
+
+    def get_responsible_ad_name(self, obj):
+        if not obj.responsible_ad:
+            return None
+        return f"{obj.responsible_ad.last_name} {obj.responsible_ad.first_name}".strip()
+
+    def get_tenants_names(self, obj):
+        return [
+            ' '.join(filter(None, [
+                t.last_name, t.first_name, t.middle_name,
+                f"({t.additional_name})" if t.additional_name else '',
+                f"[{t.keyword}]" if t.keyword else ''
+            ]))
+            for t in obj.tenants.all()[:3]  # Лимит для производительности
+        ]
 
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
