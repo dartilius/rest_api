@@ -130,8 +130,8 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 class NomenclatureSearchSerializer(serializers.ModelSerializer):
-    brand_name = serializers.CharField(source='brand.name', read_only=True)
-    type_of_place_name = serializers.CharField(source='typeOfPlace.name', read_only=True)
+    brand_name = serializers.SerializerMethodField()
+    type_of_place_name = serializers.SerializerMethodField()
     legal_entity_name = serializers.SerializerMethodField()
     responsible_ad_name = serializers.SerializerMethodField()
     tenants_names = serializers.SerializerMethodField()
@@ -144,31 +144,60 @@ class NomenclatureSearchSerializer(serializers.ModelSerializer):
             'legal_entity_name', 'responsible_ad_name', 'tenants_names'
         ]
 
+    def get_brand_name(self, obj):
+        return obj.brand.name if obj.brand else None
+
+    def get_type_of_place_name(self, obj):
+        return obj.typeOfPlace.name if obj.typeOfPlace else None
+
     def get_legal_entity_name(self, obj):
         if not obj.legalEntity:
             return None
-        return ' '.join(filter(None, [
-            obj.legalEntity.last_name,
-            obj.legalEntity.first_name,
-            obj.legalEntity.middle_name,
-            f"({obj.legalEntity.additional_name})" if obj.legalEntity.additional_name else '',
-            f"[{obj.legalEntity.keyword}]" if obj.legalEntity.keyword else ''
-        ]))
+        try:
+            le = obj.legalEntity
+            parts = []
+            if le.last_name:
+                parts.append(str(le.last_name))
+            if le.first_name:
+                parts.append(str(le.first_name))
+            if le.middle_name:
+                parts.append(str(le.middle_name))
+            if le.additional_name:
+                parts.append(f"({str(le.additional_name)})")
+            if le.keyword:
+                parts.append(f"[{str(le.keyword)}]")
+            return ' '.join(parts) if parts else None
+        except:
+            return None
 
     def get_responsible_ad_name(self, obj):
         if not obj.responsible_ad:
             return None
-        return f"{obj.responsible_ad.last_name} {obj.responsible_ad.first_name}".strip()
+        try:
+            return f"{obj.responsible_ad.last_name or ''} {obj.responsible_ad.first_name or ''}".strip() or None
+        except:
+            return None
 
     def get_tenants_names(self, obj):
-        return [
-            ' '.join(filter(None, [
-                t.last_name, t.first_name, t.middle_name,
-                f"({t.additional_name})" if t.additional_name else '',
-                f"[{t.keyword}]" if t.keyword else ''
-            ]))
-            for t in obj.tenants.all()[:3]  # Лимит для производительности
-        ]
+        try:
+            result = []
+            for t in obj.tenants.all()[:3]:
+                parts = []
+                if t.last_name:
+                    parts.append(str(t.last_name))
+                if t.first_name:
+                    parts.append(str(t.first_name))
+                if t.middle_name:
+                    parts.append(str(t.middle_name))
+                if t.additional_name:
+                    parts.append(f"({str(t.additional_name)})")
+                if t.keyword:
+                    parts.append(f"[{str(t.keyword)}]")
+                if parts:
+                    result.append(' '.join(parts))
+            return result
+        except:
+            return []
 
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
@@ -803,18 +832,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
-    """Сериализация списка номенклатур."""
-    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
-    # abbreviation = serializers.SerializerMethodField()
+    typeOfPlace = serializers.SerializerMethodField()  # Изменено
     status = serializers.SerializerMethodField()
-    brand = BrandSerializer()
-    legalEntity = CounterpartiesShortSerializer()
+    brand = serializers.SerializerMethodField()  # Изменено - упрощенный вывод
+    legalEntity = serializers.SerializerMethodField()  # Изменено
     exterior = serializers.SerializerMethodField()
-    address = AddressReadSerializer(source="address.address")
-    contentType = serializers.ChoiceField(
-        choices=list(AVAILABLE_CONTENT_TYPES.values()),
-        required=False
-    )
+    address = serializers.SerializerMethodField()  # Изменено
+    contentType = serializers.CharField(source='get_contentType_display', read_only=True)
 
     class Meta:
         fields = (
@@ -835,15 +859,75 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
         model = Nomenclature
 
+    def get_typeOfPlace(self, obj):
+        """Безопасное получение типа места"""
+        if obj.typeOfPlace:
+            return {
+                'id': str(obj.typeOfPlace.id),
+                'name': obj.typeOfPlace.name,
+                'abbreviation': getattr(obj.typeOfPlace, 'abbreviation', None)
+            }
+        return None
+
+    def get_brand(self, obj):
+        """Упрощенный вывод бренда"""
+        if obj.brand:
+            return {
+                'id': str(obj.brand.id),
+                'name': obj.brand.name,
+                'code1c': obj.brand.code1c
+            }
+        return None
+
+    def get_legalEntity(self, obj):
+        """Упрощенный вывод юрлица"""
+        if obj.legalEntity:
+            return {
+                'id': str(obj.legalEntity.id),
+                'name': ' '.join(filter(None, [
+                    obj.legalEntity.last_name,
+                    obj.legalEntity.first_name,
+                    obj.legalEntity.middle_name
+                ])) or obj.legalEntity.additional_name,
+                'inn': obj.legalEntity.inn,
+                'keyword': obj.legalEntity.keyword
+            }
+        return None
+
+    def get_address(self, obj):
+        """Безопасное получение адреса"""
+        try:
+            if hasattr(obj, 'address') and obj.address:
+                address = obj.address.address if hasattr(obj.address, 'address') else obj.address
+                if address:
+                    return {
+                        'id': str(address.id) if hasattr(address, 'id') else None,
+                        'full_address': str(address)
+                    }
+        except (AttributeError, ValueError):
+            pass
+        return None
+
     def get_exterior(self, obj):
-        return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="exterior"), many=True
-        ).data
+        """Безопасное получение фото"""
+        try:
+            exterior_images = obj.images.filter(type="exterior")[:5]  # Лимит фото
+            return [
+                {
+                    'id': str(img.id),
+                    'source': img.source if hasattr(img, 'source') else None,
+                    'type': img.type
+                }
+                for img in exterior_images
+            ]
+        except (AttributeError, ValueError):
+            return []
 
     def get_status(self, obj):
+        """Безопасное получение статуса"""
         try:
-            return obj.availability.status
-        except AttributeError:
+            return obj.availability.status if hasattr(obj, 'availability') else None
+        except (AttributeError, ValueError):
             return None
 
     def get_last_answer(self, obj):
