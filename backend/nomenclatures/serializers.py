@@ -791,6 +791,23 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         repr_["tenants_length"] = obj.tenants.count()
 
+        if 'tenants' in repr_ and repr_['tenants']:
+            transformed_tenants = []
+            for tenant_item in repr_['tenants']:
+                # Извлекаем данные из вложенной структуры
+                tenant_data = tenant_item.get('tenant', {})
+                floor = tenant_item.get('floor')
+
+                # Создаем новую структуру
+                transformed_tenant = {
+                    'id': tenant_data.get('id'),
+                    'brands_list': tenant_data.get('brands_list'),
+                    'logotypes': tenant_data.get('logotypes', []),
+                    'floor': floor
+                }
+                transformed_tenants.append(transformed_tenant)
+
+        repr_['tenants'] = transformed_tenants
 
         # Добавляем broadcast
         repr_["broadcast"] = getattr(obj.legalEntity, "broadcast", None)
@@ -829,6 +846,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
 
         return repr_
+
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
