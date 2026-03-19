@@ -260,10 +260,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    address = AddressReadSerializer(source="address.address", read_only=True)
-
-
-
+    address = serializers.SerializerMethodField()
     class Meta:
         fields = "__all__"
         extra_fields = ("nameForFront",)
@@ -284,6 +281,50 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "typeOfPlace"
         )
         model = Nomenclature
+
+    def get_address(self, obj):
+        """Возвращает объект с отформатированным адресом и координатами"""
+        address = obj.address.address
+
+        if not address:
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
+
+        # Формируем строку адреса
+        address_parts = []
+
+        # Город
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+
+        # Улица
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        # Номер дома/строения
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        # Формируем объект с адресом и координатами
+        return {
+            "name": ', '.join(address_parts),
+            "coordinates": {
+                "latitude": str(address.latitude) if address.latitude else None,
+                "longitude": str(address.longitude) if address.longitude else None
+            }
+        }
+
 
     def get_tenants(self, obj):
         """Возвращаем арендаторов с этажом"""
