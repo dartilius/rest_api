@@ -1,6 +1,6 @@
 import hashlib
 from datetime import time
-from django.core.exceptions import RelatedObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count
 from rest_framework import serializers
 from brands.models import Brand
@@ -290,7 +290,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         try:
             # Пытаемся получить связанный объект NomenclatureAddress
             nomenclature_address = obj.address
-        except RelatedObjectDoesNotExist:
+        except ObjectDoesNotExist:
             # Если связи нет, возвращаем пустой адрес
             return {
                 "name": "",
@@ -981,7 +981,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         try:
             # Пытаемся получить связанный адрес
             nomenclature_address = obj.address
-        except RelatedObjectDoesNotExist:
+        except ObjectDoesNotExist:
             # Если связи нет, возвращаем пустую строку
             return ""
 
