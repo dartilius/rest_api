@@ -1,6 +1,6 @@
 import hashlib
 from datetime import time
-
+from django.core.exceptions import RelatedObjectDoesNotExist
 from django.db.models import Count
 from rest_framework import serializers
 from brands.models import Brand
@@ -287,6 +287,28 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def get_formattedAddress(self, obj):
         """Возвращает объект с отформатированным адресом и координатами"""
+        try:
+            # Пытаемся получить связанный объект NomenclatureAddress
+            nomenclature_address = obj.address
+        except RelatedObjectDoesNotExist:
+            # Если связи нет, возвращаем пустой адрес
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
+
+        # Если связь есть, но нет самого адреса
+        if not nomenclature_address or not nomenclature_address.address:
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
         address = obj.address.address
 
         if not address:
@@ -956,10 +978,18 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
     def get_formattedAddress(self, obj):
         """Форматирует адрес с проверкой наличия всех частей"""
-        address = obj.address.address
-
-        if not address:
+        try:
+            # Пытаемся получить связанный адрес
+            nomenclature_address = obj.address
+        except RelatedObjectDoesNotExist:
+            # Если связи нет, возвращаем пустую строку
             return ""
+
+        # Если связь есть, но нет самого адреса
+        if not nomenclature_address or not nomenclature_address.address:
+            return ""
+
+        address = nomenclature_address.address
 
         address_parts = []
 
