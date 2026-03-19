@@ -260,7 +260,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    address = serializers.SerializerMethodField()
+    address = AddressReadSerializer(source="address.address", read_only=True)
+    formattedAddress = serializers.SerializerMethodField()
+
     class Meta:
         fields = "__all__"
         extra_fields = ("nameForFront",)
@@ -278,11 +280,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "interior",
             "exterior",
             "nameForFront",
-            "typeOfPlace"
+            "typeOfPlace",
+            "formattedAddress"
         )
         model = Nomenclature
 
-    def get_address(self, obj):
+    def get_formattedAddress(self, obj):
         """Возвращает объект с отформатированным адресом и координатами"""
         address = obj.address.address
 
@@ -880,7 +883,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         else {}
                     ),
                 }
-
+        for field in repr_["address"]:
+            if field in repr_:
+                repr_["address"].pop(field)
         # Преобразование contentType (точная копия оригинала)
         if "contentType" in repr_:
             key = repr_["contentType"]
@@ -897,7 +902,8 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
     exterior = serializers.SerializerMethodField()
-    address = serializers.SerializerMethodField()
+    address = AddressReadSerializer(source="address.address")
+    formattedAddress = serializers.SerializerMethodField()
     # contentType = serializers.ChoiceField(
     #     choices=list(AVAILABLE_CONTENT_TYPES.values()),
     #     required=False
@@ -913,6 +919,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "brand",
             "exterior",
             "address",
+            "formattedAddress"
             # "contentType",
             "typeOfPlace",
             "pricePerMonth",
@@ -939,7 +946,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         except AttributeError:
             return "Не выходила в сеть"
 
-    def get_address(self, obj):
+    def get_formattedAddress(self, obj):
         """Форматирует адрес с проверкой наличия всех частей"""
         address = obj.address.address
 
@@ -971,14 +978,12 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
         return ', '.join(address_parts)
 
-    # def to_representation(self, value):
-    #     repr_ = super().to_representation(value)
-    #     repr_["timezone"] = TIMEZONES[value.timezone]
-    #     repr_["broadcast"] = getattr(value.legalEntity, "broadcast", None)
-    #     if "contentType" in repr_:
-    #         key = repr_["contentType"]
-    #         repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
-    #     return repr_
+    def to_representation(self, value):
+        repr_ = super().to_representation(value)
+        for field in repr_["address"]:
+            if field in repr_:
+                repr_["address"].pop(field)
+        return repr_
 
 
 
