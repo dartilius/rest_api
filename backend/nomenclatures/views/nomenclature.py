@@ -275,31 +275,30 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         """
         Переопределяем list для кэширования результатов поиска.
         """
-        # Если это поиск - используем кэширование
-        if request.query_params.get('search'):
-            search_term = request.query_params.get('search')
-            cache_key = f"nomenclature_search_{hash(search_term)}"
 
-            # Пытаемся получить из кэша
+        search_term = request.query_params.get('search')
+
+        # --- 🔍 РЕЖИМ ПОИСКА С КЭШЕМ ---
+        if search_term:
+            cache_key = f"nomenclature_search_v2_{hash(search_term)}"
+
             cached_result = cache.get(cache_key)
-            if cached_result:
+
+            # ✅ важно: проверяем на None + тип
+            if cached_result is not None and isinstance(cached_result, list):
                 return Response(cached_result)
 
-            # Выполняем поиск с ограничением
-            queryset = self.filter_queryset(self.get_queryset())
-
-            # Жесткий лимит для поиска
-            queryset = queryset[:50]
+            queryset = self.filter_queryset(self.get_queryset())[:50]
 
             serializer = self.get_serializer(queryset, many=True)
-            data = serializer.data
+            data = serializer.data  # ✅ только JSON-safe
 
-            # Кэшируем результат
+            # ✅ кладем только сериализованные данные
             cache.set(cache_key, data, self.CACHE_TIMEOUT)
 
             return Response(data)
 
-        # Для обычного списка - стандартная пагинация
+        # --- 📄 ОБЫЧНЫЙ СПИСОК С ПАГИНАЦИЕЙ ---
         queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
