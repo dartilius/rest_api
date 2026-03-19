@@ -323,8 +323,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         return {
             "name": ', '.join(address_parts),
             "coordinates": {
-                "latitude": str(address.latitude) if address.latitude else None,
-                "longitude": str(address.longitude) if address.longitude else None
+                "latitude": str(address.coordinates.latitude) if address.coordinates.latitude else None,
+                "longitude": str(address.coordinates.longitude) if address.coordinates.longitude else None
             }
         }
 
