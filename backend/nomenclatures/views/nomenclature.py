@@ -13,7 +13,7 @@ from rest_framework.status import (
     HTTP_200_OK,
 )
 from rest_framework.filters import SearchFilter
-from django.db.models import Count, Case, When, Value, IntegerField
+from django.db.models import Count, Case, When, Value, IntegerField, Prefetch
 from api.constants import restricted_update, VersionsSerializer
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
 from users.permissions import StaffCUDallRead
