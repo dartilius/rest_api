@@ -270,6 +270,44 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
         )
 
+    # def list(self, request, *args, **kwargs):
+    #     """
+    #     Переопределяем list для кэширования результатов поиска.
+    #     """
+
+    #     search_term = request.query_params.get('search')
+
+    #     # --- 🔍 РЕЖИМ ПОИСКА С КЭШЕМ ---
+    #     if search_term:
+    #         cache_key = f"nomenclature_search_v2_{hash(search_term)}"
+
+    #         cached_result = cache.get(cache_key)
+
+    #         # ✅ важно: проверяем на None + тип
+    #         if cached_result is not None and isinstance(cached_result, list):
+    #             return Response(cached_result)
+
+    #         queryset = self.filter_queryset(self.get_queryset())[:50]
+
+    #         serializer = self.get_serializer(queryset, many=True)
+    #         data = serializer.data  # ✅ только JSON-safe
+
+    #         # ✅ кладем только сериализованные данные
+    #         cache.set(cache_key, data, self.CACHE_TIMEOUT)
+
+    #         return Response(data)
+
+    #     # --- 📄 ОБЫЧНЫЙ СПИСОК С ПАГИНАЦИЕЙ ---
+    #     queryset = self.filter_queryset(self.get_queryset())
+
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
+
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response(serializer.data)
+
     def list(self, request, *args, **kwargs):
         """
         Переопределяем list для кэширования результатов поиска.
@@ -283,29 +321,30 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
             cached_result = cache.get(cache_key)
 
-            # ✅ важно: проверяем на None + тип
-            if cached_result is not None and isinstance(cached_result, list):
+            # ✅ Проверяем кэш
+            if cached_result is not None:
                 return Response(cached_result)
 
+            # Получаем queryset с оптимизациями для поиска
             queryset = self.filter_queryset(self.get_queryset())[:50]
 
-            serializer = self.get_serializer(queryset, many=True)
-            data = serializer.data  # ✅ только JSON-safe
+            # Используем Search сериализатор для получения данных
+            search_serializer = NomenclatureSearchSerializer(queryset, many=True)
 
-            # ✅ кладем только сериализованные данные
-            cache.set(cache_key, data, self.CACHE_TIMEOUT)
+            # ✅ Возвращаем данные в том же формате, что и ожидает фронтенд
+            cache.set(cache_key, search_serializer.data, self.CACHE_TIMEOUT)
 
-            return Response(data)
+            return Response(search_serializer.data)
 
         # --- 📄 ОБЫЧНЫЙ СПИСОК С ПАГИНАЦИЕЙ ---
         queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
         if page is not None:
-            serializer = self.get_serializer(page, many=True)
+            serializer = NomenclatureListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = NomenclatureListSerializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=["get"], url_path="tabs")
