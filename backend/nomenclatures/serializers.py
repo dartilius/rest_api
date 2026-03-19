@@ -898,7 +898,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         except AttributeError:
             return "Не выходила в сеть"
 
-    def get_formatted_address(self, obj):
+    def get_address(self, obj):
         """Форматирует адрес с проверкой наличия всех частей"""
         address = obj.address.address
 
