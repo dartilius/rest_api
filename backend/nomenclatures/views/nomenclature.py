@@ -26,6 +26,7 @@ from ..serializers import (
     ShortBrandNomenclatureSerializer, PhotoSerializer,
     NomenclatureSearchSerializer
 )
+from counterparties.models import Counterparty
 from django.core.cache import cache
 
 
