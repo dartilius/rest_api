@@ -29,7 +29,7 @@ def update_all_search_vectors(batch_size=500):
             tenant_full=Concat(
                 'tenant__first_name', Value(' '),
                 'tenant__last_name', Value(' '),
-                'legalEntity__additional_name', Value(' '),
+                'tenant__additional_name', Value(' '),
                 'tenant__keyword', Value(' '),
                 Coalesce('floor', Value(''))
             )
