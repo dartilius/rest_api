@@ -831,9 +831,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         return repr_
 
 class NomenclatureListSerializer(serializers.ModelSerializer):
-    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    # typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     # status = serializers.SerializerMethodField()
-    brand = serializers.SerializerMethodField()  # Изменено - упрощенный вывод
+    # brand = serializers.SerializerMethodField()  # Изменено - упрощенный вывод
+    typeOfPlace = serializers.SerializerMethodField()  # Изменено с CharField на SerializerMethodField
+    brand = serializers.SerializerMethodField()
     legalEntity = serializers.SerializerMethodField()  # Изменено
     exterior = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()  # Изменено
@@ -861,6 +863,28 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
         model = Nomenclature
+
+    def get_typeOfPlace(self, obj):
+        """Безопасное получение типа места"""
+        if obj.typeOfPlace:
+            return {
+                'id': str(obj.typeOfPlace.id),
+                'name': obj.typeOfPlace.name,
+                'abbreviation': obj.typeOfPlace.abbreviation if hasattr(obj.typeOfPlace, 'abbreviation') else None,
+                'display': obj.type_of_place_display  # Теперь property работает через метод
+            }
+        return None
+
+    def get_brand(self, obj):
+        """Упрощенный вывод бренда"""
+        if obj.brand:
+            return {
+                'id': str(obj.brand.id),
+                'name': obj.brand.name,
+                'code1c': obj.brand.code1c,
+                'logo': str(obj.brand.logotype) if obj.brand.logotype else None
+            }
+        return None
 
     def get_exterior(self, obj):
         return InNomenclaturePhotoSerializer(
