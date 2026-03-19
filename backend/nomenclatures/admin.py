@@ -392,16 +392,26 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
     """Адреса номенклатур — оптимизированная версия с сохранением подсчета"""
 
     list_display = ("nomenclature_name", "address_short")
-    search_fields = ("nomenclature__name", "address__name")
-    show_full_result_count = True  # Подсчет включен
+    search_fields = ("nomenclature__name", "address__city__name", "address__street__name", "address__house__number")  # Исправлено
+    show_full_result_count = True
     list_per_page = 50
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            "nomenclature", "address"
+            "nomenclature",
+            "address",
+            "address__city",      # Добавлено для str
+            "address__street",    # Добавлено для str
+            "address__house",     # Добавлено для str
+            "address__building"   # Добавлено для str
         ).only(
             'nomenclature__name', 'nomenclature__id',
-            'address__name'
+            # Поля для address.__str__
+            'address__id',
+            'address__city__name',
+            'address__street__name',
+            'address__house__number',
+            'address__building__number'
         )
 
     @admin.display(description="Номенклатура", ordering="nomenclature__name")
