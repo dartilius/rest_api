@@ -851,29 +851,36 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 }
                 transformed_tenants.append(transformed_tenant)
 
-        repr_['tenants'] = transformed_tenants
+            repr_['tenants'] = transformed_tenants
 
         # Добавляем broadcast
         repr_["broadcast"] = getattr(obj.legalEntity, "broadcast", None)
 
-        # Удаляем дублирующиеся поля из repr_
-        # Важно: удаляем только те поля, которые есть в main_info
+        # ✅ FIXED: Create a list of keys to remove instead of modifying while iterating
+        fields_to_remove = []
         for field in repr_["main_info"]:
             if field in repr_:
-                repr_.pop(field)
+                fields_to_remove.append(field)
 
-        for field in (
+        # Remove the fields after iteration
+        for field in fields_to_remove:
+            repr_.pop(field)
+
+        # Remove responsibility fields
+        fields_to_remove = [
             "responsible_ad",
             "responsible_radio",
             "responsible_technic",
             "responsible_technic_on_address",
             "responsible_placement_marketing",
-        ):
+        ]
+        for field in fields_to_remove:
             repr_.pop(field, None)
 
         # Обработка settings (точная копия оригинала)
         if "settings" in repr_ and repr_["settings"]:
-            for day, setting in repr_["settings"].items():
+            # ✅ FIXED: Create a copy of items or use list() to avoid modification during iteration
+            for day, setting in list(repr_["settings"].items()):
                 repr_["settings"][day] = {
                     "worktime": setting["worktime"],
                     "default_volume": setting["default_volume"],
@@ -883,9 +890,18 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         else {}
                     ),
                 }
-        for field in repr_["address"]:
-            if field in repr_:
-                repr_["address"].pop(field)
+
+        # ✅ FIXED: Address section - create a list of keys to remove
+        if "address" in repr_ and isinstance(repr_["address"], dict):
+            address_fields_to_remove = []
+            for field in repr_["address"]:
+                if field in repr_:
+                    address_fields_to_remove.append(field)
+
+            for field in address_fields_to_remove:
+                if field in repr_:
+                    repr_.pop(field)
+
         # Преобразование contentType (точная копия оригинала)
         if "contentType" in repr_:
             key = repr_["contentType"]
@@ -980,9 +996,19 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        for field in repr_["address"]:
-            if field in repr_:
-                repr_["address"].pop(field)
+
+        # ✅ Правильный подход: собираем ключи для удаления в отдельный список
+        if "address" in repr_ and isinstance(repr_["address"], dict):
+            fields_to_remove = []
+            for field in repr_["address"]:
+                if field in repr_:
+                    fields_to_remove.append(field)
+
+            # Удаляем поля после итерации
+            for field in fields_to_remove:
+                if field in repr_:
+                    repr_.pop(field)
+
         return repr_
 
 
