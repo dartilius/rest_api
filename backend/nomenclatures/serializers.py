@@ -856,7 +856,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
     exterior = serializers.SerializerMethodField()
-    address = AddressReadSerializer(source="address.address")
+    address = serializers.SerializerMethodField()
     # contentType = serializers.ChoiceField(
     #     choices=list(AVAILABLE_CONTENT_TYPES.values()),
     #     required=False
@@ -897,6 +897,38 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             return f"{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}"
         except AttributeError:
             return "Не выходила в сеть"
+
+    def get_formatted_address(self, obj):
+        """Форматирует адрес с проверкой наличия всех частей"""
+        address = obj.address.address
+
+        if not address:
+            return ""
+
+        address_parts = []
+
+        # Проверяем и добавляем город
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+
+        # Проверяем и добавляем улицу
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        # Проверяем наличие номера дома или строения
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        # Если есть улица, но нет номера, все равно возвращаем "город, улица"
+        # Если есть только город, возвращаем только город
+
+        return ', '.join(address_parts)
 
     # def to_representation(self, value):
     #     repr_ = super().to_representation(value)
