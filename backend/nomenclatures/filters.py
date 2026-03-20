@@ -5,7 +5,6 @@ from django_filters import (
     BaseInFilter, OrderingFilter, BooleanFilter
 )
 from nomenclatures.models import Nomenclature
-from django.contrib.postgres.search import SearchQuery, SearchRank
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
     """Поддерживает фильтрацию UUID через запятую (в URL)."""
@@ -19,10 +18,19 @@ class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
 def full_text_search(queryset, value):
     if not value:
         return queryset
+
+    from django.contrib.postgres.search import SearchQuery, SearchRank
+
     query = SearchQuery(value)
-    return queryset.annotate(rank=SearchRank('search_vector', query)) \
-                   .filter(search_vector=query) \
-                   .order_by('-rank')
+
+    # Используем существующее поле search_vector, а не создаем новый вектор
+    return (
+        queryset
+        .annotate(rank=SearchRank('search_vector', query))
+        .filter(search_vector=query)
+        .order_by('-rank')
+    )
+
 
 class NomenclatureFilter(FilterSet):
     """

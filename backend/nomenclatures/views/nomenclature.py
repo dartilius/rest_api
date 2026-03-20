@@ -12,7 +12,8 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
 )
-from django.db.models import Count, Case, When, Value, IntegerField
+from rest_framework.filters import SearchFilter
+from django.db.models import Count, Case, When, Value, IntegerField, Prefetch
 from api.constants import restricted_update, VersionsSerializer
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
 from users.permissions import StaffCUDallRead
@@ -22,8 +23,11 @@ from ..models import Nomenclature, TypeOfPlace
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    ShortBrandNomenclatureSerializer, PhotoSerializer
+    ShortBrandNomenclatureSerializer, PhotoSerializer,
+    NomenclatureSearchSerializer
 )
+from counterparties.models import Counterparty
+from django.core.cache import cache
 
 
 @extend_schema_view(
@@ -143,23 +147,65 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         "brand",
         "responsible_ad",
         "typeOfPlace",
-    ).prefetch_related(
-        "images",
-        "tenants",
     )
 
     serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['search_vector']
     filterset_class = NomenclatureFilter
+    CACHE_TIMEOUT = 300
+
+    def get_serializer(self, *args, **kwargs):
+        """
+        Динамически выбирает сериализатор в зависимости от типа операции.
+
+        Для операции 'list' (получение списка) используется NomenclatureListSerializer.
+        Для остальных операций (retrieve, create, update, destroy) используется
+        полный NomenclatureSerializer со всеми полями.
+        """
+        if self.action == "list":
+            # Для списка всегда используем NomenclatureListSerializer
+            # (и для обычного списка, и для поиска)
+            serializer_class = NomenclatureListSerializer
+        else:
+            serializer_class = NomenclatureSerializer
+
+        if "data" in kwargs and isinstance(kwargs["data"], list):
+            kwargs["many"] = True
+
+        return serializer_class(*args, **kwargs)
+
 
     def get_queryset(self):
+        """
+        Оптимизирует queryset в зависимости от типа запроса.
+        """
         base_qs = super().get_queryset()
 
-        # Пытаемся найти TypeOfPlace с именем "Торговый центр"
+        # Для поиска - оптимизированный queryset (все нужные поля для ListSerializer)
+        if self.action == "list" and self.request.query_params.get('search'):
+            return base_qs.select_related(
+                'brand',
+                'typeOfPlace',
+                'legalEntity',
+                'responsible_ad',
+            ).prefetch_related(
+                "images",  # Для exterior фото
+                Prefetch(
+                    'tenants',
+                    queryset=Counterparty.objects.only(
+                        'id', 'first_name', 'last_name',
+                        'middle_name', 'additional_name', 'keyword'
+                    )
+                )
+            ).defer(  # Исключаем тяжелые поля, которые не нужны в списке
+                'description', 'settings', 'hw_info', 'media'
+            )
+
+        # Для обычного списка - полный queryset с сортировкой
         tc = TypeOfPlace.objects.filter(name="Торговый центр").first()
 
-        # Если есть, используем Case для сортировки, иначе просто по умолчанию
         if tc:
             ordering_case = Case(
                 When(typeOfPlace_id=tc.id, then=Value(0)),
@@ -169,60 +215,85 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         else:
             ordering_case = Value(1)
 
-        # Аннотируем количество арендаторов и делаем сортировку
         return (
             base_qs
+            .select_related(
+                "legalEntity",
+                "brand",
+                "responsible_ad",
+                "typeOfPlace",
+                "responsible_radio",
+                "responsible_technic",
+                "responsible_technic_on_address",
+                "responsible_placement_marketing",
+            )
+            .prefetch_related(
+                "images",
+                Prefetch(
+                    'tenants',
+                    queryset=Counterparty.objects.only(
+                        'id', 'first_name', 'last_name',
+                        'middle_name', 'additional_name', 'keyword'
+                    )
+                )
+            )
             .annotate(tenants_count=Count("tenants", distinct=True))
             .order_by(
-                ordering_case,  # "Торговый центр" сверху
-                "-tenants_count",  # потом по количеству арендаторов
-                "-created",  # потом по дате создания
+                ordering_case,
+                "-tenants_count",
+                "-created",
             )
         )
 
-    def get_serializer(self, *args, **kwargs):
+
+    def list(self, request, *args, **kwargs):
         """
-        Динамически выбирает сериализатор в зависимости от типа операции.
-
-        Для операции 'list' (получение списка) используется облегченный
-        NomenclatureListSerializer, который содержит минимальное количество полей
-        для быстрого отображения списка. Для остальных операций (retrieve, create,
-        update, destroy) используется полный NomenclatureSerializer со всеми полями.
-
-        Также обрабатывает случаи, когда нужно сериализировать несколько объектов
-        (many=True), например при массовом обновлении.
-
-        Args:
-            *args: Позиционные аргументы для передачи в сериализатор.
-            **kwargs: Именованные аргументы. Может содержать:
-                - data: Данные для сериализации/десериализации
-                - instance: Экземпляр модели для обновления
-                - many: Флаг для сериализации коллекции
-
-        Returns:
-            Экземпляр сериализатора (NomenclatureListSerializer или NomenclatureSerializer).
-
-        Examples:
-            >>> # Для list операции
-            >>> serializer = self.get_serializer(queryset, many=True)
-            >>> type(serializer).__name__
-            'NomenclatureListSerializer'
-
-            >>> # Для retrieve операции
-            >>> serializer = self.get_serializer(instance)
-            >>> type(serializer).__name__
-            'NomenclatureSerializer'
+        Переопределяем list для кэширования результатов поиска.
         """
-        if self.action == "list":
-            serializer = NomenclatureListSerializer
-        else:
-            serializer = NomenclatureSerializer
-        if "data" in kwargs:
-            data = kwargs["data"]
-            if isinstance(data, list):
-                kwargs["many"] = True
 
-        return serializer(*args, **kwargs)
+        search_term = request.query_params.get('search')
+
+        # --- 🔍 РЕЖИМ ПОИСКА С КЭШЕМ ---
+        if search_term:
+            cache_key = f"nomenclature_search_v2_{hash(search_term)}"
+
+            cached_result = cache.get(cache_key)
+
+            # ✅ Проверяем кэш
+            if cached_result is not None:
+                return Response(cached_result)
+
+            # Получаем queryset с оптимизациями для поиска
+            queryset = self.filter_queryset(self.get_queryset())[:50]
+
+            # Используем NomenclatureListSerializer для сериализации
+            serializer = NomenclatureListSerializer(queryset, many=True)
+
+            # Формируем ответ в формате пагинации (как ожидает фронтенд)
+            result = {
+                'count': len(serializer.data),
+                'next': None,  # Для поиска пагинация отключена
+                'previous': None,
+                'results': serializer.data
+            }
+
+            # Кэшируем результат
+            cache.set(cache_key, result, self.CACHE_TIMEOUT)
+
+            return Response(result)
+
+        # --- 📄 ОБЫЧНЫЙ СПИСОК С ПАГИНАЦИЕЙ ---
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = NomenclatureListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = NomenclatureListSerializer(queryset, many=True)
+
+        # Для единообразия возвращаем в том же формате
+        return serializer
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):
@@ -759,7 +830,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def get_object(self):
         identifier = self.kwargs.get('pk')
         if not identifier:
-            raise NotFound("Не указан идентификатор КА.")
+            raise NotFound("Не указан идентификатор номенклатуры.")
 
         # Проверяем, валидный ли UUID
         is_uuid = False

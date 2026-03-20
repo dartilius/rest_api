@@ -13,7 +13,8 @@ from nomenclatures.models import (
     STATUSES,
     NomenclatureImage,
     NomenclatureAddress,
-    TypeOfPlace
+    TypeOfPlace,
+    NomenclatureTenant
 )
 
 
@@ -271,6 +272,23 @@ class NomenclatureAdmin(admin.ModelAdmin):
     clear_cache.short_description = "Очистить кэш"
 
 
+@admin.register(NomenclatureTenant)
+class NomenclatureTenantAdmin(admin.ModelAdmin):
+    """Арендаторы номенклатур — оптимизированная версия с сохранением подсчета"""
+
+    list_display = ("nomenclature_name", "tenant_id", "floor")
+    search_fields = ("nomenclature__name", "tenant_id")
+    show_full_result_count = True  # Подсчет включен
+    list_per_page = 50
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("nomenclature")
+
+    @admin.display(description="Номенклатура", ordering="nomenclature__name")
+    def nomenclature_name(self, obj):
+        return obj.nomenclature.name if obj.nomenclature else "-"
+
+
 @admin.register(TypeOfPlace)
 class TypeOfPlaceAdmin(admin.ModelAdmin):
     """Тип места вещания"""
@@ -374,16 +392,26 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
     """Адреса номенклатур — оптимизированная версия с сохранением подсчета"""
 
     list_display = ("nomenclature_name", "address_short")
-    search_fields = ("nomenclature__name", "address__name")
-    show_full_result_count = True  # Подсчет включен
+    search_fields = ("nomenclature__name", "address__city__name", "address__street__name", "address__house__number")  # Исправлено
+    show_full_result_count = True
     list_per_page = 50
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            "nomenclature", "address"
+            "nomenclature",
+            "address",
+            "address__city",      # Добавлено для str
+            "address__street",    # Добавлено для str
+            "address__house",     # Добавлено для str
+            "address__building"   # Добавлено для str
         ).only(
             'nomenclature__name', 'nomenclature__id',
-            'address__name'
+            # Поля для address.__str__
+            'address__id',
+            'address__city__name',
+            'address__street__name',
+            'address__house__number',
+            'address__building__number'
         )
 
     @admin.display(description="Номенклатура", ordering="nomenclature__name")

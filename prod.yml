@@ -44,8 +44,8 @@ services:
     volumes:
       - ./scripts/postgres:/docker-entrypoint-initdb.d
       - /base:/var/lib/postgresql
-#      - ./configs/postgres/postgres_optimized.conf:/var/lib/postgresql/18/docker/postgresql.conf
-#      - /var/log/postgresql_nvme:/var/log/postgresql:rw
+      #      - ./configs/postgres/postgres_optimized.conf:/var/lib/postgresql/18/docker/postgresql.conf
+      #      - /var/log/postgresql_nvme:/var/log/postgresql:rw
       - ./db_dumps:/db_dumps
     deploy:
       resources:
@@ -134,11 +134,11 @@ services:
       rabbit:
         condition: service_healthy
     #environment:
-      #- RM_USER=${RM_USER}
-      #- RM_PASS=${RM_PASS}
-      #- URL_1C=${URL_1C}
-      #- RM_LK_PASS=${RM_LK_PASS}
-      #- RM_LK_EMAIL=${RM_LK_EMAIL}
+    #- RM_USER=${RM_USER}
+    #- RM_PASS=${RM_PASS}
+    #- URL_1C=${URL_1C}
+    #- RM_LK_PASS=${RM_LK_PASS}
+    #- RM_LK_EMAIL=${RM_LK_EMAIL}
     mem_limit: 24G
     mem_reservation: 16G
     cpus: '16'
@@ -221,9 +221,9 @@ services:
     restart: unless-stopped
     volumes:
       - /base/rabbitmq:/var/lib/rabbitmq
-#      - /opt/rabbitmq/logs:/var/log/rabbitmq
- #     - ./configs/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
- #     - ./configs/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json
+    #      - /opt/rabbitmq/logs:/var/log/rabbitmq
+    #     - ./configs/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    #     - ./configs/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json
     ulimits:
       nofile:
         soft: 65536
@@ -271,7 +271,7 @@ services:
       --tcp-backlog 512
       --timeout 300
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 3
@@ -299,9 +299,9 @@ services:
     cpus: '2'
 
 #volumes:
-  #brand_logs:
-    #driver: local
-    #driver_opts:
-      #type: cifs
-      #o: username=${RM_USER},password=${RM_PASS},vers=3.0
-      #device: '//192.168.0.2/rm/brands_logs'
+#brand_logs:
+#driver: local
+#driver_opts:
+#type: cifs
+#o: username=${RM_USER},password=${RM_PASS},vers=3.0
+#device: '//192.168.0.2/rm/brands_logs'

@@ -1,6 +1,6 @@
 import hashlib
 from datetime import time
-
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count
 from rest_framework import serializers
 from brands.models import Brand
@@ -30,6 +30,31 @@ serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.Inte
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
 ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
+
+# class TenantShortSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Counterparty
+#         fields = (
+#             'id',
+#             'first_name',
+#             'last_name',
+#             'additional_name',
+#             'keyword',
+#         )
+
+class NomenclatureTenantSerializer(serializers.ModelSerializer):
+    tenant = TenantsShortSerializer(read_only=True)
+
+    class Meta:
+        model = NomenclatureTenant
+        fields = (
+            'tenant',
+            'floor',
+        )
+
+class TenantWriteSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    floor = serializers.CharField(required=False, allow_blank=True)
 
 class TypeOfPlaceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,6 +129,75 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
+class NomenclatureSearchSerializer(serializers.ModelSerializer):
+    brand_name = serializers.SerializerMethodField()
+    type_of_place_name = serializers.SerializerMethodField()
+    legal_entity_name = serializers.SerializerMethodField()
+    responsible_ad_name = serializers.SerializerMethodField()
+    tenants_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Nomenclature
+        fields = [
+            'id', 'name', 'code1c', 'contentType', 'version',
+            'brand_name', 'type_of_place_name',
+            'legal_entity_name', 'responsible_ad_name', 'tenants_names'
+        ]
+
+    def get_brand_name(self, obj):
+        return obj.brand.name if obj.brand else None
+
+    def get_type_of_place_name(self, obj):
+        return obj.typeOfPlace.name if obj.typeOfPlace else None
+
+    def get_legal_entity_name(self, obj):
+        if not obj.legalEntity:
+            return None
+        try:
+            le = obj.legalEntity
+            parts = []
+            if le.last_name:
+                parts.append(str(le.last_name))
+            if le.first_name:
+                parts.append(str(le.first_name))
+            if le.middle_name:
+                parts.append(str(le.middle_name))
+            if le.additional_name:
+                parts.append(f"({str(le.additional_name)})")
+            if le.keyword:
+                parts.append(f"[{str(le.keyword)}]")
+            return ' '.join(parts) if parts else None
+        except:
+            return None
+
+    def get_responsible_ad_name(self, obj):
+        if not obj.responsible_ad:
+            return None
+        try:
+            return f"{obj.responsible_ad.last_name or ''} {obj.responsible_ad.first_name or ''}".strip() or None
+        except:
+            return None
+
+    def get_tenants_names(self, obj):
+        try:
+            result = []
+            for t in obj.tenants.all()[:3]:
+                parts = []
+                if t.last_name:
+                    parts.append(str(t.last_name))
+                if t.first_name:
+                    parts.append(str(t.first_name))
+                if t.middle_name:
+                    parts.append(str(t.middle_name))
+                if t.additional_name:
+                    parts.append(f"({str(t.additional_name)})")
+                if t.keyword:
+                    parts.append(f"[{str(t.keyword)}]")
+                if parts:
+                    result.append(' '.join(parts))
+            return result
+        except:
+            return []
 
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
@@ -120,7 +214,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
-    tenants = serializers.SerializerMethodField()
     legalEntity_id = serializers.PrimaryKeyRelatedField(
         queryset=Counterparty.objects.all(),
         source="legalEntity",
@@ -128,8 +221,16 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    tenants_id = serializers.ListField(
-        child=serializers.DictField(),  # {"id": tenant_id, "floor": "2"}
+    # READ
+    tenants = NomenclatureTenantSerializer(
+        source='nomenclature_tenants',
+        many=True,
+        read_only=True
+    )
+
+    # WRITE
+    tenants_id = TenantWriteSerializer(
+        many=True,
         write_only=True,
         required=False
     )
@@ -160,8 +261,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     address = AddressReadSerializer(source="address.address", read_only=True)
-
-
+    formattedAddress = serializers.SerializerMethodField()
 
     class Meta:
         fields = "__all__"
@@ -180,21 +280,84 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "interior",
             "exterior",
             "nameForFront",
-            "typeOfPlace"
+            "typeOfPlace",
+            "formattedAddress"
         )
         model = Nomenclature
 
+    def get_formattedAddress(self, obj):
+        """Возвращает объект с отформатированным адресом и координатами"""
+        try:
+            # Пытаемся получить связанный объект NomenclatureAddress
+            nomenclature_address = obj.address
+        except ObjectDoesNotExist:
+            # Если связи нет, возвращаем пустой адрес
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
+
+        # Если связь есть, но нет самого адреса
+        if not nomenclature_address or not nomenclature_address.address:
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
+        address = obj.address.address
+
+        if not address:
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
+
+        # Формируем строку адреса
+        address_parts = []
+
+        # Город
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+
+        # Улица
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        # Номер дома/строения
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        # Формируем объект с адресом и координатами
+        return {
+            "name": ', '.join(address_parts),
+            "coordinates": {
+                "latitude": str(address.coordinates.latitude) if address.coordinates.latitude else None,
+                "longitude": str(address.coordinates.longitude) if address.coordinates.longitude else None
+            }
+        }
+
+
     def get_tenants(self, obj):
         """Возвращаем арендаторов с этажом"""
-        return [
-            {
-                "id": link.tenant.id,
-                "first_name": link.tenant.first_name,
-                "last_name": link.tenant.last_name,
-                "floor": link.floor
-            }
-            for link in obj.tenant_links.select_related('tenant').all()
-        ]
+        return NomenclatureTenantSerializer(
+            obj.nomenclature_tenants.select_related('tenant').prefetch_related('tenant__brands').all(),
+            many=True,
+            context=self.context
+        ).data
 
     def validate_settings(self, value):
         """
@@ -304,12 +467,36 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 _validate_collision(settings["custom_volume"])
         return value
 
+    def _set_tenants(self, nomenclature, tenants_data):
+        if not tenants_data:
+            return
+
+        unique_ids = set()
+        objs = []
+
+        for t in tenants_data:
+            tenant_id = t["id"]
+
+            if tenant_id in unique_ids:
+                continue
+
+            unique_ids.add(tenant_id)
+
+            objs.append(
+                NomenclatureTenant(
+                    nomenclature=nomenclature,
+                    tenant_id=tenant_id,
+                    floor=t.get("floor", "")
+                )
+            )
+
+        NomenclatureTenant.objects.bulk_create(objs)
+
     def create(self, validated_data):
-        # Извлекаем данные адреса из разных источников
+        # Извлекаем все поля, которые нужно обработать отдельно
         address_data = None
         address_id = None
-        tenants_id = validated_data.pop("tenants_id", [])
-        instance = super().create(validated_data)
+
         # Вариант 1: через address_data
         if "address_data" in validated_data:
             address_data = validated_data.pop("address_data")
@@ -323,42 +510,46 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             address_relation = validated_data.pop("address", {})
             address_data = address_relation.get("address") if address_relation else None
 
-        # --- Оригинальная обработка brand ---
-        brand = validated_data.pop("brand_id", None)
+        tenants_id = validated_data.pop("tenants_id", [])
 
-        name = validated_data.get("name")
+        # Извлекаем поля внешних ключей для отдельной обработки
+        brand_id = validated_data.pop("brand_id", None)
+        legalEntity_id = validated_data.pop("legalEntity_id", None)
+        typeOfPlace_id = validated_data.pop("typeOfPlace_id", None)
+
+        # Получаем данные для проверок
         code1c = validated_data.get("code1c")
-        price_of_month = validated_data.get("pricePerMonth")
+        price_per_month = validated_data.get("pricePerMonth")
+        name = validated_data.get("name")
 
-        # --- Проверка уникальности code1c ---
+        # Проверка code1c на уникальность
         if code1c:
             old_item = Nomenclature.objects.filter(code1c=code1c).first()
             if old_item:
                 log_path = "/app/network_logs/nomenclature_conflicts.log"
-                with open(log_path, "a", encoding="utf-8") as f:
-                    f.write(f"{name}: {old_item.id}, {getattr(old_item, 'code1c', '—')}\n")
+                try:
+                    with open(log_path, "a", encoding="utf-8") as f:
+                        f.write(f"{name}: {old_item.id}, {getattr(old_item, 'code1c', '—')}\n")
+                except Exception:
+                    pass
 
                 raise serializers.ValidationError({
                     "code1c": f"Номенклатура с кодом '{code1c}' уже существует (id={old_item.id})"
                 })
 
-        # --- Проверка цены ---
-        if price_of_month is not None:
-            if price_of_month < 0:
+        # Проверка pricePerMonth
+        if price_per_month is not None:
+            try:
+                if price_per_month < 0:
+                    raise serializers.ValidationError({
+                        "pricePerMonth": "Стоимость аренды не может быть меньше 0."
+                    })
+            except TypeError:
                 raise serializers.ValidationError({
-                    "pricePerMonth": "Стоимость аренды не может быть меньше 0."
+                    "pricePerMonth": "Стоимость аренды должна быть числом."
                 })
 
-        # --- Обработка brand ---
-        if brand:
-            try:
-                validated_data["brand"] = Brand.objects.get(id=brand)
-            except Brand.DoesNotExist:
-                raise serializers.ValidationError(
-                    {"brand_id": "Бренд с таким ID не найден"}
-                )
-
-        # --- Создание номенклатуры ---
+        # СОЗДАЕМ НОМЕНКЛАТУРУ (после всех проверок)
         try:
             nomenclature = Nomenclature.objects.create(**validated_data)
         except Exception as e:
@@ -366,14 +557,56 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 "non_field_errors": f"Ошибка при создании номенклатуры: {str(e)}"
             })
 
-        # --- Обработка арендаторов ---
-        if tenants_id:
-            for t in tenants_id:
-                NomenclatureTenant.objects.create(
-                    nomenclature=nomenclature,
-                    tenant_id=t['id'],
-                    floor=t.get('floor', '')
-                )
+        # Обработка brand_id
+        if brand_id:
+            try:
+                brand = Brand.objects.get(id=brand_id)
+                nomenclature.brand = brand
+                nomenclature.save(update_fields=['brand'])
+            except Brand.DoesNotExist:
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "brand_id": "Бренд с таким ID не найден"
+                })
+            except Exception as e:
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "brand_id": f"Ошибка при установке бренда: {str(e)}"
+                })
+
+        # Обработка legalEntity_id
+        if legalEntity_id:
+            try:
+                legal_entity = Counterparty.objects.get(id=legalEntity_id)
+                nomenclature.legalEntity = legal_entity
+                nomenclature.save(update_fields=['legalEntity'])
+            except Counterparty.DoesNotExist:
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "legalEntity_id": "Юр. лицо с таким ID не найдено"
+                })
+            except Exception as e:
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "legalEntity_id": f"Ошибка при установке юр. лица: {str(e)}"
+                })
+
+        # Обработка typeOfPlace_id
+        if typeOfPlace_id:
+            try:
+                type_of_place = TypeOfPlace.objects.get(id=typeOfPlace_id)
+                nomenclature.typeOfPlace = type_of_place
+                nomenclature.save(update_fields=['typeOfPlace'])
+            except TypeOfPlace.DoesNotExist:
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "typeOfPlace_id": "Тип места с таким ID не найден"
+                })
+            except Exception as e:
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "typeOfPlace_id": f"Ошибка при установке типа места: {str(e)}"
+                })
 
         # --- ОБРАБОТКА АДРЕСА ПРИ СОЗДАНИИ ---
 
@@ -413,25 +646,30 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
 
 
+        # Обработка арендаторов
+        if tenants_id:
+            try:
+                self._set_tenants(nomenclature, tenants_id)
+            except Exception as e:
+                # При ошибке с арендаторами удаляем номенклатуру
+                nomenclature.delete()
+                raise serializers.ValidationError({
+                    "tenants_id": f"Ошибка при добавлении арендаторов: {str(e)}"
+                })
 
         return nomenclature
 
     def update(self, instance, validated_data):
-        # Инициализация переменных для адреса
         address_data = None
         address_id = None
         tenants_id = validated_data.pop("tenants_id", None)
+
         instance = super().update(instance, validated_data)
 
-        # Вариант 1: через address_data
         if "address_data" in validated_data:
             address_data = validated_data.pop("address_data")
-
-        # Вариант 2: через address_id
         elif "address_id" in validated_data:
             address_id = validated_data.pop("address_id")
-
-        # Вариант 3: через старую структуру address.address
         elif "address" in validated_data:
             address_relation = validated_data.pop("address", {})
             if isinstance(address_relation, dict):
@@ -439,13 +677,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             elif isinstance(address_relation, AddressBook):
                 address_id = address_relation.id
 
-        # Извлекаем другие данные
         brand_id = validated_data.pop("brand_id", None) if "brand_id" in validated_data else None
         legalEntity_id = validated_data.pop("legalEntity_id", None) if "legalEntity_id" in validated_data else None
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
 
-        # Валидация code1c
         if code1c is not None:
             conflict = Nomenclature.objects.filter(code1c=code1c).exclude(id=instance.id).first()
             if conflict:
@@ -454,7 +690,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 })
             instance.code1c = code1c
 
-        # Валидация цены
         if price_per_month is not None:
             if price_per_month < 0:
                 raise serializers.ValidationError({
@@ -462,7 +697,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 })
             instance.pricePerMonth = price_per_month
 
-        # Обновление юр.лица
         if legalEntity_id is not None:
             if legalEntity_id == "" or legalEntity_id is None:
                 instance.legalEntity = None
@@ -471,12 +705,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     instance.legalEntity = Counterparty.objects.get(id=legalEntity_id)
                 except Counterparty.DoesNotExist:
                     raise serializers.ValidationError(
-                        {
-                            "legalEntity_id": "Юр. лицо с таким ID не найдено"
-                        }
+                        {"legalEntity_id": "Юр. лицо с таким ID не найдено"}
                     )
 
-        # Обновление бренда
         if brand_id is not None:
             if brand_id == "" or brand_id is None:
                 instance.brand = None
@@ -532,19 +763,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     defaults={"address": address_data}
                 )
 
-        # Обработка арендаторов
-        if tenants_id is not None:
-            # Удаляем старые связи
-            NomenclatureTenant.objects.filter(nomenclature=instance).delete()
-            # Создаем новые связи
-            for t in tenants_id:
-                NomenclatureTenant.objects.create(
-                    nomenclature=instance,
-                    tenant_id=t["id"],
-                    floor=t.get("floor", "")
-                )
 
-        # Обновляем остальные поля
+
+        # 🔥 ИСПРАВЛЕНО: арендаторы (bulk)
+        if tenants_id is not None:
+            NomenclatureTenant.objects.filter(nomenclature=instance).delete()
+            self._set_tenants(instance, tenants_id)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
@@ -552,15 +777,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         return instance
 
-    def get_tenants(self, obj):
-        """
-        Возвращает список арендаторов с количеством арендуемых номенклатур
-        """
-        tenants = obj.tenants.annotate(
-            places_count=Count("rented_nomenclatures")  # Исправлено!
-        ).order_by("-places_count")
+    # def get_tenants(self, obj):
+    #     """
+    #     Возвращает список арендаторов с количеством арендуемых номенклатур
+    #     """
+    #     tenants = obj.tenants.annotate(
+    #         places_count=Count("rented_nomenclatures")  # Исправлено!
+    #     ).order_by("-places_count")
 
-        return TenantsShortSerializer(tenants, many=True, context=self.context).data
+    #     return TenantsShortSerializer(tenants, many=True, context=self.context).data
 
     def get_status(self, obj) -> int | None:
         try:
@@ -604,7 +829,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         return {
             "id": str(user.id),
-            "full_name": user.full_name,
+            "full_name": user.first_name,
             "phone_number": phones,
         }
 
@@ -632,28 +857,52 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         repr_["tenants_length"] = obj.tenants.count()
 
+        if 'tenants' in repr_ and repr_['tenants']:
+            transformed_tenants = []
+            for tenant_item in repr_['tenants']:
+                # Извлекаем данные из вложенной структуры
+                tenant_data = tenant_item.get('tenant', {})
+                floor = tenant_item.get('floor')
+
+                # Создаем новую структуру
+                transformed_tenant = {
+                    'id': tenant_data.get('id'),
+                    'brands_list': tenant_data.get('brands_list'),
+                    'logotypes': tenant_data.get('logotypes', []),
+                    'floor': floor
+                }
+                transformed_tenants.append(transformed_tenant)
+
+            repr_['tenants'] = transformed_tenants
 
         # Добавляем broadcast
         repr_["broadcast"] = getattr(obj.legalEntity, "broadcast", None)
 
-        # Удаляем дублирующиеся поля из repr_
-        # Важно: удаляем только те поля, которые есть в main_info
+        # ✅ FIXED: Create a list of keys to remove instead of modifying while iterating
+        fields_to_remove = []
         for field in repr_["main_info"]:
             if field in repr_:
-                repr_.pop(field)
+                fields_to_remove.append(field)
 
-        for field in (
+        # Remove the fields after iteration
+        for field in fields_to_remove:
+            repr_.pop(field)
+
+        # Remove responsibility fields
+        fields_to_remove = [
             "responsible_ad",
             "responsible_radio",
             "responsible_technic",
             "responsible_technic_on_address",
             "responsible_placement_marketing",
-        ):
+        ]
+        for field in fields_to_remove:
             repr_.pop(field, None)
 
         # Обработка settings (точная копия оригинала)
         if "settings" in repr_ and repr_["settings"]:
-            for day, setting in repr_["settings"].items():
+            # ✅ FIXED: Create a copy of items or use list() to avoid modification during iteration
+            for day, setting in list(repr_["settings"].items()):
                 repr_["settings"][day] = {
                     "worktime": setting["worktime"],
                     "default_volume": setting["default_volume"],
@@ -663,6 +912,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         else {}
                     ),
                 }
+
+        if "address" in repr_:
+            repr_.pop("address")
 
         # Преобразование contentType (точная копия оригинала)
         if "contentType" in repr_:
@@ -676,27 +928,29 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     # abbreviation = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
+    # status = serializers.SerializerMethodField()
     brand = BrandSerializer()
     legalEntity = CounterpartiesShortSerializer()
     exterior = serializers.SerializerMethodField()
     address = AddressReadSerializer(source="address.address")
-    contentType = serializers.ChoiceField(
-        choices=list(AVAILABLE_CONTENT_TYPES.values()),
-        required=False
-    )
+    formattedAddress = serializers.SerializerMethodField()
+    # contentType = serializers.ChoiceField(
+    #     choices=list(AVAILABLE_CONTENT_TYPES.values()),
+    #     required=False
+    # )
 
     class Meta:
         fields = (
             "id",
             "name",
-            "timezone",
-            "status",
+            # "timezone",
+            # "status",
             "legalEntity",
             "brand",
             "exterior",
             "address",
-            "contentType",
+            "formattedAddress",
+            # "contentType",
             "typeOfPlace",
             "pricePerMonth",
             "code1c",
@@ -722,14 +976,54 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         except AttributeError:
             return "Не выходила в сеть"
 
+    def get_formattedAddress(self, obj):
+        """Форматирует адрес с проверкой наличия всех частей"""
+        try:
+            # Пытаемся получить связанный адрес
+            nomenclature_address = obj.address
+        except ObjectDoesNotExist:
+            # Если связи нет, возвращаем пустую строку
+            return ""
+
+        # Если связь есть, но нет самого адреса
+        if not nomenclature_address or not nomenclature_address.address:
+            return ""
+
+        address = nomenclature_address.address
+
+        address_parts = []
+
+        # Проверяем и добавляем город
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+
+        # Проверяем и добавляем улицу
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        # Проверяем наличие номера дома или строения
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        # Если есть улица, но нет номера, все равно возвращаем "город, улица"
+        # Если есть только город, возвращаем только город
+
+        return ', '.join(address_parts)
+
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_["timezone"] = TIMEZONES[value.timezone]
-        repr_["broadcast"] = getattr(value.legalEntity, "broadcast", None)
-        if "contentType" in repr_:
-            key = repr_["contentType"]
-            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
+
+        if "address" in repr_:
+            repr_.pop("address")
+
         return repr_
+
 
 
 class StatusHistorySerializer(serializers.ModelSerializer):

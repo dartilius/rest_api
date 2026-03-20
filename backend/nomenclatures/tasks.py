@@ -3,69 +3,83 @@ from itertools import chain
 from celery import shared_task
 from celery_singleton import Singleton
 from datetime import datetime, timedelta
-from django.contrib.postgres.search import SearchVector
-from django.db.models import OuterRef, Subquery, Value
-from django.db.models.functions import Coalesce, Concat
-from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature, NomenclatureTenant
+from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
-from django.contrib.postgres.aggregates import StringAgg
+
 @shared_task
 def update_all_search_vectors(batch_size=500):
     """
     Массовое обновление поля search_vector для всех номенклатур
     с учётом M2M tenants через промежуточную таблицу.
     """
+    from django.contrib.postgres.search import SearchVector
+    from django.db.models import Value
+    from django.db.models.functions import Concat, Coalesce
+    from django.contrib.postgres.aggregates import StringAgg
+    from nomenclatures.models import Nomenclature, NomenclatureTenant
+
+    # Получаем все номенклатуры
     qs = Nomenclature.objects.all()
     total = qs.count()
 
+    print(f"Начинаю обновление search_vector для {total} номенклатур")
+
     for start in range(0, total, batch_size):
-        batch = list(qs[start:start+batch_size])
+        end = min(start + batch_size, total)
+        batch_ids = list(qs[start:end].values_list('id', flat=True))
 
-        tenants_subquery = NomenclatureTenant.objects.filter(
-            nomenclature=OuterRef('pk')
-        ).annotate(
-            tenant_full=Concat(
-                'tenant__first_name', Value(' '),
-                'tenant__last_name', Value(' '),
-                'legalEntity__additional_name', Value(' '),
-                'tenant__keyword', Value(' '),
-                Coalesce('floor', Value(''))
-            )
-        ).values('tenant_full')
+        print(f"Обрабатываю номенклатуры {start+1}-{end} из {total}")
 
-        tenants_agg = Subquery(
-            tenants_subquery.annotate(
-                all_text=StringAgg('tenant_full', delimiter=' ')
-            ).values('all_text')
-        )
+        # Для каждой номенклатуры в батче обновляем search_vector по отдельности
+        for n_id in batch_ids:
+            try:
+                n = Nomenclature.objects.get(id=n_id)
 
-        # Обновляем search_vector для каждой номенклатуры в батче
-        for n in batch:
-            n.search_vector = (
-                SearchVector('name', weight='A') +
-                SearchVector('contentType', weight='C') +
-                SearchVector('typeOfPlace__name', weight='B') +
-                SearchVector('version', weight='B') +
-                SearchVector('code1c', weight='A') +
-                SearchVector('brand__name', weight='A') +
-                SearchVector('legalEntity__first_name', weight='A') +
-                SearchVector('legalEntity__last_name', weight='B') +
-                SearchVector('legalEntity__keyword', weight='A') +
-                SearchVector('legalEntity__additional_name', weight='C') +
-                SearchVector('responsible_radio__first_name', weight='A') +
-                SearchVector('responsible_ad__first_name', weight='A') +
-                SearchVector('responsible_technic__first_name', weight='A') +
-                SearchVector('responsible_technic_on_address__last_name', weight='B') +
-                SearchVector('responsible_radio__last_name', weight='B') +
-                SearchVector('responsible_ad__last_name', weight='B') +
-                SearchVector('responsible_technic__last_name', weight='B') +
-                SearchVector('responsible_technic_on_address__last_name', weight='B') +
-                SearchVector(Coalesce(tenants_agg, Value('')), weight='B')  # M2M tenants
+                # Получаем агрегированные данные по арендаторам
+                tenants_agg = NomenclatureTenant.objects.filter(
+                    nomenclature=n
+                ).annotate(
+                    tenant_text=Concat(
+                        Coalesce('tenant__first_name', Value('')), Value(' '),
+                        Coalesce('tenant__last_name', Value('')), Value(' '),
+                        Coalesce('tenant__additional_name', Value('')), Value(' '),
+                        Coalesce('tenant__keyword', Value('')), Value(' '),
+                        Coalesce('floor', Value(''))
+                    )
+                ).aggregate(
+                    all_tenants=StringAgg('tenant_text', delimiter=' ')
+                )['all_tenants'] or ''
 
-            )
-        Nomenclature.objects.bulk_update(batch, ['search_vector'])
+                # Обновляем search_vector напрямую через SQL или сохраняем объект
+                n.search_vector = (
+                    SearchVector(Value(n.name or ''), weight='A') +
+                    SearchVector(Value(n.contentType or ''), weight='C') +
+                    SearchVector(Value(n.typeOfPlace.name if n.typeOfPlace else ''), weight='B') +
+                    SearchVector(Value(n.version or ''), weight='B') +
+                    SearchVector(Value(n.code1c or ''), weight='A') +
+                    SearchVector(Value(n.brand.name if n.brand else ''), weight='A') +
+                    SearchVector(Value(n.legalEntity.first_name if n.legalEntity else ''), weight='A') +
+                    SearchVector(Value(n.legalEntity.last_name if n.legalEntity else ''), weight='B') +
+                    SearchVector(Value(n.legalEntity.keyword if n.legalEntity else ''), weight='A') +
+                    SearchVector(Value(n.legalEntity.additional_name if n.legalEntity else ''), weight='C') +
+                    SearchVector(Value(n.responsible_radio.first_name if n.responsible_radio else ''), weight='A') +
+                    SearchVector(Value(n.responsible_ad.first_name if n.responsible_ad else ''), weight='A') +
+                    SearchVector(Value(n.responsible_technic.first_name if n.responsible_technic else ''), weight='A') +
+                    SearchVector(Value(n.responsible_technic_on_address.last_name if n.responsible_technic_on_address else ''), weight='B') +
+                    SearchVector(Value(n.responsible_radio.last_name if n.responsible_radio else ''), weight='B') +
+                    SearchVector(Value(n.responsible_ad.last_name if n.responsible_ad else ''), weight='B') +
+                    SearchVector(Value(n.responsible_technic.last_name if n.responsible_technic else ''), weight='B') +
+                    SearchVector(Value(tenants_agg), weight='B')
+                )
+                n.save(update_fields=['search_vector'])
+
+            except Exception as e:
+                print(f"Ошибка при обработке номенклатуры {n_id}: {e}")
+                continue
+
+    print("Обновление search_vector завершено!")
 
 def get_owner(owner_id):
     return CustomUser.objects.get(pk=owner_id)

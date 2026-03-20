@@ -157,20 +157,16 @@ class NomenclatureTenant(models.Model):
     nomenclature = models.ForeignKey(
         'Nomenclature',
         on_delete=models.CASCADE,
-        related_name='tenant_links'
+        related_name='nomenclature_tenants',
+        verbose_name="Номенклатура"
     )
     tenant = models.ForeignKey(
         'counterparties.Counterparty',
         on_delete=models.CASCADE,
-        related_name='nomenclature_links'
+        related_name='tenant_nomenclatures',
+        verbose_name="Арендатор"
     )
-
-    floor = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Этаж"
-    )
+    floor = models.CharField(max_length=10, blank=True, verbose_name="Этаж")
 
     class Meta:
         db_table = "nomenclature_tenant"
@@ -310,7 +306,6 @@ class Nomenclature(APIBaseObjectModel):
     tenants = models.ManyToManyField(
         'counterparties.Counterparty',
         through='NomenclatureTenant',
-        blank=True,
         related_name="rented_nomenclatures"
     )
 
@@ -396,6 +391,11 @@ class Nomenclature(APIBaseObjectModel):
         ]
         indexes = [
             GinIndex(fields=['search_vector'], name='nomenclature_search_gin'),
+            GinIndex(
+                name='nomenclature_search_active_idx',
+                fields=['search_vector'],
+                condition=models.Q(is_active=True)  # Только для активных записей
+            ),
             GinIndex(
                 name="nomenclature_name_gin_idx",
                 fields=["name"],
