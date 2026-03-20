@@ -12,6 +12,7 @@ from django_minio_backend import MinioBackend
 from django.utils.translation import gettext_lazy as _
 from addresses.models import Address as AddressBook
 from api import APIBaseObjectModel, Article, UUIDPKField
+from django.utils import timezone
 
 # from api.base_objects import UUIDPKField
 
@@ -200,6 +201,7 @@ class Nomenclature(APIBaseObjectModel):
         blank=True, null=True, verbose_name="Описание"
     )
     search_vector = SearchVectorField(null=True, default='')
+    search_vector_updated_at = models.DateTimeField(auto_now_add=True)
 
     responsible_radio = models.ForeignKey(
         'users.CustomUser',
@@ -374,6 +376,40 @@ class Nomenclature(APIBaseObjectModel):
             place_name = ""
 
         return f"Размещение ролика в {place_name} {brand.name}, {city}, {street}, {house}"
+
+    def update_search_vector(self, tenants_text='', save=True):
+        """Обновляет search_vector для конкретной номенклатуры"""
+        from django.contrib.postgres.search import SearchVector
+        from django.db.models import Value
+
+        self.search_vector = (
+                SearchVector(Value(self.name or ''), weight='A') +
+                SearchVector(Value(self.contentType or ''), weight='C') +
+                SearchVector(Value(self.typeOfPlace.name if self.typeOfPlace else ''), weight='B') +
+                SearchVector(Value(self.version or ''), weight='B') +
+                SearchVector(Value(self.code1c or ''), weight='A') +
+                SearchVector(Value(self.brand.name if self.brand else ''), weight='A') +
+                SearchVector(Value(self.legalEntity.first_name if self.legalEntity else ''), weight='A') +
+                SearchVector(Value(self.legalEntity.last_name if self.legalEntity else ''), weight='B') +
+                SearchVector(Value(self.legalEntity.keyword if self.legalEntity else ''), weight='A') +
+                SearchVector(Value(self.legalEntity.additional_name if self.legalEntity else ''), weight='C') +
+                SearchVector(Value(self.responsible_radio.first_name if self.responsible_radio else ''), weight='A') +
+                SearchVector(Value(self.responsible_ad.first_name if self.responsible_ad else ''), weight='A') +
+                SearchVector(Value(self.responsible_technic.first_name if self.responsible_technic else ''),
+                             weight='A') +
+                SearchVector(
+                    Value(self.responsible_technic_on_address.last_name if self.responsible_technic_on_address else ''),
+                    weight='B') +
+                SearchVector(Value(self.responsible_radio.last_name if self.responsible_radio else ''), weight='B') +
+                SearchVector(Value(self.responsible_ad.last_name if self.responsible_ad else ''), weight='B') +
+                SearchVector(Value(self.responsible_technic.last_name if self.responsible_technic else ''),
+                             weight='B') +
+                SearchVector(Value(tenants_text), weight='B')
+        )
+
+        if save:
+            self.search_vector_updated_at = timezone.now()
+            self.save(update_fields=['search_vector', 'search_vector_updated_at'])
 
     def __str__(self):
         return self.name
