@@ -4,15 +4,20 @@ import logging
 
 from counterparties.models import Counterparty
 from nomenclatures.models import Nomenclature
-from nomenclatures.tasks import update_all_search_vectors
+from nomenclatures.tasks import update_all_search_vectors_for_instance
 
 logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Nomenclature)
 def update_search_vector_signal(sender, instance, **kwargs):
+    """
+    Сигнал для обновления search_vector конкретной номенклатуры
+    """
     logger.info(f"Сработал сигнал update_search_vector_signal для номенклатуры ID: {instance.id}, created: {kwargs.get('created', False)}")
-    print(f"🔥 СИГНАЛ ВЫЗОВАН: Номенклатура {instance.id} сохранена")  # Для немедленного вывода в консоль
-    update_all_search_vectors(batch_size=1)
+    print(f"🔥 СИГНАЛ ВЫЗОВАН: Номенклатура {instance.id} сохранена", flush=True)
+
+    # Вызываем функцию для обновления search_vector конкретной номенклатуры
+    update_all_search_vectors_for_instance.delay(instance.id)
 
 @receiver(pre_save, sender=Nomenclature)
 def nomenclature_store_old_legal_entity(sender, instance, **kwargs):
