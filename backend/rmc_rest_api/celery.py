@@ -20,9 +20,9 @@ app.conf.beat_schedule = {
     'update_order_statuses_30_sec': {
         'task': 'orders.tasks.update_order_status',
         'schedule': 30.0,
-#     },
+    }
 #     'update_nomenclature_search_vectors': {
 #         'task': 'nomenclatures.tasks.update_all_search_vectors',
 #         'schedule': crontab(hour=3, minute=0),
 #     }
-# }
+ }
