@@ -1,12 +1,17 @@
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
+import logging
 
 from counterparties.models import Counterparty
 from nomenclatures.models import Nomenclature
 from nomenclatures.tasks import update_all_search_vectors
 
+logger = logging.getLogger(__name__)
+
 @receiver(post_save, sender=Nomenclature)
 def update_search_vector_signal(sender, instance, **kwargs):
+    logger.info(f"Сработал сигнал update_search_vector_signal для номенклатуры ID: {instance.id}, created: {kwargs.get('created', False)}")
+    print(f"🔥 СИГНАЛ ВЫЗОВАН: Номенклатура {instance.id} сохранена")  # Для немедленного вывода в консоль
     update_all_search_vectors.delay(batch_size=1)
 
 @receiver(pre_save, sender=Nomenclature)
