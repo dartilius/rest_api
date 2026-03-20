@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def update_search_vector_signal(sender, instance, **kwargs):
     logger.info(f"Сработал сигнал update_search_vector_signal для номенклатуры ID: {instance.id}, created: {kwargs.get('created', False)}")
     print(f"🔥 СИГНАЛ ВЫЗОВАН: Номенклатура {instance.id} сохранена")  # Для немедленного вывода в консоль
-    update_all_search_vectors.delay(batch_size=1)
+    update_all_search_vectors(batch_size=1)
 
 @receiver(pre_save, sender=Nomenclature)
 def nomenclature_store_old_legal_entity(sender, instance, **kwargs):
