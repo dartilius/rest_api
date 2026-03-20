@@ -8,7 +8,7 @@ from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
 
-@shared_task
+# @shared_task
 def update_all_search_vectors(batch_size=500):
     """
     Массовое обновление поля search_vector для всех номенклатур
