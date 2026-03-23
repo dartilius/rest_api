@@ -809,23 +809,16 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             >>> response.data['detail']
             'Изменить можно только... Лишние ключи: is_active.'
         """
-        error_message = (
-            "Изменить можно только название, описание, "
-            "часовой пояс и настройки вещания. Лишние ключи: {keys}."
-        )
-        updatable_fields = (
-            "name", "description", "timezone", "settings", "brand_id",
-            "legalEntity_id", "tenants_id", "floor_space", "traffic",
-            "responsible_radio", "responsible_ad", "responsible_technic", "responsible_technic_on_address",
-            "responsible_placement_marketing", "media", "contentType",
-            "typeOfPlace", "typeOfPlace_id","pricePerMonth", "address_data", "address_id"
-        )
+        forbidden_fields = {"is_active"}  # здесь перечисляем только запрещённые поля
+        sent_keys = set(request.data.keys())
+        blocked_keys = sent_keys & forbidden_fields
 
-        kwargs.update(
-            updatable_fields=updatable_fields, error_message=error_message
-        )
-        response = restricted_update(self, request, *args, **kwargs)
-        return response
+        if blocked_keys:
+            raise serializers.ValidationError(
+                f"Редактирование запрещено для полей: {', '.join(blocked_keys)}"
+            )
+
+        return super().update(request, *args, **kwargs)
 
     def get_object(self):
         identifier = self.kwargs.get('pk')
