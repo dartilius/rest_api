@@ -339,6 +339,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         return nomenclature
 
     def update(self, instance, validated_data):
+
+        validated_data.pop('type_of_place_display', None)
+        validated_data.pop('name_for_front', None)
+
         # Инициализация переменных для адреса
         address_data = None
         address_id = None
