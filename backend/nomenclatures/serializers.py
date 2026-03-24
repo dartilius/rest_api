@@ -662,11 +662,11 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # 1️⃣ ИЗВЛЕКАЕМ ВСЕ ПОЛЯ ДЛЯ РУЧНОЙ ОБРАБОТКИ
         tenants_id = validated_data.pop("tenants_id", None)
-    
+
         # Извлекаем данные для адреса (все варианты)
         address_data = None
         address_id = None
-    
+
         if "address_data" in validated_data:
             address_data = validated_data.pop("address_data")
         elif "address_id" in validated_data:
@@ -677,15 +677,15 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 address_data = address_relation.get("address")
             elif isinstance(address_relation, AddressBook):
                 address_id = address_relation.id
-    
+
         # Извлекаем поля для связей
         brand_id = validated_data.pop("brand_id", None) if "brand_id" in validated_data else None
         legalEntity_id = validated_data.pop("legalEntity_id", None) if "legalEntity_id" in validated_data else None
-    
+
         # Сохраняем code1c и price_per_month для дополнительной валидации
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
-    
+
         # 2️⃣ УДАЛЯЕМ ВСЕ ПОЛЯ С ТОЧЕЧНОЙ НОТАЦИЕЙ (чтобы избежать ошибки)
         validated_data.pop('type_of_place_display', None)
         validated_data.pop('name_for_front', None)
@@ -693,12 +693,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         validated_data.pop('legalEntity', None)  # read_only
         validated_data.pop('brand', None)  # read_only
         validated_data.pop('tenants', None)  # read_only
-    
+
         # 3️⃣ ВЫЗЫВАЕМ РОДИТЕЛЬСКИЙ update ДЛЯ АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ ОБЫЧНЫХ ПОЛЕЙ
         instance = super().update(instance, validated_data)
-    
+
         # 4️⃣ РУЧНАЯ ОБРАБОТКА ПОЛЕЙ С ДОПОЛНИТЕЛЬНОЙ ЛОГИКОЙ
-    
+
         # Валидация code1c
         if code1c is not None:
             conflict = Nomenclature.objects.filter(code1c=code1c).exclude(id=instance.id).first()
@@ -707,13 +707,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "code1c": f"Код '{code1c}' уже используется в другой номенклатуре (id={conflict.id})\n"
                 })
             instance.code1c = code1c
-    
+
         # Валидация цены (проверка, что не отрицательная)
         if price_per_month is not None and price_per_month < 0:
             raise serializers.ValidationError({
                 "pricePerMonth": "Стоимость аренды не может быть меньше 0."
             })
-    
+
         # Обновление юр.лица
         if legalEntity_id is not None:
             if legalEntity_id == "" or legalEntity_id is None:
@@ -725,7 +725,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"legalEntity_id": "Юр. лицо с таким ID не найдено"}
                     )
-    
+
         # Обновление бренда
         if brand_id is not None:
             if brand_id == "" or brand_id is None:
@@ -737,21 +737,21 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"brand_id": "Бренд с таким ID не найден"}
                     )
-    
+
         # --- ОБРАБОТКА АДРЕСА (полностью сохранена ваша логика) ---
-    
+
         # Проверяем, нужно ли удалить адрес
         # Случай 1: явно передано address_id: null
         if address_id is None and "address_id" in self.initial_data:
             # Удаляем связь, если она существует
             if hasattr(instance, 'address') and instance.address:
                 instance.address.delete()
-    
+
         # Случай 2: явно передано address_data: null или {}
         elif (address_data is None or address_data == {}) and "address_data" in self.initial_data:
             if hasattr(instance, 'address') and instance.address:
                 instance.address.delete()
-    
+
         # Случай 3: передан ID существующего адреса
         elif address_id is not None:
             try:
@@ -764,33 +764,33 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"address_id": "Адрес с таким ID не найден"}
                 )
-    
+
         # Случай 4: переданы данные адреса
         elif address_data is not None and address_data != {}:
             if isinstance(address_data, dict):
                 address_serializer = AddressCreateSerializer(data=address_data)
                 address_serializer.is_valid(raise_exception=True)
                 address_obj = address_serializer.save()
-            
+
                 NomenclatureAddress.objects.update_or_create(
                     nomenclature=instance,
                     defaults={"address": address_obj}
                 )
             elif isinstance(address_data, AddressBook):
                 NomenclatureAddress.objects.update_or_create(
-                nomenclature=instance,
-                defaults={"address": address_data}
-            )
-    
+                    nomenclature=instance,
+                    defaults={"address": address_data}
+                )
+
         # --- ОБРАБОТКА АРЕНДАТОРОВ ---
         if tenants_id is not None:
             NomenclatureTenant.objects.filter(nomenclature=instance).delete()
             self._set_tenants(instance, tenants_id)
-    
+
         # 5️⃣ СОХРАНЯЕМ ВСЕ ИЗМЕНЕНИЯ
         instance.save()
-    
-    return instance
+
+        return instance
 
     # def get_tenants(self, obj):
     #     """
