@@ -680,6 +680,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         return nomenclature
 
     def update(self, instance, validated_data):
+        # 1️⃣ ИЗВЛЕКАЕМ ВСЕ ПОЛЯ ДЛЯ РУЧНОЙ ОБРАБОТКИ
+        tenants_id = validated_data.pop("tenants_id", None)
+
+        # Извлекаем данные для адреса (все варианты)
         address_data = None
         address_id = None
         tenants_id = validated_data.pop("tenants_id", None)
@@ -697,11 +701,28 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             elif isinstance(address_relation, AddressBook):
                 address_id = address_relation.id
 
+        # Извлекаем поля для связей
         brand_id = validated_data.pop("brand_id", None) if "brand_id" in validated_data else None
         legalEntity_id = validated_data.pop("legalEntity_id", None) if "legalEntity_id" in validated_data else None
+
+        # Сохраняем code1c и price_per_month для дополнительной валидации
         code1c = validated_data.get("code1c")
         price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
 
+        # 2️⃣ УДАЛЯЕМ ВСЕ ПОЛЯ С ТОЧЕЧНОЙ НОТАЦИЕЙ (чтобы избежать ошибки)
+        validated_data.pop('type_of_place_display', None)
+        validated_data.pop('name_for_front', None)
+        validated_data.pop('address', None)  # уже обработали выше
+        validated_data.pop('legalEntity', None)  # read_only
+        validated_data.pop('brand', None)  # read_only
+        validated_data.pop('tenants', None)  # read_only
+
+        # 3️⃣ ВЫЗЫВАЕМ РОДИТЕЛЬСКИЙ update ДЛЯ АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ ОБЫЧНЫХ ПОЛЕЙ
+        instance = super().update(instance, validated_data)
+
+        # 4️⃣ РУЧНАЯ ОБРАБОТКА ПОЛЕЙ С ДОПОЛНИТЕЛЬНОЙ ЛОГИКОЙ
+
+        # Валидация code1c
         if code1c is not None:
             conflict = Nomenclature.objects.filter(code1c=code1c).exclude(id=instance.id).first()
             if conflict:
@@ -710,13 +731,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 })
             instance.code1c = code1c
 
-        if price_per_month is not None:
-            if price_per_month < 0:
-                raise serializers.ValidationError({
-                    "pricePerMonth": "Стоимость аренды не может быть меньше 0."
-                })
-            instance.pricePerMonth = price_per_month
+        # Валидация цены (проверка, что не отрицательная)
+        if price_per_month is not None and price_per_month < 0:
+            raise serializers.ValidationError({
+                "pricePerMonth": "Стоимость аренды не может быть меньше 0."
+            })
 
+        # Обновление юр.лица
         if legalEntity_id is not None:
             if legalEntity_id == "" or legalEntity_id is None:
                 instance.legalEntity = None
@@ -728,6 +749,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         {"legalEntity_id": "Юр. лицо с таким ID не найдено"}
                     )
 
+        # Обновление бренда
         if brand_id is not None:
             if brand_id == "" or brand_id is None:
                 instance.brand = None
@@ -739,7 +761,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                         {"brand_id": "Бренд с таким ID не найден"}
                     )
 
-        # --- КЛЮЧЕВАЯ ЛОГИКА ОБРАБОТКИ АДРЕСА ---
+        # --- ОБРАБОТКА АДРЕСА (полностью сохранена ваша логика) ---
 
         # Проверяем, нужно ли удалить адрес
         # Случай 1: явно передано address_id: null
@@ -794,13 +816,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
 
         # 🔥 ИСПРАВЛЕНО: арендаторы (bulk)
+        # --- ОБРАБОТКА АРЕНДАТОРОВ ---
         if tenants_id is not None:
             NomenclatureTenant.objects.filter(nomenclature=instance).delete()
             self._set_tenants(instance, tenants_id)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
+        # 5️⃣ СОХРАНЯЕМ ВСЕ ИЗМЕНЕНИЯ
         instance.save()
 
         return instance
