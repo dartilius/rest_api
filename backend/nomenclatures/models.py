@@ -151,12 +151,27 @@ class TypeOfPlace(models.Model):
 
 
 class MediaStorage(models.Model):
+    class ContentType(models.TextChoices):
+        AUDIO = "audio", "Аудио"
+        VIDEO = "video", "Видео"
+
     id = UUIDPKField()
     name = models.CharField(
-        verbose_name="Наименование"
+        verbose_name="Наименование",
+        max_length=255
     )
     code1c = models.CharField(
-        verbose_name="Код 1с"
+        verbose_name="Код 1с",
+        max_length=255,
+        blank=True,
+        null=True
+    )
+
+    content_type = models.CharField(
+        max_length=50,
+        choices=ContentType.choices,
+        default=ContentType.AUDIO,
+        blank=True
     )
 
     class Meta:
@@ -167,12 +182,10 @@ class MediaStorage(models.Model):
                 name="unique_media_storage_code1c"
             )
         ]
-
         indexes = [
             models.Index(fields=['code1c']),
             models.Index(fields=['name'])
         ]
-
 
 class NomenclatureMediaStorage(models.Model):
     nomenclature = models.ForeignKey(
