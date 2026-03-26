@@ -16,12 +16,13 @@ from nomenclatures.models import (
     NomenclatureAddress,
     AVAILABLE_CONTENT_TYPES,
     TypeOfPlace,
-    NomenclatureTenant
+    NomenclatureTenant,
+    MediaStorage,
+    NomenclatureMediaStorage
 )
 from addresses.models import Address as AddressBook
 from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
 from api.base_objects import Article
-
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
@@ -51,16 +52,6 @@ class NomenclatureTenantSerializer(serializers.ModelSerializer):
             'tenant',
             'floor',
         )
-
-class TenantWriteSerializer(serializers.Serializer):
-    id = serializers.UUIDField()
-    floor = serializers.CharField(required=False, allow_blank=True)
-
-class TypeOfPlaceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TypeOfPlace
-        fields = "__all__"
-        read_only_fields = ("id",)
 
 class PhotoSerializer(serializers.ModelSerializer):
     source = Base64FileField()
@@ -199,8 +190,29 @@ class NomenclatureSearchSerializer(serializers.ModelSerializer):
         except:
             return []
 
+class TenantWriteSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    floor = serializers.CharField(required=False, allow_blank=True)
+
+class TypeOfPlaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TypeOfPlace
+        fields = "__all__"
+        read_only_fields = ("id",)
+
+class MediaStorageSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = "__all__"
+        model = MediaStorage
+
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
+    media_ids = serializers.ListField(
+        write_only=True,
+        child=serializers.UUIDField(),
+        required=False
+    )
+    media = MediaStorageSerializer(many=True, read_only=True)
 
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     typeOfPlace_id = serializers.PrimaryKeyRelatedField(
@@ -281,7 +293,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "exterior",
             "nameForFront",
             "typeOfPlace",
-            "formattedAddress"
+            "formattedAddress",
+            "media"
         )
         model = Nomenclature
 
@@ -511,6 +524,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             address_data = address_relation.get("address") if address_relation else None
 
         tenants_id = validated_data.pop("tenants_id", [])
+        media_ids = validated_data.pop('media_ids', [])
 
         # Извлекаем поля внешних ключей для отдельной обработки
         brand_id = validated_data.pop("brand_id", None)
@@ -657,6 +671,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "tenants_id": f"Ошибка при добавлении арендаторов: {str(e)}"
                 })
 
+        for media_id in media_ids:
+            NomenclatureMediaStorage.objects.create(
+                nomenclature=nomenclature,
+                media_id=media_id
+            )
+
         return nomenclature
 
     def update(self, instance, validated_data):
@@ -666,6 +686,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # Извлекаем данные для адреса (все варианты)
         address_data = None
         address_id = None
+        tenants_id = validated_data.pop("tenants_id", None)
+        media_ids = validated_data.pop('media_ids', None)
+        instance = super().update(instance, validated_data)
 
         if "address_data" in validated_data:
             address_data = validated_data.pop("address_data")
@@ -782,6 +805,17 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     defaults={"address": address_data}
                 )
 
+        if media_ids is not None:
+            # Сначала удаляем старые связи
+            NomenclatureMediaStorage.objects.filter(nomenclature=instance).delete()
+            # Создаём новые
+            for media_id in media_ids:
+                NomenclatureMediaStorage.objects.create(
+                    nomenclature=instance,
+                    media_id=media_id
+                )
+
+        # 🔥 ИСПРАВЛЕНО: арендаторы (bulk)
         # --- ОБРАБОТКА АРЕНДАТОРОВ ---
         if tenants_id is not None:
             NomenclatureTenant.objects.filter(nomenclature=instance).delete()

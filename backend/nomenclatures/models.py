@@ -1,5 +1,4 @@
 import hashlib
-import re
 from functools import lru_cache
 from uuid import uuid4
 from django.contrib.postgres.search import SearchVectorField
@@ -13,8 +12,6 @@ from django.utils.translation import gettext_lazy as _
 from addresses.models import Address as AddressBook
 from api import APIBaseObjectModel, Article, UUIDPKField
 from django.utils import timezone
-
-# from api.base_objects import UUIDPKField
 
 TIMEZONES = {
     "Etc/GMT+11": "UTC -11",
@@ -63,11 +60,11 @@ STATUSES = {
     2: "Offline 1+ hour"
 }
 
+
 @lru_cache
 def get_morph():
     import pymorphy3
     return pymorphy3.MorphAnalyzer()
-
 
 
 def inflect_words(name: str, case: str):
@@ -88,14 +85,12 @@ def inflect_words(name: str, case: str):
 
 
 class TypeOfPlace(models.Model):
-
     id = UUIDPKField()
 
     name = models.CharField(
         max_length=255,
         verbose_name="Полное наименование"
     )
-
     abbreviation = models.CharField(
         max_length=50,
         blank=True,
@@ -154,6 +149,60 @@ class TypeOfPlace(models.Model):
 
         super().save(*args, **kwargs)
 
+
+class MediaStorage(models.Model):
+    class ContentType(models.TextChoices):
+        AUDIO = "audio", "Аудио"
+        VIDEO = "video", "Видео"
+
+    id = UUIDPKField()
+    name = models.CharField(
+        verbose_name="Наименование",
+        max_length=255
+    )
+    code1c = models.CharField(
+        verbose_name="Код 1с",
+        max_length=255,
+        blank=True,
+        null=True
+    )
+
+    content_type = models.CharField(
+        max_length=50,
+        choices=ContentType.choices,
+        default=ContentType.AUDIO,
+        blank=True
+    )
+
+    class Meta:
+        db_table = "media_storage"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['code1c'],
+                name="unique_media_storage_code1c"
+            )
+        ]
+        indexes = [
+            models.Index(fields=['code1c']),
+            models.Index(fields=['name'])
+        ]
+
+class NomenclatureMediaStorage(models.Model):
+    nomenclature = models.ForeignKey(
+        'Nomenclature',
+        on_delete=models.CASCADE
+    )
+
+    media = models.ForeignKey(
+        MediaStorage,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        db_table = "nomenclature_media_storage"
+        unique_together = ('nomenclature', 'media')
+
+
 class NomenclatureTenant(models.Model):
     nomenclature = models.ForeignKey(
         'Nomenclature',
@@ -187,12 +236,53 @@ class NomenclatureTenant(models.Model):
             models.Index(fields=['tenant', 'nomenclature']),
         ]
 
+
 class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
 
     keys_validator = KeysValidator(
         keys=("mon", "tue", "wed", "thu", "fri", "sat", "sun"),
         strict=True
+    )
+
+    worktime_start = models.TimeField(
+        auto_now_add=False,
+        auto_now=False,
+        verbose_name='Открытие'
+    )
+
+    worktime_end = models.TimeField(
+        auto_now_add=False,
+        auto_now=False,
+        verbose_name="Закртыие"
+    )
+
+    id_rasb = models.CharField(
+        null=True,
+        blank=True,
+        verbose_name="Id тачки",
+        default=''
+    )
+
+    square = models.CharField(
+        default="",
+        null=True,
+        blank=True,
+        verbose_name="Площадь"
+    )
+
+    possibility = models.CharField(
+        default="",
+        null=True,
+        blank=True,
+        verbose_name="Проходимость"
+    )
+
+    media = models.ManyToManyField(
+        'MediaStorage',
+        through='NomenclatureMediaStorage',
+        related_name="nomenclatures",
+        verbose_name="Носители"
     )
 
     article = Article()
@@ -248,14 +338,6 @@ class Nomenclature(APIBaseObjectModel):
         verbose_name="Ответственный за маркетинг размещения"
     )
 
-    media = ArrayField(
-        models.CharField(max_length=100),
-        blank=True,
-        default=list,
-        null=True,
-        verbose_name="Носители"
-    )
-
     timezone = models.CharField(
         choices=TIMEZONES,
         max_length=31,
@@ -308,7 +390,8 @@ class Nomenclature(APIBaseObjectModel):
     tenants = models.ManyToManyField(
         'counterparties.Counterparty',
         through='NomenclatureTenant',
-        related_name="rented_nomenclatures"
+        related_name="rented_nomenclatures",
+        verbose_name="Арендаторы"
     )
 
     contentType = models.CharField(
@@ -448,7 +531,6 @@ class Nomenclature(APIBaseObjectModel):
                 opclasses=["gin_trgm_ops"],
             ),
             GinIndex(fields=['settings'], name='settings_gin_idx'),
-            GinIndex(fields=['media'], name='media_gin_idx'),
             models.Index(fields=['typeOfPlace']),
             models.Index(fields=['responsible_radio']),
             models.Index(fields=['responsible_ad']),
@@ -479,6 +561,7 @@ class Nomenclature(APIBaseObjectModel):
 
         ]
 
+
 class NomenclatureAvailability(models.Model):
     """Текущая доступность."""
 
@@ -505,6 +588,7 @@ class NomenclatureAvailability(models.Model):
 
     def __str__(self):
         return f"{self.last_answer_date}"
+
 
 class NomenclatureAddress(models.Model):
     nomenclature = models.OneToOneField(
@@ -619,7 +703,6 @@ class NomenclatureImage(models.Model):
         ordering = ("-created",)
         verbose_name = "Фотография номенклатуры"
         verbose_name_plural = "Фотографии номенклатур"
-
 
     def __str__(self):
         return f"{self.nomenclature} - {self.type}"
