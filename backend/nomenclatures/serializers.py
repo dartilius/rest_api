@@ -322,7 +322,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "longitude": None
                 }
             }
-        address = obj.address.address
+    
+        address = nomenclature_address.address
 
         if not address:
             return {
@@ -354,12 +355,26 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         if house_number:
             address_parts.append(house_number)
 
+        # 🔥 ИСПРАВЛЕНО: проверяем наличие coordinates и его атрибутов
+        latitude = None
+        longitude = None
+    
+        if hasattr(address, 'coordinates') and address.coordinates:
+            try:
+                if hasattr(address.coordinates, 'latitude'):
+                    latitude = str(address.coordinates.latitude) if address.coordinates.latitude else None
+                if hasattr(address.coordinates, 'longitude'):
+                    longitude = str(address.coordinates.longitude) if address.coordinates.longitude else None
+            except (AttributeError, TypeError):
+                # Если что-то пошло не так, оставляем None
+                pass
+
         # Формируем объект с адресом и координатами
         return {
             "name": ', '.join(address_parts),
             "coordinates": {
-                "latitude": str(address.coordinates.latitude) if address.coordinates.latitude else None,
-                "longitude": str(address.coordinates.longitude) if address.coordinates.longitude else None
+                "latitude": latitude,
+                "longitude": longitude
             }
         }
 
