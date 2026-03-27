@@ -24,50 +24,33 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     # ========== ОСНОВНЫЕ НАСТРОЙКИ ==========
     list_display = (
-        "id_short",                # сокращенный ID для компактности
+        "id_short",
         "name",
-        "owner_name",              # кастомное поле вместо owner
+        "owner_name",
         "timezone",
-        "active_status_display",   # кастомное поле активности с цветом
-        "status_display",          # кастомное поле статуса
+        "active_status_display",
+        "status_display",
         "code1c",
-        "brand_name",              # кастомное поле бренда
-        "legal_entity_name",       # кастомное поле юрлица
-        "tenants_count_display",   # количество арендаторов
+        "brand_name",
+        "legal_entity_name",
+        "tenants_count_display",
     )
 
-    list_display_links = ("name",)  # только название как ссылка
-
+    list_display_links = ("name",)
     search_fields = ("name", "code1c", "article")
     list_filter = ("is_active", "timezone", "brand", "contentType")
-
-    # ✅ ПОДСЧЕТ ВКЛЮЧЕН
     show_full_result_count = True
-
-    # Уменьшаем количество записей на странице для скорости
     list_per_page = 50
-
-    # Поля с автодополнением (для быстрого поиска)
     autocomplete_fields = ['owner', 'brand', 'legalEntity', 'responsible_radio']
-
-    # Поля с ID вместо выпадающих списков (для очень больших таблиц)
     raw_id_fields = ('owner', 'brand', 'legalEntity')
 
     # ========== ОПТИМИЗАЦИЯ QUERYSET ДЛЯ СПИСКА ==========
     def get_queryset(self, request):
-        """
-        Загружаем все связанные данные одним запросом.
-        Используем Nomenclature.objects.all() чтобы получить ВСЕ записи,
-        включая неактивные (is_active=False).
-        """
-        # Пробуем взять из кэша
         cache_key = f"nomenclature_admin_qs_{request.user.id}"
         qs = cache.get(cache_key)
 
         if not qs:
-            # 🔥 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: используем objects.all() вместо super().get_queryset()
             qs = Nomenclature.objects.all().select_related(
-                # ForeignKey поля — загружаем через JOIN
                 "owner",
                 "availability",
                 "brand",
@@ -75,126 +58,78 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 "responsible_radio",
                 "responsible_ad",
             ).prefetch_related(
-                # ManyToMany поля — загружаем отдельным запросом
                 "tenants",
-                # Только одно фото для предпросмотра
                 Prefetch(
                     "images",
                     queryset=NomenclatureImage.objects.filter(type="exterior")[:1],
                     to_attr="prefetched_exterior"
                 ),
             ).annotate(
-                # Вычисляемые поля прямо в SQL
                 tenants_count=Count("tenants", distinct=True),
             ).only(
-                # Загружаем только нужные поля (экономия памяти)
-                # Поля самой номенклатуры
                 'id', 'name', 'timezone', 'is_active', 'code1c', 'article',
-
-                # Поля владельца
                 'owner__email', 'owner__first_name', 'owner__last_name',
-
-                # Поля доступности
                 'availability__status', 'availability__last_answer_date',
-
-                # Поля бренда
                 'brand__name',
-
-                # Поля юрлица
                 'legalEntity__first_name', 'legalEntity__middle_name',
                 'legalEntity__last_name', 'legalEntity__keyword',
-
-                # Поля ответственных
                 'responsible_radio__email', 'responsible_radio__first_name', 'responsible_radio__last_name',
                 'responsible_ad__email', 'responsible_ad__first_name', 'responsible_ad__last_name',
             )
 
-            # Сохраняем в кэш на 5 минут
             cache.set(cache_key, qs, 300)
 
         return qs
 
     # ========== ОПТИМИЗАЦИЯ ФОРМЫ РЕДАКТИРОВАНИЯ ==========
     def get_object(self, request, object_id, from_field=None):
-        """
-        Полностью переопределяем загрузку объекта для формы редактирования.
-        Без этой оптимизации каждый связанный объект вызывает отдельный запрос.
-        """
-        # Получаем объект стандартным способом
         obj = super().get_object(request, object_id, from_field)
 
         if obj:
-            # Пробуем взять из кэша
             cache_key = f"nomenclature_obj_full_{obj.pk}"
             cached = cache.get(cache_key)
 
             if not cached:
-                # Если нет в кэше — загружаем ВСЕ связанные объекты ОДНИМ запросом
                 prefetch_related_objects(
                     [obj],
-                    # ForeignKey поля
-                    'owner',
-                    'brand',
-                    'legalEntity',
-                    'responsible_radio',
-                    'responsible_ad',
-                    'responsible_technic',
-                    'responsible_technic_on_address',
+                    'owner', 'brand', 'legalEntity',
+                    'responsible_radio', 'responsible_ad',
+                    'responsible_technic', 'responsible_technic_on_address',
                     'responsible_placement_marketing',
                     'availability',
-                    # ManyToMany поля
                     'tenants',
-                    # Фотографии (только последние 5 для превью)
                     Prefetch(
                         'images',
                         queryset=NomenclatureImage.objects.order_by('-created')[:5],
                         to_attr='prefetched_images'
                     ),
                 )
-
-                # Сохраняем в кэш на 5 минут
                 cache.set(cache_key, True, 300)
 
         return obj
 
     def get_form(self, request, obj=None, **kwargs):
-        """
-        Оптимизация формы — убираем лишние запросы при отображении полей.
-        """
         form = super().get_form(request, obj, **kwargs)
-
         if obj:
-            # Убеждаемся, что объект уже загружен со всеми связанными данными
             if not hasattr(obj, '_prefetched_objects_cache'):
                 obj = self.get_object(request, obj.pk)
-
         return form
 
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
-        """
-        Добавляем информацию о кэше в контекст для отладки (опционально).
-        """
         if obj and hasattr(obj, '_prefetched_objects_cache'):
             context['cached_fields'] = list(obj._prefetched_objects_cache.keys())
-
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     # ========== КАСТОМНЫЕ ПОЛЯ ДЛЯ LIST_DISPLAY ==========
 
     @admin.display(description="ID", ordering="id")
     def id_short(self, obj):
-        """Сокращенный ID для компактности"""
         return str(obj.id)[:8] + "..."
 
     @admin.display(description="Владелец", ordering="owner__email")
     def owner_name(self, obj):
-        """
-        Безопасное получение имени владельца.
-        Если нет email — используем имя или возвращаем прочерк.
-        """
         if not obj.owner:
             return "-"
-
         if hasattr(obj.owner, 'full_name') and obj.owner.full_name:
             return obj.owner.full_name
         elif obj.owner.email:
@@ -206,13 +141,9 @@ class NomenclatureAdmin(admin.ModelAdmin):
     def active_status_display(self, obj):
         """Статус активности с цветовой индикацией"""
         if obj.is_active:
-            return format_html(
-                '<span style="color: green; font-weight: bold;">✓ Активна</span>'
-            )
+            return format_html('<span style="color: green; font-weight: bold;">{}</span>', "✓ Активна")
         else:
-            return format_html(
-                '<span style="color: red; font-weight: bold;">✗ Неактивна</span>'
-            )
+            return format_html('<span style="color: red; font-weight: bold;">{}</span>', "✗ Неактивна")
 
     @admin.display(description="Статус", ordering="availability__status")
     def status_display(self, obj):
@@ -220,14 +151,8 @@ class NomenclatureAdmin(admin.ModelAdmin):
         try:
             status_code = obj.availability.status
             status_text = STATUSES.get(obj.availability.status, "Неизвестно")
-
-            colors = {
-                0: "green",   # Online
-                1: "orange",  # Offline 5+ minutes
-                2: "red",     # Offline 1+ hour
-            }
+            colors = {0: "green", 1: "orange", 2: "red"}
             color = colors.get(status_code, "gray")
-
             return format_html(
                 '<span style="color: {}; font-weight: bold;">{}</span>',
                 color, status_text
@@ -241,10 +166,8 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     @admin.display(description="Юр.лицо", ordering="legalEntity__name")
     def legal_entity_name(self, obj):
-        """Безопасное получение названия юрлица"""
         if not obj.legalEntity:
             return "-"
-
         if hasattr(obj.legalEntity, 'name'):
             return obj.legalEntity.name
         else:
@@ -252,11 +175,10 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     @admin.display(description="Арендаторы")
     def tenants_count_display(self, obj):
-        """Количество арендаторов с ссылкой на фильтр"""
         count = getattr(obj, 'tenants_count', 0)
         if count > 0:
             url = f"/admin/nomenclatures/nomenclature/{obj.id}/change/"
-            return format_html('<a href="{}">{} шт.</a>', url, count)
+            return format_html('<a href="{}">{}</a>', url, f"{count} шт.")
         return "0"
 
     # ========== ДЕЙСТВИЯ ==========
@@ -265,19 +187,16 @@ class NomenclatureAdmin(admin.ModelAdmin):
     def activate(self, request, queryset):
         updated = queryset.update(is_active=True)
         self.message_user(request, f'Активировано {updated} номенклатур')
-        # Инвалидируем кэш
         cache.delete_pattern("nomenclature_admin_qs_*")
     activate.short_description = "Активировать выбранные"
 
     def deactivate(self, request, queryset):
         updated = queryset.update(is_active=False)
         self.message_user(request, f'Деактивировано {updated} номенклатур')
-        # Инвалидируем кэш
         cache.delete_pattern("nomenclature_admin_qs_*")
     deactivate.short_description = "Деактивировать выбранные"
 
     def clear_cache(self, request, queryset):
-        """Очистить кэш"""
         cache.delete_pattern("nomenclature_admin_qs_*")
         self.message_user(request, 'Кэш очищен')
     clear_cache.short_description = "Очистить кэш"
@@ -285,8 +204,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
-    """Арендаторы номенклатур — оптимизированная версия"""
-
     list_display = ("nomenclature_name", "tenant_id", "floor")
     search_fields = ("nomenclature__name", "tenant_id")
     show_full_result_count = True
@@ -302,8 +219,6 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
 
 @admin.register(TypeOfPlace)
 class TypeOfPlaceAdmin(admin.ModelAdmin):
-    """Тип места вещания"""
-
     list_display = ("id", "name", "is_active")
     search_fields = ("name", "prepositional", "genitive", "abbreviation")
     show_full_result_count = True
@@ -314,8 +229,6 @@ class TypeOfPlaceAdmin(admin.ModelAdmin):
 
 @admin.register(NomenclatureAvailability)
 class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
-    """Доступность — оптимизированная версия"""
-
     list_display = ("client_name", "last_answer_date", "status_display")
     list_filter = ("status",)
     search_fields = ("client__name", "client__code1c")
@@ -337,16 +250,11 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
         status_text = STATUSES.get(obj.status, "Неизвестно")
         colors = {0: "green", 1: "orange", 2: "red"}
         color = colors.get(obj.status, "gray")
-        return format_html(
-            '<span style="color: {};">{}</span>',
-            color, status_text
-        )
+        return format_html('<span style="color: {};">{}</span>', color, status_text)
 
 
 @admin.register(StatusHistory)
 class StatusHistoryAdmin(admin.ModelAdmin):
-    """История доступности — оптимизированная версия"""
-
     list_display = ("client_name", "change_time", "status_display")
     list_filter = ("status", "change_time")
     search_fields = ("client__name",)
@@ -371,8 +279,6 @@ class StatusHistoryAdmin(admin.ModelAdmin):
 
 @admin.register(NomenclatureImage)
 class NomenclatureImageAdmin(admin.ModelAdmin):
-    """Фотографии номенклатур — оптимизированная версия"""
-
     list_display = ("id_short", "nomenclature_name", "type", "created", "hash_short")
     list_filter = ("type", "created")
     search_fields = ("nomenclature__name", "hash")
@@ -401,8 +307,6 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
 
 @admin.register(NomenclatureAddress)
 class NomenclatureAddressAdmin(admin.ModelAdmin):
-    """Адреса номенклатур — оптимизированная версия"""
-
     list_display = ("nomenclature_name", "address_short")
     search_fields = ("nomenclature__name", "address__city__name", "address__street__name", "address__house__number")
     show_full_result_count = True
@@ -436,12 +340,10 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
         return str(obj.address)[:50]
 
 
-# ========== ИНВАЛИДАЦИЯ КЭША ПРИ ИЗМЕНЕНИЯХ ==========
+# ========== ИНВАЛИДАЦИЯ КЭША ==========
 @receiver(post_save, sender=Nomenclature)
 @receiver(post_delete, sender=Nomenclature)
 def invalidate_nomenclature_cache(sender, **kwargs):
-    """Очищаем кэш при сохранении или удалении номенклатуры"""
     cache.delete_pattern("nomenclature_admin_qs_*")
-    # Также очищаем кэш конкретных объектов
     if 'instance' in kwargs:
         cache.delete(f"nomenclature_obj_full_{kwargs['instance'].pk}")
