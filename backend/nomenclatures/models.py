@@ -248,13 +248,17 @@ class Nomenclature(APIBaseObjectModel):
     worktime_start = models.TimeField(
         auto_now_add=False,
         auto_now=False,
-        verbose_name='Открытие'
+        verbose_name='Открытие',
+        null=True,
+        blank=True
     )
 
     worktime_end = models.TimeField(
         auto_now_add=False,
         auto_now=False,
-        verbose_name="Закртыие"
+        verbose_name="Закртыие",
+        null=True,
+        blank=True
     )
 
     id_rasb = models.CharField(
