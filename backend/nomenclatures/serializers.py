@@ -214,7 +214,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     )
     media = MediaStorageSerializer(many=True, read_only=True)
 
-    typeOfPlace = serializers.CharField(source="type_of_place_display")
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     typeOfPlace_id = serializers.PrimaryKeyRelatedField(
         queryset=TypeOfPlace.objects.all(),
         source="typeOfPlace",
@@ -222,7 +222,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    nameForFront = serializers.CharField(source="name_for_front")
+    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
