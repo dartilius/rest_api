@@ -28,12 +28,12 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "name",
         "owner_name",              # кастомное поле вместо owner
         "timezone",
-        "is_active",
-        "status_display",           # кастомное поле статуса
+        "active_status_display",   # кастомное поле активности с цветом
+        "status_display",          # кастомное поле статуса
         "code1c",
-        "brand_name",               # кастомное поле бренда
-        "legal_entity_name",        # кастомное поле юрлица
-        "tenants_count_display",    # количество арендаторов
+        "brand_name",              # кастомное поле бренда
+        "legal_entity_name",       # кастомное поле юрлица
+        "tenants_count_display",   # количество арендаторов
     )
 
     list_display_links = ("name",)  # только название как ссылка
@@ -41,7 +41,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
     search_fields = ("name", "code1c", "article")
     list_filter = ("is_active", "timezone", "brand", "contentType")
 
-    # ✅ ПОДСЧЕТ ВКЛЮЧЕН (как вы просили)
+    # ✅ ПОДСЧЕТ ВКЛЮЧЕН
     show_full_result_count = True
 
     # Уменьшаем количество записей на странице для скорости
@@ -55,14 +55,18 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     # ========== ОПТИМИЗАЦИЯ QUERYSET ДЛЯ СПИСКА ==========
     def get_queryset(self, request):
-        """Загружаем все связанные данные одним запросом с кэшированием"""
-
+        """
+        Загружаем все связанные данные одним запросом.
+        Используем Nomenclature.objects.all() чтобы получить ВСЕ записи,
+        включая неактивные (is_active=False).
+        """
         # Пробуем взять из кэша
         cache_key = f"nomenclature_admin_qs_{request.user.id}"
         qs = cache.get(cache_key)
 
         if not qs:
-            qs = super().get_queryset(request).select_related(
+            # 🔥 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: используем objects.all() вместо super().get_queryset()
+            qs = Nomenclature.objects.all().select_related(
                 # ForeignKey поля — загружаем через JOIN
                 "owner",
                 "availability",
@@ -100,7 +104,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 'legalEntity__first_name', 'legalEntity__middle_name',
                 'legalEntity__last_name', 'legalEntity__keyword',
 
-                # Поля ответственных (ВАЖНО: добавляем все, что используем в select_related)
+                # Поля ответственных
                 'responsible_radio__email', 'responsible_radio__first_name', 'responsible_radio__last_name',
                 'responsible_ad__email', 'responsible_ad__first_name', 'responsible_ad__last_name',
             )
@@ -111,8 +115,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
         return qs
 
     # ========== ОПТИМИЗАЦИЯ ФОРМЫ РЕДАКТИРОВАНИЯ ==========
-    # Именно здесь была главная проблема — 3793 запроса!
-
     def get_object(self, request, object_id, from_field=None):
         """
         Полностью переопределяем загрузку объекта для формы редактирования.
@@ -128,7 +130,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
             if not cached:
                 # Если нет в кэше — загружаем ВСЕ связанные объекты ОДНИМ запросом
-                # Это ключевой момент! prefetch_related_objects загружает всё сразу
                 prefetch_related_objects(
                     [obj],
                     # ForeignKey поля
@@ -164,7 +165,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
         if obj:
             # Убеждаемся, что объект уже загружен со всеми связанными данными
-            # Если нет — загружаем через get_object (который уже оптимизирован)
             if not hasattr(obj, '_prefetched_objects_cache'):
                 obj = self.get_object(request, obj.pk)
 
@@ -175,7 +175,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
         Добавляем информацию о кэше в контекст для отладки (опционально).
         """
         if obj and hasattr(obj, '_prefetched_objects_cache'):
-            # Можно добавить информацию о кэше в контекст
             context['cached_fields'] = list(obj._prefetched_objects_cache.keys())
 
         return super().render_change_form(request, context, add, change, form_url, obj)
@@ -203,9 +202,21 @@ class NomenclatureAdmin(admin.ModelAdmin):
         else:
             return f"ID:{str(obj.owner.id)[:8]}"
 
+    @admin.display(description="Активность", ordering="is_active")
+    def active_status_display(self, obj):
+        """Статус активности с цветовой индикацией"""
+        if obj.is_active:
+            return format_html(
+                '<span style="color: green; font-weight: bold;">✓ Активна</span>'
+            )
+        else:
+            return format_html(
+                '<span style="color: red; font-weight: bold;">✗ Неактивна</span>'
+            )
+
     @admin.display(description="Статус", ordering="availability__status")
     def status_display(self, obj):
-        """Статус с цветовой индикацией"""
+        """Статус доступности с цветовой индикацией"""
         try:
             status_code = obj.availability.status
             status_text = STATUSES[obj.availability.status]
@@ -274,11 +285,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
-    """Арендаторы номенклатур — оптимизированная версия с сохранением подсчета"""
+    """Арендаторы номенклатур — оптимизированная версия"""
 
     list_display = ("nomenclature_name", "tenant_id", "floor")
     search_fields = ("nomenclature__name", "tenant_id")
-    show_full_result_count = True  # Подсчет включен
+    show_full_result_count = True
     list_per_page = 50
 
     def get_queryset(self, request):
@@ -300,14 +311,15 @@ class TypeOfPlaceAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return TypeOfPlace.objects.all()
 
+
 @admin.register(NomenclatureAvailability)
 class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
-    """Доступность — оптимизированная версия с сохранением подсчета"""
+    """Доступность — оптимизированная версия"""
 
     list_display = ("client_name", "last_answer_date", "status_display")
     list_filter = ("status",)
     search_fields = ("client__name", "client__code1c")
-    show_full_result_count = True  # Подсчет включен
+    show_full_result_count = True
     raw_id_fields = ("client",)
 
     def get_queryset(self, request):
@@ -333,12 +345,12 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
 
 @admin.register(StatusHistory)
 class StatusHistoryAdmin(admin.ModelAdmin):
-    """История доступности — оптимизированная версия с сохранением подсчета"""
+    """История доступности — оптимизированная версия"""
 
     list_display = ("client_name", "change_time", "status_display")
     list_filter = ("status", "change_time")
     search_fields = ("client__name",)
-    show_full_result_count = True  # Подсчет включен
+    show_full_result_count = True
     raw_id_fields = ("client",)
     list_per_page = 100
 
@@ -359,12 +371,12 @@ class StatusHistoryAdmin(admin.ModelAdmin):
 
 @admin.register(NomenclatureImage)
 class NomenclatureImageAdmin(admin.ModelAdmin):
-    """Фотографии номенклатур — оптимизированная версия с сохранением подсчета"""
+    """Фотографии номенклатур — оптимизированная версия"""
 
     list_display = ("id_short", "nomenclature_name", "type", "created", "hash_short")
     list_filter = ("type", "created")
     search_fields = ("nomenclature__name", "hash")
-    show_full_result_count = True  # Подсчет включен
+    show_full_result_count = True
     raw_id_fields = ("nomenclature",)
     list_per_page = 50
 
@@ -389,10 +401,10 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
 
 @admin.register(NomenclatureAddress)
 class NomenclatureAddressAdmin(admin.ModelAdmin):
-    """Адреса номенклатур — оптимизированная версия с сохранением подсчета"""
+    """Адреса номенклатур — оптимизированная версия"""
 
     list_display = ("nomenclature_name", "address_short")
-    search_fields = ("nomenclature__name", "address__city__name", "address__street__name", "address__house__number")  # Исправлено
+    search_fields = ("nomenclature__name", "address__city__name", "address__street__name", "address__house__number")
     show_full_result_count = True
     list_per_page = 50
 
@@ -400,13 +412,12 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related(
             "nomenclature",
             "address",
-            "address__city",      # Добавлено для str
-            "address__street",    # Добавлено для str
-            "address__house",     # Добавлено для str
-            "address__building"   # Добавлено для str
+            "address__city",
+            "address__street",
+            "address__house",
+            "address__building"
         ).only(
             'nomenclature__name', 'nomenclature__id',
-            # Поля для address.__str__
             'address__id',
             'address__city__name',
             'address__street__name',
