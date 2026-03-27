@@ -219,7 +219,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         """Статус доступности с цветовой индикацией"""
         try:
             status_code = obj.availability.status
-            status_text = STATUSES[obj.availability.status]
+            status_text = STATUSES.get(obj.availability.status, "Неизвестно")
 
             colors = {
                 0: "green",   # Online
