@@ -391,7 +391,7 @@ class Nomenclature(APIBaseObjectModel):
         else:
             place_name = ""
 
-        return f'Размещение ролика на радио {place_name} в "{brand.name}", {city}, {street}, {house}'
+        return f'Размещение ролика на радио {place_name} "{brand.name}", {city}, {street}, {house}'
 
     def update_search_vector(self, tenants_text='', save=True):
         """Обновляет search_vector для конкретной номенклатуры"""
