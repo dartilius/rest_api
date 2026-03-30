@@ -216,11 +216,11 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
     def nomenclature_name(self, obj):
         return obj.nomenclature.name if obj.nomenclature else "-"
 
-
 @admin.register(TypeOfPlace)
 class TypeOfPlaceAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "is_active")
-    search_fields = ("name", "prepositional", "genitive", "abbreviation")
+    list_display = ("id", "name", "abbreviation", "code1c", "is_mall", "is_active")
+    list_filter = ("is_mall", "is_active")
+    search_fields = ("name", "abbreviation", "code1c")
     show_full_result_count = True
 
     def get_queryset(self, request):

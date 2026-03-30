@@ -59,29 +59,6 @@ STATUSES = {
 }
 
 
-@lru_cache
-def get_morph():
-    import pymorphy3
-    return pymorphy3.MorphAnalyzer()
-
-
-def inflect_words(name: str, case: str):
-    words = name.split()
-    result = []
-    morph = get_morph()
-
-    for word in words:
-        parsed = morph.parse(word)[0]
-        inflected = parsed.inflect({case})
-
-        if inflected:
-            result.append(inflected.word)
-        else:
-            result.append(word)
-
-    return " ".join(result)
-
-
 class TypeOfPlace(models.Model):
     id = UUIDPKField()
 
@@ -89,6 +66,19 @@ class TypeOfPlace(models.Model):
         max_length=255,
         verbose_name="Полное наименование"
     )
+
+    tariff = models.CharField(
+        verbose_name="Для тарифа",
+        blank=True,
+        null=True,
+    )
+
+    tariff_single = models.CharField(
+        verbose_name="Для тарифа в единственном числе",
+        blank=True,
+        null=True,
+    )
+
     abbreviation = models.CharField(
         max_length=50,
         blank=True,
@@ -102,20 +92,6 @@ class TypeOfPlace(models.Model):
         blank=True,
         null=True,
         unique=True
-    )
-
-    genitive = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Название в родительном падеже"
-    )
-
-    prepositional = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Название в предложном падеже"
     )
 
     is_mall = models.BooleanField(
@@ -137,15 +113,7 @@ class TypeOfPlace(models.Model):
     def display_name(self):
         return self.abbreviation or self.name
 
-    def save(self, *args, **kwargs):
 
-        if not self.genitive and self.name:
-            self.genitive = inflect_words(self.name, "gent")
-
-        if not self.prepositional and self.name:
-            self.prepositional = "в " + inflect_words(self.name, "loct")
-
-        super().save(*args, **kwargs)
 class NomenclatureTenant(models.Model):
     nomenclature = models.ForeignKey(
         'Nomenclature',
