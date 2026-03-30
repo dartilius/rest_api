@@ -141,13 +141,6 @@ class NomenclatureTenant(models.Model):
     class Meta:
         db_table = "nomenclature_tenant"
 
-        constraints = [
-            models.UniqueConstraint(
-                fields=['nomenclature', 'tenant', 'brand', 'floor'],
-                name='unique_nomenclature_tenant_brand_floor'
-            )
-        ]
-
         indexes = [
             models.Index(fields=['nomenclature']),
 

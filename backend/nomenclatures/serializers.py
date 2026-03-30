@@ -787,6 +787,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             #     brand=brand_obj  # если поле brand существует
             # )
 
+    from django.db import transaction
+    from rest_framework import serializers
+
     @transaction.atomic
     def update(self, instance, validated_data):
         # =========================================================
@@ -823,7 +826,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         type_of_place_value = validated_data.pop("typeOfPlace", serializers.empty)
 
         # =========================================================
-        # 2. ЧИСТИМ ЛЕВЫЕ/READONLY ПОЛЯ
+        # 2. ЧИСТИМ ЛЕВЫЕ / READONLY ПОЛЯ
         # =========================================================
         validated_data.pop("type_of_place_display", None)
         validated_data.pop("name_for_front", None)
@@ -837,7 +840,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # =========================================================
         code1c = validated_data.get("code1c")
         if code1c is not None:
-            conflict = Nomenclature.objects.filter(code1c=code1c).exclude(id=instance.id).first()
+            conflict = (
+                Nomenclature.objects
+                .filter(code1c=code1c)
+                .exclude(id=instance.id)
+                .first()
+            )
             if conflict:
                 raise serializers.ValidationError({
                     "code1c": f"Код '{code1c}' уже используется в другой номенклатуре (id={conflict.id})"
@@ -926,7 +934,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 )
 
         # =========================================================
-        # 7. ОБРАБОТКА АРЕНДАТОРОВ
+        # 7. ПОЛНАЯ СИНХРОНИЗАЦИЯ АРЕНДАТОРОВ
         # =========================================================
         if tenants_provided:
             # null или [] => удалить всех
@@ -934,10 +942,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 NomenclatureTenant.objects.filter(nomenclature=instance).delete()
 
             else:
+                new_rows = []
+                seen_keys = set()
+
                 for tenant_data in tenants_id:
                     tenant_id = tenant_data.get("id")
                     floor = tenant_data.get("floor", "")
-                    brand_obj = tenant_data.get("brand")  # уже объект Brand
+                    brand_obj = tenant_data.get("brand")  # уже объект Brand после сериализатора
                     atm = tenant_data.get("atm", False)
 
                     if not tenant_id:
@@ -952,26 +963,33 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                             "tenants_id": f"Арендатор с id {tenant_id} не найден"
                         })
 
-                    # Проверяем, есть ли ТОЧНО ТАКАЯ ЖЕ связь
-                    already_exists = NomenclatureTenant.objects.filter(
-                        nomenclature=instance,
-                        tenant=counterparty,
-                        brand=brand_obj,
-                        floor=floor,
-                    ).exists()
+                    # Ключ уникальности будущей строки
+                    unique_key = (
+                        str(counterparty.id),
+                        str(brand_obj.id) if brand_obj else None,
+                        floor,
+                        atm,
+                    )
 
-                    # Если exact match уже есть — не создаём дубль
-                    if already_exists:
+                    # Если фронт прислал дубль в одном и том же PATCH — не плодим дичь
+                    if unique_key in seen_keys:
                         continue
 
-                    # Если exact match нет — создаём НОВУЮ запись
-                    NomenclatureTenant.objects.create(
-                        nomenclature=instance,
-                        tenant=counterparty,
-                        floor=floor,
-                        brand=brand_obj,
-                        atm=atm,
+                    seen_keys.add(unique_key)
+
+                    new_rows.append(
+                        NomenclatureTenant(
+                            nomenclature=instance,
+                            tenant=counterparty,
+                            floor=floor,
+                            brand=brand_obj,
+                            atm=atm,
+                        )
                     )
+
+                # Полная замена: удаляем старые, записываем новые
+                NomenclatureTenant.objects.filter(nomenclature=instance).delete()
+                NomenclatureTenant.objects.bulk_create(new_rows)
 
         # =========================================================
         # 8. ФИНАЛ
