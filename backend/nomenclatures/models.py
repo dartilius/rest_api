@@ -130,7 +130,7 @@ class NomenclatureTenant(models.Model):
     floor = models.CharField(max_length=10, blank=True, verbose_name="Этаж")
     atm = models.BooleanField(verbose_name="Банкомат/терминал", default=False)
     brand = models.ForeignKey(
-        'Brand',
+        'brands.Brand',
         on_delete=models.SET_NULL,
         verbose_name="Бренд арендатора",
         null=True,
