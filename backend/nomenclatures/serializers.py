@@ -41,15 +41,6 @@ ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
 #             'keyword',
 #         )
 
-class NomenclatureTenantSerializer(serializers.ModelSerializer):
-    tenant = TenantsShortSerializer(read_only=True)
-
-    class Meta:
-        model = NomenclatureTenant
-        fields = (
-            'tenant',
-            'floor',
-        )
 
 class PhotoSerializer(serializers.ModelSerializer):
     source = Base64FileField()
@@ -117,6 +108,19 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
             "brand_logotype",
         )
         read_only_fields = fields
+
+class NomenclatureTenantSerializer(serializers.ModelSerializer):
+    tenant = TenantsShortSerializer(read_only=True)
+    brand = ShortBrandNomenclatureSerializer(read_only=True)
+
+    class Meta:
+        model = NomenclatureTenant
+        fields = (
+            'tenant',
+            'floor',
+            'brand'
+        )
+
 
 class NomenclatureSearchSerializer(serializers.ModelSerializer):
     brand_name = serializers.SerializerMethodField()
