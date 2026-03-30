@@ -109,14 +109,24 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
-class NomenclatureTenantSerializer(serializers.ModelSerializer):
-    # tenant = TenantsShortSerializer(read_only=True)
-    brand = ShortBrandNomenclatureSerializer(read_only=True)
+
+class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
+    """Сериализатор для ответа с арендаторами номенклатуры"""
+    id = serializers.UUIDField(source='tenant.id', read_only=True)
+    name = serializers.CharField(source='brand.name', read_only=True, default=None)
+    logotype = serializers.SerializerMethodField()
+    floor = serializers.CharField(read_only=True)
+    atm = serializers.BooleanField(read_only=True)  # если нужно возвращать
 
     class Meta:
         model = NomenclatureTenant
-        fields = "__all__"
+        fields = ('id', 'name', 'logotype', 'floor', 'atm')
 
+    def get_logotype(self, obj):
+        """Возвращаем URL логотипа бренда"""
+        if obj.brand and obj.brand.logotype:
+            return obj.brand.logotype.url if hasattr(obj.brand.logotype, 'url') else str(obj.brand.logotype)
+        return None
 
 class NomenclatureSearchSerializer(serializers.ModelSerializer):
     brand_name = serializers.SerializerMethodField()
@@ -265,7 +275,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     # READ
-    tenants = NomenclatureTenantSerializer(
+    tenants = NomenclatureTenantResponseSerializer(
         source='nomenclature_tenants',
         many=True,
         read_only=True
