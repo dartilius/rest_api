@@ -110,7 +110,7 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 class NomenclatureTenantSerializer(serializers.ModelSerializer):
-    tenant = TenantsShortSerializer(read_only=True)
+    # tenant = TenantsShortSerializer(read_only=True)
     brand = ShortBrandNomenclatureSerializer(read_only=True)
 
     class Meta:
