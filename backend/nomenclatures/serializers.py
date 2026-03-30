@@ -192,7 +192,7 @@ class TenantWriteSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     floor = serializers.CharField(required=False, allow_blank=True)
     brand = serializers.PrimaryKeyRelatedField(
-        queryset=Brand.objects.none(),
+        queryset=Brand.objects.all(),
         source="brand_tenant",
         write_only=True,
         required=False,
