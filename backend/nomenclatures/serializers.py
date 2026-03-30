@@ -115,11 +115,8 @@ class NomenclatureTenantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NomenclatureTenant
-        fields = (
-            'tenant',
-            'floor',
-            'brand'
-        )
+        fields = "__all__"
+        read_only_fields = fields
 
 
 class NomenclatureSearchSerializer(serializers.ModelSerializer):
