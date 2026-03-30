@@ -1,7 +1,7 @@
 import hashlib
 from datetime import time
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count
+from django.db import transaction
 from rest_framework import serializers
 from brands.models import Brand
 from brands.serializers import BrandSerializer
@@ -214,6 +214,7 @@ class NomenclatureSearchSerializer(serializers.ModelSerializer):
 class TenantWriteSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     floor = serializers.CharField(required=False, allow_blank=True)
+    atm = serializers.BooleanField(required=False, default=False)
     brand = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(),
         write_only=True,
@@ -222,58 +223,11 @@ class TenantWriteSerializer(serializers.Serializer):
     )
 
     def validate_id(self, value):
-        """Валидация ID арендатора"""
         try:
             Counterparty.objects.get(id=value)
             return value
         except Counterparty.DoesNotExist:
             raise serializers.ValidationError(f"Арендатор с id {value} не найден")
-
-    def validate_brand(self, value):
-        """Валидация бренда"""
-        if value:
-            # Проверяем, существует ли бренд
-            if not Brand.objects.filter(id=value.id).exists():
-                raise serializers.ValidationError(f"Бренд с id {value.id} не найден")
-        return value
-
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #
-    #     # Получаем арендатора из контекста
-    #     counterparty = self.context.get('counterparty')
-    #
-    #     if counterparty:
-    #         # Устанавливаем queryset для brand только из брендов этого арендатора
-    #         self.fields['brand'].queryset = counterparty.brands.all()
-    #
-    # def validate_brand(self, value):
-    #     """Валидация бренда"""
-    #     if value:
-    #         counterparty = self.context.get('counterparty')
-    #         if counterparty and value not in counterparty.brands.all():
-    #             raise serializers.ValidationError(
-    #                 f"Бренд '{value}' не принадлежит арендатору"
-    #             )
-    #     return value
-    #
-    # def validate_id(self, value):
-    #     """Валидация ID арендатора"""
-    #     try:
-    #         counterparty = Counterparty.objects.get(id=value)
-    #         # Добавляем в контекст для валидации бренда
-    #         if 'counterparty' not in self.context:
-    #             self.context['counterparty'] = counterparty
-    #         return value
-    #     except Counterparty.DoesNotExist:
-    #         raise serializers.ValidationError(f"Арендатор с id {value} не найден")
-    #
-    # def to_representation(self, instance):
-    #     """Если нужно вернуть данные (но обычно для write_only это не нужно)"""
-    #     return {
-    #         'id': instance.id,
-    #         'floor': instance.floor if hasattr(instance, 'floor') else None
-    #     }
 
 class TypeOfPlaceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -833,13 +787,19 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             #     brand=brand_obj  # если поле brand существует
             # )
 
+    @transaction.atomic
     def update(self, instance, validated_data):
-        # 1️⃣ ИЗВЛЕКАЕМ ВСЕ ПОЛЯ ДЛЯ РУЧНОЙ ОБРАБОТКИ
-        tenants_id = validated_data.pop("tenants_id", None)
+        # =========================================================
+        # 1. ВЫТАСКИВАЕМ СПЕЦ-ПОЛЯ ДО ОБНОВЛЕНИЯ
+        # =========================================================
 
-        # Извлекаем данные для адреса (все варианты)
-        address_data = None
-        address_id = None
+        # --- tenants ---
+        tenants_provided = "tenants_id" in validated_data
+        tenants_id = validated_data.pop("tenants_id", serializers.empty)
+
+        # --- address ---
+        address_data = serializers.empty
+        address_id = serializers.empty
 
         if "address_data" in validated_data:
             address_data = validated_data.pop("address_data")
@@ -848,162 +808,175 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         elif "address" in validated_data:
             address_relation = validated_data.pop("address", {})
             if isinstance(address_relation, dict):
-                address_data = address_relation.get("address")
+                address_data = address_relation.get("address", serializers.empty)
             elif isinstance(address_relation, AddressBook):
                 address_id = address_relation.id
 
-        # Извлекаем поля для связей
-        brand_id = validated_data.pop("brand_id", None) if "brand_id" in validated_data else None
-        legalEntity_id = validated_data.pop("legalEntity_id", None) if "legalEntity_id" in validated_data else None
+        # --- foreign keys ---
+        brand_provided = "brand" in validated_data
+        brand_value = validated_data.pop("brand", serializers.empty)
 
-        # Сохраняем code1c и price_per_month для дополнительной валидации
+        legal_entity_provided = "legalEntity" in validated_data
+        legal_entity_value = validated_data.pop("legalEntity", serializers.empty)
+
+        type_of_place_provided = "typeOfPlace" in validated_data
+        type_of_place_value = validated_data.pop("typeOfPlace", serializers.empty)
+
+        # =========================================================
+        # 2. ЧИСТИМ ЛЕВЫЕ/READONLY ПОЛЯ
+        # =========================================================
+        validated_data.pop("type_of_place_display", None)
+        validated_data.pop("name_for_front", None)
+        validated_data.pop("tenants", None)
+        validated_data.pop("legalEntity", None)
+        validated_data.pop("brand", None)
+        validated_data.pop("address", None)
+
+        # =========================================================
+        # 3. ДОП. ВАЛИДАЦИЯ
+        # =========================================================
         code1c = validated_data.get("code1c")
-        price_per_month = validated_data.get("pricePerMonth") if "pricePerMonth" in validated_data else None
-
-        # 2️⃣ УДАЛЯЕМ ВСЕ ПОЛЯ С ТОЧЕЧНОЙ НОТАЦИЕЙ
-        validated_data.pop('type_of_place_display', None)
-        validated_data.pop('name_for_front', None)
-        validated_data.pop('address', None)
-        validated_data.pop('legalEntity', None)
-        validated_data.pop('brand', None)
-        validated_data.pop('tenants', None)
-
-        # 3️⃣ ВЫЗЫВАЕМ РОДИТЕЛЬСКИЙ update
-        instance = super().update(instance, validated_data)
-
-        # 4️⃣ РУЧНАЯ ОБРАБОТКА ПОЛЕЙ
-
-        # Валидация code1c
         if code1c is not None:
             conflict = Nomenclature.objects.filter(code1c=code1c).exclude(id=instance.id).first()
             if conflict:
                 raise serializers.ValidationError({
                     "code1c": f"Код '{code1c}' уже используется в другой номенклатуре (id={conflict.id})"
                 })
-            instance.code1c = code1c
 
-        # Валидация цены
-        if price_per_month is not None and price_per_month < 0:
-            raise serializers.ValidationError({
-                "pricePerMonth": "Стоимость аренды не может быть меньше 0."
-            })
-
-        # Обновление юр.лица
-        if legalEntity_id is not None:
-            if legalEntity_id == "" or legalEntity_id is None:
-                instance.legalEntity = None
-            else:
+        if "pricePerMonth" in validated_data:
+            price_per_month = validated_data.get("pricePerMonth")
+            if price_per_month is not None:
                 try:
-                    instance.legalEntity = Counterparty.objects.get(id=legalEntity_id)
-                except Counterparty.DoesNotExist:
-                    raise serializers.ValidationError(
-                        {"legalEntity_id": "Юр. лицо с таким ID не найдено"}
-                    )
+                    if price_per_month < 0:
+                        raise serializers.ValidationError({
+                            "pricePerMonth": "Стоимость аренды не может быть меньше 0."
+                        })
+                except TypeError:
+                    raise serializers.ValidationError({
+                        "pricePerMonth": "Стоимость аренды должна быть числом."
+                    })
 
-        # Обновление бренда
-        if brand_id is not None:
-            if brand_id == "" or brand_id is None:
-                instance.brand = None
-            else:
-                try:
-                    instance.brand = Brand.objects.get(id=brand_id)
-                except Brand.DoesNotExist:
-                    raise serializers.ValidationError(
-                        {"brand_id": "Бренд с таким ID не найден"}
-                    )
+        # =========================================================
+        # 4. ОБНОВЛЯЕМ ПРОСТЫЕ ПОЛЯ
+        # =========================================================
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
 
-        # --- ОБРАБОТКА АДРЕСА ---
-        if address_id is None and "address_id" in self.initial_data:
-            if hasattr(instance, 'address') and instance.address:
+        # =========================================================
+        # 5. ОБНОВЛЯЕМ FK ПОЛЯ
+        # =========================================================
+        if brand_provided:
+            instance.brand = brand_value if brand_value not in ["", serializers.empty] else None
+
+        if legal_entity_provided:
+            instance.legalEntity = (
+                legal_entity_value if legal_entity_value not in ["", serializers.empty] else None
+            )
+
+        if type_of_place_provided:
+            instance.typeOfPlace = (
+                type_of_place_value if type_of_place_value not in ["", serializers.empty] else None
+            )
+
+        instance.save()
+
+        # =========================================================
+        # 6. ОБРАБОТКА АДРЕСА
+        # =========================================================
+
+        # Явное удаление адреса через null
+        if address_id is None:
+            if hasattr(instance, "address") and instance.address:
                 instance.address.delete()
-        elif (address_data is None or address_data == {}) and "address_data" in self.initial_data:
-            if hasattr(instance, 'address') and instance.address:
+
+        elif address_data is None:
+            if hasattr(instance, "address") and instance.address:
                 instance.address.delete()
-        elif address_id is not None:
+
+        # Установка адреса по ID
+        elif address_id is not serializers.empty:
             try:
                 address_obj = AddressBook.objects.get(id=address_id)
-                NomenclatureAddress.objects.update_or_create(
-                    nomenclature=instance,
-                    defaults={"address": address_obj}
-                )
             except AddressBook.DoesNotExist:
-                raise serializers.ValidationError(
-                    {"address_id": "Адрес с таким ID не найден"}
-                )
-        elif address_data is not None and address_data != {}:
+                raise serializers.ValidationError({
+                    "address_id": "Адрес с таким ID не найден"
+                })
+
+            NomenclatureAddress.objects.update_or_create(
+                nomenclature=instance,
+                defaults={"address": address_obj}
+            )
+
+        # Создание нового адреса по данным
+        elif address_data is not serializers.empty and address_data != {}:
             if isinstance(address_data, dict):
                 address_serializer = AddressCreateSerializer(data=address_data)
                 address_serializer.is_valid(raise_exception=True)
                 address_obj = address_serializer.save()
+
                 NomenclatureAddress.objects.update_or_create(
                     nomenclature=instance,
                     defaults={"address": address_obj}
                 )
+
             elif isinstance(address_data, AddressBook):
                 NomenclatureAddress.objects.update_or_create(
                     nomenclature=instance,
                     defaults={"address": address_data}
                 )
 
-        # --- ОБРАБОТКА АРЕНДАТОРОВ (ИСПРАВЛЕНО - НЕ УДАЛЯЕМ НЕПЕРЕДАННЫХ) ---
-        if 'tenants_id' in self.initial_data:
-            if tenants_id is not None:
-                # Получаем существующих арендаторов
-                existing_tenants = {
-                    str(nt.tenant_id): nt for nt in NomenclatureTenant.objects.filter(
-                        nomenclature=instance
-                    )
-                }
-
-                # Обновляем или создаем только переданных арендаторов
-                for tenant_data in tenants_id:
-                    tenant_id = str(tenant_data.get('id'))
-                    if not tenant_id:
-                        continue
-
-                    floor = tenant_data.get('floor', '')
-                    brand = tenant_data.get('brand')
-
-                    # Получаем объект бренда
-                    brand_obj = None
-                    if brand:
-                        if isinstance(brand, str):
-                            try:
-                                brand_obj = Brand.objects.get(id=brand)
-                            except Brand.DoesNotExist:
-                                raise serializers.ValidationError({
-                                    "tenants_id": f"Бренд с id {brand} не найден"
-                                })
-                        else:
-                            brand_obj = brand
-
-                    if tenant_id in existing_tenants:
-                        # Обновляем существующего
-                        tenant_relation = existing_tenants[tenant_id]
-                        tenant_relation.floor = floor
-                        tenant_relation.brand = brand_obj
-                        tenant_relation.save()
-                    else:
-                        # Создаем нового
-                        try:
-                            counterparty = Counterparty.objects.get(id=tenant_id)
-                            NomenclatureTenant.objects.create(
-                                nomenclature=instance,
-                                tenant=counterparty,
-                                floor=floor,
-                                brand=brand_obj,
-                            )
-                        except Counterparty.DoesNotExist:
-                            raise serializers.ValidationError({
-                                "tenants_id": f"Арендатор с id {tenant_id} не найден"
-                            })
-            else:
-                # tenants_id = null - удаляем всех арендаторов
+        # =========================================================
+        # 7. ОБРАБОТКА АРЕНДАТОРОВ
+        # =========================================================
+        if tenants_provided:
+            # null или [] => удалить всех
+            if tenants_id is None or tenants_id == []:
                 NomenclatureTenant.objects.filter(nomenclature=instance).delete()
 
-        # 5️⃣ СОХРАНЯЕМ
-        instance.save()
+            else:
+                for tenant_data in tenants_id:
+                    tenant_id = tenant_data.get("id")
+                    floor = tenant_data.get("floor", "")
+                    brand_obj = tenant_data.get("brand")  # уже объект Brand
+                    atm = tenant_data.get("atm", False)
 
+                    if not tenant_id:
+                        raise serializers.ValidationError({
+                            "tenants_id": "У арендатора отсутствует id"
+                        })
+
+                    try:
+                        counterparty = Counterparty.objects.get(id=tenant_id)
+                    except Counterparty.DoesNotExist:
+                        raise serializers.ValidationError({
+                            "tenants_id": f"Арендатор с id {tenant_id} не найден"
+                        })
+
+                    # Проверяем, есть ли ТОЧНО ТАКАЯ ЖЕ связь
+                    already_exists = NomenclatureTenant.objects.filter(
+                        nomenclature=instance,
+                        tenant=counterparty,
+                        brand=brand_obj,
+                        floor=floor,
+                    ).exists()
+
+                    # Если exact match уже есть — не создаём дубль
+                    if already_exists:
+                        continue
+
+                    # Если exact match нет — создаём НОВУЮ запись
+                    NomenclatureTenant.objects.create(
+                        nomenclature=instance,
+                        tenant=counterparty,
+                        floor=floor,
+                        brand=brand_obj,
+                        atm=atm,
+                    )
+
+        # =========================================================
+        # 8. ФИНАЛ
+        # =========================================================
+        instance.save()
         return instance
 
     # def get_tenants(self, obj):

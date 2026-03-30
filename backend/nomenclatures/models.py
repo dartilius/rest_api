@@ -143,8 +143,8 @@ class NomenclatureTenant(models.Model):
 
         constraints = [
             models.UniqueConstraint(
-                fields=['nomenclature', 'tenant'],
-                name='unique_nomenclature_tenant'
+                fields=['nomenclature', 'tenant', 'brand', 'floor'],
+                name='unique_nomenclature_tenant_brand_floor'
             )
         ]
 
