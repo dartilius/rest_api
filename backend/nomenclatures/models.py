@@ -189,16 +189,28 @@ class Nomenclature(APIBaseObjectModel):
     )
 
     external_video_media = models.CharField(
-        verbose_name="Видео носители (кол-во внеш.)"
+        verbose_name="Видео носители (кол-во внеш.)",
+        null=True,
+        blank=True,
+        default=""
     )
     external_audio_media = models.CharField(
-        verbose_name="Аудио носители (кол-во внеш.)"
+        verbose_name="Аудио носители (кол-во внеш.)",
+        null=True,
+        blank=True,
+        default=""
     )
     internal_video_media = models.CharField(
-        verbose_name="Видео носители (кол-во внут.)"
+        verbose_name="Видео носители (кол-во внут.)",
+        null=True,
+        blank=True,
+        default=""
     )
     internal_audio_media = models.CharField(
-        verbose_name="Аудио носители (кол-во внут.)"
+        verbose_name="Аудио носители (кол-во внут.)",
+        null=True,
+        blank=True,
+        default=""
     )
 
     worktime_start = models.TimeField(
