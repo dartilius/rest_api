@@ -237,7 +237,10 @@ class TypeOfPlaceSerializer(serializers.ModelSerializer):
 
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
-    typeOfPlace = serializers.CharField(source='type_of_place.name' ,read_only=True)
+    typeOfPlace = serializers.CharField(
+        source='typeOfPlace.name',
+        read_only=True
+    )
     typeOfPlace_id = serializers.PrimaryKeyRelatedField(
         queryset=TypeOfPlace.objects.all(),
         source="typeOfPlace",
