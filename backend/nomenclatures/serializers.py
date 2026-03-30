@@ -113,7 +113,7 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
     """Сериализатор для ответа с арендаторами номенклатуры"""
     id = serializers.UUIDField(source='tenant.id', read_only=True)
-    brand_name = serializers.CharField(source='brand.name', read_only=True, default=None)
+    brand_name = serializers.CharField()
     logotype = serializers.SerializerMethodField()
     floor = serializers.CharField(read_only=True)
     atm = serializers.BooleanField(read_only=True)
@@ -568,6 +568,38 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     #
     #     NomenclatureTenant.objects.bulk_create(objs)
 
+    def _set_tenants(self, nomenclature, tenants_data):
+        """Установка арендаторов для номенклатуры"""
+        for tenant_data in tenants_data:
+            tenant_id = tenant_data.get('id')
+            floor = tenant_data.get('floor', '')
+            brand = tenant_data.get('brand')  # Здесь brand должен быть объектом Brand или ID
+
+            # Получаем Counterparty (арендатора)
+            try:
+                counterparty = Counterparty.objects.get(id=tenant_id)
+            except Counterparty.DoesNotExist:
+                raise Exception(f"Арендатор с id {tenant_id} не найден")
+
+            # Если brand передан как ID, получаем объект Brand
+            brand_obj = None
+            if brand:
+                if isinstance(brand, str):
+                    try:
+                        brand_obj = Brand.objects.get(id=brand)
+                    except Brand.DoesNotExist:
+                        raise Exception(f"Бренд с id {brand} не найден")
+                else:
+                    brand_obj = brand
+
+            # Создаем связь
+            NomenclatureTenant.objects.create(
+                nomenclature=nomenclature,
+                tenant=counterparty,
+                floor=floor,
+                brand=brand_obj,  # 👈 Убедитесь, что передается объект Brand
+            )
+
     def create(self, validated_data):
         # Извлекаем все поля, которые нужно обработать отдельно
         address_data = None
@@ -780,26 +812,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             #     floor=floor,
             #     brand=brand_obj  # если поле brand существует
             # )
-    def _set_tenants(self, nomenclature, tenants_data):
-        """Установка арендаторов для номенклатуры"""
-        for tenant_data in tenants_data:
-            tenant_id = tenant_data.get('id')
-            floor = tenant_data.get('floor', '')
-            brand = tenant_data.get('brand')
 
-            # Получаем Counterparty (арендатора)
-            try:
-                counterparty = Counterparty.objects.get(id=tenant_id)
-            except Counterparty.DoesNotExist:
-                raise Exception(f"Арендатор с id {tenant_id} не найден")
-
-            # Создаем связь
-            NomenclatureTenant.objects.create(
-                nomenclature=nomenclature,
-                tenant=counterparty,
-                floor=floor,
-                brand=brand,  # brand уже является объектом Brand
-            )
 
     def update(self, instance, validated_data):
         # 1️⃣ ИЗВЛЕКАЕМ ВСЕ ПОЛЯ ДЛЯ РУЧНОЙ ОБРАБОТКИ
