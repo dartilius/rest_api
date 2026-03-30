@@ -284,7 +284,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     )
     # READ
     tenants = NomenclatureTenantResponseSerializer(
-        source='nomenclature_tenant',
+        source='nomenclature_tenants',
         many=True,
         read_only=True
     )
