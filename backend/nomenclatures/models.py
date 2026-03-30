@@ -390,14 +390,14 @@ class Nomenclature(APIBaseObjectModel):
         if place:
             if place.abbreviation:
                 place_name = place.abbreviation
-            elif place.prepositional:
-                place_name = place.prepositional
+            elif place.tariff_single:
+                place_name = place.tariff_single
             else:
                 place_name = place.name
         else:
             place_name = ""
 
-        return f"Размещение ролика в {place_name} {brand.name}, {city}, {street}, {house}"
+        return f"Размещение ролика на радио {place_name} в {brand.name}, {city}, {street}, {house}"
 
     def update_search_vector(self, tenants_text='', save=True):
         """Обновляет search_vector для конкретной номенклатуры"""
