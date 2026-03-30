@@ -115,6 +115,16 @@ services:
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
+      - ./backend/addresses/migrations:/app/addresses/migrations
+      - ./backend/brands/migrations:/app/brands/migrations
+      - ./backend/users/migrations:/app/users/migrations
+      - ./backend/counterparties/migrations:/app/counterparties/migrations
+      - ./backend/files/migrations:/app/files/migrations
+      - ./backend/nomenclatures/migrations:/app/nomenclatures/migrations
+      - ./backend/orders/migrations:/app/orders/migrations
+      - ./backend/ch_statistic/migrations:/app/ch_statistic/migrations
+      - ./backend/tasks/migrations:/app/tasks/migrations
+      - ./backend/promotions/migrations:/app/promotions/migrations
     healthcheck:
       test: curl --fail ${BACKEND_HC} || exit 1
       interval: 10s
