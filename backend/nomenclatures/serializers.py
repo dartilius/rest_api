@@ -192,12 +192,50 @@ class TenantWriteSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     floor = serializers.CharField(required=False, allow_blank=True)
     brand = serializers.PrimaryKeyRelatedField(
-        queryset=Counterparty.brands.all(),
+        queryset=Brand.objects.none(),
         source="brand",
         write_only=True,
         required=False,
         allow_null=True,
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Получаем арендатора из контекста
+        counterparty = self.context.get('counterparty')
+
+        if counterparty:
+            # Устанавливаем queryset для brand только из брендов этого арендатора
+            self.fields['brand'].queryset = counterparty.brands.all()
+
+    def validate_brand(self, value):
+        """Валидация бренда"""
+        if value:
+            counterparty = self.context.get('counterparty')
+            if counterparty and value not in counterparty.brands.all():
+                raise serializers.ValidationError(
+                    f"Бренд '{value}' не принадлежит арендатору"
+                )
+        return value
+
+    def validate_id(self, value):
+        """Валидация ID арендатора"""
+        try:
+            counterparty = Counterparty.objects.get(id=value)
+            # Добавляем в контекст для валидации бренда
+            if 'counterparty' not in self.context:
+                self.context['counterparty'] = counterparty
+            return value
+        except Counterparty.DoesNotExist:
+            raise serializers.ValidationError(f"Арендатор с id {value} не найден")
+
+    def to_representation(self, instance):
+        """Если нужно вернуть данные (но обычно для write_only это не нужно)"""
+        return {
+            'id': instance.id,
+            'floor': instance.floor if hasattr(instance, 'floor') else None
+        }
 
 class TypeOfPlaceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -669,15 +707,61 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # Обработка арендаторов
         if tenants_id:
             try:
+                # Передаем каждому TenantWriteSerializer контекст с арендатором
                 self._set_tenants(nomenclature, tenants_id)
             except Exception as e:
-                # При ошибке с арендаторами удаляем номенклатуру
                 nomenclature.delete()
                 raise serializers.ValidationError({
                     "tenants_id": f"Ошибка при добавлении арендаторов: {str(e)}"
                 })
 
         return nomenclature
+
+    def _set_tenants(self, nomenclature, tenants_data):
+        """
+        Установка арендаторов для номенклатуры с проверкой брендов.
+        """
+        for tenant_data in tenants_data:
+            tenant_id = tenant_data.get('id')
+            floor = tenant_data.get('floor', '')
+            brand = tenant_data.get('brand')  # или brand_id
+
+            # Получаем Counterparty (арендатора)
+            try:
+                counterparty = Counterparty.objects.get(id=tenant_id)
+            except Counterparty.DoesNotExist:
+                raise Exception(f"Арендатор с id {tenant_id} не найден")
+
+            # Проверяем бренд
+            brand_obj = None
+            if brand:
+                # Проверяем, что бренд принадлежит этому арендатору
+                # Важно: brand может быть объектом или ID
+                if hasattr(brand, 'id'):
+                    # Если brand уже объект
+                    if brand not in counterparty.brands.all():
+                        raise Exception(
+                            f"Бренд '{brand.name}' не принадлежит арендатору {counterparty}"
+                        )
+                    brand_obj = brand
+                else:
+                    # Если brand это ID
+                    try:
+                        brand_obj = Brand.objects.get(id=brand.id if hasattr(brand, 'id') else brand)
+                        if brand_obj not in counterparty.brands.all():
+                            raise Exception(
+                                f"Бренд '{brand_obj.name}' не принадлежит арендатору {counterparty}"
+                            )
+                    except Brand.DoesNotExist:
+                        raise Exception(f"Бренд с id {brand} не найден")
+
+            # Создаем связь (проверьте, есть ли поле brand в NomenclatureTenant)
+            NomenclatureTenant.objects.create(
+                nomenclature=nomenclature,
+                tenant=counterparty,
+                floor=floor,
+                brand=brand_obj  # если поле brand существует
+            )
 
     def update(self, instance, validated_data):
         # 1️⃣ ИЗВЛЕКАЕМ ВСЕ ПОЛЯ ДЛЯ РУЧНОЙ ОБРАБОТКИ

@@ -176,11 +176,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         return serializer_class(*args, **kwargs)
 
-
     def get_queryset(self):
-        """
-        Оптимизирует queryset в зависимости от типа запроса.
-        """
+        """Оптимизирует queryset в зависимости от типа запроса."""
         base_qs = super().get_queryset()
 
         # Для поиска - оптимизированный queryset (все нужные поля для ListSerializer)
@@ -191,15 +188,15 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 'legalEntity',
                 'responsible_ad',
             ).prefetch_related(
-                "images",  # Для exterior фото
+                "images",
                 Prefetch(
                     'tenants',
                     queryset=Counterparty.objects.only(
                         'id', 'first_name', 'last_name',
                         'middle_name', 'additional_name', 'keyword'
-                    )
+                    ).prefetch_related('brands')  # Добавляем prefetch для брендов
                 )
-            ).defer(  # Исключаем тяжелые поля, которые не нужны в списке
+            ).defer(
                 'description', 'settings', 'hw_info'
             )
 
@@ -234,7 +231,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     queryset=Counterparty.objects.only(
                         'id', 'first_name', 'last_name',
                         'middle_name', 'additional_name', 'keyword'
-                    )
+                    ).prefetch_related('brands')  # Добавляем prefetch для брендов
                 )
             )
             .annotate(tenants_count=Count("tenants", distinct=True))
@@ -294,6 +291,34 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         # Для единообразия возвращаем в том же формате
         return serializer
+
+    def get_serializer_context(self):
+        """
+        Добавляем в контекст арендатора (legalEntity) для TenantWriteSerializer.
+        """
+        context = super().get_serializer_context()
+
+        # Получаем legal_entity из запроса (если есть)
+        if hasattr(self.request, 'data'):
+            # Для создания новой номенклатуры
+            legal_entity_id = self.request.data.get('legalEntity_id')
+            if legal_entity_id:
+                try:
+                    legal_entity = Counterparty.objects.get(id=legal_entity_id)
+                    context['counterparty'] = legal_entity
+                except Counterparty.DoesNotExist:
+                    pass
+
+            # Для обновления существующей номенклатуры
+            if self.action == 'update' and hasattr(self, 'get_object'):
+                try:
+                    nomenclature = self.get_object()
+                    if nomenclature.legalEntity:
+                        context['counterparty'] = nomenclature.legalEntity
+                except:
+                    pass
+
+        return context
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):
