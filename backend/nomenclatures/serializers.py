@@ -733,27 +733,27 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 raise Exception(f"Арендатор с id {tenant_id} не найден")
 
             # Проверяем бренд
-            brand_obj = None
-            if brand:
-                # Проверяем, что бренд принадлежит этому арендатору
-                # Важно: brand может быть объектом или ID
-                if hasattr(brand, 'id'):
-                    # Если brand уже объект
-                    if brand not in counterparty.brands.all():
-                        raise Exception(
-                            f"Бренд '{brand.name}' не принадлежит арендатору {counterparty}"
-                        )
-                    brand_obj = brand
-                else:
-                    # Если brand это ID
-                    try:
-                        brand_obj = Brand.objects.get(id=brand.id if hasattr(brand, 'id') else brand)
-                        if brand_obj not in counterparty.brands.all():
-                            raise Exception(
-                                f"Бренд '{brand_obj.name}' не принадлежит арендатору {counterparty}"
-                            )
-                    except Brand.DoesNotExist:
-                        raise Exception(f"Бренд с id {brand} не найден")
+            # brand_obj = None
+            # if brand:
+            #     # Проверяем, что бренд принадлежит этому арендатору
+            #     # Важно: brand может быть объектом или ID
+            #     if hasattr(brand, 'id'):
+            #         # Если brand уже объект
+            #         if brand not in counterparty.brands.all():
+            #             raise Exception(
+            #                 f"Бренд '{brand.name}' не принадлежит арендатору {counterparty}"
+            #             )
+            #         brand_obj = brand
+            #     else:
+            #         # Если brand это ID
+            #         try:
+            #             brand_obj = Brand.objects.get(id=brand.id if hasattr(brand, 'id') else brand)
+            #             if brand_obj not in counterparty.brands.all():
+            #                 raise Exception(
+            #                     f"Бренд '{brand_obj.name}' не принадлежит арендатору {counterparty}"
+            #                 )
+            #         except Brand.DoesNotExist:
+            #             raise Exception(f"Бренд с id {brand} не найден")
 
             # Создаем связь (проверьте, есть ли поле brand в NomenclatureTenant)
             NomenclatureTenant.objects.create(
