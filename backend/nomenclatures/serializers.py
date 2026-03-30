@@ -193,49 +193,49 @@ class TenantWriteSerializer(serializers.Serializer):
     floor = serializers.CharField(required=False, allow_blank=True)
     brand = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.none(),
-        source="brand",
+        source="brand_tenant",
         write_only=True,
         required=False,
         allow_null=True,
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Получаем арендатора из контекста
-        counterparty = self.context.get('counterparty')
-
-        if counterparty:
-            # Устанавливаем queryset для brand только из брендов этого арендатора
-            self.fields['brand'].queryset = counterparty.brands.all()
-
-    def validate_brand(self, value):
-        """Валидация бренда"""
-        if value:
-            counterparty = self.context.get('counterparty')
-            if counterparty and value not in counterparty.brands.all():
-                raise serializers.ValidationError(
-                    f"Бренд '{value}' не принадлежит арендатору"
-                )
-        return value
-
-    def validate_id(self, value):
-        """Валидация ID арендатора"""
-        try:
-            counterparty = Counterparty.objects.get(id=value)
-            # Добавляем в контекст для валидации бренда
-            if 'counterparty' not in self.context:
-                self.context['counterparty'] = counterparty
-            return value
-        except Counterparty.DoesNotExist:
-            raise serializers.ValidationError(f"Арендатор с id {value} не найден")
-
-    def to_representation(self, instance):
-        """Если нужно вернуть данные (но обычно для write_only это не нужно)"""
-        return {
-            'id': instance.id,
-            'floor': instance.floor if hasattr(instance, 'floor') else None
-        }
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #
+    #     # Получаем арендатора из контекста
+    #     counterparty = self.context.get('counterparty')
+    #
+    #     if counterparty:
+    #         # Устанавливаем queryset для brand только из брендов этого арендатора
+    #         self.fields['brand'].queryset = counterparty.brands.all()
+    #
+    # def validate_brand(self, value):
+    #     """Валидация бренда"""
+    #     if value:
+    #         counterparty = self.context.get('counterparty')
+    #         if counterparty and value not in counterparty.brands.all():
+    #             raise serializers.ValidationError(
+    #                 f"Бренд '{value}' не принадлежит арендатору"
+    #             )
+    #     return value
+    #
+    # def validate_id(self, value):
+    #     """Валидация ID арендатора"""
+    #     try:
+    #         counterparty = Counterparty.objects.get(id=value)
+    #         # Добавляем в контекст для валидации бренда
+    #         if 'counterparty' not in self.context:
+    #             self.context['counterparty'] = counterparty
+    #         return value
+    #     except Counterparty.DoesNotExist:
+    #         raise serializers.ValidationError(f"Арендатор с id {value} не найден")
+    #
+    # def to_representation(self, instance):
+    #     """Если нужно вернуть данные (но обычно для write_only это не нужно)"""
+    #     return {
+    #         'id': instance.id,
+    #         'floor': instance.floor if hasattr(instance, 'floor') else None
+    #     }
 
 class TypeOfPlaceSerializer(serializers.ModelSerializer):
     class Meta:
