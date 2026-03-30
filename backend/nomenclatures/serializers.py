@@ -525,30 +525,30 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 _validate_collision(settings["custom_volume"])
         return value
 
-    def _set_tenants(self, nomenclature, tenants_data):
-        if not tenants_data:
-            return
-
-        unique_ids = set()
-        objs = []
-
-        for t in tenants_data:
-            tenant_id = t["id"]
-
-            if tenant_id in unique_ids:
-                continue
-
-            unique_ids.add(tenant_id)
-
-            objs.append(
-                NomenclatureTenant(
-                    nomenclature=nomenclature,
-                    tenant_id=tenant_id,
-                    floor=t.get("floor", "")
-                )
-            )
-
-        NomenclatureTenant.objects.bulk_create(objs)
+    # def _set_tenants(self, nomenclature, tenants_data):
+    #     if not tenants_data:
+    #         return
+    #
+    #     unique_ids = set()
+    #     objs = []
+    #
+    #     for t in tenants_data:
+    #         tenant_id = t["id"]
+    #
+    #         if tenant_id in unique_ids:
+    #             continue
+    #
+    #         unique_ids.add(tenant_id)
+    #
+    #         objs.append(
+    #             NomenclatureTenant(
+    #                 nomenclature=nomenclature,
+    #                 tenant_id=tenant_id,
+    #                 floor=t.get("floor", "")
+    #             )
+    #         )
+    #
+    #     NomenclatureTenant.objects.bulk_create(objs)
 
     def create(self, validated_data):
         # Извлекаем все поля, которые нужно обработать отдельно
@@ -717,20 +717,20 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         return nomenclature
 
-    def _set_tenants(self, nomenclature, tenants_data):
-        """
-        Установка арендаторов для номенклатуры с проверкой брендов.
-        """
-        for tenant_data in tenants_data:
-            tenant_id = tenant_data.get('id')
-            floor = tenant_data.get('floor', '')
-            brand = tenant_data.get('brand')  # или brand_id
-
-            # Получаем Counterparty (арендатора)
-            try:
-                counterparty = Counterparty.objects.get(id=tenant_id)
-            except Counterparty.DoesNotExist:
-                raise Exception(f"Арендатор с id {tenant_id} не найден")
+    # def _set_tenants(self, nomenclature, tenants_data):
+    #     """
+    #     Установка арендаторов для номенклатуры с проверкой брендов.
+    #     """
+    #     for tenant_data in tenants_data:
+    #         tenant_id = tenant_data.get('id')
+    #         floor = tenant_data.get('floor', '')
+    #         brand = tenant_data.get('brand')  # или brand_id
+    #
+    #         # Получаем Counterparty (арендатора)
+    #         try:
+    #             counterparty = Counterparty.objects.get(id=tenant_id)
+    #         except Counterparty.DoesNotExist:
+    #             raise Exception(f"Арендатор с id {tenant_id} не найден")
 
             # Проверяем бренд
             # brand_obj = None
@@ -756,11 +756,31 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             #             raise Exception(f"Бренд с id {brand} не найден")
 
             # Создаем связь (проверьте, есть ли поле brand в NomenclatureTenant)
+            # NomenclatureTenant.objects.create(
+            #     nomenclature=nomenclature,
+            #     tenant=counterparty,
+            #     floor=floor,
+            #     brand=brand_obj  # если поле brand существует
+            # )
+    def _set_tenants(self, nomenclature, tenants_data):
+        """Установка арендаторов для номенклатуры"""
+        for tenant_data in tenants_data:
+            tenant_id = tenant_data.get('id')
+            floor = tenant_data.get('floor', '')
+            brand = tenant_data.get('brand')
+
+            # Получаем Counterparty (арендатора)
+            try:
+                counterparty = Counterparty.objects.get(id=tenant_id)
+            except Counterparty.DoesNotExist:
+                raise Exception(f"Арендатор с id {tenant_id} не найден")
+
+            # Создаем связь
             NomenclatureTenant.objects.create(
                 nomenclature=nomenclature,
                 tenant=counterparty,
                 floor=floor,
-                brand=brand_obj  # если поле brand существует
+                brand=brand,  # brand уже является объектом Brand
             )
 
     def update(self, instance, validated_data):

@@ -293,29 +293,19 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return serializer
 
     def get_serializer_context(self):
-        """
-        Добавляем в контекст арендатора (legalEntity) для TenantWriteSerializer.
-        """
         context = super().get_serializer_context()
 
-        # Получаем legal_entity из запроса (если есть)
-        if hasattr(self.request, 'data'):
-            # Для создания новой номенклатуры
+        # Если НЕ нужно фильтровать бренды по арендатору, можно убрать эту логику
+        # или оставить только для других целей
+
+        # Оставляем только если нужно для других целей в сериализаторе
+        if self.action == 'create':
             legal_entity_id = self.request.data.get('legalEntity_id')
             if legal_entity_id:
                 try:
                     legal_entity = Counterparty.objects.get(id=legal_entity_id)
-                    context['counterparty'] = legal_entity
+                    context['counterparty'] = legal_entity  # Оставляем для других полей
                 except Counterparty.DoesNotExist:
-                    pass
-
-            # Для обновления существующей номенклатуры
-            if self.action == 'update' and hasattr(self, 'get_object'):
-                try:
-                    nomenclature = self.get_object()
-                    if nomenclature.legalEntity:
-                        context['counterparty'] = nomenclature.legalEntity
-                except:
                     pass
 
         return context
