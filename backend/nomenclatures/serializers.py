@@ -113,28 +113,33 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
     """Сериализатор для ответа с арендаторами номенклатуры"""
     id = serializers.UUIDField(source='tenant.id', read_only=True)
-    brand_name = serializers.CharField(read_only=True)
+    name = serializers.SerializerMethodField()
     logotype = serializers.SerializerMethodField()
     floor = serializers.CharField(read_only=True)
     atm = serializers.BooleanField(read_only=True)
+    brand_id = serializers.SerializerMethodField()  # Для отладки
 
     class Meta:
         model = NomenclatureTenant
-        fields = ('id', 'brand_name', 'logotype', 'floor', 'atm')
+        fields = ('id', 'name', 'logotype', 'floor', 'atm', 'brand_id')
 
-    def get_brand_name(self, obj):
-        if obj.brand and obj.brand.name:
+    def get_name(self, obj):
+        """Возвращаем имя бренда"""
+        if obj.brand:
             return obj.brand.name
-        return None
+        return f"Бренд не указан (tenant: {obj.tenant.id})"  # Временное сообщение
 
     def get_logotype(self, obj):
         """Возвращаем URL логотипа бренда"""
         if obj.brand and obj.brand.logotype:
-            # Если logotype - это FileField/ImageField
             if hasattr(obj.brand.logotype, 'url'):
                 return obj.brand.logotype.url
             return str(obj.brand.logotype)
         return None
+
+    def get_brand_id(self, obj):
+        """Возвращаем ID бренда для отладки"""
+        return str(obj.brand.id) if obj.brand else None
 
 class NomenclatureSearchSerializer(serializers.ModelSerializer):
     brand_name = serializers.SerializerMethodField()
