@@ -113,7 +113,7 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
     """Сериализатор для ответа с арендаторами номенклатуры"""
     id = serializers.UUIDField(source='tenant.id', read_only=True)
-    name = serializers.SerializerMethodField()
+    brands_list = serializers.SerializerMethodField()
     logotype = serializers.SerializerMethodField()
     floor = serializers.CharField(read_only=True)
     atm = serializers.BooleanField(read_only=True)
@@ -121,9 +121,9 @@ class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NomenclatureTenant
-        fields = ('id', 'name', 'logotype', 'floor', 'atm', 'brand_id')
+        fields = ('id', 'brands_list', 'logotype', 'floor', 'atm', 'brand_id')
 
-    def get_name(self, obj):
+    def get_brands_list(self, obj):
         """Возвращаем имя бренда"""
         if obj.brand:
             return obj.brand.name
