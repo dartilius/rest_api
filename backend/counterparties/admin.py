@@ -19,7 +19,6 @@ class ContactInfoInline(admin.TabularInline):
     )
 
 
-
 # ========= Admin для контрагентов =========
 @admin.register(Counterparty)
 class CounterpartiesAdmin(admin.ModelAdmin):
@@ -30,11 +29,12 @@ class CounterpartiesAdmin(admin.ModelAdmin):
         "code1c",
         "owned_count",
         "rented_count",
+        "brands_count",  # 👈 ИСПРАВЛЕНО: brands_count вместо counter_parties_count
         "counter_parties_count",
     )
 
     search_fields = ("first_name", "middle_name", "last_name", "keyword")
-    readonly_fields = ("show_owned", "show_rented", "code1c", "display_brands", "brand_count")
+    readonly_fields = ("show_owned", "show_rented", "code1c", "display_brands", "brands_count")
     inlines = [ContactInfoInline]
 
     fieldsets = (
@@ -50,7 +50,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
             ),
         }),
         ("Бренды", {
-            "fields": ("display_brands",),
+            "fields": ("display_brands", "brands_count"),  # 👈 Добавлен счетчик брендов
         }),
         ("Описание", {
             "fields": ("description",),
@@ -68,44 +68,54 @@ class CounterpartiesAdmin(admin.ModelAdmin):
 
     # ========= Queryset =========
     def get_queryset(self, request):
-        return Counterparty.active.prefetch_related("brands", "contact_persons", "contacts").select_related("address").all()
+        return Counterparty.active.prefetch_related(
+            "brands",  # 👈 Добавлен prefetch для брендов
+            "contact_persons",
+            "contacts"
+        ).select_related("address").all()
 
     # ========= Бренды =========
     @admin.display(description="Бренды КА")
     def display_brands(self, obj):
+        """Отображение брендов в виде карточек"""
         if not obj or not obj.pk:
             return "—"
+
         qs = obj.brands.all()
         if not qs.exists():
             return "—"
-        # формируем список ссылок на бренды
-        links = format_html_join(
-            "",
-            "<li><a href='/admin/brands/brand/{}/change/'>{}</a></li>",
-            ((b.id, b.name) for b in qs)
-        )
-        return format_html("<ul>{}</ul>", links)
 
-    # ========= Счётчики (ВАЖНО: obj может быть None) =========
-    @admin.display(description="Своих")
+        # Вариант с тегами (более современный вид)
+        badges = format_html_join(
+            "",
+            '<span style="display:inline-block; background:#e9ecef; padding:2px 8px; margin:2px; border-radius:12px; font-size:12px;">'
+            '<a href="/admin/brands/brand/{}/change/" style="text-decoration:none; color:#0066cc;">{}</a>'
+            '</span>',
+            ((str(b.id), b.name) for b in qs)
+        )
+        return format_html("<div>{}</div>", badges)
+
+    @admin.display(description="Количество брендов")
+    def brands_count(self, obj):
+        """Счетчик брендов"""
+        if not obj or not obj.pk:
+            return 0
+        return obj.brands.count()  # 👈 ИСПРАВЛЕНО: brands.count()
+
+    # ========= Счётчики =========
+    @admin.display(description="Своих номенклатур")
     def owned_count(self, obj):
         if not obj or not obj.pk:
             return 0
         return obj.owned_nomenclatures.count()
 
-    @admin.display(description="Бренды")
-    def brand_count(self, obj):
-        if not obj or not obj.pk:
-            return 0
-        return obj.brand_nomenclatures.count()
-
-    @admin.display(description="Арендованных")
+    @admin.display(description="Арендованных номенклатур")
     def rented_count(self, obj):
         if not obj or not obj.pk:
             return 0
         return obj.rented_nomenclatures.count()
 
-    @admin.display(description="КЛ")
+    @admin.display(description="Контактных лиц")
     def counter_parties_count(self, obj):
         if not obj or not obj.pk:
             return 0
@@ -123,10 +133,15 @@ class CounterpartiesAdmin(admin.ModelAdmin):
 
         links = format_html_join(
             "",
-            "<li><a href='/admin/nomenclatures/nomenclature/{}/change/'>{}</a></li>",
-            ((n.id, n.name) for n in qs),
+            "<li><a href='/admin/nomenclatures/nomenclature/{}/change/' target='_blank'>{}</a></li>",
+            ((str(n.id), n.name) for n in qs[:20]),  # 👈 Ограничиваем количество для производительности
         )
-        return format_html("<ul>{}</ul>", links)
+
+        total = qs.count()
+        if total > 20:
+            links += format_html("<li><em>... и еще {} записей</em></li>", total - 20)
+
+        return format_html("<ul style='margin:0; padding-left:20px;'>{}</ul>", links)
 
     @admin.display(description="Арендует")
     def show_rented(self, obj):
@@ -139,7 +154,12 @@ class CounterpartiesAdmin(admin.ModelAdmin):
 
         links = format_html_join(
             "",
-            "<li><a href='/admin/nomenclatures/nomenclature/{}/change/'>{}</a></li>",
-            ((n.id, n.name) for n in qs),
+            "<li><a href='/admin/nomenclatures/nomenclature/{}/change/' target='_blank'>{}</a></li>",
+            ((str(n.id), n.name) for n in qs[:20]),  # 👈 Ограничиваем количество для производительности
         )
-        return format_html("<ul>{}</ul>", links)
+
+        total = qs.count()
+        if total > 20:
+            links += format_html("<li><em>... и еще {} записей</em></li>", total - 20)
+
+        return format_html("<ul style='margin:0; padding-left:20px;'>{}</ul>", links)
