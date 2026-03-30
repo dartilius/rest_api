@@ -34,7 +34,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
     )
 
     search_fields = ("first_name", "middle_name", "last_name", "keyword")
-    readonly_fields = ("show_owned", "show_rented", "code1c", "display_brands")
+    readonly_fields = ("show_owned", "show_rented", "code1c", "display_brands", "brand_count")
     inlines = [ContactInfoInline]
 
     fieldsets = (
@@ -92,6 +92,12 @@ class CounterpartiesAdmin(admin.ModelAdmin):
         if not obj or not obj.pk:
             return 0
         return obj.owned_nomenclatures.count()
+
+    @admin.display(description="Бренды")
+    def brand_count(self, obj):
+        if not obj or not obj.pk:
+            return 0
+        return obj.brand_nomenclatures.count()
 
     @admin.display(description="Арендованных")
     def rented_count(self, obj):
