@@ -292,24 +292,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         # Для единообразия возвращаем в том же формате
         return serializer
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-
-        # Если НЕ нужно фильтровать бренды по арендатору, можно убрать эту логику
-        # или оставить только для других целей
-
-        # Оставляем только если нужно для других целей в сериализаторе
-        if self.action == 'create':
-            legal_entity_id = self.request.data.get('legalEntity_id')
-            if legal_entity_id:
-                try:
-                    legal_entity = Counterparty.objects.get(id=legal_entity_id)
-                    context['counterparty'] = legal_entity  # Оставляем для других полей
-                except Counterparty.DoesNotExist:
-                    pass
-
-        return context
-
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):
         nomenclature = self.get_object()
