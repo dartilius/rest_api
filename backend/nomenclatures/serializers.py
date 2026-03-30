@@ -910,7 +910,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # --- ОБРАБОТКА АРЕНДАТОРОВ ---
         if tenants_id is not None:
             NomenclatureTenant.objects.filter(nomenclature=instance).delete()
-            self._set_tenants(instance, tenants_id)
+            if tenants_id:
+                self._set_tenants(instance, tenants_id)
     
         # 5️⃣ СОХРАНЯЕМ ВСЕ ИЗМЕНЕНИЯ
         instance.save()
