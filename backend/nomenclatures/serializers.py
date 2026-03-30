@@ -216,11 +216,26 @@ class TenantWriteSerializer(serializers.Serializer):
     floor = serializers.CharField(required=False, allow_blank=True)
     brand = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(),
-        source="brand_tenant",
         write_only=True,
         required=False,
         allow_null=True,
     )
+
+    def validate_id(self, value):
+        """Валидация ID арендатора"""
+        try:
+            Counterparty.objects.get(id=value)
+            return value
+        except Counterparty.DoesNotExist:
+            raise serializers.ValidationError(f"Арендатор с id {value} не найден")
+
+    def validate_brand(self, value):
+        """Валидация бренда"""
+        if value:
+            # Проверяем, существует ли бренд
+            if not Brand.objects.filter(id=value.id).exists():
+                raise serializers.ValidationError(f"Бренд с id {value.id} не найден")
+        return value
 
     # def __init__(self, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
@@ -944,11 +959,68 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     
         # --- ОБРАБОТКА АРЕНДАТОРОВ ---
-        if tenants_id is not None:
-            NomenclatureTenant.objects.filter(nomenclature=instance).delete()
-            if tenants_id:
-                self._set_tenants(instance, tenants_id)
-    
+        # if tenants_id is not None:
+        #     NomenclatureTenant.objects.filter(nomenclature=instance).delete()
+        #     if tenants_id:
+        #         self._set_tenants(instance, tenants_id)
+        if 'tenants_id' in self.initial_data:
+            if tenants_id is not None:
+                # Отладка
+                print(f"DEBUG: tenants_id data: {tenants_id}")
+                for t in tenants_id:
+                    print(f"DEBUG: tenant - id: {t.get('id')}, brand: {t.get('brand')}, type: {type(t.get('brand'))}")
+
+                # Получаем существующих арендаторов
+                existing_tenants = {
+                    str(nt.tenant_id): nt for nt in NomenclatureTenant.objects.filter(
+                        nomenclature=instance
+                    )
+                }
+
+                requested_tenant_ids = {str(t.get('id')) for t in tenants_id if t.get('id')}
+
+                # Удаляем тех, кого нет в запросе
+                for tenant_id in list(existing_tenants.keys()):
+                    if tenant_id not in requested_tenant_ids:
+                        existing_tenants[tenant_id].delete()
+                        del existing_tenants[tenant_id]
+
+                # Обновляем или создаем новых
+                for tenant_data in tenants_id:
+                    tenant_id = str(tenant_data.get('id'))
+                    if not tenant_id:
+                        continue
+
+                    floor = tenant_data.get('floor', '')
+                    brand = tenant_data.get('brand')
+
+                    print(f"DEBUG: Processing tenant {tenant_id}, brand: {brand}, type: {type(brand)}")
+
+                    if tenant_id in existing_tenants:
+                        # Обновляем
+                        tenant_relation = existing_tenants[tenant_id]
+                        tenant_relation.floor = floor
+                        tenant_relation.brand = brand
+                        tenant_relation.save()
+                        print(f"DEBUG: Updated existing tenant {tenant_id}, brand: {tenant_relation.brand}")
+                    else:
+                        # Создаем
+                        try:
+                            counterparty = Counterparty.objects.get(id=tenant_id)
+                            new_relation = NomenclatureTenant.objects.create(
+                                nomenclature=instance,
+                                tenant=counterparty,
+                                floor=floor,
+                                brand=brand,
+                            )
+                            print(f"DEBUG: Created new tenant {tenant_id}, brand: {new_relation.brand}")
+                        except Counterparty.DoesNotExist:
+                            raise serializers.ValidationError({
+                                "tenants_id": f"Арендатор с id {tenant_id} не найден"
+                            })
+            else:
+                # tenants_id = null - удаляем всех
+                NomenclatureTenant.objects.filter(nomenclature=instance).delete()
         # 5️⃣ СОХРАНЯЕМ ВСЕ ИЗМЕНЕНИЯ
         instance.save()
     
