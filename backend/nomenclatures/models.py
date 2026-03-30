@@ -2,8 +2,6 @@ import hashlib
 from functools import lru_cache
 from uuid import uuid4
 from django.contrib.postgres.search import SearchVectorField
-
-from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
@@ -148,61 +146,6 @@ class TypeOfPlace(models.Model):
             self.prepositional = "в " + inflect_words(self.name, "loct")
 
         super().save(*args, **kwargs)
-
-
-class MediaStorage(models.Model):
-    class ContentType(models.TextChoices):
-        AUDIO = "audio", "Аудио"
-        VIDEO = "video", "Видео"
-
-    id = UUIDPKField()
-    name = models.CharField(
-        verbose_name="Наименование",
-        max_length=255
-    )
-    code1c = models.CharField(
-        verbose_name="Код 1с",
-        max_length=255,
-        blank=True,
-        null=True
-    )
-
-    content_type = models.CharField(
-        max_length=50,
-        choices=ContentType.choices,
-        default=ContentType.AUDIO,
-        blank=True
-    )
-
-    class Meta:
-        db_table = "media_storage"
-        constraints = [
-            models.UniqueConstraint(
-                fields=['code1c'],
-                name="unique_media_storage_code1c"
-            )
-        ]
-        indexes = [
-            models.Index(fields=['code1c']),
-            models.Index(fields=['name'])
-        ]
-
-class NomenclatureMediaStorage(models.Model):
-    nomenclature = models.ForeignKey(
-        'Nomenclature',
-        on_delete=models.CASCADE
-    )
-
-    media = models.ForeignKey(
-        MediaStorage,
-        on_delete=models.CASCADE
-    )
-
-    class Meta:
-        db_table = "nomenclature_media_storage"
-        unique_together = ('nomenclature', 'media')
-
-
 class NomenclatureTenant(models.Model):
     nomenclature = models.ForeignKey(
         'Nomenclature',
@@ -245,6 +188,19 @@ class Nomenclature(APIBaseObjectModel):
         strict=True
     )
 
+    external_video_media = models.CharField(
+        verbose_name="Видео носители (кол-во внеш.)"
+    )
+    external_audio_media = models.CharField(
+        verbose_name="Аудио носители (кол-во внеш.)"
+    )
+    internal_video_media = models.CharField(
+        verbose_name="Видео носители (кол-во внут.)"
+    )
+    internal_audio_media = models.CharField(
+        verbose_name="Аудио носители (кол-во внут.)"
+    )
+
     worktime_start = models.TimeField(
         auto_now_add=False,
         auto_now=False,
@@ -280,13 +236,6 @@ class Nomenclature(APIBaseObjectModel):
         null=True,
         blank=True,
         verbose_name="Проходимость"
-    )
-
-    media = models.ManyToManyField(
-        'MediaStorage',
-        through='NomenclatureMediaStorage',
-        related_name="nomenclatures",
-        verbose_name="Носители"
     )
 
     article = Article()

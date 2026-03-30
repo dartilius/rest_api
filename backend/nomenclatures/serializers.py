@@ -17,8 +17,6 @@ from nomenclatures.models import (
     AVAILABLE_CONTENT_TYPES,
     TypeOfPlace,
     NomenclatureTenant,
-    MediaStorage,
-    NomenclatureMediaStorage
 )
 from addresses.models import Address as AddressBook
 from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
@@ -200,20 +198,8 @@ class TypeOfPlaceSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ("id",)
 
-class MediaStorageSerializer(serializers.ModelSerializer):
-    class Meta:
-        fields = "__all__"
-        model = MediaStorage
-
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
-    media_ids = serializers.ListField(
-        write_only=True,
-        child=serializers.UUIDField(),
-        required=False
-    )
-    media = MediaStorageSerializer(many=True, read_only=True)
-
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     typeOfPlace_id = serializers.PrimaryKeyRelatedField(
         queryset=TypeOfPlace.objects.all(),
@@ -294,7 +280,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "nameForFront",
             "typeOfPlace",
             "formattedAddress",
-            "media"
         )
         model = Nomenclature
 
