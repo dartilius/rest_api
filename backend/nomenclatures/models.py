@@ -360,6 +360,12 @@ class Nomenclature(APIBaseObjectModel):
         return self.brand.logotype
 
     @property
+    def type_of_place_display(self):
+        if not self.typeOfPlace:
+            return None
+        return self.typeOfPlace.abbreviation or self.typeOfPlace.name
+
+    @property
     def name_for_front(self):
 
         if not self.brand:
