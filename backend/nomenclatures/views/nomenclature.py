@@ -200,7 +200,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     )
                 )
             ).defer(  # Исключаем тяжелые поля, которые не нужны в списке
-                'description', 'settings', 'hw_info', 'media'
+                'description', 'settings', 'hw_info'
             )
 
         # Для обычного списка - полный queryset с сортировкой

@@ -128,6 +128,15 @@ class NomenclatureTenant(models.Model):
         verbose_name="Арендатор"
     )
     floor = models.CharField(max_length=10, blank=True, verbose_name="Этаж")
+    atm = models.BooleanField(verbose_name="Банкомат/терминал", default=False)
+    brand = models.ForeignKey(
+        'Brand',
+        on_delete=models.SET_NULL,
+        verbose_name="Бренд арендатора",
+        null=True,
+        blank=True,
+        related_name='brand_tenant',
+    )
 
     class Meta:
         db_table = "nomenclature_tenant"
@@ -145,6 +154,10 @@ class NomenclatureTenant(models.Model):
             models.Index(fields=['tenant']),
 
             models.Index(fields=['tenant', 'nomenclature']),
+
+            models.Index(fields=['brand']),
+
+            models.Index(fields=['brand', 'tenant']),
         ]
 
 
