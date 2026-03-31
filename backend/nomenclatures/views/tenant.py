@@ -34,6 +34,15 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
     pagination_class = CustomLimitOffsetPagination
+    search_fields = [
+        "tenant__first_name",
+        "tenant__middle_name",
+        "tenant__last_name",
+        "tenant__keyword",
+        "tenant__additional_name",
+        "tenant__brands__name",
+        "brand__name",
+    ]
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
