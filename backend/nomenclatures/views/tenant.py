@@ -75,7 +75,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             "tenant__id",
             "tenant__code1c"
         )
-
+        print("kwarg:", self.kwargs)
         print("nomenclature_filter:", nomenclature_filter, "=", nomenclature_pk)
         print("tenant_filter:", tenant_filter, "=", tenant_pk)
         print("query:", NomenclatureTenant.objects.filter(
