@@ -57,6 +57,8 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         )
 
     def get_object(self):
+        print("KWARGS:", self.kwargs)
+        print("PK:", self.kwargs.get('pk'))
         obj = get_object_or_404(NomenclatureTenant, id=self.kwargs.get('pk'))
         self.check_object_permissions(self.request, obj)
         return obj
