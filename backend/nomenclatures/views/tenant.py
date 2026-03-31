@@ -34,7 +34,6 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
     pagination_class = CustomLimitOffsetPagination
-    lookup_field = "id_or_code1c"
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
