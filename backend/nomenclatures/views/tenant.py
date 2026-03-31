@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from uuid import UUID
 
+from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny
 
 from api.pagination import CustomLimitOffsetPagination
@@ -32,7 +33,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     queryset = NomenclatureTenant.objects.all()
     http_method_names = ["get", "post", "patch", "delete"]
     permission_classes = [AllowAny]
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     pagination_class = CustomLimitOffsetPagination
     search_fields = [
         "tenant__first_name",
