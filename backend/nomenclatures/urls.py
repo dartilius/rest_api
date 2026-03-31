@@ -1,26 +1,8 @@
-# from django.urls import include, path
-# from rest_framework.routers import SimpleRouter
-
-# from nomenclatures.views import (
-#     NomenclatureViewSet, NomenclaturePhotoViewSet,
-#     NomenclatureStatisticViewSet, NomenclatureTaskViewSet
-#     )
-
-# router = SimpleRouter()
-
-# router.register("nomenclatures", NomenclatureViewSet, basename="nomenclatures")
-# router.register('photos', NomenclaturePhotoViewSet, basename='photo')
-# router.register('statistics', NomenclatureStatisticViewSet, basename='statistic')
-# router.register('tasks', NomenclatureTaskViewSet, basename='task')
-
-# urlpatterns = [path("", include(router.urls))]
-
-
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from nomenclatures.views import NomenclatureViewSet, NomenclatureOrderViewSet, NomenclatureStatisticViewSet, \
-    NomenclatureTaskViewSet, NomenclaturePhotoViewSet, TypeOfPlaceViewSet
+    NomenclatureTaskViewSet, NomenclaturePhotoViewSet, TypeOfPlaceViewSet, NomenclatureTenantViewSet
 
 router = DefaultRouter()
 router.register('nomenclatures', NomenclatureViewSet, basename='nomenclature')
@@ -29,6 +11,7 @@ router.register('statistics', NomenclatureStatisticViewSet, basename='statistic'
 router.register('tasks', NomenclatureTaskViewSet, basename='task')
 router.register('photos', NomenclaturePhotoViewSet, basename='photo')
 router.register('place', TypeOfPlaceViewSet, basename='place')
+router.register('tenant', NomenclatureTenantViewSet, basename='tenant')
 
 urlpatterns = [
     path('', include(router.urls)),

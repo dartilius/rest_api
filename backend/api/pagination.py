@@ -1,4 +1,4 @@
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
 from rest_framework.response import Response
 
 
@@ -14,3 +14,9 @@ class PageLimitPagination(PageNumberPagination):
             'results': data,
             **kwargs,
         })
+
+class CustomLimitOffsetPagination(LimitOffsetPagination):
+    default_limit = 25
+    limit_query_param = 'limit'
+    offset_query_param = 'offset'
+    max_limit = 100
