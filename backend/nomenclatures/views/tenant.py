@@ -1,5 +1,8 @@
 from rest_framework import viewsets
 from uuid import UUID
+
+from rest_framework.permissions import AllowAny
+
 from api.pagination import CustomLimitOffsetPagination
 from nomenclatures.models import NomenclatureTenant
 from nomenclatures.serializers import TenantWriteSerializer, NomenclatureTenantResponseSerializer
@@ -19,7 +22,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
 
     queryset = NomenclatureTenant.objects.all()
     http_method_names = ["get", "post", "patch", "delete"]
-    # permission_classes = [SuperuserCUDAuthRetrieve]
+    permission_classes = [AllowAny]
     pagination_class = CustomLimitOffsetPagination
     lookup_field = "id_or_code1c"
 
