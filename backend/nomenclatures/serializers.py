@@ -118,8 +118,8 @@ class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
     floor = serializers.CharField(read_only=True)
     atm = serializers.BooleanField(read_only=True)
     brand_id = serializers.SerializerMethodField()  # Для отладки
-    brand = BrandSerializer(read_only=True)
-    tenant = FullTenantsSerializer(read_only=True)
+    # brand = BrandSerializer(read_only=True)
+    # tenant = FullTenantsSerializer(read_only=True)
 
     class Meta:
         model = NomenclatureTenant

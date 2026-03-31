@@ -64,11 +64,14 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             "nomenclature__id",
             "nomenclature__code1c"
         )
-        return (
+        qs = (
             NomenclatureTenant.objects
             .filter(**{filter_field: nomenclature_pk})
             .select_related("tenant", "brand")
         )
+        print("QS count before search:", qs.count())
+        print("Search param:", self.request.query_params.get('search'))
+        return qs
 
     def get_object(self):
         nomenclature_pk = self.kwargs.get('nomenclature_pk')
