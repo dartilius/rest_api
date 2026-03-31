@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from uuid import UUID
 
@@ -31,11 +32,12 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update"]:
             return TenantWriteSerializer
         return NomenclatureTenantResponseSerializer
-    def get_queryset(self):
-        if self.action != "list":
-            return super().get_queryset()
 
+    def get_queryset(self):
         id_or_code1c = self.kwargs.get('id_or_code1c')
+
+        if not id_or_code1c:
+            return NomenclatureTenant.objects.all()
 
         try:
             UUID(id_or_code1c)
@@ -44,8 +46,13 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             filter_field = "nomenclature__code1c"
 
         return (
-            NomenclatureTenant.objects.filter(
-                **{filter_field: id_or_code1c}
-            ).select_related("tenant", "brand")
+            NomenclatureTenant.objects
+            .filter(**{filter_field: id_or_code1c})
+            .select_related("tenant", "brand")
         )
+
+    def get_object(self):
+        obj = get_object_or_404(NomenclatureTenant, id=self.kwargs.get('id_or_code1c'))
+        self.check_object_permissions(self.request, obj)
+        return obj
 
