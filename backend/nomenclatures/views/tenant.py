@@ -76,6 +76,12 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             "tenant__code1c"
         )
 
+        print("nomenclature_filter:", nomenclature_filter, "=", nomenclature_pk)
+        print("tenant_filter:", tenant_filter, "=", tenant_pk)
+        print("query:", NomenclatureTenant.objects.filter(
+            **{nomenclature_filter: nomenclature_pk, tenant_filter: tenant_pk}
+        ).query)
+
         obj = get_object_or_404(
             NomenclatureTenant,
             **{nomenclature_filter: nomenclature_pk, tenant_filter: tenant_pk}
