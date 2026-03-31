@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from uuid import UUID
@@ -31,6 +32,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     queryset = NomenclatureTenant.objects.all()
     http_method_names = ["get", "post", "patch", "delete"]
     permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend]
     pagination_class = CustomLimitOffsetPagination
     lookup_field = "id_or_code1c"
 
