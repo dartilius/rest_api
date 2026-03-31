@@ -43,9 +43,9 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     @staticmethod
     def _resolve_filter(value, id_field, code1c_field):
         try:
-            UUID(value)
+            UUID(hex=value)
             return id_field
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, TypeError):
             return code1c_field
 
     def get_queryset(self):
