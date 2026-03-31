@@ -16,7 +16,7 @@ class PageLimitPagination(PageNumberPagination):
         })
 
 class CustomLimitOffsetPagination(LimitOffsetPagination):
-    default_limit = 25
+    default_limit = 5
     limit_query_param = 'limit'
     offset_query_param = 'offset'
-    max_limit = 100
+    max_limit = 15
