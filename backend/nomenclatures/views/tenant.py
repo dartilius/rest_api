@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from uuid import UUID
 
@@ -7,9 +8,8 @@ from rest_framework.permissions import AllowAny
 from api.pagination import CustomLimitOffsetPagination
 from nomenclatures.models import NomenclatureTenant
 from nomenclatures.serializers import TenantWriteSerializer, NomenclatureTenantResponseSerializer
-from users.permissions import SuperuserCUDAuthRetrieve
 
-
+@extend_schema(tags=["Номенклатура - Арендаторы"])
 class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     """
     Кастомный viewset для работы с арендаторами места.
