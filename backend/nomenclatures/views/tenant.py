@@ -63,7 +63,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
 
     def get_object(self):
         nomenclature_pk = self.kwargs.get('nomenclature_pk')
-        tenant_pk = self.kwargs.get('id_or_code1c')
+        tenant_pk = self.kwargs.get('pk')
 
         nomenclature_filter = self._resolve_filter(
             nomenclature_pk,
