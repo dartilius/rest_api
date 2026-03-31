@@ -40,25 +40,45 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             return TenantWriteSerializer
         return NomenclatureTenantResponseSerializer
 
-    def get_queryset(self):
-        id_or_code1c = self.kwargs.get('nomenclature_pk')
-
+    @staticmethod
+    def _resolve_filter(value, id_field, code1c_field):
         try:
-            UUID(id_or_code1c)
-            filter_field = "nomenclature__id"
+            UUID(value)
+            return id_field
         except (ValueError, AttributeError):
-            filter_field = "nomenclature__code1c"
+            return code1c_field
 
+    def get_queryset(self):
+        nomenclature_pk = self.kwargs.get('nomenclature_pk')
+        filter_field = self._resolve_filter(
+            nomenclature_pk,
+            "nomenclature__id",
+            "nomenclature__code1c"
+        )
         return (
             NomenclatureTenant.objects
-            .filter(**{filter_field: id_or_code1c})
+            .filter(**{filter_field: nomenclature_pk})
             .select_related("tenant", "brand")
         )
 
     def get_object(self):
-        print("KWARGS:", self.kwargs)
-        print("PK:", self.kwargs.get('pk'))
-        obj = get_object_or_404(NomenclatureTenant, id=self.kwargs.get('pk'))
+        nomenclature_pk = self.kwargs.get('nomenclature_pk')
+        tenant_pk = self.kwargs.get('id_or_code1c')
+
+        nomenclature_filter = self._resolve_filter(
+            nomenclature_pk,
+            "nomenclature__id",
+            "nomenclature__code1c"
+        )
+        tenant_filter = self._resolve_filter(
+            tenant_pk,
+            "tenant__id",
+            "tenant__code1c"
+        )
+
+        obj = get_object_or_404(
+            NomenclatureTenant,
+            **{nomenclature_filter: nomenclature_pk, tenant_filter: tenant_pk}
+        )
         self.check_object_permissions(self.request, obj)
         return obj
-
