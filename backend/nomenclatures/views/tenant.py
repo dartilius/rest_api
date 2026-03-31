@@ -18,7 +18,8 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     """
 
     queryset = NomenclatureTenant.objects.all()
-    permission_classes = [SuperuserCUDAuthRetrieve]
+    http_method_names = ["get", "post", "patch", "delete"]
+    # permission_classes = [SuperuserCUDAuthRetrieve]
     pagination_class = CustomLimitOffsetPagination
     lookup_field = "id_or_code1c"
 
