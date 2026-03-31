@@ -19,6 +19,13 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         - Create: добавить арендатора к номенклатуре (is_super_user)
         - Update: обновить данные (is_super_user)
         - Delete: удалить арендатора из ноиенклатуры (is_super_user)
+
+    Урлы:
+    GET    /api/nomenclatures/{id_or_code1c}/tenant/        # list
+    POST   /api/nomenclatures/{id_or_code1c}/tenant/        # create
+    GET    /api/nomenclatures/{id_or_code1c}/tenant/{id}/   # retrieve
+    PATCH  /api/nomenclatures/{id_or_code1c}/tenant/{id}/   # partial_update
+    DELETE /api/nomenclatures/{id_or_code1c}/tenant/{id}/   # destroy
     """
 
     queryset = NomenclatureTenant.objects.all()
@@ -28,16 +35,12 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     lookup_field = "id_or_code1c"
 
     def get_serializer_class(self):
-        """Выбор сериализатора в зависимости от действия."""
         if self.action in ["create", "update", "partial_update"]:
             return TenantWriteSerializer
         return NomenclatureTenantResponseSerializer
 
     def get_queryset(self):
-        id_or_code1c = self.kwargs.get('id_or_code1c')
-
-        if not id_or_code1c:
-            return NomenclatureTenant.objects.all()
+        id_or_code1c = self.kwargs.get('nomenclature_pk')
 
         try:
             UUID(id_or_code1c)
@@ -52,7 +55,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         )
 
     def get_object(self):
-        obj = get_object_or_404(NomenclatureTenant, id=self.kwargs.get('id_or_code1c'))
+        obj = get_object_or_404(NomenclatureTenant, id=self.kwargs.get('id'))
         self.check_object_permissions(self.request, obj)
         return obj
 
