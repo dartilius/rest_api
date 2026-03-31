@@ -4,9 +4,10 @@ from rest_framework import serializers
 
 from addresses.models import Address
 from brands.models import Brand
-from brands.serializers import BrandShortSerializer
+from brands.serializers import BrandShortSerializer, BrandSerializer
 from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
 from users.models import CustomUser
+from users.serializers import CustomUserShortSerializer
 
 
 class CounterpartyContactInfoSerializer(serializers.ModelSerializer):
@@ -164,3 +165,27 @@ class CounterpartiesListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Counterparty
         fields = ("id", "name", 'contact_persons', 'brands', 'inn')
+
+class FullTenantsSerializer(serializers.ModelSerializer):
+    brands = BrandSerializer(many=True, read_only=True)
+    contact_persons = CustomUserShortSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Counterparty
+        fields = (
+            'id',
+            'code1c',
+            'opf',
+            'inn',
+            'first_name',
+            'middle_name',
+            'last_name',
+            'description',
+            'keyword',
+            'additional_name',
+            'broadcast',
+            'contact_persons',
+            'brands',
+            'is_active',
+            'created',
+        )
