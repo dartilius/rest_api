@@ -4,7 +4,8 @@ from django_filters import (
     AllValuesMultipleFilter, CharFilter, FilterSet, UUIDFilter,
     BaseInFilter, OrderingFilter, BooleanFilter
 )
-from nomenclatures.models import Nomenclature
+from nomenclatures.models import Nomenclature, NomenclatureTenant
+
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
     """Поддерживает фильтрацию UUID через запятую (в URL)."""
@@ -162,6 +163,13 @@ class NomenclatureFilter(FilterSet):
 
         return queryset
 
+
+class NomenclatureTenantFilter(FilterSet):
+    floor = CharFilter(field_name="floor", lookup_expr="exact")
+
+    class Meta:
+        model = NomenclatureTenant
+        fields = ["floor"]
 
 # ==============================================================================
 # ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ (УПРОЩЕННЫЕ)
