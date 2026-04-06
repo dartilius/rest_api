@@ -4,38 +4,22 @@ import logging
 
 from counterparties.models import Counterparty
 from nomenclatures.models import Nomenclature
-from nomenclatures.tasks import update_all_search_vectors_for_instance
 
 logger = logging.getLogger(__name__)
 
+from nomenclatures.tasks import update_opensearch_for_instance
+
 @receiver(post_save, sender=Nomenclature)
 def update_search_vector_signal(sender, instance, **kwargs):
-    """
-    Сигнал для обновления search_vector конкретной номенклатуры
-    """
-    logger.info(f"Сработал сигнал update_search_vector_signal для номенклатуры ID: {instance.id}, created: {kwargs.get('created', False)}")
-    print(f"🔥 СИГНАЛ ВЫЗОВАН: Номенклатура {instance.id} сохранена", flush=True)
+    update_opensearch_for_instance.delay(str(instance.id))
 
-    # Вызываем функцию для обновления search_vector конкретной номенклатуры
-    update_all_search_vectors_for_instance.delay(instance.id)
-
-@receiver(pre_save, sender=Nomenclature)
-def nomenclature_store_old_legal_entity(sender, instance, **kwargs):
-    """
-    Сохраняем старое значение legalEntity, чтобы понять,
-    кого нужно выключить после save.
-    """
-    if not instance.pk:
-        instance._old_legal_entity_id = None
-        return
-
-    instance._old_legal_entity_id = (
-        sender.objects
-        .filter(pk=instance.pk)
-        .values_list("legalEntity_id", flat=True)
-        .first()
-    )
-
+@receiver(post_delete, sender=Nomenclature)
+def delete_from_opensearch(sender, instance, **kwargs):
+    from nomenclatures.documents import NomenclatureDocument
+    try:
+        NomenclatureDocument().update(instance, action='delete')
+    except Exception as e:
+        logger.error(f"Ошибка удаления из OpenSearch: {e}")
 
 @receiver(post_save, sender=Nomenclature)
 def nomenclature_set_broadcast(sender, instance, **kwargs):

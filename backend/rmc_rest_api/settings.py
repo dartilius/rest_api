@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'django_opensearch_dsl'
     'corsheaders',
     'colorfield',
     'django_minio_backend',
@@ -304,6 +305,18 @@ if not DEBUG:
     DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
     FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 
+# ---------------------------- OPENSEARCH SETTINGS -------------------------- #
+OPENSEARCH_DSL = {
+    'default': {
+        'hosts': 'localhost:9200',
+        # для prod с авторизацией:
+        # 'hosts': [{"scheme": "https", "host": "opensearch.host", "port": 9200}],
+        # 'http_auth': ('admin', 'password'),
+        # 'timeout': 30,
+    }
+}
+# Отключаем автосинк — будем синкать через Celery вручную
+OPENSEARCH_DSL_AUTOSYNC = False
 
 # from datetime import timedelta as td
 # from pathlib import Path

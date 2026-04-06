@@ -20,46 +20,51 @@ def full_text_search(queryset, value):
     if not value:
         return queryset
 
-    from django.contrib.postgres.search import SearchQuery, SearchRank, TrigramSimilarity
-    from django.db.models import Q, FloatField, Value
-    from django.db.models.functions import Greatest
+    try:
+        from nomenclatures.documents import NomenclatureDocument
+        from opensearchpy import OpenSearchException
 
-    value = value.strip()
-
-    # Полнотекстовый поиск (точные слова, быстрый)
-    fts_query = SearchQuery(value, config='russian')
-    fts_qs = queryset.filter(search_vector=fts_query)
-
-    # Если FTS дал результаты — возвращаем с ранжированием
-    if fts_qs.exists():
-        return fts_qs.annotate(
-            rank=SearchRank('search_vector', fts_query)
-        ).order_by('-rank')
-
-    # Фолбэк: триграммный поиск по ключевым полям (частичное вхождение)
-    return (
-        queryset
-        .annotate(
-            sim_name=TrigramSimilarity('name', value),
-            sim_brand=TrigramSimilarity('brand__name', value),
-            sim_legal=TrigramSimilarity('legalEntity__first_name', value),
-            sim_code=TrigramSimilarity('code1c', value),
+        search = NomenclatureDocument.search().query(
+            'multi_match',
+            query=value,
+            fields=[
+                'name^3',          # вес: name важнее
+                'brand_name^2',
+                'code1c^3',
+                'legal_entity_name^2',
+                'legal_entity_keyword^2',
+                'type_of_place',
+                'tenants_text',
+                'responsible_radio_name',
+                'responsible_ad_name',
+                'responsible_technic_name',
+                'version',
+            ],
+            type='best_fields',
+            fuzziness='AUTO',      # опечатки
+            prefix_length=1,       # минимум 1 символ точно
         )
-        .filter(
-            Q(sim_name__gt=0.1) |
-            Q(sim_brand__gt=0.1) |
-            Q(sim_legal__gt=0.1) |
-            Q(sim_code__gt=0.1) |
-            # icontains для совсем коротких запросов (< 3 символа)
-            Q(name__icontains=value) |
-            Q(brand__name__icontains=value) |
-            Q(code1c__icontains=value)
+
+        # Получаем IDs из OpenSearch, потом фильтруем Django QS
+        # чтобы сохранить все related/prefetch и фильтры
+        response = search[:200].execute()
+        ids = [hit.meta.id for hit in response]
+
+        if not ids:
+            return queryset.none()
+
+        # Сохраняем порядок из OpenSearch
+        from django.db.models import Case, When
+        preserved_order = Case(
+            *[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]
         )
-        .annotate(
-            best_sim=Greatest('sim_name', 'sim_brand', 'sim_legal', 'sim_code')
-        )
-        .order_by('-best_sim')
-    )
+        return queryset.filter(pk__in=ids).order_by(preserved_order)
+
+    except Exception as e:
+        # Фолбэк на старый поиск если OpenSearch недоступен
+        import logging
+        logging.getLogger(__name__).error(f"OpenSearch недоступен, фолбэк: {e}")
+        return queryset.filter(name__icontains=value)
 
 
 class NomenclatureFilter(FilterSet):
