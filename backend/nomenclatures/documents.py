@@ -30,30 +30,38 @@ def _counterparty_text(cp) -> str:
     ]))
 
 
+def _text_field():
+    """Текстовое поле с автодополнением для частичного поиска."""
+    return fields.TextField(
+        analyzer='autocomplete',
+        search_analyzer='autocomplete_search',
+    )
+
+
 @registry.register_document
 class NomenclatureDocument(Document):
 
     # Бренд
-    brand_name = fields.TextField()
+    brand_name = _text_field()
 
     # Юр. лицо (Counterparty)
-    legal_entity_text = fields.TextField()
+    legal_entity_text = _text_field()
 
     # Тип места
-    type_of_place = fields.TextField()
+    type_of_place = _text_field()
 
     # Тип контента
-    content_type = fields.TextField()
+    content_type = _text_field()
 
     # Ответственные (CustomUser)
-    responsible_radio_text = fields.TextField()
-    responsible_ad_text = fields.TextField()
-    responsible_technic_text = fields.TextField()
-    responsible_technic_on_address_text = fields.TextField()
-    responsible_placement_marketing_text = fields.TextField()
+    responsible_radio_text = _text_field()
+    responsible_ad_text = _text_field()
+    responsible_technic_text = _text_field()
+    responsible_technic_on_address_text = _text_field()
+    responsible_placement_marketing_text = _text_field()
 
     # Арендаторы (Counterparty через NomenclatureTenant)
-    tenants_text = fields.TextField()
+    tenants_text = _text_field()
 
     class Index:
         name = 'nomenclatures'

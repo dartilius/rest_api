@@ -24,70 +24,59 @@ def full_text_search(queryset, value):
 
     try:
         from nomenclatures.documents import NomenclatureDocument
-        from opensearchpy import OpenSearchException
+        from opensearchpy import Q
+
+        fields = [
+            'name^4',
+            'code1c^4',
+            'brand_name^3',
+            'legal_entity_text^2',
+            'type_of_place^2',
+            'content_type',
+            'tenants_text^2',
+            'responsible_radio_text',
+            'responsible_ad_text',
+            'responsible_technic_text',
+            'responsible_technic_on_address_text',
+            'responsible_placement_marketing_text',
+            'version',
+        ]
 
         search = NomenclatureDocument.search().query(
             Q('multi_match',
-              query=value,
-              fields=[
-                  'name^4', 'code1c^4', 'brand_name^3',
-                  'legal_entity_text^2', 'type_of_place^2',
-                  'content_type', 'tenants_text^2',
-                  'responsible_radio_text', 'responsible_ad_text',
-                  'responsible_technic_text',
-                  'responsible_technic_on_address_text',
-                  'responsible_placement_marketing_text',
-                  'version',
-              ],
-              type='best_fields',
-              fuzziness='AUTO',
-              prefix_length=1,
-              ) |
+                query=value,
+                fields=fields,
+                type='best_fields',
+                fuzziness='AUTO',
+                prefix_length=1,
+            ) |
             Q('multi_match',
-              query=value,
-              fields=[
-                  'name^4', 'code1c^4', 'brand_name^3',
-                  'legal_entity_text^2', 'type_of_place^2',
-                  'content_type', 'tenants_text^2',
-                  'responsible_radio_text', 'responsible_ad_text',
-                  'responsible_technic_text',
-                  'responsible_technic_on_address_text',
-                  'responsible_placement_marketing_text',
-                  'version',
-              ],
-              type='phrase_prefix',  # ← ловит частичные совпадения "мои" → "моисеев"
-              max_expansions=50,
-              )
+                query=value,
+                fields=fields,
+                type='phrase_prefix',
+                max_expansions=50,
+            )
         )
 
-        # Получаем IDs из OpenSearch, потом фильтруем Django QS
-        # чтобы сохранить все related/prefetch и фильтры
         response = search[:200].execute()
         ids = [hit.meta.id for hit in response]
 
         logger.info(
-            'OpenSearch: запрос="%s", найдено=%d, ids=%s',
-            value, len(ids), ids[:5]
+            'OpenSearch: запрос="%s", найдено=%d, top_ids=%s',
+            value, len(ids), ids[:5],
         )
-
-
 
         if not ids:
             return queryset.none()
 
-        # Сохраняем порядок из OpenSearch
         from django.db.models import Case, When
         preserved_order = Case(
             *[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]
         )
         return queryset.filter(pk__in=ids).order_by(preserved_order)
 
-
-
     except Exception as e:
-
-        logger.error('OpenSearch недоступен, фолбэк: %s', e)  # если видишь это — идёт фолбэк
-
+        logger.error('OpenSearch недоступен, фолбэк: %s', e)
         return queryset.filter(name__icontains=value)
 
 
