@@ -49,11 +49,16 @@ class NomenclatureDocument(Document):
         fields = ['name', 'version', 'code1c', 'timezone']
         queryset_pagination = 500
 
-    def get_queryset(self):
-        return super().get_queryset().select_related(
-            'brand', 'legalEntity', 'typeOfPlace',
-            'responsible_radio', 'responsible_ad', 'responsible_technic',
-        ).prefetch_related('tenants')
+    def get_queryset(self, **kwargs):
+        return (
+            super()
+            .get_queryset(**kwargs)  # передаём все аргументы в родительский метод
+            .select_related(
+                'brand', 'legalEntity', 'typeOfPlace',
+                'responsible_radio', 'responsible_ad', 'responsible_technic',
+            )
+            .prefetch_related('tenants__tenant')
+        )
 
     def prepare_legal_entity_name(self, instance):
         if instance.legalEntity:
