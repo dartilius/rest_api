@@ -57,7 +57,7 @@ class NomenclatureDocument(Document):
                 'brand', 'legalEntity', 'typeOfPlace',
                 'responsible_radio', 'responsible_ad', 'responsible_technic',
             )
-            .prefetch_related('tenants__tenant')
+            .prefetch_related('tenants')
         )
 
     def prepare_legal_entity_name(self, instance):
@@ -76,16 +76,15 @@ class NomenclatureDocument(Document):
     def prepare_type_of_place(self, instance):
         return instance.typeOfPlace.name if instance.typeOfPlace else ''
 
-    def prepare_tenants_text(self, instance):
+    def prepare_tenants_text(self, instance) -> str:
         parts = []
         for t in instance.tenants.all():
-            tenant = t.tenant
+            # посмотри реальные поля через t.__dict__
             parts.append(' '.join(filter(None, [
-                tenant.first_name,
-                tenant.last_name,
-                tenant.additional_name,
-                tenant.keyword,
-                t.floor,
+                getattr(t, 'first_name', ''),
+                getattr(t, 'last_name', ''),
+                getattr(t, 'additional_name', ''),
+                getattr(t, 'keyword', ''),
             ])))
         return ' '.join(parts)
 
