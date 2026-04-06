@@ -19,7 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
-    'django_opensearch_dsl'
+    'django_opensearch_dsl',
     'corsheaders',
     'colorfield',
     'django_minio_backend',
