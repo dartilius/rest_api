@@ -308,7 +308,7 @@ if not DEBUG:
 # ---------------------------- OPENSEARCH SETTINGS -------------------------- #
 OPENSEARCH_DSL = {
     'default': {
-        'hosts': 'localhost:9200',
+        'hosts': 'opensearch:9200',
         # для prod с авторизацией:
         # 'hosts': [{"scheme": "https", "host": "opensearch.host", "port": 9200}],
         # 'http_auth': ('admin', 'password'),
