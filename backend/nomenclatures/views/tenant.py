@@ -4,10 +4,13 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from uuid import UUID
 
+from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from api.pagination import CustomLimitOffsetPagination
+from nomenclatures.filters import NomenclatureTenantFilter
 from nomenclatures.models import NomenclatureTenant
 from nomenclatures.serializers import TenantWriteSerializer, NomenclatureTenantResponseSerializer
 
@@ -34,6 +37,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "delete"]
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = NomenclatureTenantFilter
     pagination_class = CustomLimitOffsetPagination
     search_fields = [
         "tenant__first_name",
@@ -101,3 +105,17 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         )
         self.check_object_permissions(self.request, obj)
         return obj
+
+    @action(detail=False, methods=["get"], url_path="floors")
+    def floors(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        floors = (
+            qs.exclude(floor="")
+            .values_list("floor", flat=True)
+            .distinct()
+            .order_by("floor")
+        )
+        return Response([
+            {"label": f"Этаж {floor}", "value": floor}
+            for floor in floors
+        ])
