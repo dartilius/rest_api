@@ -19,16 +19,45 @@ def full_text_search(queryset, value):
     if not value:
         return queryset
 
-    from django.contrib.postgres.search import SearchQuery, SearchRank
+    from django.contrib.postgres.search import SearchQuery, SearchRank, TrigramSimilarity
+    from django.db.models import Q, FloatField, Value
+    from django.db.models.functions import Greatest
 
-    query = SearchQuery(value)
+    value = value.strip()
 
-    # Используем существующее поле search_vector, а не создаем новый вектор
+    # Полнотекстовый поиск (точные слова, быстрый)
+    fts_query = SearchQuery(value, config='russian')
+    fts_qs = queryset.filter(search_vector=fts_query)
+
+    # Если FTS дал результаты — возвращаем с ранжированием
+    if fts_qs.exists():
+        return fts_qs.annotate(
+            rank=SearchRank('search_vector', fts_query)
+        ).order_by('-rank')
+
+    # Фолбэк: триграммный поиск по ключевым полям (частичное вхождение)
     return (
         queryset
-        .annotate(rank=SearchRank('search_vector', query))
-        .filter(search_vector=query)
-        .order_by('-rank')
+        .annotate(
+            sim_name=TrigramSimilarity('name', value),
+            sim_brand=TrigramSimilarity('brand__name', value),
+            sim_legal=TrigramSimilarity('legalEntity__first_name', value),
+            sim_code=TrigramSimilarity('code1c', value),
+        )
+        .filter(
+            Q(sim_name__gt=0.1) |
+            Q(sim_brand__gt=0.1) |
+            Q(sim_legal__gt=0.1) |
+            Q(sim_code__gt=0.1) |
+            # icontains для совсем коротких запросов (< 3 символа)
+            Q(name__icontains=value) |
+            Q(brand__name__icontains=value) |
+            Q(code1c__icontains=value)
+        )
+        .annotate(
+            best_sim=Greatest('sim_name', 'sim_brand', 'sim_legal', 'sim_code')
+        )
+        .order_by('-best_sim')
     )
 
 

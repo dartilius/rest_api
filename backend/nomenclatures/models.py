@@ -449,6 +449,9 @@ class Nomenclature(APIBaseObjectModel):
         ]
         indexes = [
             GinIndex(fields=['search_vector'], name='nomenclature_search_gin'),
+            GinIndex(name='nom_name_trgm_idx',
+                     fields=['name'],
+                     opclasses=['gin_trgm_ops']),
             GinIndex(
                 name='nomenclature_search_active_idx',
                 fields=['search_vector'],
