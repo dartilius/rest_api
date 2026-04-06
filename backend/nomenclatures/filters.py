@@ -31,21 +31,23 @@ def full_text_search(queryset, value):
             'multi_match',
             query=value,
             fields=[
-                'name^3',          # вес: name важнее
-                'brand_name^2',
-                'code1c^3',
-                'legal_entity_name^2',
-                'legal_entity_keyword^2',
-                'type_of_place',
-                'tenants_text',
-                'responsible_radio_name',
-                'responsible_ad_name',
-                'responsible_technic_name',
+                'name^4',
+                'code1c^4',
+                'brand_name^3',
+                'legal_entity_text^2',
+                'type_of_place^2',
+                'content_type',
+                'tenants_text^2',
+                'responsible_radio_text',
+                'responsible_ad_text',
+                'responsible_technic_text',
+                'responsible_technic_on_address_text',
+                'responsible_placement_marketing_text',
                 'version',
             ],
             type='best_fields',
-            fuzziness='AUTO',      # опечатки
-            prefix_length=1,       # минимум 1 символ точно
+            fuzziness='AUTO',
+            prefix_length=1,
         )
 
         # Получаем IDs из OpenSearch, потом фильтруем Django QS

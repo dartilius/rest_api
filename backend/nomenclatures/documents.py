@@ -1,32 +1,70 @@
 from django_opensearch_dsl import Document, fields
 from django_opensearch_dsl.registries import registry
-from nomenclatures.models import Nomenclature, NomenclatureTenant
+from nomenclatures.models import Nomenclature
+
+
+def _user_text(user) -> str:
+    """ФИО пользователя для индексации."""
+    if not user:
+        return ''
+    return ' '.join(filter(None, [
+        user.last_name,
+        user.first_name,
+        user.middle_name,
+        user.email,
+    ]))
+
+
+def _counterparty_text(cp) -> str:
+    """Текст контрагента для индексации."""
+    if not cp:
+        return ''
+    return ' '.join(filter(None, [
+        cp.first_name,
+        cp.middle_name,
+        cp.last_name,
+        cp.keyword,
+        cp.additional_name,
+        cp.inn,
+        cp.code1c,
+    ]))
 
 
 @registry.register_document
 class NomenclatureDocument(Document):
 
-    # Связанные поля (денормализуем в индекс)
-    brand_name = fields.TextField(attr='brand.name')
-    legal_entity_name = fields.TextField()
-    legal_entity_keyword = fields.KeywordField()
-    type_of_place = fields.TextField()
-    tenants_text = fields.TextField()
+    # Бренд
+    brand_name = fields.TextField()
 
-    responsible_radio_name = fields.TextField()
-    responsible_ad_name = fields.TextField()
-    responsible_technic_name = fields.TextField()
+    # Юр. лицо (Counterparty)
+    legal_entity_text = fields.TextField()
+
+    # Тип места
+    type_of_place = fields.TextField()
+
+    # Тип контента
+    content_type = fields.TextField()
+
+    # Ответственные (CustomUser)
+    responsible_radio_text = fields.TextField()
+    responsible_ad_text = fields.TextField()
+    responsible_technic_text = fields.TextField()
+    responsible_technic_on_address_text = fields.TextField()
+    responsible_placement_marketing_text = fields.TextField()
+
+    # Арендаторы (Counterparty через NomenclatureTenant)
+    tenants_text = fields.TextField()
 
     class Index:
         name = 'nomenclatures'
         settings = {
             'number_of_shards': 1,
             'number_of_replicas': 0,
+            'knn': True,
             'analysis': {
                 'analyzer': {
-                    # Анализатор с поддержкой частичного вхождения
                     'autocomplete': {
-                        'tokenizer': 'autocomplete_tokenizer',
+                        'tokenizer': 'autocomplete_tok',
                         'filter': ['lowercase'],
                     },
                     'autocomplete_search': {
@@ -34,7 +72,7 @@ class NomenclatureDocument(Document):
                     },
                 },
                 'tokenizer': {
-                    'autocomplete_tokenizer': {
+                    'autocomplete_tok': {
                         'type': 'edge_ngram',
                         'min_gram': 2,
                         'max_gram': 20,
@@ -47,55 +85,70 @@ class NomenclatureDocument(Document):
     class Django:
         model = Nomenclature
         fields = ['name', 'version', 'code1c', 'timezone']
-        queryset_pagination = 500
+        queryset_pagination = 200
 
     def get_queryset(self, **kwargs):
         return (
             super()
-            .get_queryset(**kwargs)  # передаём все аргументы в родительский метод
+            .get_queryset(**kwargs)
             .select_related(
-                'brand', 'legalEntity', 'typeOfPlace',
-                'responsible_radio', 'responsible_ad', 'responsible_technic',
+                'brand',
+                'legalEntity',
+                'typeOfPlace',
+                'responsible_radio',
+                'responsible_ad',
+                'responsible_technic',
+                'responsible_technic_on_address',
+                'responsible_placement_marketing',
             )
-            .prefetch_related('tenants')
+            .prefetch_related(
+                'nomenclature_tenants__tenant',
+            )
         )
 
-    def prepare_legal_entity_name(self, instance):
-        if instance.legalEntity:
-            parts = filter(None, [
-                instance.legalEntity.first_name,
-                instance.legalEntity.last_name,
-                instance.legalEntity.additional_name,
-            ])
-            return ' '.join(parts)
-        return ''
+    # --- prepare_ методы ---
 
-    def prepare_legal_entity_keyword(self, instance):
-        return instance.legalEntity.keyword if instance.legalEntity else ''
+    def prepare_brand_name(self, instance) -> str:
+        if not instance.brand:
+            return ''
+        return ' '.join(filter(None, [
+            instance.brand.name,
+            instance.brand.description,
+            instance.brand.code1c,
+        ]))
 
-    def prepare_type_of_place(self, instance):
-        return instance.typeOfPlace.name if instance.typeOfPlace else ''
+    def prepare_legal_entity_text(self, instance) -> str:
+        return _counterparty_text(instance.legalEntity)
+
+    def prepare_type_of_place(self, instance) -> str:
+        if not instance.typeOfPlace:
+            return ''
+        return ' '.join(filter(None, [
+            instance.typeOfPlace.name,
+            instance.typeOfPlace.abbreviation,
+            instance.typeOfPlace.tariff_single,
+        ]))
+
+    def prepare_content_type(self, instance) -> str:
+        return instance.contentType or ''
+
+    def prepare_responsible_radio_text(self, instance) -> str:
+        return _user_text(instance.responsible_radio)
+
+    def prepare_responsible_ad_text(self, instance) -> str:
+        return _user_text(instance.responsible_ad)
+
+    def prepare_responsible_technic_text(self, instance) -> str:
+        return _user_text(instance.responsible_technic)
+
+    def prepare_responsible_technic_on_address_text(self, instance) -> str:
+        return _user_text(instance.responsible_technic_on_address)
+
+    def prepare_responsible_placement_marketing_text(self, instance) -> str:
+        return _user_text(instance.responsible_placement_marketing)
 
     def prepare_tenants_text(self, instance) -> str:
         parts = []
-        for t in instance.tenants.all():
-            # посмотри реальные поля через t.__dict__
-            parts.append(' '.join(filter(None, [
-                getattr(t, 'first_name', ''),
-                getattr(t, 'last_name', ''),
-                getattr(t, 'additional_name', ''),
-                getattr(t, 'keyword', ''),
-            ])))
-        return ' '.join(parts)
-
-    def prepare_responsible_radio_name(self, instance):
-        r = instance.responsible_radio
-        return f'{r.first_name} {r.last_name}' if r else ''
-
-    def prepare_responsible_ad_name(self, instance):
-        r = instance.responsible_ad
-        return f'{r.first_name} {r.last_name}' if r else ''
-
-    def prepare_responsible_technic_name(self, instance):
-        r = instance.responsible_technic
-        return f'{r.first_name} {r.last_name}' if r else ''
+        for nt in instance.nomenclature_tenants.all():
+            parts.append(_counterparty_text(nt.tenant))
+        return ' '.join(filter(None, parts))
