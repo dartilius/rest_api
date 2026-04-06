@@ -9,61 +9,42 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
-    """Поддерживает фильтрацию UUID через запятую (в URL)."""
-
-    def filter(self, qs, value):
-        if value and isinstance(value, str):
-            # Убираем пустые значения
-            value = [v.strip() for v in value.split(",") if v.strip()]
-        return super().filter(qs, value)
-
 def full_text_search(queryset, value):
     if not value:
         return queryset
 
     try:
         from nomenclatures.documents import NomenclatureDocument
-        from opensearchpy import Q
-
-        fields = [
-            'name^4',
-            'code1c^4',
-            'brand_name^3',
-            'legal_entity_text^2',
-            'type_of_place^2',
-            'content_type',
-            'tenants_text^2',
-            'responsible_radio_text',
-            'responsible_ad_text',
-            'responsible_technic_text',
-            'responsible_technic_on_address_text',
-            'responsible_placement_marketing_text',
-            'version',
-        ]
 
         search = NomenclatureDocument.search().query(
-            Q('multi_match',
-                query=value,
-                fields=fields,
-                type='best_fields',
-                fuzziness='AUTO',
-                prefix_length=1,
-            ) |
-            Q('multi_match',
-                query=value,
-                fields=fields,
-                type='phrase_prefix',
-                max_expansions=50,
-            )
+            'multi_match',
+            query=value,
+            fields=[
+                'name^4',
+                'code1c^4',
+                'brand_name^3',
+                'legal_entity_text^2',
+                'type_of_place^2',
+                'content_type',
+                'tenants_text^2',
+                'responsible_radio_text',
+                'responsible_ad_text',
+                'responsible_technic_text',
+                'responsible_technic_on_address_text',
+                'responsible_placement_marketing_text',
+                'version',
+            ],
+            type='best_fields',
+            fuzziness='AUTO',
+            prefix_length=1,
         )
 
-        response = search[:200].execute()
+        response = search[:1000].execute()  # увеличили с 200 до 1000
         ids = [hit.meta.id for hit in response]
 
         logger.info(
-            'OpenSearch: запрос="%s", найдено=%d, top_ids=%s',
-            value, len(ids), ids[:5],
+            'OpenSearch: запрос="%s", найдено=%d',
+            value, len(ids),
         )
 
         if not ids:
@@ -79,6 +60,14 @@ def full_text_search(queryset, value):
         logger.error('OpenSearch недоступен, фолбэк: %s', e)
         return queryset.filter(name__icontains=value)
 
+class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
+    """Поддерживает фильтрацию UUID через запятую (в URL)."""
+
+    def filter(self, qs, value):
+        if value and isinstance(value, str):
+            # Убираем пустые значения
+            value = [v.strip() for v in value.split(",") if v.strip()]
+        return super().filter(qs, value)
 
 class NomenclatureFilter(FilterSet):
     """

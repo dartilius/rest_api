@@ -75,8 +75,10 @@ class NomenclatureDocument(Document):
                         'tokenizer': 'autocomplete_tok',
                         'filter': ['lowercase'],
                     },
+                    # search анализатор — только lowercase, без ngram
                     'autocomplete_search': {
-                        'tokenizer': 'lowercase',
+                        'tokenizer': 'standard',
+                        'filter': ['lowercase'],
                     },
                 },
                 'tokenizer': {
