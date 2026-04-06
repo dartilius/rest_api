@@ -34,7 +34,7 @@ def _text_field():
     """Текстовое поле с автодополнением для частичного поиска."""
     return fields.TextField(
         analyzer='autocomplete',
-        search_analyzer='autocomplete_search',
+        search_analyzer='standard',
     )
 
 
