@@ -1,8 +1,8 @@
-import uuid
-from django.db import models
+from opensearchpy import Q
+
 from django_filters import (
     AllValuesMultipleFilter, CharFilter, FilterSet, UUIDFilter,
-    BaseInFilter, OrderingFilter, BooleanFilter
+    BaseInFilter, OrderingFilter
 )
 from nomenclatures.models import Nomenclature, NomenclatureTenant
 
@@ -28,26 +28,37 @@ def full_text_search(queryset, value):
         from opensearchpy import OpenSearchException
 
         search = NomenclatureDocument.search().query(
-            'multi_match',
-            query=value,
-            fields=[
-                'name^4',
-                'code1c^4',
-                'brand_name^3',
-                'legal_entity_text^2',
-                'type_of_place^2',
-                'content_type',
-                'tenants_text^2',
-                'responsible_radio_text',
-                'responsible_ad_text',
-                'responsible_technic_text',
-                'responsible_technic_on_address_text',
-                'responsible_placement_marketing_text',
-                'version',
-            ],
-            type='best_fields',
-            fuzziness='AUTO',
-            prefix_length=1,
+            Q('multi_match',
+              query=value,
+              fields=[
+                  'name^4', 'code1c^4', 'brand_name^3',
+                  'legal_entity_text^2', 'type_of_place^2',
+                  'content_type', 'tenants_text^2',
+                  'responsible_radio_text', 'responsible_ad_text',
+                  'responsible_technic_text',
+                  'responsible_technic_on_address_text',
+                  'responsible_placement_marketing_text',
+                  'version',
+              ],
+              type='best_fields',
+              fuzziness='AUTO',
+              prefix_length=1,
+              ) |
+            Q('multi_match',
+              query=value,
+              fields=[
+                  'name^4', 'code1c^4', 'brand_name^3',
+                  'legal_entity_text^2', 'type_of_place^2',
+                  'content_type', 'tenants_text^2',
+                  'responsible_radio_text', 'responsible_ad_text',
+                  'responsible_technic_text',
+                  'responsible_technic_on_address_text',
+                  'responsible_placement_marketing_text',
+                  'version',
+              ],
+              type='phrase_prefix',  # ← ловит частичные совпадения "мои" → "моисеев"
+              max_expansions=50,
+              )
         )
 
         # Получаем IDs из OpenSearch, потом фильтруем Django QS
