@@ -5,7 +5,9 @@ from django_filters import (
     BaseInFilter, OrderingFilter
 )
 from nomenclatures.models import Nomenclature, NomenclatureTenant
+import logging
 
+logger = logging.getLogger(__name__)
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
     """Поддерживает фильтрацию UUID через запятую (в URL)."""
@@ -19,9 +21,6 @@ class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
 def full_text_search(queryset, value):
     if not value:
         return queryset
-
-    import logging
-    logger = logging.getLogger(__name__)
 
     try:
         from nomenclatures.documents import NomenclatureDocument

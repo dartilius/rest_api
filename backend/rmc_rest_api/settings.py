@@ -318,6 +318,28 @@ OPENSEARCH_DSL = {
 # Отключаем автосинк — будем синкать через Celery вручную
 OPENSEARCH_DSL_AUTOSYNC = False
 
+# ---------------------------- LOGGING -------------------------- #
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'nomenclatures': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
+
 # from datetime import timedelta as td
 # from pathlib import Path
 # import os
