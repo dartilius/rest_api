@@ -20,6 +20,9 @@ def full_text_search(queryset, value):
     if not value:
         return queryset
 
+    import logging
+    logger = logging.getLogger(__name__)
+
     try:
         from nomenclatures.documents import NomenclatureDocument
         from opensearchpy import OpenSearchException
@@ -50,6 +53,13 @@ def full_text_search(queryset, value):
         response = search[:200].execute()
         ids = [hit.meta.id for hit in response]
 
+        logger.info(
+            'OpenSearch: запрос="%s", найдено=%d, ids=%s',
+            value, len(ids), ids[:5]
+        )
+
+
+
         if not ids:
             return queryset.none()
 
@@ -60,10 +70,12 @@ def full_text_search(queryset, value):
         )
         return queryset.filter(pk__in=ids).order_by(preserved_order)
 
+
+
     except Exception as e:
-        # Фолбэк на старый поиск если OpenSearch недоступен
-        import logging
-        logging.getLogger(__name__).error(f"OpenSearch недоступен, фолбэк: {e}")
+
+        logger.error('OpenSearch недоступен, фолбэк: %s', e)  # если видишь это — идёт фолбэк
+
         return queryset.filter(name__icontains=value)
 
 
