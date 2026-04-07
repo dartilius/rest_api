@@ -180,10 +180,10 @@ class NomenclatureDocument(Document):
 
         related_models = []
 
-    def get_queryset(self):
+    def get_queryset(self, *args, **kwargs):
         return (
             super()
-            .get_queryset()
+            .get_queryset(*args, **kwargs)
             .select_related(
                 'brand',
                 'legalEntity',
