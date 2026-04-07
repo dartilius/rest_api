@@ -17,7 +17,6 @@ class NomenclatureDocument(Document):
     code1c = fields.TextField(fields={'raw': fields.KeywordField()})
     version = fields.TextField(fields={'raw': fields.KeywordField()})
     description = fields.TextField()
-    article = fields.TextField()
     square = fields.TextField()
     possibility = fields.TextField()
 
@@ -30,15 +29,11 @@ class NomenclatureDocument(Document):
     timezone = fields.KeywordField()
     contentType = fields.KeywordField()
 
-    pricePerMonth = fields.FloatField()
     is_active = fields.BooleanField()
 
     worktime_start = fields.KeywordField()
     worktime_end = fields.KeywordField()
 
-    # --- JSON поля ---
-    settings = fields.ObjectField()
-    hw_info = fields.ObjectField()
 
     # --- Связанные сущности ---
     brand = fields.ObjectField(properties={
@@ -49,12 +44,12 @@ class NomenclatureDocument(Document):
 
     legalEntity = fields.ObjectField(properties={
         'id': fields.KeywordField(),
-        'name': fields.TextField(fields={'raw': fields.KeywordField()}),
-        'short_name': fields.TextField(),
-        'full_name': fields.TextField(),
-        'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
-        'inn': fields.TextField(fields={'raw': fields.KeywordField()}),
-        'kpp': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'first_name': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'middle_name': fields.TextField(),
+        'last_name': fields.TextField(),
+        'description': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'keyword': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'additional_name': fields.TextField(fields={'raw': fields.KeywordField()}),
     })
 
     typeOfPlace = fields.ObjectField(properties={
@@ -113,12 +108,12 @@ class NomenclatureDocument(Document):
     tenants_data = fields.NestedField(properties={
         'tenant': fields.ObjectField(properties={
             'id': fields.KeywordField(),
-            'name': fields.TextField(fields={'raw': fields.KeywordField()}),
-            'short_name': fields.TextField(),
-            'full_name': fields.TextField(),
-            'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
-            'inn': fields.TextField(fields={'raw': fields.KeywordField()}),
-            'kpp': fields.TextField(fields={'raw': fields.KeywordField()}),
+            'first_name': fields.TextField(fields={'raw': fields.KeywordField()}),
+            'middle_name': fields.TextField(),
+            'last_name': fields.TextField(),
+            'description': fields.TextField(fields={'raw': fields.KeywordField()}),
+            'keyword': fields.TextField(fields={'raw': fields.KeywordField()}),
+            'additional_name': fields.TextField(fields={'raw': fields.KeywordField()}),
         }),
         'floor': fields.TextField(fields={'raw': fields.KeywordField()}),
         'atm': fields.BooleanField(),
@@ -216,12 +211,12 @@ class NomenclatureDocument(Document):
 
         return {
             'id': str(instance.legalEntity.id),
-            'name': getattr(instance.legalEntity, 'name', '') or '',
-            'short_name': getattr(instance.legalEntity, 'short_name', '') or '',
-            'full_name': getattr(instance.legalEntity, 'full_name', '') or '',
-            'code1c': getattr(instance.legalEntity, 'code1c', '') or '',
-            'inn': getattr(instance.legalEntity, 'inn', '') or '',
-            'kpp': getattr(instance.legalEntity, 'kpp', '') or '',
+            'first_name': getattr(instance.legalEntity, 'name', '') or '',
+            'middle_name': getattr(instance.legalEntity, 'short_name', '') or '',
+            'last_name': getattr(instance.legalEntity, 'full_name', '') or '',
+            'description': getattr(instance.legalEntity, 'code1c', '') or '',
+            'keyword': getattr(instance.legalEntity, 'inn', '') or '',
+            'additional_name': getattr(instance.legalEntity, 'kpp', '') or '',
         }
 
     def prepare_typeOfPlace(self, instance):
@@ -280,13 +275,13 @@ class NomenclatureDocument(Document):
 
             result.append({
                 'tenant': {
-                    'id': str(tenant.id) if tenant else '',
-                    'name': getattr(tenant, 'name', '') if tenant else '',
-                    'short_name': getattr(tenant, 'short_name', '') if tenant else '',
-                    'full_name': getattr(tenant, 'full_name', '') if tenant else '',
-                    'code1c': getattr(tenant, 'code1c', '') if tenant else '',
-                    'inn': getattr(tenant, 'inn', '') if tenant else '',
-                    'kpp': getattr(tenant, 'kpp', '') if tenant else '',
+                    'id': str(instance.legalEntity.id),
+                    'first_name': getattr(instance.legalEntity, 'name', '') or '',
+                    'middle_name': getattr(instance.legalEntity, 'short_name', '') or '',
+                    'last_name': getattr(instance.legalEntity, 'full_name', '') or '',
+                    'description': getattr(instance.legalEntity, 'code1c', '') or '',
+                    'keyword': getattr(instance.legalEntity, 'inn', '') or '',
+                    'additional_name': getattr(instance.legalEntity, 'kpp', '') or '',
                 },
                 'floor': item.floor or '',
                 'atm': item.atm,
@@ -305,7 +300,6 @@ class NomenclatureDocument(Document):
             instance.code1c or '',
             instance.version or '',
             instance.description or '',
-            instance.article or '',
             instance.square or '',
             instance.possibility or '',
             instance.external_video_media or '',
@@ -338,14 +332,13 @@ class NomenclatureDocument(Document):
         # legalEntity
         if instance.legalEntity:
             parts.extend([
-                getattr(instance.legalEntity, 'name', '') or '',
-                getattr(instance.legalEntity, 'short_name', '') or '',
-                getattr(instance.legalEntity, 'full_name', '') or '',
-                getattr(instance.legalEntity, 'code1c', '') or '',
-                getattr(instance.legalEntity, 'inn', '') or '',
-                getattr(instance.legalEntity, 'kpp', '') or '',
+                getattr(instance.legalEntity, 'first_name', '') or '',
+                getattr(instance.legalEntity, 'first_name', '') or '',
+                getattr(instance.legalEntity, 'middle_name', '') or '',
+                getattr(instance.legalEntity, 'description', '') or '',
+                getattr(instance.legalEntity, 'keyword', '') or '',
+                getattr(instance.legalEntity, 'additional_name', '') or '',
             ])
-
         # users
         users = [
             instance.responsible_radio,
@@ -367,12 +360,12 @@ class NomenclatureDocument(Document):
         for item in instance.nomenclature_tenants.all():
             if item.tenant:
                 parts.extend([
-                    getattr(item.tenant, 'name', '') or '',
-                    getattr(item.tenant, 'short_name', '') or '',
-                    getattr(item.tenant, 'full_name', '') or '',
-                    getattr(item.tenant, 'code1c', '') or '',
-                    getattr(item.tenant, 'inn', '') or '',
-                    getattr(item.tenant, 'kpp', '') or '',
+                    getattr(instance.legalEntity, 'first_name', '') or '',
+                    getattr(instance.legalEntity, 'first_name', '') or '',
+                    getattr(instance.legalEntity, 'middle_name', '') or '',
+                    getattr(instance.legalEntity, 'description', '') or '',
+                    getattr(instance.legalEntity, 'keyword', '') or '',
+                    getattr(instance.legalEntity, 'additional_name', '') or '',
                 ])
 
             if item.brand:
@@ -386,11 +379,5 @@ class NomenclatureDocument(Document):
                 'банкомат' if item.atm else '',
             ])
 
-        # settings / hw_info
-        if instance.settings:
-            parts.append(str(instance.settings))
-
-        if instance.hw_info:
-            parts.append(str(instance.hw_info))
 
         return ' '.join(filter(None, parts))
