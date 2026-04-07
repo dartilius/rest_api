@@ -10,54 +10,47 @@ import logging
 logger = logging.getLogger(__name__)
 
 def full_text_search(queryset, value):
+    """
+    Поиск по OpenSearch через агрегированное поле search_text.
+    Если OpenSearch недоступен — fallback на Django ORM (icontains).
+    """
     if not value:
         return queryset
 
     try:
         from nomenclatures.documents import NomenclatureDocument
+        from elasticsearch import Elasticsearch
+        from elasticsearch.exceptions import ConnectionError as ESConnectionError
 
+        # 🔹 Поиск в OpenSearch по полю search_text
         search = NomenclatureDocument.search().query(
-            'multi_match',
-            query=value,
-            fields=[
-                'name^4',
-                'code1c^4',
-                'brand_name^3',
-                'legal_entity_text^2',
-                'type_of_place^2',
-                'content_type',
-                'tenants_text^2',
-                'responsible_radio_text',
-                'responsible_ad_text',
-                'responsible_technic_text',
-                'responsible_technic_on_address_text',
-                'responsible_placement_marketing_text',
-                'version',
-            ],
-            type='best_fields',
-            fuzziness='AUTO',
-            prefix_length=1,
+            'match',
+            search_text={
+                'query': value,
+                'fuzziness': 'AUTO'
+            }
         )
 
-        response = search[:1000].execute()  # увеличили с 200 до 1000
+        # Лимит на поиск
+        response = search[:1000].execute()
         ids = [hit.meta.id for hit in response]
 
-        logger.info(
-            'OpenSearch: запрос="%s", найдено=%d',
-            value, len(ids),
-        )
+        logger.info('OpenSearch: запрос="%s", найдено=%d', value, len(ids))
 
         if not ids:
             return queryset.none()
 
+        # 🔹 Сохраняем порядок релевантности OpenSearch
         from django.db.models import Case, When
         preserved_order = Case(
             *[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]
         )
+
         return queryset.filter(pk__in=ids).order_by(preserved_order)
 
     except Exception as e:
-        logger.error('OpenSearch недоступен, фолбэк: %s', e)
+        logger.error('OpenSearch недоступен, fallback: %s', e)
+        # 🔹 fallback на обычный Django поиск по имени
         return queryset.filter(name__icontains=value)
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
