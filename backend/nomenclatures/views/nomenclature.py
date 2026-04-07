@@ -12,9 +12,8 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
 )
-from rest_framework.filters import SearchFilter
 from django.db.models import Count, Case, When, Value, IntegerField, Prefetch
-from api.constants import restricted_update, VersionsSerializer
+from api.constants import  VersionsSerializer
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
@@ -24,10 +23,12 @@ from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
     ShortBrandNomenclatureSerializer, PhotoSerializer,
-    NomenclatureSearchSerializer
 )
 from counterparties.models import Counterparty
 from django.core.cache import cache
+from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
+
+from nomenclatures.services.opensearch_search import NomenclatureOpenSearchService
 
 
 @extend_schema_view(
@@ -151,8 +152,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
-    filter_backends = [DjangoFilterBackend, SearchFilter]
-    search_fields = ['search_vector']
+    filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
     CACHE_TIMEOUT = 300
 
@@ -242,44 +242,97 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
         )
 
-
     def list(self, request, *args, **kwargs):
         """
-        Переопределяем list для кэширования результатов поиска.
+        Список номенклатур.
+        Если передан ?search=..., используем OpenSearch.
+        Иначе — обычный queryset + фильтры + пагинация.
         """
-
         search_term = request.query_params.get('search')
 
-        # --- 🔍 РЕЖИМ ПОИСКА С КЭШЕМ ---
+        # --- 🔍 РЕЖИМ ПОИСКА ЧЕРЕЗ OPENSEARCH ---
         if search_term:
-            cache_key = f"nomenclature_search_v2_{hash(search_term)}"
-
+            cache_key = f"nomenclature_search_os_v1_{hash(search_term)}"
             cached_result = cache.get(cache_key)
 
-            # ✅ Проверяем кэш
             if cached_result is not None:
                 return Response(cached_result)
 
-            # Получаем queryset с оптимизациями для поиска
-            queryset = self.filter_queryset(self.get_queryset())[:50]
+            try:
+                os_results = NomenclatureOpenSearchService.search(
+                    query=search_term,
+                    limit=50
+                )
 
-            # Используем NomenclatureListSerializer для сериализации
-            serializer = NomenclatureListSerializer(queryset, many=True)
+                ids = [hit.id for hit in os_results]
 
-            # Формируем ответ в формате пагинации (как ожидает фронтенд)
-            result = {
-                'count': len(serializer.data),
-                'next': None,  # Для поиска пагинация отключена
-                'previous': None,
-                'results': serializer.data
-            }
+                if not ids:
+                    result = {
+                        'count': 0,
+                        'next': None,
+                        'previous': None,
+                        'results': []
+                    }
+                    cache.set(cache_key, result, self.CACHE_TIMEOUT)
+                    return Response(result)
 
-            # Кэшируем результат
-            cache.set(cache_key, result, self.CACHE_TIMEOUT)
+                queryset = (
+                    Nomenclature.active
+                    .filter(id__in=ids)
+                )
 
-            return Response(result)
+                # Применяем обычные django-фильтры ПОВЕРХ результатов OpenSearch
+                filterset = self.filterset_class(
+                    request.query_params,
+                    queryset=queryset,
+                    request=request
+                )
+                queryset = filterset.qs
+                queryset = queryset.select_related(
+                    'brand',
+                    'typeOfPlace',
+                    'legalEntity',
+                    'responsible_ad',
+                ).prefetch_related(
+                    'images',
+                    Prefetch(
+                        'tenants',
+                        queryset=Counterparty.objects.only(
+                            'id', 'first_name', 'last_name',
+                            'middle_name', 'additional_name', 'keyword'
+                        ).prefetch_related('brands')
+                    )
+                ).defer('description', 'settings', 'hw_info')
+                # Сохраняем порядок релевантности OpenSearch
+                preserved = {str(pk): i for i, pk in enumerate(ids)}
+                queryset = sorted(queryset, key=lambda x: preserved.get(str(x.id), 999999))
 
-        # --- 📄 ОБЫЧНЫЙ СПИСОК С ПАГИНАЦИЕЙ ---
+                serializer = NomenclatureListSerializer(queryset, many=True)
+
+                result = {
+                    'count': len(serializer.data),
+                    'next': None,
+                    'previous': None,
+                    'results': serializer.data
+                }
+
+                cache.set(cache_key, result, self.CACHE_TIMEOUT)
+                return Response(result)
+
+            except OpenSearchConnectionError:
+                # fallback если OpenSearch умер
+                queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
+                serializer = NomenclatureListSerializer(queryset, many=True)
+
+                result = {
+                    'count': len(serializer.data),
+                    'next': None,
+                    'previous': None,
+                    'results': serializer.data
+                }
+                return Response(result)
+
+        # --- 📄 ОБЫЧНЫЙ СПИСОК ---
         queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
@@ -288,9 +341,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
 
         serializer = NomenclatureListSerializer(queryset, many=True)
-
-        # Для единообразия возвращаем в том же формате
-        return serializer
+        return Response(serializer.data)
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):

@@ -1,88 +1,173 @@
 from django_opensearch_dsl import Document, fields
 from django_opensearch_dsl.registries import registry
 
-from nomenclatures.models import Nomenclature
-
-
-def _user_text(user) -> str:
-    if not user:
-        return ''
-    return ' '.join(filter(None, [
-        user.last_name,
-        user.first_name,
-        user.middle_name,
-        user.email,
-    ]))
-
-
-def _counterparty_text(cp) -> str:
-    if not cp:
-        return ''
-    return ' '.join(filter(None, [
-        cp.first_name,
-        cp.middle_name,
-        cp.last_name,
-        cp.keyword,
-        cp.additional_name,
-        cp.inn,
-        cp.code1c,
-    ]))
-
-
-def _text_field():
-    return fields.TextField(
-        analyzer='autocomplete',
-        search_analyzer='autocomplete_search',
-    )
+from .models import Nomenclature
 
 
 @registry.register_document
 class NomenclatureDocument(Document):
-    # ОСНОВНЫЕ ПОЛЯ
-    name = _text_field()
-    version = _text_field()
-    code1c = _text_field()
-    timezone = _text_field()
-    contentType = _text_field()
-    id_rasb = _text_field()
+    # --- Простые поля модели ---
+    id = fields.KeywordField()
+    name = fields.TextField(
+        fields={
+            'raw': fields.KeywordField(),
+            'suggest': fields.CompletionField(),
+        }
+    )
+    code1c = fields.TextField(fields={'raw': fields.KeywordField()})
+    version = fields.TextField(fields={'raw': fields.KeywordField()})
+    description = fields.TextField()
+    article = fields.TextField()
+    square = fields.TextField()
+    possibility = fields.TextField()
 
-    # ДОП. ПОЛЯ
-    brand_name = _text_field()
-    legal_entity_text = _text_field()
-    type_of_place = _text_field()
-    content_type = _text_field()
+    external_video_media = fields.TextField()
+    external_audio_media = fields.TextField()
+    internal_video_media = fields.TextField()
+    internal_audio_media = fields.TextField()
 
-    responsible_radio_text = _text_field()
-    responsible_ad_text = _text_field()
-    responsible_technic_text = _text_field()
-    responsible_technic_on_address_text = _text_field()
-    responsible_placement_marketing_text = _text_field()
+    id_rasb = fields.TextField(fields={'raw': fields.KeywordField()})
+    timezone = fields.KeywordField()
+    contentType = fields.KeywordField()
 
-    tenants_text = _text_field()
+    pricePerMonth = fields.FloatField()
+    is_active = fields.BooleanField()
+
+    worktime_start = fields.KeywordField()
+    worktime_end = fields.KeywordField()
+
+    # --- JSON поля ---
+    settings = fields.ObjectField()
+    hw_info = fields.ObjectField()
+
+    # --- Связанные сущности ---
+    brand = fields.ObjectField(properties={
+        'id': fields.KeywordField(),
+        'name': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
+    })
+
+    legalEntity = fields.ObjectField(properties={
+        'id': fields.KeywordField(),
+        'name': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'short_name': fields.TextField(),
+        'full_name': fields.TextField(),
+        'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'inn': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'kpp': fields.TextField(fields={'raw': fields.KeywordField()}),
+    })
+
+    typeOfPlace = fields.ObjectField(properties={
+        'id': fields.KeywordField(),
+        'name': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'abbreviation': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'display_name': fields.TextField(),
+        'tariff': fields.TextField(),
+        'tariff_single': fields.TextField(),
+        'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'is_mall': fields.BooleanField(),
+        'is_active': fields.BooleanField(),
+    })
+
+    responsible_radio = fields.ObjectField(properties={
+        'id': fields.KeywordField(),
+        'email': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'first_name': fields.TextField(),
+        'last_name': fields.TextField(),
+        'full_name': fields.TextField(),
+    })
+
+    responsible_ad = fields.ObjectField(properties={
+        'id': fields.KeywordField(),
+        'email': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'first_name': fields.TextField(),
+        'last_name': fields.TextField(),
+        'full_name': fields.TextField(),
+    })
+
+    responsible_technic = fields.ObjectField(properties={
+        'id': fields.KeywordField(),
+        'email': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'first_name': fields.TextField(),
+        'last_name': fields.TextField(),
+        'full_name': fields.TextField(),
+    })
+
+    responsible_technic_on_address = fields.ObjectField(properties={
+        'id': fields.KeywordField(),
+        'email': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'first_name': fields.TextField(),
+        'last_name': fields.TextField(),
+        'full_name': fields.TextField(),
+    })
+
+    responsible_placement_marketing = fields.ObjectField(properties={
+        'id': fields.KeywordField(),
+        'email': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'first_name': fields.TextField(),
+        'last_name': fields.TextField(),
+        'full_name': fields.TextField(),
+    })
+
+    # --- Вложенные арендаторы ---
+    tenants_data = fields.NestedField(properties={
+        'tenant': fields.ObjectField(properties={
+            'id': fields.KeywordField(),
+            'name': fields.TextField(fields={'raw': fields.KeywordField()}),
+            'short_name': fields.TextField(),
+            'full_name': fields.TextField(),
+            'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
+            'inn': fields.TextField(fields={'raw': fields.KeywordField()}),
+            'kpp': fields.TextField(fields={'raw': fields.KeywordField()}),
+        }),
+        'floor': fields.TextField(fields={'raw': fields.KeywordField()}),
+        'atm': fields.BooleanField(),
+        'brand': fields.ObjectField(properties={
+            'id': fields.KeywordField(),
+            'name': fields.TextField(fields={'raw': fields.KeywordField()}),
+            'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
+        })
+    })
+
+    # --- Общее агрегированное поле для "искать вообще везде" ---
+    search_text = fields.TextField()
 
     class Index:
-        name = 'nomenclatures'
+        name = 'nomenclature'
         settings = {
             'number_of_shards': 1,
             'number_of_replicas': 0,
-            'knn': True,
             'analysis': {
-                'analyzer': {
-                    'autocomplete': {
-                        'tokenizer': 'autocomplete_tok',
-                        'filter': ['lowercase'],
+                'filter': {
+                    'russian_stop': {
+                        'type': 'stop',
+                        'stopwords': '_russian_'
                     },
-                    'autocomplete_search': {
-                        'tokenizer': 'standard',
-                        'filter': ['lowercase'],
+                    'russian_stemmer': {
+                        'type': 'stemmer',
+                        'language': 'russian'
                     },
-                },
-                'tokenizer': {
-                    'autocomplete_tok': {
-                        'type': 'ngram',
+                    'edge_ngram_filter': {
+                        'type': 'edge_ngram',
                         'min_gram': 2,
-                        'max_gram': 20,
-                        'token_chars': ['letter', 'digit'],
+                        'max_gram': 20
+                    }
+                },
+                'analyzer': {
+                    'ru_text_analyzer': {
+                        'tokenizer': 'standard',
+                        'filter': [
+                            'lowercase',
+                            'russian_stop',
+                            'russian_stemmer'
+                        ]
+                    },
+                    'ru_ngram_analyzer': {
+                        'tokenizer': 'standard',
+                        'filter': [
+                            'lowercase',
+                            'edge_ngram_filter'
+                        ]
                     }
                 }
             }
@@ -90,27 +175,18 @@ class NomenclatureDocument(Document):
 
     class Django:
         model = Nomenclature
-        queryset_pagination = 1000
+
         fields = [
-            'name^5',
-            'code1c^4',
-            'brand_name^3',
-            'legal_entity_text^3',
-            'type_of_place^2',
-            'content_type^2',
-            'tenants_text^3',
-            'responsible_radio_text',
-            'responsible_ad_text',
-            'responsible_technic_text',
-            'responsible_technic_on_address_text',
-            'responsible_placement_marketing_text',
-            'version',
+            'created',
+            'updated',
         ]
 
-    def get_queryset(self, **kwargs):
+        related_models = []
+
+    def get_queryset(self):
         return (
             super()
-            .get_queryset(**kwargs)
+            .get_queryset()
             .select_related(
                 'brand',
                 'legalEntity',
@@ -123,50 +199,201 @@ class NomenclatureDocument(Document):
             )
             .prefetch_related(
                 'nomenclature_tenants__tenant',
+                'nomenclature_tenants__brand',
             )
         )
 
-    def prepare_brand_name(self, instance) -> str:
+    def prepare_brand(self, instance):
         if not instance.brand:
-            return ''
-        return ' '.join(filter(None, [
-            instance.brand.name,
-            instance.brand.description,
-            instance.brand.code1c,
-        ]))
+            return None
 
-    def prepare_legal_entity_text(self, instance) -> str:
-        return _counterparty_text(instance.legalEntity)
+        return {
+            'id': str(instance.brand.id),
+            'name': getattr(instance.brand, 'name', '') or '',
+            'code1c': getattr(instance.brand, 'code1c', '') or '',
+        }
 
-    def prepare_type_of_place(self, instance) -> str:
+    def prepare_legalEntity(self, instance):
+        if not instance.legalEntity:
+            return None
+
+        return {
+            'id': str(instance.legalEntity.id),
+            'name': getattr(instance.legalEntity, 'name', '') or '',
+            'short_name': getattr(instance.legalEntity, 'short_name', '') or '',
+            'full_name': getattr(instance.legalEntity, 'full_name', '') or '',
+            'code1c': getattr(instance.legalEntity, 'code1c', '') or '',
+            'inn': getattr(instance.legalEntity, 'inn', '') or '',
+            'kpp': getattr(instance.legalEntity, 'kpp', '') or '',
+        }
+
+    def prepare_typeOfPlace(self, instance):
         if not instance.typeOfPlace:
-            return ''
-        return ' '.join(filter(None, [
-            instance.typeOfPlace.name,
-            instance.typeOfPlace.abbreviation,
-            instance.typeOfPlace.tariff_single,
-        ]))
+            return None
 
-    def prepare_content_type(self, instance) -> str:
-        return instance.contentType or ''
+        return {
+            'id': str(instance.typeOfPlace.id),
+            'name': instance.typeOfPlace.name or '',
+            'abbreviation': instance.typeOfPlace.abbreviation or '',
+            'display_name': instance.typeOfPlace.display_name or '',
+            'tariff': instance.typeOfPlace.tariff or '',
+            'tariff_single': instance.typeOfPlace.tariff_single or '',
+            'code1c': instance.typeOfPlace.code1c or '',
+            'is_mall': instance.typeOfPlace.is_mall,
+            'is_active': instance.typeOfPlace.is_active,
+        }
 
-    def prepare_responsible_radio_text(self, instance) -> str:
-        return _user_text(instance.responsible_radio)
+    def _prepare_user(self, user):
+        if not user:
+            return None
 
-    def prepare_responsible_ad_text(self, instance) -> str:
-        return _user_text(instance.responsible_ad)
+        first_name = getattr(user, 'first_name', '') or ''
+        last_name = getattr(user, 'last_name', '') or ''
+        full_name = f'{first_name} {last_name}'.strip()
 
-    def prepare_responsible_technic_text(self, instance) -> str:
-        return _user_text(instance.responsible_technic)
+        return {
+            'id': str(user.id),
+            'email': getattr(user, 'email', '') or '',
+            'first_name': first_name,
+            'last_name': last_name,
+            'full_name': full_name,
+        }
 
-    def prepare_responsible_technic_on_address_text(self, instance) -> str:
-        return _user_text(instance.responsible_technic_on_address)
+    def prepare_responsible_radio(self, instance):
+        return self._prepare_user(instance.responsible_radio)
 
-    def prepare_responsible_placement_marketing_text(self, instance) -> str:
-        return _user_text(instance.responsible_placement_marketing)
+    def prepare_responsible_ad(self, instance):
+        return self._prepare_user(instance.responsible_ad)
 
-    def prepare_tenants_text(self, instance) -> str:
-        parts = []
-        for nt in instance.nomenclature_tenants.all():
-            parts.append(_counterparty_text(nt.tenant))
+    def prepare_responsible_technic(self, instance):
+        return self._prepare_user(instance.responsible_technic)
+
+    def prepare_responsible_technic_on_address(self, instance):
+        return self._prepare_user(instance.responsible_technic_on_address)
+
+    def prepare_responsible_placement_marketing(self, instance):
+        return self._prepare_user(instance.responsible_placement_marketing)
+
+    def prepare_tenants_data(self, instance):
+        result = []
+
+        for item in instance.nomenclature_tenants.all():
+            tenant = item.tenant
+            brand = item.brand
+
+            result.append({
+                'tenant': {
+                    'id': str(tenant.id) if tenant else '',
+                    'name': getattr(tenant, 'name', '') if tenant else '',
+                    'short_name': getattr(tenant, 'short_name', '') if tenant else '',
+                    'full_name': getattr(tenant, 'full_name', '') if tenant else '',
+                    'code1c': getattr(tenant, 'code1c', '') if tenant else '',
+                    'inn': getattr(tenant, 'inn', '') if tenant else '',
+                    'kpp': getattr(tenant, 'kpp', '') if tenant else '',
+                },
+                'floor': item.floor or '',
+                'atm': item.atm,
+                'brand': {
+                    'id': str(brand.id) if brand else '',
+                    'name': getattr(brand, 'name', '') if brand else '',
+                    'code1c': getattr(brand, 'code1c', '') if brand else '',
+                } if brand else None
+            })
+
+        return result
+
+    def prepare_search_text(self, instance):
+        parts = [
+            instance.name or '',
+            instance.code1c or '',
+            instance.version or '',
+            instance.description or '',
+            instance.article or '',
+            instance.square or '',
+            instance.possibility or '',
+            instance.external_video_media or '',
+            instance.external_audio_media or '',
+            instance.internal_video_media or '',
+            instance.internal_audio_media or '',
+            instance.id_rasb or '',
+            instance.timezone or '',
+            instance.contentType or '',
+        ]
+
+        # typeOfPlace
+        if instance.typeOfPlace:
+            parts.extend([
+                instance.typeOfPlace.name or '',
+                instance.typeOfPlace.abbreviation or '',
+                instance.typeOfPlace.display_name or '',
+                instance.typeOfPlace.tariff or '',
+                instance.typeOfPlace.tariff_single or '',
+                instance.typeOfPlace.code1c or '',
+            ])
+
+        # brand
+        if instance.brand:
+            parts.extend([
+                getattr(instance.brand, 'name', '') or '',
+                getattr(instance.brand, 'code1c', '') or '',
+            ])
+
+        # legalEntity
+        if instance.legalEntity:
+            parts.extend([
+                getattr(instance.legalEntity, 'name', '') or '',
+                getattr(instance.legalEntity, 'short_name', '') or '',
+                getattr(instance.legalEntity, 'full_name', '') or '',
+                getattr(instance.legalEntity, 'code1c', '') or '',
+                getattr(instance.legalEntity, 'inn', '') or '',
+                getattr(instance.legalEntity, 'kpp', '') or '',
+            ])
+
+        # users
+        users = [
+            instance.responsible_radio,
+            instance.responsible_ad,
+            instance.responsible_technic,
+            instance.responsible_technic_on_address,
+            instance.responsible_placement_marketing,
+        ]
+
+        for user in users:
+            if user:
+                parts.extend([
+                    getattr(user, 'email', '') or '',
+                    getattr(user, 'first_name', '') or '',
+                    getattr(user, 'last_name', '') or '',
+                ])
+
+        # tenants
+        for item in instance.nomenclature_tenants.all():
+            if item.tenant:
+                parts.extend([
+                    getattr(item.tenant, 'name', '') or '',
+                    getattr(item.tenant, 'short_name', '') or '',
+                    getattr(item.tenant, 'full_name', '') or '',
+                    getattr(item.tenant, 'code1c', '') or '',
+                    getattr(item.tenant, 'inn', '') or '',
+                    getattr(item.tenant, 'kpp', '') or '',
+                ])
+
+            if item.brand:
+                parts.extend([
+                    getattr(item.brand, 'name', '') or '',
+                    getattr(item.brand, 'code1c', '') or '',
+                ])
+
+            parts.extend([
+                item.floor or '',
+                'банкомат' if item.atm else '',
+            ])
+
+        # settings / hw_info
+        if instance.settings:
+            parts.append(str(instance.settings))
+
+        if instance.hw_info:
+            parts.append(str(instance.hw_info))
+
         return ' '.join(filter(None, parts))
