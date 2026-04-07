@@ -181,7 +181,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         base_qs = super().get_queryset()
 
         # Для поиска - оптимизированный queryset (все нужные поля для ListSerializer)
-        if self.action == "list" and self.request.query_params.get('search'):
+        if self.action == "list" and self.request.query_params.get('search_text'):
             return base_qs.select_related(
                 'brand',
                 'typeOfPlace',

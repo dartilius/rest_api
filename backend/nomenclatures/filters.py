@@ -1,13 +1,19 @@
-from opensearchpy import Q
+import logging
 
 from django_filters import (
     AllValuesMultipleFilter, CharFilter, FilterSet, UUIDFilter,
     BaseInFilter, OrderingFilter
 )
+
 from nomenclatures.models import Nomenclature, NomenclatureTenant
+
+logger = logging.getLogger(__name__)
+
+import uuid
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 def full_text_search(queryset, value):
     """
@@ -25,12 +31,13 @@ def full_text_search(queryset, value):
             'match',
             search_text={
                 'query': value,
-                'fuzziness': 'AUTO'
+                'fuzziness': 'AUTO',
+                'operator': 'and'
             }
         )
 
         response = search[:1000].execute()  # лимит
-        ids = [hit.meta.id for hit in response]
+        ids = [uuid.UUID(hit.meta.id) for hit in response]  # UUID преобразуем
 
         logger.info('OpenSearch: запрос="%s", найдено=%d', value, len(ids))
 
@@ -46,7 +53,11 @@ def full_text_search(queryset, value):
 
     except Exception as e:
         logger.error('OpenSearch недоступен, fallback: %s', e)
-        return queryset.filter(name__icontains=value)
+        # ORM fallback: ищем по нескольким полям
+        return queryset.filter(
+            name__icontains=value
+        )
+
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
     """Поддерживает фильтрацию UUID через запятую (в URL)."""
@@ -56,6 +67,7 @@ class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
             # Убираем пустые значения
             value = [v.strip() for v in value.split(",") if v.strip()]
         return super().filter(qs, value)
+
 
 class NomenclatureFilter(FilterSet):
     """
@@ -69,7 +81,7 @@ class NomenclatureFilter(FilterSet):
     # СУЩЕСТВУЮЩИЕ ФИЛЬТРЫ НОМЕНКЛАТУР
     # ==========================================================================
 
-    search = CharFilter(method='filter_full_text',  label='Универсальный поиск')
+    search = CharFilter(method='filter_full_text', label='Универсальный поиск')
 
     versions = AllValuesMultipleFilter(field_name='version')
     version = CharFilter(field_name='version', lookup_expr='icontains')
@@ -161,7 +173,6 @@ class NomenclatureFilter(FilterSet):
         else:
             return queryset
 
-
     @property
     def qs(self):
         """
@@ -194,6 +205,7 @@ class NomenclatureTenantFilter(FilterSet):
     class Meta:
         model = NomenclatureTenant
         fields = ["floor"]
+
 
 # ==============================================================================
 # ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ (УПРОЩЕННЫЕ)
