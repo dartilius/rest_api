@@ -18,22 +18,8 @@ class NomenclatureDocument(Document):
     version = fields.TextField(fields={'raw': fields.KeywordField()})
     description = fields.TextField()
     square = fields.TextField()
-    possibility = fields.TextField()
-
-    external_video_media = fields.TextField()
-    external_audio_media = fields.TextField()
-    internal_video_media = fields.TextField()
-    internal_audio_media = fields.TextField()
 
     id_rasb = fields.TextField(fields={'raw': fields.KeywordField()})
-    timezone = fields.KeywordField()
-    contentType = fields.KeywordField()
-
-    is_active = fields.BooleanField()
-
-    worktime_start = fields.KeywordField()
-    worktime_end = fields.KeywordField()
-
 
     # --- Связанные сущности ---
     brand = fields.ObjectField(properties={
@@ -61,7 +47,6 @@ class NomenclatureDocument(Document):
         'tariff_single': fields.TextField(),
         'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
         'is_mall': fields.BooleanField(),
-        'is_active': fields.BooleanField(),
     })
 
     responsible_radio = fields.ObjectField(properties={
@@ -232,7 +217,6 @@ class NomenclatureDocument(Document):
             'tariff_single': instance.typeOfPlace.tariff_single or '',
             'code1c': instance.typeOfPlace.code1c or '',
             'is_mall': instance.typeOfPlace.is_mall,
-            'is_active': instance.typeOfPlace.is_active,
         }
 
     def _prepare_user(self, user):
@@ -300,15 +284,7 @@ class NomenclatureDocument(Document):
             instance.code1c or '',
             instance.version or '',
             instance.description or '',
-            instance.square or '',
-            instance.possibility or '',
-            instance.external_video_media or '',
-            instance.external_audio_media or '',
-            instance.internal_video_media or '',
-            instance.internal_audio_media or '',
             instance.id_rasb or '',
-            instance.timezone or '',
-            instance.contentType or '',
         ]
 
         # typeOfPlace
