@@ -4,13 +4,8 @@ from django_filters import (
     AllValuesMultipleFilter, CharFilter, FilterSet, UUIDFilter,
     BaseInFilter, OrderingFilter
 )
-
-from nomenclatures.models import Nomenclature, NomenclatureTenant
-
-logger = logging.getLogger(__name__)
-
 import uuid
-import logging
+from nomenclatures.models import Nomenclature, NomenclatureTenant
 
 logger = logging.getLogger(__name__)
 
