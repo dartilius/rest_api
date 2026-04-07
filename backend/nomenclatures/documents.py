@@ -101,41 +101,24 @@ class NomenclatureDocument(Document):
     search_text = fields.TextField(analyzer='ru_ngram_analyzer')
 
     class Index:
-        name = 'nomenclature'
+        name = 'nomenclature'  # имя индекса
         settings = {
             'number_of_shards': 1,
             'number_of_replicas': 0,
             'analysis': {
                 'filter': {
-                    'russian_stop': {
-                        'type': 'stop',
-                        'stopwords': '_russian_'
-                    },
-                    'russian_stemmer': {
-                        'type': 'stemmer',
-                        'language': 'russian'
-                    },
-                    'edge_ngram_filter': {
-                        'type': 'edge_ngram',
-                        'min_gram': 2,
-                        'max_gram': 20
-                    }
+                    'russian_stop': {'type': 'stop', 'stopwords': '_russian_'},
+                    'russian_stemmer': {'type': 'stemmer', 'language': 'russian'},
+                    'edge_ngram_filter': {'type': 'edge_ngram', 'min_gram': 2, 'max_gram': 20}
                 },
                 'analyzer': {
                     'ru_text_analyzer': {
                         'tokenizer': 'standard',
-                        'filter': [
-                            'lowercase',
-                            'russian_stop',
-                            'russian_stemmer'
-                        ]
+                        'filter': ['lowercase', 'russian_stop', 'russian_stemmer']
                     },
                     'ru_ngram_analyzer': {
                         'tokenizer': 'standard',
-                        'filter': [
-                            'lowercase',
-                            'edge_ngram_filter'
-                        ]
+                        'filter': ['lowercase', 'edge_ngram_filter']
                     }
                 }
             }
