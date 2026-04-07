@@ -146,8 +146,8 @@ class NomenclatureDocument(Document):
         model = Nomenclature
 
         fields = [
-            'name',
-            'description'
+            'code1c',
+            'version',
         ]
 
         related_models = []
