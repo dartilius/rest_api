@@ -94,7 +94,14 @@ class NomenclatureDocument(Document):
 
     class Django:
         model = Nomenclature
-        fields = "__all__"
+        fields = [
+            'name',
+            'version',
+            'code1c',
+            'timezone',
+            'contentType',
+            'id_rasb',
+        ]
         queryset_pagination = 1000
 
     def get_queryset(self, **kwargs):
