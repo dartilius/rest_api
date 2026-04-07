@@ -145,14 +145,16 @@ class NomenclatureDocument(Document):
     class Django:
         model = Nomenclature
 
-        fields = []
+        fields = [
+            'name',
+            'description'
+        ]
 
         related_models = []
 
-    def get_queryset(self, *args, **kwargs):
+    def get_queryset(self, filter_=None, exclude=None, count=None, alias=None):
         return (
-            super()
-            .get_queryset(*args, **kwargs)
+            super().get_queryset(filter_=filter_, exclude=exclude, count=count, alias=alias)
             .select_related(
                 'brand',
                 'legalEntity',
@@ -244,12 +246,12 @@ class NomenclatureDocument(Document):
 
             result.append({
                 'tenant': {
-                    'first_name': getattr(instance.legalEntity, 'name', '') or '',
-                    'middle_name': getattr(instance.legalEntity, 'short_name', '') or '',
-                    'last_name': getattr(instance.legalEntity, 'full_name', '') or '',
-                    'description': getattr(instance.legalEntity, 'code1c', '') or '',
-                    'keyword': getattr(instance.legalEntity, 'inn', '') or '',
-                    'additional_name': getattr(instance.legalEntity, 'kpp', '') or '',
+                    'first_name': getattr(tenant, 'name', '') or '',
+                    'middle_name': getattr(tenant, 'short_name', '') or '',
+                    'last_name': getattr(tenant, 'full_name', '') or '',
+                    'description': getattr(tenant, 'code1c', '') or '',
+                    'keyword': getattr(tenant, 'inn', '') or '',
+                    'additional_name': getattr(tenant, 'kpp', '') or '',
                 },
                 'floor': item.floor or '',
                 'atm': item.atm,
@@ -337,6 +339,5 @@ class NomenclatureDocument(Document):
                 item.floor or '',
                 'банкомат' if item.atm else '',
             ])
-
 
         return ' '.join(filter(None, parts))
