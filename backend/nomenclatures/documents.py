@@ -98,7 +98,7 @@ class NomenclatureDocument(Document):
     })
 
     # --- Общее агрегированное поле для "искать вообще везде" ---
-    search_text = fields.TextField()
+    search_text = fields.TextField(analyzer='ru_ngram_analyzer')
 
     class Index:
         name = 'nomenclature'
