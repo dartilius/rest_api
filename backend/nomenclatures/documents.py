@@ -14,7 +14,6 @@ class NomenclatureDocument(Document):
         }
     )
     code1c = fields.TextField(fields={'raw': fields.KeywordField()})
-    version = fields.TextField(fields={'raw': fields.KeywordField()})
     description = fields.TextField()
     square = fields.TextField()
 
@@ -144,12 +143,6 @@ class NomenclatureDocument(Document):
 
     class Django:
         model = Nomenclature
-
-        fields = [
-            'code1c',
-            'version',
-        ]
-
         related_models = []
 
     def get_queryset(self, filter_=None, exclude=None, count=None, alias=None):
@@ -267,7 +260,6 @@ class NomenclatureDocument(Document):
         parts = [
             instance.name or '',
             instance.code1c or '',
-            instance.version or '',
             instance.description or '',
             instance.id_rasb or '',
         ]
