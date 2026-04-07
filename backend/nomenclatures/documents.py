@@ -176,10 +176,7 @@ class NomenclatureDocument(Document):
     class Django:
         model = Nomenclature
 
-        fields = [
-            'created',
-            'updated',
-        ]
+        fields = []
 
         related_models = []
 
