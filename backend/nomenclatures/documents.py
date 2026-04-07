@@ -16,7 +16,7 @@ class NomenclatureDocument(Document):
     code1c = fields.TextField(fields={'raw': fields.KeywordField()})
     description = fields.TextField()
     square = fields.TextField()
-
+    is_active = fields.BooleanField()
     id_rasb = fields.TextField(fields={'raw': fields.KeywordField()})
 
     # --- Связанные сущности ---
@@ -146,6 +146,9 @@ class NomenclatureDocument(Document):
                 'nomenclature_tenants__brand',
             )
         )
+
+    def prepare_is_active(self, instance):
+        return instance.is_active
 
     def prepare_brand(self, instance):
         if not instance.brand:
