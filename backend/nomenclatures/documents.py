@@ -1,5 +1,6 @@
 from django_opensearch_dsl import Document, fields
 from django_opensearch_dsl.registries import registry
+
 from nomenclatures.models import Nomenclature
 
 
@@ -78,7 +79,7 @@ class NomenclatureDocument(Document):
                 },
                 'tokenizer': {
                     'autocomplete_tok': {
-                        'type': 'edge_ngram',
+                        'type': 'ngram',
                         'min_gram': 2,
                         'max_gram': 20,
                         'token_chars': ['letter', 'digit'],
@@ -90,6 +91,21 @@ class NomenclatureDocument(Document):
     class Django:
         model = Nomenclature
         queryset_pagination = 1000
+        fields = [
+            'name^5',
+            'code1c^4',
+            'brand_name^3',
+            'legal_entity_text^3',
+            'type_of_place^2',
+            'content_type^2',
+            'tenants_text^3',
+            'responsible_radio_text',
+            'responsible_ad_text',
+            'responsible_technic_text',
+            'responsible_technic_on_address_text',
+            'responsible_placement_marketing_text',
+            'version',
+        ]
 
     def get_queryset(self, **kwargs):
         return (
