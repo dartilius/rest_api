@@ -4,7 +4,6 @@ from nomenclatures.models import Nomenclature
 
 
 def _user_text(user) -> str:
-    """ФИО пользователя для индексации."""
     if not user:
         return ''
     return ' '.join(filter(None, [
@@ -16,7 +15,6 @@ def _user_text(user) -> str:
 
 
 def _counterparty_text(cp) -> str:
-    """Текст контрагента для индексации."""
     if not cp:
         return ''
     return ' '.join(filter(None, [
@@ -31,36 +29,34 @@ def _counterparty_text(cp) -> str:
 
 
 def _text_field():
-    """Текстовое поле с автодополнением для частичного поиска."""
     return fields.TextField(
         analyzer='autocomplete',
-        search_analyzer='standard',
+        search_analyzer='autocomplete_search',
     )
 
 
 @registry.register_document
 class NomenclatureDocument(Document):
+    # ОСНОВНЫЕ ПОЛЯ
+    name = _text_field()
+    version = _text_field()
+    code1c = _text_field()
+    timezone = _text_field()
+    contentType = _text_field()
+    id_rasb = _text_field()
 
-    # Бренд
+    # ДОП. ПОЛЯ
     brand_name = _text_field()
-
-    # Юр. лицо (Counterparty)
     legal_entity_text = _text_field()
-
-    # Тип места
     type_of_place = _text_field()
-
-    # Тип контента
     content_type = _text_field()
 
-    # Ответственные (CustomUser)
     responsible_radio_text = _text_field()
     responsible_ad_text = _text_field()
     responsible_technic_text = _text_field()
     responsible_technic_on_address_text = _text_field()
     responsible_placement_marketing_text = _text_field()
 
-    # Арендаторы (Counterparty через NomenclatureTenant)
     tenants_text = _text_field()
 
     class Index:
@@ -75,7 +71,6 @@ class NomenclatureDocument(Document):
                         'tokenizer': 'autocomplete_tok',
                         'filter': ['lowercase'],
                     },
-                    # search анализатор — только lowercase, без ngram
                     'autocomplete_search': {
                         'tokenizer': 'standard',
                         'filter': ['lowercase'],
@@ -94,14 +89,6 @@ class NomenclatureDocument(Document):
 
     class Django:
         model = Nomenclature
-        fields = [
-            'name',
-            'version',
-            'code1c',
-            'timezone',
-            'contentType',
-            'id_rasb',
-        ]
         queryset_pagination = 1000
 
     def get_queryset(self, **kwargs):
@@ -122,8 +109,6 @@ class NomenclatureDocument(Document):
                 'nomenclature_tenants__tenant',
             )
         )
-
-    # --- prepare_ методы ---
 
     def prepare_brand_name(self, instance) -> str:
         if not instance.brand:
