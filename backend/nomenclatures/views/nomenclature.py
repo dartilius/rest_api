@@ -1097,7 +1097,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             описание, но нужен UUID для дальнейших операций.
         """
         nomenclature = Nomenclature.objects.get(
-            description=request.data["description"]
+            id_rasb=request.data["id_rasb"]
         )
         return Response({"id": nomenclature.pk})
 
