@@ -8,13 +8,19 @@ from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
 
+
 @shared_task
 def update_opensearch_for_instance(instance_id):
     """Обновление документа в OpenSearch для конкретной номенклатуры."""
     try:
         from nomenclatures.documents import NomenclatureDocument
+        from nomenclatures.models import Nomenclature
+
         nomenclature = Nomenclature.objects.get(id=instance_id)
-        NomenclatureDocument().update(nomenclature)
+
+        # Индексация документа в OpenSearch
+        NomenclatureDocument().index(nomenclature)
+
         print(f"✅ OpenSearch обновлён для номенклатуры {instance_id}")
     except Nomenclature.DoesNotExist:
         print(f"❌ Номенклатура {instance_id} не найдена")
