@@ -11,18 +11,16 @@ logger = logging.getLogger(__name__)
 
 def full_text_search(queryset, value):
     """
-    Поиск по OpenSearch через агрегированное поле search_text.
-    Если OpenSearch недоступен — fallback на Django ORM (icontains).
+    Поиск через OpenSearch/Django DSL.
+    Фолбэк на Django ORM, если OpenSearch недоступен.
     """
     if not value:
         return queryset
 
     try:
         from nomenclatures.documents import NomenclatureDocument
-        from elasticsearch import Elasticsearch
-        from elasticsearch.exceptions import ConnectionError as ESConnectionError
 
-        # 🔹 Поиск в OpenSearch по полю search_text
+        # Поиск по агрегированному полю search_text
         search = NomenclatureDocument.search().query(
             'match',
             search_text={
@@ -31,8 +29,7 @@ def full_text_search(queryset, value):
             }
         )
 
-        # Лимит на поиск
-        response = search[:1000].execute()
+        response = search[:1000].execute()  # лимит
         ids = [hit.meta.id for hit in response]
 
         logger.info('OpenSearch: запрос="%s", найдено=%d', value, len(ids))
@@ -40,17 +37,15 @@ def full_text_search(queryset, value):
         if not ids:
             return queryset.none()
 
-        # 🔹 Сохраняем порядок релевантности OpenSearch
+        # Сохраняем порядок релевантности
         from django.db.models import Case, When
         preserved_order = Case(
             *[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]
         )
-
         return queryset.filter(pk__in=ids).order_by(preserved_order)
 
     except Exception as e:
         logger.error('OpenSearch недоступен, fallback: %s', e)
-        # 🔹 fallback на обычный Django поиск по имени
         return queryset.filter(name__icontains=value)
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
