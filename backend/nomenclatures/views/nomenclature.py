@@ -245,22 +245,31 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         search_term = request.query_params.get('search')
 
+        # 🔍 РЕЖИМ ПОИСКА ЧЕРЕЗ OPENSEARCH
         if search_term:
-            cache_key = f"nomenclature_search_os_v1_{hash(search_term)}"
+            cache_key = f"nomenclature_search_os_v2_{hash(search_term)}"
             cached_result = cache.get(cache_key)
-
             if cached_result:
                 return Response(cached_result)
 
             try:
-                # 🔹 Используем рабочий full_text_search
-                queryset = full_text_search(Nomenclature.active, search_term)
+                # Получаем результаты из OpenSearch
+                os_results = NomenclatureOpenSearchService.search(search_term, limit=50)
+                ids = [hit.meta.id for hit in os_results]
 
-                # Применяем django-фильтры поверх результатов OS
-                filterset = self.filterset_class(request.query_params, queryset=queryset, request=request)
-                queryset = filterset.qs
+                if not ids:
+                    result = {'count': 0, 'next': None, 'previous': None, 'results': []}
+                    cache.set(cache_key, result, self.CACHE_TIMEOUT)
+                    return Response(result)
 
-                # Оптимизация запросов
+                # Фильтруем Django queryset по найденным id
+                queryset = Nomenclature.active.filter(id__in=ids)
+
+                # Сохраняем порядок релевантности
+                preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)])
+                queryset = queryset.order_by(preserved)
+
+                # Подключаем prefetch/select_related как для обычного списка
                 queryset = queryset.select_related(
                     'brand', 'typeOfPlace', 'legalEntity', 'responsible_ad'
                 ).prefetch_related(
@@ -274,44 +283,35 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     )
                 ).defer('description', 'settings', 'hw_info')
 
-                # Сериализация
+                # Пагинация
                 page = self.paginate_queryset(queryset)
                 if page is not None:
                     serializer = NomenclatureListSerializer(page, many=True)
                     result = self.get_paginated_response(serializer.data).data
                 else:
                     serializer = NomenclatureListSerializer(queryset, many=True)
-                    result = {
-                        'count': len(serializer.data),
-                        'next': None,
-                        'previous': None,
-                        'results': serializer.data
-                    }
+                    result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
 
+                # Кэшируем результат
                 cache.set(cache_key, result, self.CACHE_TIMEOUT)
                 return Response(result)
 
             except Exception as e:
-                logger.error("OpenSearch error: %s", e)
-                # fallback на Django ORM
-                queryset = Nomenclature.active.filter(name__icontains=search_term)[:50]
+                # fallback на обычный ORM поиск
+                queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
                 serializer = NomenclatureListSerializer(queryset, many=True)
-                result = {
-                    'count': len(serializer.data),
-                    'next': None,
-                    'previous': None,
-                    'results': serializer.data
-                }
+                result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
                 return Response(result)
 
-        # --- обычный список ---
+        # 📄 ОБЫЧНЫЙ СПИСОК без поиска
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = NomenclatureListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
+
         serializer = NomenclatureListSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return Response({'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):
