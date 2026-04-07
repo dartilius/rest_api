@@ -243,56 +243,26 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         )
 
     def list(self, request, *args, **kwargs):
-        """
-        Список номенклатур.
-        Если передан ?search=..., используем OpenSearch.
-        Иначе — обычный queryset + фильтры + пагинация.
-        """
         search_term = request.query_params.get('search')
 
-        # --- 🔍 РЕЖИМ ПОИСКА ЧЕРЕЗ OPENSEARCH ---
         if search_term:
             cache_key = f"nomenclature_search_os_v1_{hash(search_term)}"
             cached_result = cache.get(cache_key)
 
-            if cached_result is not None:
+            if cached_result:
                 return Response(cached_result)
 
             try:
-                os_results = NomenclatureOpenSearchService.search(
-                    query=search_term,
-                    limit=50
-                )
+                # 🔹 Используем рабочий full_text_search
+                queryset = full_text_search(Nomenclature.active, search_term)
 
-                ids = [hit.id for hit in os_results]
-
-                if not ids:
-                    result = {
-                        'count': 0,
-                        'next': None,
-                        'previous': None,
-                        'results': []
-                    }
-                    cache.set(cache_key, result, self.CACHE_TIMEOUT)
-                    return Response(result)
-
-                queryset = (
-                    Nomenclature.active
-                    .filter(id__in=ids)
-                )
-
-                # Применяем обычные django-фильтры ПОВЕРХ результатов OpenSearch
-                filterset = self.filterset_class(
-                    request.query_params,
-                    queryset=queryset,
-                    request=request
-                )
+                # Применяем django-фильтры поверх результатов OS
+                filterset = self.filterset_class(request.query_params, queryset=queryset, request=request)
                 queryset = filterset.qs
+
+                # Оптимизация запросов
                 queryset = queryset.select_related(
-                    'brand',
-                    'typeOfPlace',
-                    'legalEntity',
-                    'responsible_ad',
+                    'brand', 'typeOfPlace', 'legalEntity', 'responsible_ad'
                 ).prefetch_related(
                     'images',
                     Prefetch(
@@ -303,27 +273,29 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                         ).prefetch_related('brands')
                     )
                 ).defer('description', 'settings', 'hw_info')
-                # Сохраняем порядок релевантности OpenSearch
-                preserved = {str(pk): i for i, pk in enumerate(ids)}
-                queryset = sorted(queryset, key=lambda x: preserved.get(str(x.id), 999999))
 
-                serializer = NomenclatureListSerializer(queryset, many=True)
-
-                result = {
-                    'count': len(serializer.data),
-                    'next': None,
-                    'previous': None,
-                    'results': serializer.data
-                }
+                # Сериализация
+                page = self.paginate_queryset(queryset)
+                if page is not None:
+                    serializer = NomenclatureListSerializer(page, many=True)
+                    result = self.get_paginated_response(serializer.data).data
+                else:
+                    serializer = NomenclatureListSerializer(queryset, many=True)
+                    result = {
+                        'count': len(serializer.data),
+                        'next': None,
+                        'previous': None,
+                        'results': serializer.data
+                    }
 
                 cache.set(cache_key, result, self.CACHE_TIMEOUT)
                 return Response(result)
 
-            except OpenSearchConnectionError:
-                # fallback если OpenSearch умер
-                queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
+            except Exception as e:
+                logger.error("OpenSearch error: %s", e)
+                # fallback на Django ORM
+                queryset = Nomenclature.active.filter(name__icontains=search_term)[:50]
                 serializer = NomenclatureListSerializer(queryset, many=True)
-
                 result = {
                     'count': len(serializer.data),
                     'next': None,
@@ -332,14 +304,12 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 }
                 return Response(result)
 
-        # --- 📄 ОБЫЧНЫЙ СПИСОК ---
+        # --- обычный список ---
         queryset = self.filter_queryset(self.get_queryset())
-
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = NomenclatureListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-
         serializer = NomenclatureListSerializer(queryset, many=True)
         return Response(serializer.data)
 
