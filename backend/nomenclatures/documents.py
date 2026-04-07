@@ -7,7 +7,6 @@ from .models import Nomenclature
 @registry.register_document
 class NomenclatureDocument(Document):
     # --- Простые поля модели ---
-    id = fields.KeywordField()
     name = fields.TextField(
         fields={
             'raw': fields.KeywordField(),
@@ -23,13 +22,11 @@ class NomenclatureDocument(Document):
 
     # --- Связанные сущности ---
     brand = fields.ObjectField(properties={
-        'id': fields.KeywordField(),
         'name': fields.TextField(fields={'raw': fields.KeywordField()}),
         'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
     })
 
     legalEntity = fields.ObjectField(properties={
-        'id': fields.KeywordField(),
         'first_name': fields.TextField(fields={'raw': fields.KeywordField()}),
         'middle_name': fields.TextField(),
         'last_name': fields.TextField(),
@@ -39,7 +36,6 @@ class NomenclatureDocument(Document):
     })
 
     typeOfPlace = fields.ObjectField(properties={
-        'id': fields.KeywordField(),
         'name': fields.TextField(fields={'raw': fields.KeywordField()}),
         'abbreviation': fields.TextField(fields={'raw': fields.KeywordField()}),
         'display_name': fields.TextField(),
@@ -50,7 +46,6 @@ class NomenclatureDocument(Document):
     })
 
     responsible_radio = fields.ObjectField(properties={
-        'id': fields.KeywordField(),
         'email': fields.TextField(fields={'raw': fields.KeywordField()}),
         'first_name': fields.TextField(),
         'last_name': fields.TextField(),
@@ -58,7 +53,6 @@ class NomenclatureDocument(Document):
     })
 
     responsible_ad = fields.ObjectField(properties={
-        'id': fields.KeywordField(),
         'email': fields.TextField(fields={'raw': fields.KeywordField()}),
         'first_name': fields.TextField(),
         'last_name': fields.TextField(),
@@ -66,7 +60,6 @@ class NomenclatureDocument(Document):
     })
 
     responsible_technic = fields.ObjectField(properties={
-        'id': fields.KeywordField(),
         'email': fields.TextField(fields={'raw': fields.KeywordField()}),
         'first_name': fields.TextField(),
         'last_name': fields.TextField(),
@@ -74,7 +67,6 @@ class NomenclatureDocument(Document):
     })
 
     responsible_technic_on_address = fields.ObjectField(properties={
-        'id': fields.KeywordField(),
         'email': fields.TextField(fields={'raw': fields.KeywordField()}),
         'first_name': fields.TextField(),
         'last_name': fields.TextField(),
@@ -82,7 +74,6 @@ class NomenclatureDocument(Document):
     })
 
     responsible_placement_marketing = fields.ObjectField(properties={
-        'id': fields.KeywordField(),
         'email': fields.TextField(fields={'raw': fields.KeywordField()}),
         'first_name': fields.TextField(),
         'last_name': fields.TextField(),
@@ -92,7 +83,6 @@ class NomenclatureDocument(Document):
     # --- Вложенные арендаторы ---
     tenants_data = fields.NestedField(properties={
         'tenant': fields.ObjectField(properties={
-            'id': fields.KeywordField(),
             'first_name': fields.TextField(fields={'raw': fields.KeywordField()}),
             'middle_name': fields.TextField(),
             'last_name': fields.TextField(),
@@ -103,7 +93,6 @@ class NomenclatureDocument(Document):
         'floor': fields.TextField(fields={'raw': fields.KeywordField()}),
         'atm': fields.BooleanField(),
         'brand': fields.ObjectField(properties={
-            'id': fields.KeywordField(),
             'name': fields.TextField(fields={'raw': fields.KeywordField()}),
             'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
         })
@@ -185,7 +174,6 @@ class NomenclatureDocument(Document):
             return None
 
         return {
-            'id': str(instance.brand.id),
             'name': getattr(instance.brand, 'name', '') or '',
             'code1c': getattr(instance.brand, 'code1c', '') or '',
         }
@@ -195,7 +183,6 @@ class NomenclatureDocument(Document):
             return None
 
         return {
-            'id': str(instance.legalEntity.id),
             'first_name': getattr(instance.legalEntity, 'name', '') or '',
             'middle_name': getattr(instance.legalEntity, 'short_name', '') or '',
             'last_name': getattr(instance.legalEntity, 'full_name', '') or '',
@@ -209,7 +196,6 @@ class NomenclatureDocument(Document):
             return None
 
         return {
-            'id': str(instance.typeOfPlace.id),
             'name': instance.typeOfPlace.name or '',
             'abbreviation': instance.typeOfPlace.abbreviation or '',
             'display_name': instance.typeOfPlace.display_name or '',
@@ -228,7 +214,6 @@ class NomenclatureDocument(Document):
         full_name = f'{first_name} {last_name}'.strip()
 
         return {
-            'id': str(user.id),
             'email': getattr(user, 'email', '') or '',
             'first_name': first_name,
             'last_name': last_name,
@@ -259,7 +244,6 @@ class NomenclatureDocument(Document):
 
             result.append({
                 'tenant': {
-                    'id': str(instance.legalEntity.id),
                     'first_name': getattr(instance.legalEntity, 'name', '') or '',
                     'middle_name': getattr(instance.legalEntity, 'short_name', '') or '',
                     'last_name': getattr(instance.legalEntity, 'full_name', '') or '',
@@ -270,7 +254,6 @@ class NomenclatureDocument(Document):
                 'floor': item.floor or '',
                 'atm': item.atm,
                 'brand': {
-                    'id': str(brand.id) if brand else '',
                     'name': getattr(brand, 'name', '') if brand else '',
                     'code1c': getattr(brand, 'code1c', '') if brand else '',
                 } if brand else None
