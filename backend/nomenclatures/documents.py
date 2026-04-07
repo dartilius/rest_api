@@ -164,12 +164,12 @@ class NomenclatureDocument(Document):
             return None
 
         return {
-            'first_name': getattr(instance.legalEntity, 'name', '') or '',
-            'middle_name': getattr(instance.legalEntity, 'short_name', '') or '',
-            'last_name': getattr(instance.legalEntity, 'full_name', '') or '',
-            'description': getattr(instance.legalEntity, 'code1c', '') or '',
-            'keyword': getattr(instance.legalEntity, 'inn', '') or '',
-            'additional_name': getattr(instance.legalEntity, 'kpp', '') or '',
+            'first_name': getattr(instance.legalEntity, 'first_name', '') or '',
+            'middle_name': getattr(instance.legalEntity, 'middle_name', '') or '',
+            'last_name': getattr(instance.legalEntity, 'last_name', '') or '',
+            'description': getattr(instance.legalEntity, 'description', '') or '',
+            'keyword': getattr(instance.legalEntity, 'keyword', '') or '',
+            'additional_name': getattr(instance.legalEntity, 'additional_name', '') or '',
         }
 
     def prepare_typeOfPlace(self, instance):
@@ -225,12 +225,12 @@ class NomenclatureDocument(Document):
 
             result.append({
                 'tenant': {
-                    'first_name': getattr(tenant, 'name', '') or '',
-                    'middle_name': getattr(tenant, 'short_name', '') or '',
-                    'last_name': getattr(tenant, 'full_name', '') or '',
-                    'description': getattr(tenant, 'code1c', '') or '',
-                    'keyword': getattr(tenant, 'inn', '') or '',
-                    'additional_name': getattr(tenant, 'kpp', '') or '',
+                    'first_name': getattr(tenant, 'first_name', '') or '',
+                    'middle_name': getattr(tenant, 'middle_name', '') or '',
+                    'last_name': getattr(tenant, 'last_name', '') or '',
+                    'description': getattr(tenant, 'description', '') or '',
+                    'keyword': getattr(tenant, 'keyword', '') or '',
+                    'additional_name': getattr(tenant, 'additional_name', '') or '',
                 },
                 'floor': item.floor or '',
                 'atm': item.atm,
