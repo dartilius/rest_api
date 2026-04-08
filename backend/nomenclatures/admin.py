@@ -35,6 +35,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "legal_entity_name",
         "tenants_count_display",
         "id_rasb"
+        "for_web"
     )
 
     list_display_links = ("name",)
