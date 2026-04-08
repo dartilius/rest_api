@@ -31,7 +31,7 @@ class CustomUserManager(UserManager):
 
 class ForWebManager(Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(for_web=True)
+        return super().get_queryset().filter(for_web=True, is_active=True)
 
 class ActiveManager(Manager):
     def get_queryset(self):
