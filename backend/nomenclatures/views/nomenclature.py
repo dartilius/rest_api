@@ -143,7 +143,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         - destroy: IsAuthenticated + IsStaff
     """
 
-    queryset = Nomenclature.active.select_related(
+    queryset = Nomenclature.web.select_related(
         "legalEntity",
         "brand",
         "responsible_ad",
@@ -254,7 +254,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
             try:
                 # Получаем результаты из OpenSearch
-                os_results = NomenclatureOpenSearchService.search(search_term, limit=50)
+                os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
                 ids = [hit.meta.id for hit in os_results]
 
                 if not ids:
@@ -263,7 +263,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     return Response(result)
 
                 # Фильтруем Django queryset по найденным id
-                queryset = Nomenclature.active.filter(id__in=ids)
+                queryset = Nomenclature.web.filter(id__in=ids)
 
                 # Сохраняем порядок релевантности
                 preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)])

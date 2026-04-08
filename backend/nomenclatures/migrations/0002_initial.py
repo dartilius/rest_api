@@ -106,14 +106,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='nomenclature',
-            index=django.contrib.postgres.indexes.GinIndex(fields=['search_vector'], name='nomenclature_search_gin'),
-        ),
-        migrations.AddIndex(
-            model_name='nomenclature',
-            index=django.contrib.postgres.indexes.GinIndex(condition=models.Q(('is_active', True)), fields=['search_vector'], name='nomenclature_search_active_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='nomenclature',
             index=django.contrib.postgres.indexes.GinIndex(fields=['name'], name='nomenclature_name_gin_idx', opclasses=['gin_trgm_ops']),
         ),
         migrations.AddIndex(

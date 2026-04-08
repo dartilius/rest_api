@@ -1,5 +1,4 @@
 import hashlib
-from functools import lru_cache
 from uuid import uuid4
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
@@ -157,6 +156,11 @@ class NomenclatureTenant(models.Model):
 class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
 
+    for_web = models.BooleanField(
+        default=True,
+        verbose_name="Отображать в веб"
+    )
+
     keys_validator = KeysValidator(
         keys=("mon", "tue", "wed", "thu", "fri", "sat", "sun"),
         strict=True
@@ -229,8 +233,6 @@ class Nomenclature(APIBaseObjectModel):
     description = models.TextField(
         blank=True, null=True, verbose_name="Описание"
     )
-    search_vector = SearchVectorField(null=True, default='')
-    search_vector_updated_at = models.DateTimeField(auto_now_add=True)
 
     responsible_radio = models.ForeignKey(
         'users.CustomUser',
@@ -399,40 +401,6 @@ class Nomenclature(APIBaseObjectModel):
 
         return f'Размещение ролика на радио {place_name} "{brand.name}", {city}, {street}, {house}'
 
-    def update_search_vector(self, tenants_text='', save=True):
-        """Обновляет search_vector для конкретной номенклатуры"""
-        from django.contrib.postgres.search import SearchVector
-        from django.db.models import Value
-
-        self.search_vector = (
-                SearchVector(Value(self.name or ''), weight='A') +
-                SearchVector(Value(self.contentType or ''), weight='C') +
-                SearchVector(Value(self.typeOfPlace.name if self.typeOfPlace else ''), weight='B') +
-                SearchVector(Value(self.version or ''), weight='B') +
-                SearchVector(Value(self.code1c or ''), weight='A') +
-                SearchVector(Value(self.brand.name if self.brand else ''), weight='A') +
-                SearchVector(Value(self.legalEntity.first_name if self.legalEntity else ''), weight='A') +
-                SearchVector(Value(self.legalEntity.last_name if self.legalEntity else ''), weight='B') +
-                SearchVector(Value(self.legalEntity.keyword if self.legalEntity else ''), weight='A') +
-                SearchVector(Value(self.legalEntity.additional_name if self.legalEntity else ''), weight='C') +
-                SearchVector(Value(self.responsible_radio.first_name if self.responsible_radio else ''), weight='A') +
-                SearchVector(Value(self.responsible_ad.first_name if self.responsible_ad else ''), weight='A') +
-                SearchVector(Value(self.responsible_technic.first_name if self.responsible_technic else ''),
-                             weight='A') +
-                SearchVector(
-                    Value(self.responsible_technic_on_address.last_name if self.responsible_technic_on_address else ''),
-                    weight='B') +
-                SearchVector(Value(self.responsible_radio.last_name if self.responsible_radio else ''), weight='B') +
-                SearchVector(Value(self.responsible_ad.last_name if self.responsible_ad else ''), weight='B') +
-                SearchVector(Value(self.responsible_technic.last_name if self.responsible_technic else ''),
-                             weight='B') +
-                SearchVector(Value(tenants_text), weight='B')
-        )
-
-        if save:
-            self.search_vector_updated_at = timezone.now()
-            self.save(update_fields=['search_vector', 'search_vector_updated_at'])
-
     def __str__(self):
         return self.name
 
@@ -448,15 +416,9 @@ class Nomenclature(APIBaseObjectModel):
             )
         ]
         indexes = [
-            GinIndex(fields=['search_vector'], name='nomenclature_search_gin'),
             GinIndex(name='nom_name_trgm_idx',
                      fields=['name'],
                      opclasses=['gin_trgm_ops']),
-            GinIndex(
-                name='nomenclature_search_active_idx',
-                fields=['search_vector'],
-                condition=models.Q(is_active=True)  # Только для активных записей
-            ),
             GinIndex(
                 name="nomenclature_name_gin_idx",
                 fields=["name"],

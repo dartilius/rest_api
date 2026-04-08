@@ -39,8 +39,6 @@ class Migration(migrations.Migration):
                 ('possibility', models.CharField(blank=True, default='', null=True, verbose_name='Проходимость')),
                 ('article', api.base_objects.Article(unique=True)),
                 ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
-                ('search_vector', django.contrib.postgres.search.SearchVectorField(default='', null=True)),
-                ('search_vector_updated_at', models.DateTimeField(auto_now_add=True)),
                 ('timezone', models.CharField(choices=[('Etc/GMT+11', 'UTC -11'), ('Etc/GMT+10', 'UTC -10'), ('Etc/GMT+9', 'UTC -9'), ('Etc/GMT+8', 'UTC -8'), ('Etc/GMT+7', 'UTC -7'), ('Etc/GMT+6', 'UTC -6'), ('Etc/GMT+5', 'UTC -5'), ('Etc/GMT+4', 'UTC -4'), ('Etc/GMT+3', 'UTC -3'), ('Etc/GMT+2', 'UTC -2'), ('Etc/GMT+1', 'UTC -1'), ('Etc/GMT+0', 'UTC'), ('Etc/GMT-1', 'UTC +1'), ('Etc/GMT-2', 'UTC +2'), ('Etc/GMT-3', 'UTC +3'), ('Etc/GMT-4', 'UTC +4'), ('Etc/GMT-5', 'UTC +5'), ('Etc/GMT-6', 'UTC +6'), ('Etc/GMT-7', 'UTC +7'), ('Etc/GMT-8', 'UTC +8'), ('Etc/GMT-9', 'UTC +9'), ('Etc/GMT-10', 'UTC +10'), ('Etc/GMT-11', 'UTC +11'), ('Etc/GMT-12', 'UTC +12')], default='Etc/GMT-7', max_length=31, verbose_name='Часовой пояс')),
                 ('code1c', models.CharField(blank=True, max_length=64, null=True, verbose_name='Код из 1С')),
                 ('version', models.CharField(max_length=127, verbose_name='Версия ПО')),
