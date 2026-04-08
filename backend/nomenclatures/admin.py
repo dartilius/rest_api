@@ -34,7 +34,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "brand_name",
         "legal_entity_name",
         "tenants_count_display",
-        "id_rasb"
+        "id_rasb",
         "for_web"
     )
 
