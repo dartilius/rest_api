@@ -34,10 +34,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "brand_name",
         "legal_entity_name",
         "tenants_count_display",
+        "id_rasb"
     )
 
     list_display_links = ("name",)
-    search_fields = ("name", "code1c", "article")
+    search_fields = ("name", "code1c", "article", "id_rasb")
     list_filter = ("is_active", "timezone", "brand", "contentType")
     show_full_result_count = True
     list_per_page = 50
