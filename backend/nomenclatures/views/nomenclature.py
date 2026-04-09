@@ -1,5 +1,8 @@
-from uuid import UUID
 from typing import Callable, Optional
+from uuid import UUID
+
+from django.core.cache import cache
+from django.db.models import Count, Case, When, Value, IntegerField, Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.utils import inline_serializer, OpenApiResponse
@@ -12,9 +15,11 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
 )
-from django.db.models import Count, Case, When, Value, IntegerField, Prefetch
-from api.constants import  VersionsSerializer
+
+from api.constants import VersionsSerializer
+from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
+from nomenclatures.services.opensearch_search import NomenclatureOpenSearchService
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
@@ -24,11 +29,6 @@ from ..serializers import (
     NomenclatureListSerializer,
     ShortBrandNomenclatureSerializer, PhotoSerializer,
 )
-from counterparties.models import Counterparty
-from django.core.cache import cache
-from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
-
-from nomenclatures.services.opensearch_search import NomenclatureOpenSearchService
 
 
 @extend_schema_view(
@@ -401,20 +401,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def grouped(self, request):
-        """
-        /api/nomenclature/grouped/?by=brand
-        /api/nomenclature/grouped/?by=legal
-        /api/nomenclature/grouped/?by=place
-        /api/nomenclature/grouped/?by=address
+        qs = Nomenclature.web.select_related('brand')
 
-        Поддерживает все фильтры из NomenclatureFilter:
-        ?search=..., ?name=..., ?brand_id=..., ?status=..., ?version=...,
-        ?legal_entity_name=..., ?brand_name=..., ?type_of_place=...
-        """
-
-        qs = Nomenclature.active.select_related('brand')
-
-        # Применяем фильтры из NomenclatureFilter
         filterset = self.filterset_class(
             request.query_params,
             queryset=qs,
@@ -424,8 +412,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         group_by = request.query_params.get('by')
 
-        # функции для получения ключа группы из сериализованных данных
-        # ShortBrandNomenclatureSerializer возвращает: brand_name, brand_id, brand_logotype
         GROUP_MAP = {
             'brand': lambda x: x['brand_name'] if x['brand_id'] else None,
         }
@@ -435,39 +421,32 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 'error': 'Invalid group param',
                 'allowed': list(GROUP_MAP.keys())
             }, status=400)
-        page = self.paginate_queryset(qs)
-        serializer = ShortBrandNomenclatureSerializer(page or qs, many=True)
+
+        # Сначала сериализуем ВСЁ, потом группируем
+        serializer = ShortBrandNomenclatureSerializer(qs, many=True)
         data = serializer.data
 
         grouped = {}
-
         for item in data:
             key = GROUP_MAP[group_by](item)
 
-            brand_id = item['brand_id']
-            logo = item['brand_logotype']
-
             if key not in grouped:
-                # первый элемент группы
                 grouped[key] = {
                     'name': key,
-                    'items': {
-                        'brand_id': brand_id,
-                        'brand_logotype': logo,
-                        'amount': 1
-                    }
+                    'brand_id': item['brand_id'],
+                    'brand_logotype': item['brand_logotype'],
+                    'amount': 1
                 }
             else:
-                # увеличиваем счётчик
-                grouped[key]['items']['amount'] += 1
+                grouped[key]['amount'] += 1  # ← исправлен путь
 
         result = list(grouped.values())
 
-        return (
-            self.get_paginated_response(result)
-            if page is not None
-            else Response(result)
-        )
+        # Пагинируем уже сгруппированный результат
+        page = self.paginate_queryset(result)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response(result)
 
     def perform_create(self, serializer):
         """
