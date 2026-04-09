@@ -208,9 +208,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
 class NomenclatureTenantAdmin(admin.ModelAdmin):
     list_display = ("nomenclature_name", "tenant", "brand", "floor", "atm")
     search_fields = (
-        "nomenclature__name",
-        "tenant__name",
-        "brand__name",
         "floor",
     )
     list_filter = ("atm", "brand", "floor")
