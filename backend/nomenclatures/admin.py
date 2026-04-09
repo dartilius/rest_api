@@ -204,12 +204,12 @@ class NomenclatureAdmin(admin.ModelAdmin):
     clear_cache.short_description = "Очистить кэш"
 
 
+from django.db.models import Q
+
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
     list_display = ("nomenclature_name", "tenant", "brand", "floor", "atm")
-    search_fields = (
-        "floor",
-    )
+    search_fields = ()
     list_filter = ("atm", "brand", "floor")
     autocomplete_fields = ("nomenclature", "tenant", "brand")
     show_full_result_count = True
@@ -225,6 +225,16 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
     @admin.display(description="Номенклатура", ordering="nomenclature__name")
     def nomenclature_name(self, obj):
         return obj.nomenclature.name if obj.nomenclature else "-"
+
+    def get_search_results(self, request, queryset, search_term):
+        if not search_term:
+            return queryset, False
+
+        queryset = queryset.filter(
+            Q(floor__icontains=search_term)
+            | Q(nomenclature__name__icontains=search_term)
+        )
+        return queryset, False
 
 @admin.register(TypeOfPlace)
 class TypeOfPlaceAdmin(admin.ModelAdmin):
