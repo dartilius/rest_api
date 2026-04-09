@@ -214,7 +214,7 @@ from django.db.models import Q
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
     list_display = ("nomenclature_name", "tenant", "brand", "floor", "atm")
-    search_fields = ("nomenclature__name",)
+    search_fields = ("floor",)
     list_filter = ("atm", "brand", "floor")
     autocomplete_fields = ("nomenclature", "tenant", "brand")
     show_full_result_count = True
