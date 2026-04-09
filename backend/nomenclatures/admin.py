@@ -1,10 +1,10 @@
 from django.contrib import admin
-from django.utils.html import format_html
-from django.db.models import Prefetch, Count
 from django.core.cache import cache
+from django.db.models import Prefetch, Count
+from django.db.models import prefetch_related_objects
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.db.models import prefetch_related_objects
+from django.utils.html import format_html
 
 from nomenclatures.models import (
     Nomenclature,
@@ -207,8 +207,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
     clear_cache.short_description = "Очистить кэш"
 
 
-from django.db.models import Q
-
 from django.contrib import admin
 from django.db.models import Q
 
@@ -216,7 +214,7 @@ from django.db.models import Q
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
     list_display = ("nomenclature_name", "tenant", "brand", "floor", "atm")
-    search_fields = ()  # отключаем стандартный поиск, он тут бесполезен
+    search_fields = ("nomenclature__name",)
     list_filter = ("atm", "brand", "floor")
     autocomplete_fields = ("nomenclature", "tenant", "brand")
     show_full_result_count = True
