@@ -190,26 +190,33 @@ class NomenclatureAdmin(admin.ModelAdmin):
         updated = queryset.update(is_active=True)
         self.message_user(request, f'Активировано {updated} номенклатур')
         cache.delete_pattern("nomenclature_admin_qs_*")
+
     activate.short_description = "Активировать выбранные"
 
     def deactivate(self, request, queryset):
         updated = queryset.update(is_active=False)
         self.message_user(request, f'Деактивировано {updated} номенклатур')
         cache.delete_pattern("nomenclature_admin_qs_*")
+
     deactivate.short_description = "Деактивировать выбранные"
 
     def clear_cache(self, request, queryset):
         cache.delete_pattern("nomenclature_admin_qs_*")
         self.message_user(request, 'Кэш очищен')
+
     clear_cache.short_description = "Очистить кэш"
 
 
 from django.db.models import Q
 
+from django.contrib import admin
+from django.db.models import Q
+
+
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
     list_display = ("nomenclature_name", "tenant", "brand", "floor", "atm")
-    search_fields = ()
+    search_fields = ()  # отключаем стандартный поиск, он тут бесполезен
     list_filter = ("atm", "brand", "floor")
     autocomplete_fields = ("nomenclature", "tenant", "brand")
     show_full_result_count = True
@@ -231,10 +238,17 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
             return queryset, False
 
         queryset = queryset.filter(
-            Q(floor__icontains=search_term)
+            Q(nomenclature__brand__name__icontains=search_term)
+            | Q(floor__icontains=search_term)
             | Q(nomenclature__name__icontains=search_term)
-        )
+            | Q(nomenclature__code1c__icontains=search_term)
+            | Q(nomenclature__article__icontains=search_term)
+            | Q(nomenclature__id_rasb__icontains=search_term)
+            | Q(brand__name__icontains=search_term)
+        ).distinct()
+
         return queryset, False
+
 
 @admin.register(TypeOfPlace)
 class TypeOfPlaceAdmin(admin.ModelAdmin):
