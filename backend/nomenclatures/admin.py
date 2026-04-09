@@ -206,15 +206,23 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
-    list_display = ("nomenclature_name", "brand", "tenant_id", "floor")
-    search_fields = ("nomenclature__name", "brand__name", "tenant_id")
+    list_display = ("nomenclature_name", "tenant", "brand", "floor", "atm")
+    search_fields = (
+        "nomenclature__name",
+        "tenant__name",
+        "brand__name",
+        "floor",
+    )
+    list_filter = ("atm", "brand", "floor")
+    autocomplete_fields = ("nomenclature", "tenant", "brand")
     show_full_result_count = True
     list_per_page = 50
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
             "nomenclature",
-            "brand"  # Если бренд связан напрямую
+            "tenant",
+            "brand",
         )
 
     @admin.display(description="Номенклатура", ordering="nomenclature__name")
