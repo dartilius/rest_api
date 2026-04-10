@@ -433,6 +433,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             if key not in grouped:
                 grouped[key] = {
                     'name': key,
+                    'typeOfPlace': item['type_of_place'],
                     'brand_id': item['brand_id'],
                     'brand_logotype': item['brand_logotype'],
                     'amount': 1
