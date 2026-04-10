@@ -98,7 +98,7 @@ class ShortBrandNomenclatureSerializer(BrandSerializer):
 
     class Meta:
         model = Nomenclature
-        fields = "__brand__"
+        fields = ["brand"]
         read_only_fields = fields
 
 
