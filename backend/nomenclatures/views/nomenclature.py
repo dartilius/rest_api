@@ -422,7 +422,9 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         qs = filterset.qs.annotate(tenants_count=Count("tenants", distinct=True)).order_by(
             ordering_case,
+
             "-tenants_count",
+            'amount',
             "-created",
         )
 
