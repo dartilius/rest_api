@@ -409,23 +409,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             request=request
         )
 
-        tc = TypeOfPlace.objects.filter(name="Торговый центр").first()
-
-        if tc:
-            ordering_case = Case(
-                When(typeOfPlace_id=tc.id, then=Value(0)),
-                default=Value(1),
-                output_field=IntegerField(),
-            )
-        else:
-            ordering_case = Value(1)
-
         qs = filterset.qs.annotate(
             tenants_count=Count("tenants", distinct=True)
-        ).order_by(
-            ordering_case,
-            "-tenants_count",
-            "-created",
         )
 
         group_by = request.query_params.get('by')
@@ -453,13 +438,27 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     'typeOfPlace': item['type_of_place'],
                     'brand_id': item['brand_id'],
                     'brand_logotype': item['brand_logotype'],
-                    'amount': 1
+                    'amount': 1,
+                    'tenants_count': item.get('tenants_count', 0),
                 }
             else:
                 grouped[key]['amount'] += 1
+                grouped[key]['tenants_count'] += item.get('tenants_count', 0)
 
-        result = sorted(grouped.values(), key=lambda x: x['amount'], reverse=True)
+        TC = "Торговый центр"
 
+        def sort_key(x):
+            is_tc = x['typeOfPlace'] == TC
+            if is_tc:
+                # ТЦ: сначала по убыванию арендаторов, затем по убыванию amount
+                return 0, -x['tenants_count'], -x['amount'], ''
+            else:
+                # Остальные: по алфавиту typeOfPlace, затем по убыванию amount
+                return 1, 0, -x['amount'], x['typeOfPlace'] or ''
+
+        result = sorted(grouped.values(), key=sort_key)
+        for item in result:
+            item.pop('tenants_count', None)
         page = self.paginate_queryset(result)
         if page is not None:
             return self.get_paginated_response(page)

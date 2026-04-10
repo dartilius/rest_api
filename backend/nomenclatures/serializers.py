@@ -95,22 +95,20 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
 
 class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
     """Схема для отображения номенклатуры в списке."""
-
     brand_name = serializers.CharField(source='brand.name', default='Без значения')
     brand_id = serializers.CharField(source='brand.id', default=None)
     brand_logotype = Base64FileField(source="brand.logotype", default=None)
-    type_of_place = serializers.CharField(
-        source='typeOfPlace.name',
-        read_only=True,
-        default=None
-    )
+    type_of_place = serializers.CharField(source='typeOfPlace.name', default=None)
+    tenants_count = serializers.IntegerField(read_only=True)  # ← из annotate
+
     class Meta:
         model = Nomenclature
         fields = (
             "brand_name",
             "brand_id",
             "brand_logotype",
-            "type_of_place"
+            "type_of_place",
+            "tenants_count",
         )
         read_only_fields = fields
 
