@@ -401,14 +401,30 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def grouped(self, request):
-        qs = Nomenclature.web.select_related('brand','typeOfPlace')
+        qs = Nomenclature.web.select_related('brand', 'typeOfPlace')
 
         filterset = self.filterset_class(
             request.query_params,
             queryset=qs,
             request=request
         )
-        qs = filterset.qs
+
+        tc = TypeOfPlace.objects.filter(is_mall=True).first()
+
+        if tc:
+            ordering_case = Case(
+                When(typeOfPlace_id=tc.id, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        else:
+            ordering_case = Value(1)
+
+        qs = filterset.qs.order_by(
+            ordering_case,
+            "-tenants_count",
+            "-created",
+        )
 
         group_by = request.query_params.get('by')
 
