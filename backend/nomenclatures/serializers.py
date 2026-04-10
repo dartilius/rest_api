@@ -93,7 +93,7 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
         read_only_fields = ("source", "id",)
 
 
-class ShortBrandNomenclatureSerializer(BrandSerializer):
+class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
     """Схема для отображения номенклатуры в списке."""
 
     brand_name = serializers.CharField(source='brand.name', default='Без значения')
