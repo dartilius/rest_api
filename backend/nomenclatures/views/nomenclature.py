@@ -420,7 +420,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         else:
             ordering_case = Value(1)
 
-        qs = filterset.qs.order_by(
+        qs = filterset.qs.annotate(tenants_count=Count("tenants", distinct=True)).order_by(
             ordering_case,
             "-tenants_count",
             "-created",
