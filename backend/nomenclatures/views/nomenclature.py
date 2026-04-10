@@ -439,7 +439,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     'brand_id': item['brand_id'],
                     'brand_logotype': item['brand_logotype'],
                     'amount': 1,
-                    'tenants_count': item.get('tenants_count', 0),
                 }
             else:
                 grouped[key]['amount'] += 1
