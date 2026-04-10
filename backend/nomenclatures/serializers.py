@@ -101,7 +101,8 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
     brand_logotype = Base64FileField(source="brand.logotype", default=None)
     type_of_place = serializers.CharField(
         source='typeOfPlace.name',
-        read_only=True
+        read_only=True,
+        default=None
     )
     class Meta:
         model = Nomenclature

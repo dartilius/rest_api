@@ -401,7 +401,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def grouped(self, request):
-        qs = Nomenclature.web.select_related('brand')
+        qs = Nomenclature.web.select_related('brand','typeOfPlace')
 
         filterset = self.filterset_class(
             request.query_params,
