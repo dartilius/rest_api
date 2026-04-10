@@ -96,9 +96,16 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
 class ShortBrandNomenclatureSerializer(BrandSerializer):
     """Схема для отображения номенклатуры в списке."""
 
+    brand_name = serializers.CharField(source='brand.name', default='Без значения')
+    brand_id = serializers.CharField(source='brand.id', default=None)
+    brand_logotype = Base64FileField()
     class Meta:
         model = Nomenclature
-        fields = ["brand"]
+        fields = (
+            "brand_name",
+            "brand_id",
+            "brand_logotype",
+        )
         read_only_fields = fields
 
 
