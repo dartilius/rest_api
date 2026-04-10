@@ -409,7 +409,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             request=request
         )
 
-        tc = TypeOfPlace.objects.filter(is_mall=True).first()
+        tc = TypeOfPlace.objects.filter(name="Торговый центр").first()
 
         if tc:
             ordering_case = Case(
