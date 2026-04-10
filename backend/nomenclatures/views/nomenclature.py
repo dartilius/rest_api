@@ -420,11 +420,11 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         else:
             ordering_case = Value(1)
 
-        qs = filterset.qs.annotate(tenants_count=Count("tenants", distinct=True)).order_by(
+        qs = filterset.qs.annotate(
+            tenants_count=Count("tenants", distinct=True)
+        ).order_by(
             ordering_case,
-
             "-tenants_count",
-            'amount',
             "-created",
         )
 
@@ -440,7 +440,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 'allowed': list(GROUP_MAP.keys())
             }, status=400)
 
-        # Сначала сериализуем ВСЁ, потом группируем
         serializer = ShortBrandNomenclatureSerializer(qs, many=True)
         data = serializer.data
 
@@ -457,11 +456,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     'amount': 1
                 }
             else:
-                grouped[key]['amount'] += 1  # ← исправлен путь
+                grouped[key]['amount'] += 1
 
-        result = list(grouped.values())
+        result = sorted(grouped.values(), key=lambda x: x['amount'], reverse=True)
 
-        # Пагинируем уже сгруппированный результат
         page = self.paginate_queryset(result)
         if page is not None:
             return self.get_paginated_response(page)
