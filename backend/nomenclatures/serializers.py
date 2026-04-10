@@ -99,12 +99,17 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
     brand_name = serializers.CharField(source='brand.name', default='Без значения')
     brand_id = serializers.CharField(source='brand.id', default=None)
     brand_logotype = Base64FileField(source="brand.logotype", default=None)
+    typeOfPlace = serializers.CharField(
+        source='typeOfPlace.name',
+        read_only=True
+    )
     class Meta:
         model = Nomenclature
         fields = (
             "brand_name",
             "brand_id",
             "brand_logotype",
+            "typeOfPlace"
         )
         read_only_fields = fields
 
