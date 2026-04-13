@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
@@ -175,7 +176,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             ),
         },
     )
-    @action(methods=['post'], url_path="register", url_name="register", detail=False)
+    @action(methods=['post'], url_path="register", url_name="register", detail=False, permission_classes=[AllowAny])
     def register(self, request, *args, **kwargs):
         serializer = RegisterUserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

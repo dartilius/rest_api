@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'ch_statistic',
     'tasks',
     'promotions',
+    'placement_order'
 ]
 
 # Базовый MIDDLEWARE
