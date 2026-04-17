@@ -1166,11 +1166,14 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     #     choices=list(AVAILABLE_CONTENT_TYPES.values()),
     #     required=False
     # )
+    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
 
     class Meta:
+
         fields = (
             "id",
             "name",
+            "nameForFront",
             # "timezone",
             # "status",
             "legalEntity",
@@ -1184,6 +1187,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "code1c",
             # "abbreviation",
         )
+        extra_fields = ("nameForFront",)
         read_only_fields = fields
         model = Nomenclature
 
