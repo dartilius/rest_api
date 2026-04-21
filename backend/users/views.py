@@ -19,7 +19,7 @@ from users.filters import CustomUserFilter
 from users.models import CustomUser
 from users.permissions import SuperuserCUDAuthRetrieve
 from users.serializers import CustomUserSerializer, RegisterUserSerializer, \
-    CustomUserShortSerializer
+    CustomUserShortSerializer, PasswordResetByEmailSerializer
 
 
 @extend_schema_view(
@@ -196,6 +196,40 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             {"detail": "Регистрация успешна", "id": str(user.id)},
             status=HTTP_201_CREATED
         )
+
+    @extend_schema(
+        summary="Сброс пароля по email",
+        request=PasswordResetByEmailSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[OpenApiExample(name="Успешно", value={"detail": "Пароль успешно изменён."})]
+            ),
+            **DEFAULT_SCHEMA_RESPONSES,
+        }
+    )
+    @action(
+        methods=['post'],
+        url_path="reset-password",
+        url_name="reset-password",
+        detail=False,
+        permission_classes=[AllowAny],
+    )
+    def reset_password(self, request, *args, **kwargs):
+        serializer = PasswordResetByEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        validated = serializer.validated_data
+
+        try:
+            user = CustomUser.objects.get(email=validated['email'], is_active=True)
+        except CustomUser.DoesNotExist:
+            raise NotFound("Пользователь с таким email не найден.")
+
+        user.set_password(validated['new_password'])
+        user.save(update_fields=['password'])
+
+        return Response({"detail": "Пароль успешно изменён."})
 
 
 @extend_schema(
