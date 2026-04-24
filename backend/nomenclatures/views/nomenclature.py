@@ -27,7 +27,7 @@ from ..models import Nomenclature, TypeOfPlace
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    ShortBrandNomenclatureSerializer, PhotoSerializer,
+    ShortBrandNomenclatureSerializer, PhotoSerializer, NomenclatureCardSerializer,
 )
 
 
@@ -167,7 +167,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             # Для списка всегда используем NomenclatureListSerializer
             # (и для обычного списка, и для поиска)
-            serializer_class = NomenclatureListSerializer
+            serializer_class = NomenclatureCardSerializer
         else:
             serializer_class = NomenclatureSerializer
 
@@ -1116,6 +1116,70 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             id_rasb=request.data["id_rasb"]
         )
         return Response({"id": nomenclature.pk})
+
+    @extend_schema(
+        summary="Получить номенклатуры по списку ID",
+        parameters=[
+            OpenApiParameter(
+                name='ids',
+                description='UUID через запятую',
+                required=True,
+                type=str,
+            ),
+        ],
+        responses={200: NomenclatureListSerializer(many=True)},
+        tags=['Номенклатуры'],
+    )
+    @action(
+        detail=False,
+        methods=['GET'],
+        url_path='bulk',
+        permission_classes=[AllowAny],
+    )
+    def bulk(self, request):
+        raw = request.query_params.get('ids', '')
+        if not raw:
+            return Response(
+                {'error': 'Параметр ids обязателен'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # парсим и валидируем UUID
+        ids = []
+        for part in raw.split(','):
+            part = part.strip()
+            try:
+                ids.append(UUID(part))
+            except ValueError:
+                return Response(
+                    {'error': f'Невалидный UUID: {part}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if len(ids) > 100:
+            return Response(
+                {'error': 'Максимум 100 ID за запрос'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = (
+            Nomenclature.web.filter(id__in=ids)
+            .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
+            .prefetch_related(
+                'images',
+                Prefetch(
+                    'tenants',
+                    queryset=Counterparty.objects.only(
+                        'id', 'first_name', 'last_name',
+                        'middle_name', 'additional_name', 'keyword'
+                    ).prefetch_related('brands')
+                )
+            )
+            .defer('description', 'settings', 'hw_info')
+        )
+
+        serializer = NomenclatureCardSerializer(queryset, many=True)
+        return Response(serializer.data)
 
     @staticmethod
     def _is_admin(user):
