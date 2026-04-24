@@ -1295,13 +1295,10 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_exterior(self, obj):
-        image = obj.images.first()
+        image = obj.images.filter(type="exterior").first()
         if not image:
             return []
-        source = image.source
-        # FieldFile → берём URL, не сам объект
-        url = source.url if hasattr(source, 'url') else str(source)
-        return [{"source": url}]
+        return InNomenclaturePhotoSerializer([image], many=True).data
 
     def get_formattedAddress(self, obj):
         try:
