@@ -1296,7 +1296,12 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
 
     def get_exterior(self, obj):
         image = obj.images.first()
-        return [{"source": image.source}] if image else []
+        if not image:
+            return []
+        source = image.source
+        # FieldFile → берём URL, не сам объект
+        url = source.url if hasattr(source, 'url') else str(source)
+        return [{"source": url}]
 
     def get_formattedAddress(self, obj):
         try:
