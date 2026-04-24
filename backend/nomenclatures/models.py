@@ -1,6 +1,5 @@
 import hashlib
 from uuid import uuid4
-from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
@@ -8,7 +7,6 @@ from django_minio_backend import MinioBackend
 from django.utils.translation import gettext_lazy as _
 from addresses.models import Address as AddressBook
 from api import APIBaseObjectModel, Article, UUIDPKField
-from django.utils import timezone
 
 TIMEZONES = {
     "Etc/GMT+11": "UTC -11",
@@ -159,6 +157,13 @@ class Nomenclature(APIBaseObjectModel):
     for_web = models.BooleanField(
         default=True,
         verbose_name="Отображать в веб"
+    )
+
+    slots_per_hour = models.CharField(
+        verbose_name="Кол-во выходов в час",
+        null=True,
+        blank=True,
+        default=1
     )
 
     keys_validator = KeysValidator(
