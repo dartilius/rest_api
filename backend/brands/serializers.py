@@ -33,3 +33,11 @@ class BrandShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
         fields = ("id", "name")
+
+class BrandCardSerializer(serializers.ModelSerializer):
+    logotype = Base64FileField(required=False)
+
+    class Meta:
+        model = Brand
+        fields = ("id", "name", "logotype")
+        read_only_fields = fields

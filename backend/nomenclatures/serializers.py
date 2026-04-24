@@ -4,7 +4,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from rest_framework import serializers
 from brands.models import Brand
-from brands.serializers import BrandSerializer
+from brands.serializers import BrandSerializer, BrandCardSerializer
 from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, TenantsShortSerializer, FullTenantsSerializer
 from files.serializers import Base64FileField
@@ -1270,3 +1270,57 @@ class StatusHistorySerializer(serializers.ModelSerializer):
         repr_ = super().to_representation(value)
         repr_["change_time"] = f"{value.change_time:%Y-%m-%d %H:%M:%S}"
         return repr_
+
+class NomenclatureCardSerializer(serializers.ModelSerializer):
+    """Минимальный сериализатор для карточек каталога и корзины."""
+    brand = BrandCardSerializer()
+    exterior = serializers.SerializerMethodField()
+    formattedAddress = serializers.SerializerMethodField()
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
+
+    class Meta:
+        model = Nomenclature
+        fields = (
+            "id",
+            "nameForFront",
+            "brand",
+            "exterior",
+            "formattedAddress",
+            "typeOfPlace",
+            "pricePerMonth",
+        )
+        read_only_fields = fields
+
+    def get_exterior(self, obj):
+        image = obj.images.first()
+        return [{"source": image.source}] if image else []
+
+    def get_formattedAddress(self, obj):
+        try:
+            nomenclature_address = obj.address
+        except ObjectDoesNotExist:
+            return ""
+
+        if not nomenclature_address or not nomenclature_address.address:
+            return ""
+
+        address = nomenclature_address.address
+        address_parts = []
+
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        return ', '.join(address_parts)
