@@ -1278,7 +1278,7 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
     formattedAddress = serializers.SerializerMethodField()
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     nameForFront = serializers.CharField(source="name_for_front", read_only=True)
-    slots_per_hour = serializers.SerializerMethodField()
+    slotsPerHour = serializers.SerializerMethodField(source="slots_per_hour", read_only=True)
 
     class Meta:
         model = Nomenclature
@@ -1290,7 +1290,7 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
             "formattedAddress",
             "typeOfPlace",
             "pricePerMonth",
-            "slots_per_hour"
+            "slotsPerHour"
         )
         read_only_fields = fields
 
