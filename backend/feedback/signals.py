@@ -6,38 +6,38 @@ from django.dispatch import receiver
 
 from feedback.models import Feedback
 from rmc_rest_api.settings import DEFAULT_FROM_EMAIL
-
+from django.core.mail import get_connection, EmailMessage
 
 def _send_feedback_email(feedback: Feedback) -> None:
-    """Отправляет уведомление администраторам и подтверждение пользователю."""
-
-    send_mail(
-        subject="Новое обращение с сайта",
-        message=(
-            f"Получено новое обращение:\n\n"
-            f"Имя:     {feedback.name}\n"
-            f"Телефон: {feedback.phone}\n"
-            f"Почта:   {feedback.email}\n"
-            f"Дата:    {feedback.created:%d.%m.%Y %H:%M}\n\n"
-            f"Сообщение:\n{feedback.message}"
-        ),
-        from_email=DEFAULT_FROM_EMAIL,
-        recipient_list=[DEFAULT_FROM_EMAIL],
-        fail_silently=False,
-    )
-
-    # Подтверждение пользователю
-    send_mail(
-        subject="Мы получили ваше обращение",
-        message=(
-            f"Здравствуйте, {feedback.name}!\n\n"
-            f"Ваше обращение принято. Мы свяжемся с вами в ближайшее время.\n\n"
-            f"Текст вашего сообщения:\n{feedback.message}"
-        ),
-        from_email=DEFAULT_FROM_EMAIL,
-        recipient_list=[feedback.email],
-        fail_silently=False,
-    )
+    with get_connection() as connection:
+        messages = [
+            EmailMessage(
+                subject="Новое обращение с сайта",
+                body=(
+                    f"Получено новое обращение:\n\n"
+                    f"Имя:     {feedback.name}\n"
+                    f"Телефон: {feedback.phone}\n"
+                    f"Почта:   {feedback.email}\n"
+                    f"Дата:    {feedback.created:%d.%m.%Y %H:%M}\n\n"
+                    f"Сообщение:\n{feedback.message}"
+                ),
+                from_email=DEFAULT_FROM_EMAIL,
+                to=[DEFAULT_FROM_EMAIL],
+                connection=connection,
+            ),
+            EmailMessage(
+                subject="Мы получили ваше обращение",
+                body=(
+                    f"Здравствуйте, {feedback.name}!\n\n"
+                    f"Ваше обращение принято. Мы свяжемся с вами в ближайшее время.\n\n"
+                    f"Текст вашего сообщения:\n{feedback.message}"
+                ),
+                from_email=DEFAULT_FROM_EMAIL,
+                to=[feedback.email],
+                connection=connection,
+            ),
+        ]
+        connection.send_messages(messages)
 
 
 @receiver(post_save, sender=Feedback)
