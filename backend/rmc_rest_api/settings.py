@@ -329,27 +329,128 @@ OPENSEARCH_DSL = {
 OPENSEARCH_DSL_AUTOSYNC = False
 
 # ---------------------------- LOGGING -------------------------- #
+
+# Создаем директорию для логов если её нет
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOG_DIR, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} | {module} | {funcName}:{lineno} | {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '[{levelname}] {asctime} | {message}',
+            'style': '{',
+            'datefmt': '%H:%M:%S',
+        },
+        'celery': {
+            'format': '[{levelname}] {asctime} | CELERY | {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
     'handlers': {
+        # Консоль (для разработки)
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+
+        # Основной файл логов Django
+        'django_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'django.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+
+        # Логи ошибок Django
+        'django_error_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'django_errors.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'level': 'ERROR',
+        },
+
+        # Логи вашего приложения feedback
+        'feedback_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'feedback.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
+
+        # Логи Celery
+        'celery_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'celery.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'celery',
+        },
+
+        # Отдельный файл для отслеживания отправки писем
+        'email_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'emails.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 3,
+            'formatter': 'verbose',
         },
     },
     'loggers': {
-        'nomenclatures': {
-            'handlers': ['console'],
+        # Корневой логгер Django
+        'django': {
+            'handlers': ['console', 'django_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+
+        # Ошибки Django
+        'django.request': {
+            'handlers': ['django_error_file', 'console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+
+        # Ваше приложение feedback
+        'feedback': {
+            'handlers': ['feedback_file', 'console'],
             'level': 'DEBUG',
-            'propagate': True,
+            'propagate': False,
+        },
+
+        # Логгер для email
+        'feedback.email': {
+            'handlers': ['email_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+
+        # Celery
+        'celery': {
+            'handlers': ['celery_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+
+        # Задачи Celery
+        'celery.task': {
+            'handlers': ['celery_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
 }
-
 # from datetime import timedelta as td
 # from pathlib import Path
 # import os
