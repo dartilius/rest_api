@@ -6,8 +6,7 @@ from rmc_rest_api.settings import DEFAULT_FROM_EMAIL
 
 @shared_task
 def send_feedback_email(name: str, phone: str, email: str, message: str, created: str) -> str:
-    from_email = DEFAULT_FROM_EMAIL
-    print(f"email: {from_email}")
+
 
     EmailMessage(
         subject="Новое обращение с сайта",
@@ -23,6 +22,8 @@ def send_feedback_email(name: str, phone: str, email: str, message: str, created
         to=["info@krasrm.com"],
     ).send()
 
+@shared_task
+def send_feedback_mail(name: str, email: str, message: str, created: str) -> str:
     EmailMessage(
         subject="Мы получили ваше обращение",
         body=(
@@ -30,7 +31,7 @@ def send_feedback_email(name: str, phone: str, email: str, message: str, created
             f"Ваше обращение принято. Мы свяжемся с вами в ближайшее время.\n\n"
             f"Текст вашего сообщения:\n{message}"
         ),
-        reply_to=[email],
+        to=[email],
     ).send()
 
     return f"Письма отправлены для {email}"
