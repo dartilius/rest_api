@@ -2,8 +2,6 @@ from celery import shared_task
 from django.core.mail import EmailMessage
 from django.conf import settings
 
-from rmc_rest_api.settings import DEFAULT_FROM_EMAIL
-
 
 @shared_task
 def send_feedback_email(name: str, phone: str, email: str, message: str, created: str) -> str:
@@ -20,7 +18,7 @@ def send_feedback_email(name: str, phone: str, email: str, message: str, created
             f"Сообщение:\n{message}"
         ),
         from_email=from_email,
-        to=[DEFAULT_FROM_EMAIL],
+        to=[from_email],
     ).send()
 
     EmailMessage(
@@ -31,7 +29,7 @@ def send_feedback_email(name: str, phone: str, email: str, message: str, created
             f"Текст вашего сообщения:\n{message}"
         ),
         from_email=from_email,
-        to=[DEFAULT_FROM_EMAIL],
+        to=[from_email],
     ).send()
 
     return f"Письма отправлены для {email}"
