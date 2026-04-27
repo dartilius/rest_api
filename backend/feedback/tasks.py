@@ -4,7 +4,6 @@ from django.core.mail import EmailMessage
 from rmc_rest_api.settings import DEFAULT_FROM_EMAIL
 
 
-@shared_task
 def send_feedback_email(name: str, phone: str, email: str, message: str, created: str) -> str:
     msg = EmailMessage(
         subject="Новое обращение с сайта",
@@ -22,7 +21,6 @@ def send_feedback_email(name: str, phone: str, email: str, message: str, created
     msg.send()
     return f"Admin notification sent for {email}"
 
-@shared_task
 def send_feedback_mail(name: str, email: str, message: str, created: str) -> str:
     msg = EmailMessage(
         subject="Мы получили ваше обращение",

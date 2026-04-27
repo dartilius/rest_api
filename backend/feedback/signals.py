@@ -22,7 +22,7 @@ def on_feedback_created(sender, instance: Feedback, created: bool, **kwargs) -> 
     instance._email_sent_to_admin = True
 
     logger.info(f"Sending admin notification for feedback {instance.id}")
-    send_feedback_email.delay(
+    send_feedback_email(
         name=instance.name,
         phone=instance.phone,
         email=instance.email,
@@ -44,7 +44,7 @@ def on_feedback_user(sender, instance: Feedback, created: bool, **kwargs) -> Non
     instance._email_sent_to_user = True
 
     logger.info(f"Sending user confirmation for feedback {instance.id}")
-    send_feedback_mail.delay(
+    send_feedback_mail(
         name=instance.name,
         email=instance.email,
         message=instance.message,
