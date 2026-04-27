@@ -7,7 +7,7 @@ from email.utils import formatdate, make_msgid
 
 from celery import shared_task
 
-from rmc_rest_api.settings import EMAIL_HOST_USER, EMAIL_PORT, EMAIL_HOST_PASSWORD
+from rmc_rest_api.settings import EMAIL_HOST_USER, EMAIL_PORT, EMAIL_HOST_PASSWORD, EMAIL_HOST
 
 logger = logging.getLogger('feedback')
 
@@ -21,13 +21,13 @@ def _send(to: str, subject: str, body: str) -> None:
     msg["Message-ID"] = make_msgid(domain="krasrm.com")
     msg.attach(MIMEText(body, "plain", "utf-8"))
 
-    with smtplib.SMTP(EMAIL_HOST_USER, EMAIL_PORT) as s:
+    # ИСПРАВЛЕНО: используем EMAIL_HOST, а не EMAIL_HOST_USER
+    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as s:
         s.ehlo()
         s.starttls()
         s.ehlo()
         s.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
         s.sendmail(EMAIL_HOST_USER, to, msg.as_string())
-
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_feedback_email(self, name: str, phone: str, email: str, message: str, created: str) -> str:
