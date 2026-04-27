@@ -1,20 +1,26 @@
 # feedback/tasks.py
 import logging
+from datetime import datetime
 from celery import shared_task
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, get_connection
 
 logger = logging.getLogger('feedback')
-email_logger = logging.getLogger('feedback.email')
 
 
-@shared_task
-def send_feedback_email(name: str, phone: str, email: str, message: str, created: str) -> str:
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_feedback_email(self, name: str, phone: str, email: str, message: str, created: str) -> str:
     """Отправка уведомления админу"""
 
-    logger.info(f"[TASK ADMIN] Starting for user: {email}")
-    print(f"[TASK ADMIN] Sending email to info@krasrm.com from {email}")
+    task_id = self.request.id
+    logger.info(f"[TASK ADMIN {task_id}] Sending to info@krasrm.com")
 
     try:
+        # Создаем соединение с нашим кастомным бэкендом
+        connection = get_connection(
+            backend='feedback.email_backend.CustomEmailBackend',
+            fail_silently=False,
+        )
+
         msg = EmailMessage(
             subject="Новое обращение с сайта",
             body=(
@@ -27,27 +33,31 @@ def send_feedback_email(name: str, phone: str, email: str, message: str, created
             ),
             from_email="info@krasrm.com",
             to=["info@krasrm.com"],
+            connection=connection,  # Используем наше соединение
         )
-        msg.send()
 
-        logger.info(f"[TASK ADMIN] ✅ Sent successfully")
-        email_logger.info(f"ADMIN_EMAIL_SENT: to=info@krasrm.com from_user={email}")
+        result = msg.send()
+        logger.info(f"[TASK ADMIN {task_id}] ✅ Sent: {result}")
         return f"Admin notification sent for {email}"
 
     except Exception as e:
-        logger.error(f"[TASK ADMIN] ❌ Failed: {e}")
-        email_logger.error(f"ADMIN_EMAIL_FAILED: error={e}")
-        raise
+        logger.error(f"[TASK ADMIN {task_id}] ❌ Failed: {e}")
+        raise self.retry(exc=e)
 
 
-@shared_task
-def send_feedback_mail(name: str, email: str, message: str, created: str) -> str:
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_feedback_mail(self, name: str, email: str, message: str, created: str) -> str:
     """Отправка подтверждения пользователю"""
 
-    logger.info(f"[TASK USER] Starting for: {email}")
-    print(f"[TASK USER] Sending confirmation to {email}")
+    task_id = self.request.id
+    logger.info(f"[TASK USER {task_id}] Sending to {email}")
 
     try:
+        connection = get_connection(
+            backend='feedback.email_backend.CustomEmailBackend',
+            fail_silently=False,
+        )
+
         msg = EmailMessage(
             subject="Мы получили ваше обращение",
             body=(
@@ -56,14 +66,13 @@ def send_feedback_mail(name: str, email: str, message: str, created: str) -> str
                 f"Текст вашего сообщения:\n{message}"
             ),
             to=[email],
+            connection=connection,
         )
-        msg.send()
 
-        logger.info(f"[TASK USER] ✅ Sent successfully to {email}")
-        email_logger.info(f"USER_EMAIL_SENT: to={email}")
-        return f"Письма отправлены для {email}"
+        result = msg.send()
+        logger.info(f"[TASK USER {task_id}] ✅ Sent: {result}")
+        return f"Письмо отправлено для {email}"
 
     except Exception as e:
-        logger.error(f"[TASK USER] ❌ Failed for {email}: {e}")
-        email_logger.error(f"USER_EMAIL_FAILED: to={email} error={e}")
-        raise
+        logger.error(f"[TASK USER {task_id}] ❌ Failed: {e}")
+        raise self.retry(exc=e)

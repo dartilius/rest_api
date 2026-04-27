@@ -50,16 +50,33 @@ INSTALLED_APPS = [
 ]
 
 # ---------------------------------- MAIL ---------------------------------- #
-if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Базовые настройки
+import ssl
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 EMAIL_HOST = os.environ.get('EMAIL_HOST')
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'info@krasrm.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+
+# Настройки TLS/SSL
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
+
+# Выбор бэкенда
+if DEBUG or os.environ.get('DISABLE_EMAIL_SSL_VERIFY', 'true').lower() == 'true':
+    # Используем кастомный бэкенд с отключенной проверкой SSL
+    EMAIL_BACKEND = 'feedback.email_backend.CustomEmailBackend'
+    print("⚠️  Using email backend without SSL verification")
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+# Таймаут для SMTP
+EMAIL_TIMEOUT = 10  # секунд
+
+# Дополнительные настройки безопасности (если нужно)
+if not DEBUG:
+    EMAIL_SSL_CERTFILE = None
+    EMAIL_SSL_KEYFILE = None
 
 
 # Базовый MIDDLEWARE
