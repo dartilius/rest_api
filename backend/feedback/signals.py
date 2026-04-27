@@ -42,13 +42,6 @@ def _send_feedback_email(feedback: Feedback) -> None:
 
 @receiver(post_save, sender=Feedback)
 def on_feedback_created(sender, instance: Feedback, created: bool, **kwargs) -> None:
-    """Запускает рассылку в отдельном потоке, чтобы не блокировать запрос."""
     if not created:
         return
-
-    thread = threading.Thread(
-        target=_send_feedback_email,
-        args=(instance,),
-        daemon=True,
-    )
-    thread.start()
+    _send_feedback_email(instance)
