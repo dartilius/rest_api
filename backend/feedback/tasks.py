@@ -1,11 +1,12 @@
 from celery import shared_task
 from django.core.mail import EmailMessage
-from django.conf import settings
+
+from rmc_rest_api.settings import DEFAULT_FROM_EMAIL
 
 
 @shared_task
 def send_feedback_email(name: str, phone: str, email: str, message: str, created: str) -> str:
-    from_email = settings.DEFAULT_FROM_EMAIL
+    from_email = DEFAULT_FROM_EMAIL
 
     EmailMessage(
         subject="Новое обращение с сайта",
