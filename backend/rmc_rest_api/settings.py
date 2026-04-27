@@ -328,11 +328,32 @@ OPENSEARCH_DSL = {
 # Отключаем автосинк — будем синкать через Celery вручную
 OPENSEARCH_DSL_AUTOSYNC = False
 
+# settings.py (в конец файла)
+
 # ---------------------------- LOGGING -------------------------- #
 
-# Создаем директорию для логов если её нет
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Создаем директорию для логов с обработкой ошибок
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
-os.makedirs(LOG_DIR, exist_ok=True)
+try:
+    os.makedirs(LOG_DIR, exist_ok=True)
+    # Проверяем права на запись
+    test_file = os.path.join(LOG_DIR, '.test_write')
+    with open(test_file, 'w') as f:
+        f.write('test')
+    os.remove(test_file)
+    print(f"✅ LOG_DIR is writable: {LOG_DIR}")
+except Exception as e:
+    print(f"❌ Cannot write to LOG_DIR: {LOG_DIR}")
+    print(f"Error: {e}")
+    # Fallback - используем /tmp если не можем писать в LOG_DIR
+    LOG_DIR = '/tmp'
+    os.makedirs(LOG_DIR, exist_ok=True)
+    print(f"⚠️ Using fallback LOG_DIR: {LOG_DIR}")
 
 LOGGING = {
     'version': 1,
@@ -348,39 +369,12 @@ LOGGING = {
             'style': '{',
             'datefmt': '%H:%M:%S',
         },
-        'celery': {
-            'format': '[{levelname}] {asctime} | CELERY | {message}',
-            'style': '{',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-        },
     },
     'handlers': {
-        # Консоль (для разработки)
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
-
-        # Основной файл логов Django
-        'django_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(LOG_DIR, 'django.log'),
-            'maxBytes': 1024 * 1024 * 10,  # 10 MB
-            'backupCount': 5,
-            'formatter': 'verbose',
-        },
-
-        # Логи ошибок Django
-        'django_error_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(LOG_DIR, 'django_errors.log'),
-            'maxBytes': 1024 * 1024 * 10,  # 10 MB
-            'backupCount': 5,
-            'formatter': 'verbose',
-            'level': 'ERROR',
-        },
-
-        # Логи вашего приложения feedback
         'feedback_file': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOG_DIR, 'feedback.log'),
@@ -388,64 +382,22 @@ LOGGING = {
             'backupCount': 3,
             'formatter': 'verbose',
         },
-
-        # Логи Celery
-        'celery_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(LOG_DIR, 'celery.log'),
-            'maxBytes': 1024 * 1024 * 10,  # 10 MB
-            'backupCount': 5,
-            'formatter': 'celery',
-        },
-
-        # Отдельный файл для отслеживания отправки писем
         'email_file': {
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(LOG_DIR, 'emails.log'),
+            'filename': os.path.join(LOG_DIR, 'email.log'),
             'maxBytes': 1024 * 1024 * 5,  # 5 MB
             'backupCount': 3,
             'formatter': 'verbose',
         },
     },
     'loggers': {
-        # Корневой логгер Django
-        'django': {
-            'handlers': ['console', 'django_file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-
-        # Ошибки Django
-        'django.request': {
-            'handlers': ['django_error_file', 'console'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-
-        # Ваше приложение feedback
         'feedback': {
             'handlers': ['feedback_file', 'console'],
             'level': 'DEBUG',
             'propagate': False,
         },
-
-        # Логгер для email
         'feedback.email': {
             'handlers': ['email_file', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-
-        # Celery
-        'celery': {
-            'handlers': ['celery_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-
-        # Задачи Celery
-        'celery.task': {
-            'handlers': ['celery_file', 'console'],
             'level': 'DEBUG',
             'propagate': False,
         },

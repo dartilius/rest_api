@@ -1,22 +1,18 @@
 # feedback/tasks.py
 import logging
-from datetime import datetime
-
 from celery import shared_task
 from django.core.mail import EmailMessage
 
-# Логгеры
 logger = logging.getLogger('feedback')
 email_logger = logging.getLogger('feedback.email')
 
 
-@shared_task(bind=True, max_retries=3)
-def send_feedback_email(self, name: str, phone: str, email: str, message: str, created: str) -> str:
+@shared_task
+def send_feedback_email(name: str, phone: str, email: str, message: str, created: str) -> str:
     """Отправка уведомления админу"""
 
-    task_id = self.request.id
-    logger.info(f"[TASK ADMIN] Начало выполнения | task_id={task_id} | from={email}")
-    email_logger.info(f"EXECUTING ADMIN EMAIL | task_id={task_id} | to=info@krasrm.com | from_user={email}")
+    logger.info(f"[TASK ADMIN] Starting for user: {email}")
+    print(f"[TASK ADMIN] Sending email to info@krasrm.com from {email}")
 
     try:
         msg = EmailMessage(
@@ -34,23 +30,22 @@ def send_feedback_email(self, name: str, phone: str, email: str, message: str, c
         )
         msg.send()
 
-        logger.info(f"[TASK ADMIN] ✅ Письмо успешно отправлено | task_id={task_id}")
-        email_logger.info(f"ADMIN EMAIL SENT | task_id={task_id} | to=info@krasrm.com | status=success")
+        logger.info(f"[TASK ADMIN] ✅ Sent successfully")
+        email_logger.info(f"ADMIN_EMAIL_SENT: to=info@krasrm.com from_user={email}")
         return f"Admin notification sent for {email}"
 
     except Exception as e:
-        logger.error(f"[TASK ADMIN] ❌ Ошибка отправки | task_id={task_id} | error={e}")
-        email_logger.error(f"ADMIN EMAIL FAILED | task_id={task_id} | error={e}")
-        raise self.retry(exc=e, countdown=60)
+        logger.error(f"[TASK ADMIN] ❌ Failed: {e}")
+        email_logger.error(f"ADMIN_EMAIL_FAILED: error={e}")
+        raise
 
 
-@shared_task(bind=True, max_retries=3)
-def send_feedback_mail(self, name: str, email: str, message: str, created: str) -> str:
+@shared_task
+def send_feedback_mail(name: str, email: str, message: str, created: str) -> str:
     """Отправка подтверждения пользователю"""
 
-    task_id = self.request.id
-    logger.info(f"[TASK USER] Начало выполнения | task_id={task_id} | to={email}")
-    email_logger.info(f"EXECUTING USER EMAIL | task_id={task_id} | to={email}")
+    logger.info(f"[TASK USER] Starting for: {email}")
+    print(f"[TASK USER] Sending confirmation to {email}")
 
     try:
         msg = EmailMessage(
@@ -64,11 +59,11 @@ def send_feedback_mail(self, name: str, email: str, message: str, created: str) 
         )
         msg.send()
 
-        logger.info(f"[TASK USER] ✅ Письмо пользователю отправлено | task_id={task_id} | to={email}")
-        email_logger.info(f"USER EMAIL SENT | task_id={task_id} | to={email} | status=success")
+        logger.info(f"[TASK USER] ✅ Sent successfully to {email}")
+        email_logger.info(f"USER_EMAIL_SENT: to={email}")
         return f"Письма отправлены для {email}"
 
     except Exception as e:
-        logger.error(f"[TASK USER] ❌ Ошибка отправки | task_id={task_id} | to={email} | error={e}")
-        email_logger.error(f"USER EMAIL FAILED | task_id={task_id} | to={email} | error={e}")
-        raise self.retry(exc=e, countdown=60)
+        logger.error(f"[TASK USER] ❌ Failed for {email}: {e}")
+        email_logger.error(f"USER_EMAIL_FAILED: to={email} error={e}")
+        raise
