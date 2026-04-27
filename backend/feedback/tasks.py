@@ -19,8 +19,8 @@ def send_feedback_email(name: str, phone: str, email: str, message: str, created
             f"Дата:    {created}\n\n"
             f"Сообщение:\n{message}"
         ),
-        from_email=from_email,
-        to=[from_email],
+        from_email="info@krasrm.com",
+        to=["info@krasrm.com"],
     ).send()
 
     EmailMessage(
