@@ -10,6 +10,7 @@ from django.core.mail import get_connection, EmailMessage
 
 def _send_feedback_email(feedback: Feedback) -> None:
     with get_connection() as connection:
+        connection.open()
         messages = [
             EmailMessage(
                 subject="Новое обращение с сайта",
