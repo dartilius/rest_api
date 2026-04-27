@@ -1,8 +1,10 @@
 # feedback/tasks.py
 import logging
-from datetime import datetime
+from email.utils import formatdate, make_msgid
+
 from celery import shared_task
-from django.core.mail import EmailMessage, get_connection
+from django.conf import settings
+from django.core.mail import EmailMessage
 
 logger = logging.getLogger('feedback')
 
@@ -10,17 +12,11 @@ logger = logging.getLogger('feedback')
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_feedback_email(self, name: str, phone: str, email: str, message: str, created: str) -> str:
     """Отправка уведомления админу"""
-
     task_id = self.request.id
-    logger.info(f"[TASK ADMIN {task_id}] Sending to info@krasrm.com")
+    from_email = settings.DEFAULT_FROM_EMAIL
+    logger.info(f"[TASK ADMIN {task_id}] Sending to {from_email}")
 
     try:
-        # Создаем соединение с нашим кастомным бэкендом
-        connection = get_connection(
-            backend='feedback.email_backend.CustomEmailBackend',
-            fail_silently=False,
-        )
-
         msg = EmailMessage(
             subject="Новое обращение с сайта",
             body=(
@@ -31,12 +27,14 @@ def send_feedback_email(self, name: str, phone: str, email: str, message: str, c
                 f"Дата:    {created}\n\n"
                 f"Сообщение:\n{message}"
             ),
-            from_email="info@krasrm.com",
-            to=["info@krasrm.com"],
-            connection=connection,  # Используем наше соединение
-            headers={"Content-Type": "text/plain"},
+            from_email=from_email,
+            to=[from_email],
+            headers={
+                "From": f"RMC <{from_email}>",
+                "Date": formatdate(localtime=True),
+                "Message-ID": make_msgid(domain="email.krasrm.com"),
+            },
         )
-
         result = msg.send()
         logger.info(f"[TASK ADMIN {task_id}] ✅ Sent: {result}")
         return f"Admin notification sent for {email}"
@@ -49,16 +47,11 @@ def send_feedback_email(self, name: str, phone: str, email: str, message: str, c
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_feedback_mail(self, name: str, email: str, message: str, created: str) -> str:
     """Отправка подтверждения пользователю"""
-
     task_id = self.request.id
+    from_email = settings.DEFAULT_FROM_EMAIL
     logger.info(f"[TASK USER {task_id}] Sending to {email}")
 
     try:
-        connection = get_connection(
-            backend='feedback.email_backend.CustomEmailBackend',
-            fail_silently=False,
-        )
-
         msg = EmailMessage(
             subject="Мы получили ваше обращение",
             body=(
@@ -66,10 +59,14 @@ def send_feedback_mail(self, name: str, email: str, message: str, created: str) 
                 f"Ваше обращение принято. Мы свяжемся с вами в ближайшее время.\n\n"
                 f"Текст вашего сообщения:\n{message}"
             ),
+            from_email=from_email,
             to=[email],
-            connection=connection,
+            headers={
+                "From": f"RMC <{from_email}>",
+                "Date": formatdate(localtime=True),
+                "Message-ID": make_msgid(domain="email.krasrm.com"),
+            },
         )
-
         result = msg.send()
         logger.info(f"[TASK USER {task_id}] ✅ Sent: {result}")
         return f"Письмо отправлено для {email}"
