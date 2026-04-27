@@ -34,6 +34,7 @@ def send_feedback_email(self, name: str, phone: str, email: str, message: str, c
             from_email="info@krasrm.com",
             to=["info@krasrm.com"],
             connection=connection,  # Используем наше соединение
+            headers={"Content-Type": "text/plain"},
         )
 
         result = msg.send()
