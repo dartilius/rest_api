@@ -30,8 +30,7 @@ def send_feedback_email(name: str, phone: str, email: str, message: str, created
             f"Ваше обращение принято. Мы свяжемся с вами в ближайшее время.\n\n"
             f"Текст вашего сообщения:\n{message}"
         ),
-        from_email=from_email,
-        to=[email],
+        reply_to=[email],
     ).send()
 
     return f"Письма отправлены для {email}"
