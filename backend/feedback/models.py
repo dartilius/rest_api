@@ -1,3 +1,4 @@
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 
 from api import UUIDPKField
@@ -40,3 +41,12 @@ class Feedback(models.Model):
         verbose_name = "Обратная связь"
         verbose_name_plural = "Обратные связи"
         ordering = ("-created",)
+        indexes = [
+            GinIndex(
+                name="feedback_name_gin_idx",
+                fields=["name"],
+                opclasses=["gin_trgm_ops"],
+            ),
+            models.Index(fields=["name"]),
+            models.Index(fields=["code1c"]),
+        ]
