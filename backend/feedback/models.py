@@ -1,25 +1,34 @@
 from django.db import models
 
+from api import UUIDPKField
+
+
 class Feedback(models.Model):
+    id = UUIDPKField()
+    code1c = models.CharField(
+        verbose_name="Код 1с",
+        null=True,
+        blank=True,
+    )
     name = models.CharField(
         verbose_name="Имя",
-        null=False,
-        blank=False,
+        null=True,
+        blank=True,
     )
     phone = models.CharField(
         verbose_name="Телефон",
-        null=False,
-        blank=False,
+        null=True,
+        blank=True,
     )
     email = models.CharField(
         verbose_name="Почта",
-        null=False,
-        blank=False,
+        null=True,
+        blank=True,
     )
     message = models.CharField(
         verbose_name="Текст обращения",
-        null=False,
-        blank=False,
+        null=True,
+        blank=True,
     )
     created = models.DateTimeField(
         verbose_name="Дата создания",
