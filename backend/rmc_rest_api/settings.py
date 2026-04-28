@@ -53,7 +53,7 @@ INSTALLED_APPS = [
 # Базовые настройки
 import ssl
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
-EMAIL_HOST = os.environ.get('EMAIL_HOST')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'email.krasrm.com')
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'info@krasrm.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
