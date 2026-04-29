@@ -45,7 +45,6 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         "tenant__last_name",
         "tenant__keyword",
         "tenant__additional_name",
-        "tenant__brands__name",
         "brand__name",
     ]
 
