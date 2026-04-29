@@ -115,7 +115,7 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
 
 class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
     """Сериализатор для ответа с арендаторами номенклатуры"""
-    id = serializers.UUIDField(source='tenant.id', read_only=True)
+    id = serializers.UUIDField(read_only=True)
     brands_list = serializers.SerializerMethodField()
     logotype = serializers.SerializerMethodField()
     floor = serializers.CharField(read_only=True)
@@ -352,7 +352,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "longitude": None
                 }
             }
-    
+
         address = nomenclature_address.address
 
         if not address:
@@ -388,7 +388,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # 🔥 ИСПРАВЛЕНО: проверяем наличие coordinates и его атрибутов
         latitude = None
         longitude = None
-    
+
         if hasattr(address, 'coordinates') and address.coordinates:
             try:
                 if hasattr(address.coordinates, 'latitude'):
