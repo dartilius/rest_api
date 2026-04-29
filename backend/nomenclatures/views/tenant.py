@@ -73,6 +73,8 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             NomenclatureTenant.objects
             .filter(**{filter_field: nomenclature_pk})
             .select_related("tenant", "brand")
+            .order_by('id')
+            .distinct()
         )
         print("QS count before search:", qs.count())
         print("Search param:", self.request.query_params.get('search'))
