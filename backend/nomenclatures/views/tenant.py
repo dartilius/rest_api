@@ -38,8 +38,8 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = NomenclatureTenantFilter
-    # pagination_class = CustomLimitOffsetPagination
-    pagination_class = None
+    pagination_class = CustomLimitOffsetPagination
+    # pagination_class = None
     search_fields = [
         "tenant__first_name",
         "tenant__middle_name",
