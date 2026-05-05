@@ -20,7 +20,6 @@ from api.constants import VersionsSerializer
 from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
 from nomenclatures.services.opensearch_search import NomenclatureOpenSearchService
-from services.api_1c_client import APIService, get_service_user, logger
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
@@ -1097,29 +1096,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
 
         return Response({"id": nomenclature.pk})
-
-    @action(
-        methods=["POST"],
-        url_path='check_1c',
-        permission_classes=[AllowAny],
-        detail=False
-    )
-    def check_1c(self, request):
-        code = request.data.get("code1c")
-        if not code:
-            return Response({"detail": "Поле code1c обязательно"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            svc = APIService(user=get_service_user())
-            result = svc.get_nomen(code)
-        except Exception as e:
-            logger.warning("Не удалось получить номенклатуру из 1С: %s", e)
-            return Response({"detail": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
-
-        if result is None:
-            return Response({"detail": "1С не вернул данные"}, status=status.HTTP_502_BAD_GATEWAY)
-
-        return Response(result)
 
     @extend_schema(
         summary="Получить номенклатуры по списку ID",
