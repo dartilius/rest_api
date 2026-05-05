@@ -12,14 +12,13 @@ from rest_framework.status import (
 )
 from rest_framework.decorators import action
 
-from api import APIServiceMixin
 from api.constants import (
     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
 )
 from brands.filters import BrandFilter
 from brands.models import Brand
 from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
-from services.api_1c_client import APIService, get_service_user, logger
+from services.api_1c_client import api_1c, logger
 
 
 @extend_schema_view(
@@ -166,7 +165,7 @@ from services.api_1c_client import APIService, get_service_user, logger
     ),
 )
 @extend_schema(tags=["Бренды"])
-class BrandViewSet(APIServiceMixin, viewsets.ModelViewSet):
+class BrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     lookup_field = "id_or_code1c"
     http_method_names = ["get", "post", "patch", "delete"]
@@ -185,13 +184,12 @@ class BrandViewSet(APIServiceMixin, viewsets.ModelViewSet):
         brand = serializer.save()
 
         try:
-            code1c = self.svc.create_brand(brand)
-            if code1c:
-                if Brand.objects.filter(code1c=code1c).exclude(id=brand.id).exists():
-                    logger.warning("code1c %s уже занят другим брендом", code1c)
-                else:
-                    brand.code1c = code1c
-                    brand.save(update_fields=["code1c"])
+            response = api_1c.post("/CreateBrand", {
+                "brandName": brand.name,
+                "brandDescription": brand.description or '',
+            })
+            response.raise_for_status()
+            return response.json().get("brandCode")
         except Exception as e:
             logger.warning("Не удалось создать бренд в 1С: %s", e)
 
