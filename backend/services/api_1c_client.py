@@ -135,10 +135,11 @@
 #             logger.error("Ошибка отправки Feedback %s в 1С: %s", feedback.id, e)
 #             return False
 
-import os
 import logging
-import requests
+import os
 from typing import TYPE_CHECKING, cast
+
+import requests
 from django.contrib.auth import get_user_model
 
 if TYPE_CHECKING:
@@ -265,3 +266,16 @@ class APIService:
         except requests.RequestException as e:
             logger.error("Ошибка отправки Feedback %s в 1С: %s", feedback.id, e)
             return False
+
+    def get_nomen(self, code: str) -> dict | None:
+        payload = {
+            "Код": code,
+        }
+
+        try:
+            response = self._request("POST", "/SynchronizeObjectNomenclature", json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            logger.error("Ошибка получения SynchronizeObjectNomenclature %s в 1С: %s",  e)
+            return None

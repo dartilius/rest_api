@@ -20,6 +20,7 @@ from api.constants import VersionsSerializer
 from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
 from nomenclatures.services.opensearch_search import NomenclatureOpenSearchService
+from services.api_1c_client import APIService, get_service_user, logger
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
@@ -1096,6 +1097,18 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
 
         return Response({"id": nomenclature.pk})
+
+    @action(
+        methods=["POST"],
+        url_path='check_1c',
+        permission_classes=[AllowAny],
+    )
+    def check_1c(self, request):
+        try:
+            svc = APIService(user=get_service_user())
+            svc.get_nomen(request.code1c)
+        except Exception as e:
+            logger.warning("Не удалось получить Место в 1С: %s", e)
 
     @extend_schema(
         summary="Получить номенклатуры по списку ID",
