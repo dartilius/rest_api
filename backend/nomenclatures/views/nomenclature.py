@@ -1102,7 +1102,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         methods=["POST"],
         url_path='check_1c',
         permission_classes=[AllowAny],
-        detail=True
+        detail=False
     )
     def check_1c(self, request):
         try:
