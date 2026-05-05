@@ -1105,11 +1105,21 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         detail=False
     )
     def check_1c(self, request):
+        code = request.data.get("code1c")
+        if not code:
+            return Response({"detail": "Поле code1c обязательно"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             svc = APIService(user=get_service_user())
-            svc.get_nomen(request.code1c)
+            result = svc.get_nomen(code)
         except Exception as e:
-            logger.warning("Не удалось получить Место в 1С: %s", e)
+            logger.warning("Не удалось получить номенклатуру из 1С: %s", e)
+            return Response({"detail": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if result is None:
+            return Response({"detail": "1С не вернул данные"}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(result)
 
     @extend_schema(
         summary="Получить номенклатуры по списку ID",
