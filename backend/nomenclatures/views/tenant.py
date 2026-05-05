@@ -116,6 +116,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        instance.delete()
         payload = {
                 "nomenclatureCode": instance.nomenclature.code1c,
                 "caCode": instance.tenant.code1c,
@@ -129,7 +130,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.warning("Не удалось удалить арендатора в 1С: %s", e)
 
-        instance.delete()
+
         return Response(status=204)
 
     @action(detail=False, methods=["get"], url_path="floors")
