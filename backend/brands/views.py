@@ -189,7 +189,13 @@ class BrandViewSet(viewsets.ModelViewSet):
                 "brandDescription": brand.description or '',
             })
             response.raise_for_status()
-            return response.json().get("brandCode")
+            code1c = response.json().get("brandCode")
+            if code1c:
+                if Brand.objects.filter(code1c=code1c).exclude(id=brand.id).exists():
+                    logger.warning("code1c %s уже занят другим брендом", code1c)
+                else:
+                    brand.code1c = code1c
+                    brand.save(update_fields=["code1c"])
         except Exception as e:
             logger.warning("Не удалось создать бренд в 1С: %s", e)
 
