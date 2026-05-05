@@ -115,7 +115,7 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
 
 class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
     """Сериализатор для ответа с арендаторами номенклатуры"""
-    id = serializers.UUIDField(read_only=True)
+    id = serializers.UUIDField(source='tenant.id', read_only=True)
     brands_list = serializers.SerializerMethodField()
     logotype = serializers.SerializerMethodField()
     floor = serializers.CharField(read_only=True)
