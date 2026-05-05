@@ -423,7 +423,7 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
-        'services.api_service': {  # путь до твоего модуля
+        'services.api_1c': {  # путь до твоего модуля
             'handlers': ['file', 'console'],
             'level': 'INFO',
         },
