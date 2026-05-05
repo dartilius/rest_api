@@ -305,6 +305,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     )
     address = AddressReadSerializer(source="address.address", read_only=True)
     formattedAddress = serializers.SerializerMethodField()
+    worktime_start = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
+    worktime_end = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
 
     class Meta:
         fields = "__all__"
