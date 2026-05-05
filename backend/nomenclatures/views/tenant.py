@@ -121,10 +121,11 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
                 "caCode": instance.tenant.code1c,
                 "brandCode": instance.brand.code1c if instance.brand else None,
             }
+        logger.info("1С payload DeleteCAFromTenants: %s", payload)
         try:
             response = api_1c.delete("/DeleteCAFromTenants", payload)
             response.raise_for_status()
-            logger.info("1С payload DeleteCAFromTenants: %s", payload)
+
             logger.info("1С ответ DeleteCAFromTenants: %s", response.json())
         except Exception as e:
             logger.warning("Не удалось удалить арендатора в 1С: %s", e)
