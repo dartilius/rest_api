@@ -1,6 +1,6 @@
+import os
 from datetime import timedelta as td
 from pathlib import Path
-import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -52,7 +52,7 @@ INSTALLED_APPS = [
 
 # ---------------------------------- MAIL ---------------------------------- #
 # Базовые настройки
-import ssl
+
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'email.krasrm.com')
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'info@krasrm.com')
@@ -77,7 +77,6 @@ EMAIL_TIMEOUT = 10  # секунд
 if not DEBUG:
     EMAIL_SSL_CERTFILE = None
     EMAIL_SSL_KEYFILE = None
-
 
 # Базовый MIDDLEWARE
 MIDDLEWARE = [
@@ -139,7 +138,6 @@ if CLICKHOUSE_HOST:
         'PORT': os.environ.get('CLICKHOUSE_PORT'),
         'PASSWORD': os.environ.get('CLICKHOUSE_PASSWORD'),
     }
-
 
 DATABASE_ROUTERS = ['rmc_rest_api.dbrouters.ClickHouseRouter']
 
@@ -222,7 +220,6 @@ CACHES = {
 }
 # Время жизни кэша по умолчанию (в секундах)
 CACHE_TTL = 60 * 5  # 5 минут
-
 
 # ---------------------------------- MINIO ---------------------------------- #
 from datetime import timedelta
@@ -309,12 +306,12 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',)
 }
 
-
 # ------------------------------ DEBUG TOOLBAR ------------------------------ #
 
 if DEBUG:
     def show_toolbar(request):
         return True
+
 
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
@@ -410,6 +407,10 @@ LOGGING = {
             'backupCount': 3,
             'formatter': 'verbose',
         },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'api_1c.log',
+        },
     },
     'loggers': {
         'feedback': {
@@ -421,6 +422,10 @@ LOGGING = {
             'handlers': ['email_file', 'console'],
             'level': 'DEBUG',
             'propagate': False,
+        },
+        'services.api_service': {  # путь до твоего модуля
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
         },
     },
 }
