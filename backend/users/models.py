@@ -1,7 +1,5 @@
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
-from django.contrib.postgres.fields import ArrayField
-from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
@@ -10,8 +8,7 @@ from django.contrib.postgres.indexes import GinIndex
 from api import ContactInformation
 from api.base_objects import UUIDPKField
 from api.custom_managers import CustomUserManager
-from django.conf import settings
-
+from django.utils import timezone
 
 CONTACT_PERSON_ROLES = [
     ('broadcast', 'Корп. вещание'),
@@ -125,6 +122,23 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name='Код 1с'
     )
 
+    token_1c_access = models.TextField(
+        blank=True, null=True,
+        verbose_name='Access-токен 1С'
+    )
+    token_1c_refresh = models.TextField(
+        blank=True, null=True,
+        verbose_name='Refresh-токен 1С'
+    )
+    token_1c_access_expires_at = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='Срок жизни access-токена 1С'
+    )
+    token_1c_refresh_expires_at = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='Срок жизни refresh-токена 1С'
+    )
+
     @property
     def is_manager(self):
         """Проверяем, что пользователь менеджер."""
@@ -179,6 +193,18 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         self.username = self.email
         super().save(*args, **kwargs)
+
+    @property
+    def token_1c_access_is_expired(self) -> bool:
+        if not self.token_1c_access_expires_at:
+            return True
+        return timezone.now() >= self.token_1c_access_expires_at
+
+    @property
+    def token_1c_refresh_is_expired(self) -> bool:
+        if not self.token_1c_refresh_expires_at:
+            return False  # если срок не задан — считаем бессрочным
+        return timezone.now() >= self.token_1c_refresh_expires_at
 
     class Meta:
         db_table = 'custom_user'
