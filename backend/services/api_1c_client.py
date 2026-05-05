@@ -233,16 +233,17 @@ class APIService:
         """При 401 — переавторизуется и повторяет запрос один раз."""
         url = f"{self.base_url}{path}"
         headers = kwargs.pop("headers", {})
+        timeout = kwargs.pop("timeout", 30)
         headers.update(self._auth_headers())
 
-        response = self.session.request(method, url, headers=headers, timeout=10, **kwargs)
+        response = self.session.request(method, url, headers=headers, timeout=timeout, **kwargs)
 
         if response.status_code == 401:
             logger.warning("401 от 1С для %s — переавторизация", self.user.email)
             if self._reauthenticate():
                 self.user.refresh_from_db()
                 headers.update(self._auth_headers())
-                response = self.session.request(method, url, headers=headers, timeout=10, **kwargs)
+                response = self.session.request(method, url, headers=headers, timeout=timeout, **kwargs)
             else:
                 logger.error("Переавторизация не удалась для %s", self.user.email)
 
