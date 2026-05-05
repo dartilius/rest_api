@@ -179,6 +179,12 @@ class BrandViewSet(viewsets.ModelViewSet):
         return BrandSerializer
 
     def create(self, request, *args, **kwargs):
+        name = request.data.get("name")
+        if Brand.all_objects.filter(name=name, is_deleted=False).exists():
+            return Response(
+                {"detail": f"Бренд с названием '{name}' уже существует"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         brand = serializer.save()
