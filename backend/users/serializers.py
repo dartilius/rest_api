@@ -148,7 +148,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
             repr_.pop(field, None)
 
         # Добавляем role и дату
-        repr_['role'] = value.get_role_display()
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
 
         # Собираем full_name как словарь
@@ -185,7 +184,6 @@ class CustomUserListSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
-        repr_['role'] = value.get_role_display()
 
         full_name_dict = {
             'first_name': value.first_name,
