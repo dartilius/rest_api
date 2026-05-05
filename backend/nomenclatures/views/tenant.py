@@ -13,6 +13,7 @@ from api.pagination import CustomLimitOffsetPagination
 from nomenclatures.filters import NomenclatureTenantFilter
 from nomenclatures.models import NomenclatureTenant
 from nomenclatures.serializers import TenantWriteSerializer, NomenclatureTenantResponseSerializer
+from services.api_1c_client import api_1c, logger
 from users.permissions import SuperuserCUDAuthRetrieve
 
 
@@ -112,6 +113,22 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         )
         self.check_object_permissions(self.request, obj)
         return obj
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        try:
+            response = api_1c.delete("/DeleteCAFromTenants", {
+                "nomenclatureCode": instance.nomenclature.code1c,
+                "caCode": instance.tenant.code1c,
+                "brandCode": instance.brand.code1c if instance.brand else None,
+            })
+            response.raise_for_status()
+        except Exception as e:
+            logger.warning("Не удалось удалить арендатора в 1С: %s", e)
+
+        instance.delete()
+        return Response(status=204)
 
     @action(detail=False, methods=["get"], url_path="floors")
     def floors(self, request, *args, **kwargs):
