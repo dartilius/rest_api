@@ -26,6 +26,11 @@ DAYS_OF_WEEK = [
 
 class PlacementOrder(models.Model):
     id = UUIDPKField()
+    code1c = CharField(
+        unique=True,
+        null=True,
+        blank=True,
+    )
     owner = ForeignKey(
         "users.CustomUser",
         on_delete=models.CASCADE,
