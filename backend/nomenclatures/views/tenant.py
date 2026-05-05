@@ -13,6 +13,8 @@ from api.pagination import CustomLimitOffsetPagination
 from nomenclatures.filters import NomenclatureTenantFilter
 from nomenclatures.models import NomenclatureTenant
 from nomenclatures.serializers import TenantWriteSerializer, NomenclatureTenantResponseSerializer
+from users.permissions import SuperuserCUDAuthRetrieve
+
 
 @extend_schema(tags=["Номенклатура - Арендаторы"])
 class NomenclatureTenantViewSet(viewsets.ModelViewSet):
@@ -34,8 +36,6 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     """
 
     queryset = NomenclatureTenant.objects.all()
-    http_method_names = ["get", "post", "patch", "delete"]
-    permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = NomenclatureTenantFilter
     pagination_class = CustomLimitOffsetPagination
@@ -48,6 +48,11 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         "tenant__additional_name",
         "brand__name",
     ]
+
+    def get_permissions(self):
+        if self.action in ["list", "retrieve", "floors"]:
+            return [AllowAny()]
+        return [SuperuserCUDAuthRetrieve()]
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
