@@ -114,7 +114,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(self.request, obj)
         return obj
 
-    def destroy(self, request, *args, **kwargs):
+    def perform_destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.delete()
         payload = {
@@ -129,7 +129,6 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             logger.info("1С ответ DeleteCAFromTenants: %s", response.json())
         except Exception as e:
             logger.warning("Не удалось удалить арендатора в 1С: %s", e)
-
 
         return Response(status=204)
 
