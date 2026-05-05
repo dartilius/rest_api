@@ -1045,67 +1045,56 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=False,
-        methods=["GET"],
+        methods=["POST"],
         url_path="get_uuid_by_id",
         permission_classes=[AllowAny],
     )
     def get_id(self, request):
         """
-        Получить UUID номенклатуры по её описанию.
-
-        Этот метод выполняет обратный поиск - по описанию номенклатуры
-        возвращает её уникальный идентификатор (UUID).
-
-        Доступен всем пользователям без аутентификации (AllowAny).
+        Получить UUID номенклатуры по id_rasb или описанию.
 
         Args:
-            request: HTTP GET запрос.
+            request: HTTP POST запрос.
 
         Request Body (JSON):
             {
-                'description': 'Основное описание номенклатуры'
+                'id_rasb': 'идентификатор' (опционально),
+                'description': 'описание' (опционально)
             }
 
         Returns:
             Response: JSON с полем 'id' содержащим UUID номенклатуры.
-                     Структура: {
-                         'id': '123e4567-e89b-12d3-a456-426614174000'
-                     }
 
         Status Codes:
             200 OK: UUID успешно получен
-            400 BAD REQUEST: Поле 'description' не передано
-            404 NOT FOUND: Номенклатура с таким описанием не найдена
-
-        Examples:
-            >>> # Успешный поиск
-            >>> response = client.get(
-            ...     '/api/nomenclatures/get_uuid_by_id/',
-            ...     data={'description': 'Основное описание номенклатуры'}
-            ... )
-            >>> response.status_code
-            200
-            >>> response.data['id']
-            '123e4567-e89b-12d3-a456-426614174000'
-
-            >>> # Описание не найдено
-            >>> response = client.get(...)
-            >>> response.status_code
-            404
-
-        Warning:
-            - Предполагает, что описания уникальны или используется .get()
-            - Может выбросить исключение MultipleObjectsReturned если есть дубликаты
-            - Case-sensitive поиск по совпадению
-            - Медленнее прямого поиска по ID
-
-        Note:
-            Обычно используется в обратных интеграциях, где система знает
-            описание, но нужен UUID для дальнейших операций.
+            400 BAD REQUEST: Не передано ни одного поля для поиска
+            404 NOT FOUND: Номенклатура не найдена
         """
-        nomenclature = Nomenclature.objects.get(
-            id_rasb=request.data["id_rasb"]
-        )
+        id_rasb = request.data.get("id_rasb") 
+
+        if not id_rasb:
+            return Response(
+                {"error": "Необходимо передать хотя бы одно поле: 'id_rasb'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        filters = {}
+        if id_rasb:
+            filters["id_rasb"] = id_rasb
+
+        try:
+            nomenclature = Nomenclature.objects.get(**filters)
+        except Nomenclature.DoesNotExist:
+            return Response(
+                {"error": "Номенклатура не найдена"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Nomenclature.MultipleObjectsReturned:
+            return Response(
+                {"error": "Найдено несколько номенклатур с такими параметрами"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         return Response({"id": nomenclature.pk})
 
     @extend_schema(

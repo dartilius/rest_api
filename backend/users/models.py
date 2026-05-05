@@ -130,14 +130,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         blank=True, null=True,
         verbose_name='Refresh-токен 1С'
     )
-    token_1c_access_expires_at = models.DateTimeField(
-        blank=True, null=True,
-        verbose_name='Срок жизни access-токена 1С'
-    )
-    token_1c_refresh_expires_at = models.DateTimeField(
-        blank=True, null=True,
-        verbose_name='Срок жизни refresh-токена 1С'
-    )
 
     @property
     def is_manager(self):
@@ -193,18 +185,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         self.username = self.email
         super().save(*args, **kwargs)
-
-    @property
-    def token_1c_access_is_expired(self) -> bool:
-        if not self.token_1c_access_expires_at:
-            return True
-        return timezone.now() >= self.token_1c_access_expires_at
-
-    @property
-    def token_1c_refresh_is_expired(self) -> bool:
-        if not self.token_1c_refresh_expires_at:
-            return False  # если срок не задан — считаем бессрочным
-        return timezone.now() >= self.token_1c_refresh_expires_at
 
     class Meta:
         db_table = 'custom_user'

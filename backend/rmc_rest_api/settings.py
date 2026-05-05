@@ -46,7 +46,8 @@ INSTALLED_APPS = [
     'tasks',
     'promotions',
     'placement_order',
-    'feedback.apps.FeedbackConfig'
+    'feedback.apps.FeedbackConfig',
+    'services.apps.ServicesConfig',
 ]
 
 # ---------------------------------- MAIL ---------------------------------- #
