@@ -11,12 +11,15 @@ from rest_framework.status import (
     HTTP_200_OK, HTTP_204_NO_CONTENT,
 )
 from rest_framework.decorators import action
+
+from api import APIServiceMixin
 from api.constants import (
     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
 )
 from brands.filters import BrandFilter
 from brands.models import Brand
 from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
+from services.api_1c_client import APIService, get_service_user, logger
 
 
 @extend_schema_view(
@@ -163,7 +166,7 @@ from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShor
     ),
 )
 @extend_schema(tags=["Бренды"])
-class BrandViewSet(viewsets.ModelViewSet):
+class BrandViewSet(APIServiceMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     lookup_field = "id_or_code1c"
     http_method_names = ["get", "post", "patch", "delete"]
@@ -180,9 +183,20 @@ class BrandViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         brand = serializer.save()
+
+        try:
+            code1c = self.svc.create_brand(brand)
+            if code1c:
+                if Brand.objects.filter(code1c=code1c).exclude(id=brand.id).exists():
+                    logger.warning("code1c %s уже занят другим брендом", code1c)
+                else:
+                    brand.code1c = code1c
+                    brand.save(update_fields=["code1c"])
+        except Exception as e:
+            logger.warning("Не удалось создать бренд в 1С: %s", e)
+
         short = BrandShortSerializer(brand)
         return Response(short.data, status=status.HTTP_201_CREATED)
-
     # def partial_update(self, request, *args, **kwargs):
 
 

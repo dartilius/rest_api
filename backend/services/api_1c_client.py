@@ -270,7 +270,10 @@ class APIService:
             logger.error("Ошибка отправки Feedback %s в 1С: %s", feedback.id, e)
             return False
 
-    def create_brand(self, brand: 'Brand') -> dict | None:
+    def create_brand(self, brand: 'Brand') -> str | None:
+        """
+        Создаёт бренд в 1С. Возвращает code1c (brandCode) или None при ошибке.
+        """
         payload = {
             "brandName": brand.name,
             "brandDescription": brand.description or '',
@@ -282,13 +285,11 @@ class APIService:
             data = response.json()
 
             brand_code = data.get("brandCode")
-            if brand_code:
-                brand.code1c = brand_code
-                brand.save(update_fields=["code1c"])
-            else:
+            if not brand_code:
                 logger.warning("1С не вернул brandCode для бренда %s", brand.id)
+                return None
 
-            return data
+            return brand_code
         except requests.RequestException as e:
             logger.error("Ошибка создания бренда %s в 1С: %s", brand.id, e)
             return None
