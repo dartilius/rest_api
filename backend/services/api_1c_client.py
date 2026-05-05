@@ -142,6 +142,8 @@ from typing import TYPE_CHECKING, cast
 import requests
 from django.contrib.auth import get_user_model
 
+from brands.models import Brand
+
 if TYPE_CHECKING:
     from users.models import CustomUser
     from feedback.models import Feedback
@@ -268,15 +270,26 @@ class APIService:
             logger.error("Ошибка отправки Feedback %s в 1С: %s", feedback.id, e)
             return False
 
-    def get_nomen(self, code: str) -> dict | None:
+    def create_brand(self, brand: 'Brand') -> dict | None:
         payload = {
-            "Код": code,
+            "brandName": brand.name,
+            "brandDescription": brand.description or '',
         }
 
         try:
-            response = self._request("POST", "/SynchronizeObjectNomenclature", json=payload)
+            response = self._request("POST", "/CreateBrand", json=payload)
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+
+            brand_code = data.get("brandCode")
+            if brand_code:
+                brand.code1c = brand_code
+                brand.save(update_fields=["code1c"])
+            else:
+                logger.warning("1С не вернул brandCode для бренда %s", brand.id)
+
+            return data
         except requests.RequestException as e:
-            logger.error("Ошибка получения SynchronizeObjectNomenclature %s в 1С: %s",  e)
+            logger.error("Ошибка создания бренда %s в 1С: %s", brand.id, e)
             return None
+
