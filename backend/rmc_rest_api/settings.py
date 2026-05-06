@@ -319,15 +319,17 @@ if DEBUG:
     def show_toolbar(request):
         return True
     
-    DEBUG_TOOLBAR_CONFIG = {
+DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
         'INTERCEPT_REDIRECTS': False,
         'RESULTS_CACHE_SIZE': 10000,
         'RESULT_CACHE_SIZE': 10000 * 1024,
         'RENDER_PANELS': True,
+        'SQL_PARSE_MERGE_DURATIONS': False,  # 👈 КЛЮЧЕВОЙ ПАРАМЕТР
+        'SQL_MAX_QUERIES': 20,
+        'ENABLE_STACKTRACES': False,
     }
     
-    # ВСЕ ПАНЕЛИ
     DEBUG_TOOLBAR_PANELS = [
         'debug_toolbar.panels.history.HistoryPanel',
         'debug_toolbar.panels.versions.VersionsPanel',
@@ -445,62 +447,6 @@ LOGGING = {
         },
     },
 }
-
-# ---------------------------------- FIX SQL PARSE ERROR ---------------------------------- #
-# Патч для обхода ошибки "Maximum number of tokens exceeded"
-# ВАЖНО: этот код должен быть в самом КОНЦЕ файла, после всех настроек!
-
-if DEBUG:
-    # Отложенный импорт - только после того как все settings загружены
-    def apply_sql_patch():
-        try:
-            from debug_toolbar.panels.sql import utils
-            import sqlparse
-            from sqlparse.engine import grouping
-            
-            # Сохраняем оригинальные функции
-            _original_group_matching = grouping._group_matching
-            _original_parse = sqlparse.parse
-            
-            def _safe_group_matching(tlist, cls):
-                try:
-                    return _original_group_matching(tlist, cls)
-                except Exception as e:
-                    if 'Maximum number of tokens exceeded' in str(e):
-                        return tlist
-                    raise
-            
-            def _safe_parse(sql):
-                if len(sql) > 50000:
-                    return []
-                try:
-                    return _original_parse(sql)
-                except Exception as e:
-                    if 'Maximum number of tokens exceeded' in str(e):
-                        return []
-                    raise
-            
-            grouping._group_matching = _safe_group_matching
-            sqlparse.parse = _safe_parse
-            
-            _original_reformat = utils.reformat_sql
-            
-            def _safe_reformat_sql(sql, with_toggle=True):
-                if len(sql) > 10000:
-                    return sql
-                try:
-                    return _original_reformat(sql, with_toggle)
-                except:
-                    return sql
-            
-            utils.reformat_sql = _safe_reformat_sql
-            
-            print("✅ SQL parsing fixes applied for large queries")
-        except Exception as e:
-            print(f"⚠️ Could not apply SQL patch: {e}")
-    
-    # Вызываем патч после загрузки всех настроек
-    apply_sql_patch()
 
 
 # import os
