@@ -114,7 +114,7 @@ TEMPLATES = [
     },
 ]
 
-Базовый MIDDLEWARE
+#Базовый MIDDLEWARE
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
