@@ -422,9 +422,8 @@ LOGGING = {
 if DEBUG:
     import sqlparse
     from sqlparse import lexer
-    from sqlparse.engine import grouping
     
-    # Увеличиваем лимит токенов
+    # Увеличиваем лимит токенов с 10000 до 500000
     original_tokenize = lexer.tokenize
     
     def patched_tokenize(sql, encoding=None):
@@ -437,20 +436,7 @@ if DEBUG:
     
     lexer.tokenize = patched_tokenize
     
-    # ИСПРАВЛЕНО: добавляем третий аргумент
-    original_group = grouping._group_matching
-    
-    def patched_group_matching(tlist, cls, i):
-        try:
-            return original_group(tlist, cls, i)  # 👈 ТРЕТИЙ АРГУМЕНТ i
-        except Exception as e:
-            if 'Maximum number of tokens exceeded' in str(e):
-                return tlist
-            raise
-    
-    grouping._group_matching = patched_group_matching
-    
-    print("✅ SQLparse token limit increased to 500,000")
+    print("✅ SQLparse token limit increased from 10000 to 500000")
 
 
 # import os
