@@ -51,33 +51,26 @@ INSTALLED_APPS = [
 ]
 
 # ---------------------------------- MAIL ---------------------------------- #
-# Базовые настройки
 
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'email.krasrm.com')
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'info@krasrm.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-# Настройки TLS/SSL
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
 
-# Выбор бэкенда
 if DEBUG or os.environ.get('DISABLE_EMAIL_SSL_VERIFY', 'true').lower() == 'true':
-    # Используем кастомный бэкенд с отключенной проверкой SSL
     EMAIL_BACKEND = 'feedback.email_backend.CustomEmailBackend'
     print("⚠️  Using email backend without SSL verification")
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-# Таймаут для SMTP
-EMAIL_TIMEOUT = 10  # секунд
+EMAIL_TIMEOUT = 10
 
-# Дополнительные настройки безопасности (если нужно)
 if not DEBUG:
     EMAIL_SSL_CERTFILE = None
     EMAIL_SSL_KEYFILE = None
-
 
 # Базовый MIDDLEWARE
 MIDDLEWARE = [
@@ -92,7 +85,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Добавляем IntegrityMiddleware только для DEBUG
 if DEBUG:
     MIDDLEWARE += ['api.middleware.IntegrityMiddleware']
 
@@ -129,7 +121,6 @@ DATABASES = {
     }
 }
 
-# Проверяем наличие настроек Clickhouse
 CLICKHOUSE_HOST = os.environ.get('CLICKHOUSE_HOST')
 if CLICKHOUSE_HOST:
     DATABASES['clickhouse'] = {
@@ -165,13 +156,9 @@ PASSWORD_HASHERS = [
 ]
 
 LANGUAGE_CODE = 'ru'
-
 TIME_ZONE = 'Asia/Krasnoyarsk'
-
 USE_I18N = True
-
 USE_TZ = False
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
@@ -186,7 +173,6 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
 }
 
-# Убираем Browsable API в production
 if not DEBUG:
     REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
         'rest_framework.renderers.JSONRenderer',
@@ -208,20 +194,17 @@ CACHES = {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'KEY_PREFIX': 'django_cache',
             'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
-
             'SOCKET_CONNECT_TIMEOUT': 5,
             'SOCKET_TIMEOUT': 5,
             'IGNORE_EXCEPTIONS': True,
         }
     }
 }
-# Время жизни кэша по умолчанию (в секундах)
-CACHE_TTL = 60 * 5  # 5 минут
+CACHE_TTL = 60 * 5
 
 # ---------------------------------- MINIO ---------------------------------- #
 from datetime import timedelta
 
-# =========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===========
 MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT', 'files:9000')
 MINIO_ACCESS_KEY = os.environ.get('MINIO_STORAGE_ACCESS_KEY')
 MINIO_SECRET_KEY = os.environ.get('MINIO_STORAGE_SECRET_KEY')
@@ -233,7 +216,6 @@ MINIO_REGION = os.environ.get('MINIO_REGION', 'us-east-1')
 MINIO_PUBLIC_BUCKETS = ['local-static']
 MINIO_PRIVATE_BUCKETS = ['local-media']
 
-# =========== STORAGES ===========
 STORAGES = {
     'default': {
         'BACKEND': 'django_minio_backend.models.MinioBackend',
@@ -269,7 +251,6 @@ STORAGES = {
 }
 
 # --------------------------------- CELERY ---------------------------------- #
-
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND')
 if CELERY_BROKER_URL and CELERY_RESULT_BACKEND:
@@ -277,7 +258,6 @@ if CELERY_BROKER_URL and CELERY_RESULT_BACKEND:
     CELERY_TIMEZONE = TIME_ZONE
 
 # -------------------------------- SECURITY --------------------------------- #
-
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
@@ -304,9 +284,7 @@ SIMPLE_JWT = {
 }
 
 # ---------------------------------- DEBUG TOOLBAR ---------------------------------- #
-
 if DEBUG:
-    # Базовые настройки INTERNAL_IPS
     INTERNAL_IPS = [
         '127.0.0.1',
         'localhost',
@@ -315,21 +293,21 @@ if DEBUG:
         '172.17.0.1',
         '172.18.0.1',
     ]
-    
+
     def show_toolbar(request):
         return True
-    
-DEBUG_TOOLBAR_CONFIG = {
+
+    DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
         'INTERCEPT_REDIRECTS': False,
         'RESULTS_CACHE_SIZE': 10000,
         'RESULT_CACHE_SIZE': 10000 * 1024,
         'RENDER_PANELS': True,
-        'SQL_PARSE_MERGE_DURATIONS': False,  # 👈 КЛЮЧЕВОЙ ПАРАМЕТР
+        'SQL_PARSE_MERGE_DURATIONS': False,
         'SQL_MAX_QUERIES': 20,
         'ENABLE_STACKTRACES': False,
     }
-    
+
     DEBUG_TOOLBAR_PANELS = [
         'debug_toolbar.panels.history.HistoryPanel',
         'debug_toolbar.panels.versions.VersionsPanel',
@@ -346,23 +324,19 @@ DEBUG_TOOLBAR_CONFIG = {
         'debug_toolbar.panels.redirects.RedirectsPanel',
         'debug_toolbar.panels.profiling.ProfilingPanel',
     ]
-    
+
     import mimetypes
     mimetypes.add_type('application/javascript', '.js', True)
-    
-    print("✅ Debug Toolbar configured with all panels")
+
+    print("✅ Debug Toolbar configured")
 
 # ---------------------------- PRODUCTION SETTINGS -------------------------- #
-
 if not DEBUG:
-    # Безопасные настройки для production
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
-
-    # Лимиты для загрузки
-    DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
-    FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+    DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
 
 # ---------------------------- OPENSEARCH SETTINGS -------------------------- #
 OPENSEARCH_DSL = {
@@ -370,12 +344,9 @@ OPENSEARCH_DSL = {
         'hosts': 'opensearch:9200',
     }
 }
-# Отключаем автосинк — будем синкать через Celery вручную
 OPENSEARCH_DSL_AUTOSYNC = False
 
 # ---------------------------- LOGGING -------------------------- #
-
-# Создаем директорию для логов с обработкой ошибок
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 try:
     os.makedirs(LOG_DIR, exist_ok=True)
