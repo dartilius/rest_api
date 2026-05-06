@@ -452,16 +452,11 @@ LOGGING = {
 
 # ---------------------------------- FIX SQL PARSE ERROR ---------------------------------- #
 # Патч для обхода ошибки "Maximum number of tokens exceeded"
-# Инициализируется ПОСЛЕ полной загрузки настроек Django
 
 if DEBUG:
-    # Используем отложенную инициализацию через register
-    import atexit
-    
     def apply_sql_patches():
-        """Применяем патчи только после полной инициализации Django"""
+        """Применяем патчи после загрузки приложений"""
         try:
-            # Импортируем внутри функции, когда Django уже готов
             from debug_toolbar.panels.sql import utils
             import sqlparse
             from sqlparse.engine import grouping
@@ -507,9 +502,21 @@ if DEBUG:
         except Exception as e:
             print(f"⚠️ Could not apply SQL patch: {e}")
     
-    # Регистрируем функцию для запуска после загрузки всех приложений
-    from django.apps import apps
-    apps.ready.connect(apply_sql_patches)
+    # Правильный способ: используем AppConfig.ready()
+    from django.apps import AppConfig
+    
+    class SQLPatchConfig(AppConfig):
+        default_auto_field = 'django.db.models.BigAutoField'
+        name = 'rmc_rest_api'
+        
+        def ready(self):
+            apply_sql_patches()
+    
+    # Вызываем ready() принудительно после загрузки
+    if 'rmc_rest_api' not in apps.app_configs:
+        SQLPatchConfig.ready(SQLPatchConfig)
+    else:
+        apps.get_app_config('rmc_rest_api').ready()
 
 # import os
 # from datetime import timedelta as td
