@@ -78,9 +78,11 @@ if not DEBUG:
     EMAIL_SSL_CERTFILE = None
     EMAIL_SSL_KEYFILE = None
 
+
 # Базовый MIDDLEWARE
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',  # 👈 ПЕРЕНЕСЛИ СЮДА (сразу после CORS)
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -90,9 +92,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Добавляем debug toolbar только в DEBUG режиме
+# Добавляем IntegrityMiddleware только для DEBUG (но уже не трогаем debug_toolbar)
 if DEBUG:
-    MIDDLEWARE += ['api.middleware.IntegrityMiddleware', 'debug_toolbar.middleware.DebugToolbarMiddleware']
+    MIDDLEWARE += ['api.middleware.IntegrityMiddleware']
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
 
@@ -111,6 +113,40 @@ TEMPLATES = [
         },
     },
 ]
+
+# Базовый MIDDLEWARE
+# MIDDLEWARE = [
+#     'corsheaders.middleware.CorsMiddleware',
+#     'django.middleware.security.SecurityMiddleware',
+#     'django.contrib.sessions.middleware.SessionMiddleware',
+#     'django.middleware.common.CommonMiddleware',
+#     'django.middleware.csrf.CsrfViewMiddleware',
+#     'django.contrib.auth.middleware.AuthenticationMiddleware',
+#     'django.contrib.messages.middleware.MessageMiddleware',
+#     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+# ]
+
+# # Добавляем debug toolbar только в DEBUG режиме
+# if DEBUG:
+#     MIDDLEWARE += ['api.middleware.IntegrityMiddleware', 'debug_toolbar.middleware.DebugToolbarMiddleware']
+
+# ROOT_URLCONF = 'rmc_rest_api.urls'
+
+# TEMPLATES = [
+#     {
+#         'BACKEND': 'django.template.backends.django.DjangoTemplates',
+#         'DIRS': [os.path.join(BASE_DIR, 'templates')],
+#         'APP_DIRS': True,
+#         'OPTIONS': {
+#             'context_processors': [
+#                 'django.template.context_processors.debug',
+#                 'django.template.context_processors.request',
+#                 'django.contrib.auth.context_processors.auth',
+#                 'django.contrib.messages.context_processors.messages',
+#             ],
+#         },
+#     },
+# ]
 
 WSGI_APPLICATION = 'rmc_rest_api.wsgi.application'
 
@@ -306,20 +342,70 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',)
 }
 
-# ------------------------------ DEBUG TOOLBAR ------------------------------ #
-
+# ---------------------------------- DEBUG TOOLBAR ---------------------------------- #
 if DEBUG:
+    # Автоматическое определение всех IP для Docker и локальной сети
+    import socket
+    import netifaces
+    
+    INTERNAL_IPS = [
+        '127.0.0.1',
+        'localhost',
+        '0.0.0.0',
+        '10.0.2.2',  # Android эмулятор
+        '172.17.0.1',  # Стандартная Docker сеть
+        '172.18.0.1',  # Ваша Docker сеть (br-765290dbce74)
+        '172.19.0.1',  # Доп. Docker сеть
+        '192.168.0.1',  # Локальная сеть
+        '192.168.0.8',  # Ваш проводной IP
+        '192.168.0.67',  # Ваш WiFi IP
+    ]
+    
+    # Добавляем все IP из сетей 172.x.x.x, 192.168.x.x, 10.x.x.x
+    try:
+        for interface in netifaces.interfaces():
+            addrs = netifaces.ifaddresses(interface)
+            if netifaces.AF_INET in addrs:
+                for addr in addrs[netifaces.AF_INET]:
+                    ip = addr['addr']
+                    if ip.startswith(('172.', '192.168.', '10.')):
+                        INTERNAL_IPS.append(ip)
+                    # Также добавляем сеть целиком
+                    if ip.startswith('172.'):
+                        parts = ip.split('.')
+                        if len(parts) >= 2:
+                            INTERNAL_IPS.append(f"{parts[0]}.{parts[1]}.0.0/16")
+    except Exception as e:
+        print(f"⚠️ Не удалось автоматически определить IP: {e}")
+    
+    # Убираем дубликаты
+    INTERNAL_IPS = list(set(INTERNAL_IPS))
+    
+    # Принудительно показываем тулбар для всех запросов
     def show_toolbar(request):
         return True
-
-
+    
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
+        'INTERCEPT_REDIRECTS': False,
+        'ENABLE_STACKTRACES': True,
     }
 
-    import mimetypes
+# ------------------------------ DEBUG TOOLBAR ------------------------------ #
 
-    mimetypes.add_type('application/javascript', '.js', True)
+
+# if DEBUG:
+#     def show_toolbar(request):
+#         return True
+
+
+#     DEBUG_TOOLBAR_CONFIG = {
+#         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
+#     }
+
+#     import mimetypes
+
+#     mimetypes.add_type('application/javascript', '.js', True)
 
 # ---------------------------- PRODUCTION SETTINGS -------------------------- #
 
