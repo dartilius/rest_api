@@ -121,7 +121,8 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
                 "nomenclatureCode": instance.nomenclature.code1c,
                 "caCode": instance.tenant.code1c,
                 "brandCode": instance.brand.code1c if instance.brand else None,
-            }
+        }
+        print("payload:", payload)
         try:
             response = api_1c.delete("/DeleteCAFromTenants", json=payload)
             response.raise_for_status()
