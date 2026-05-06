@@ -1045,57 +1045,16 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=False,
-        methods=["POST"],
+        methods=["GET"],
         url_path="get_uuid_by_id",
         permission_classes=[AllowAny],
     )
     def get_id(self, request):
-        """
-        Получить UUID номенклатуры по id_rasb или описанию.
-
-        Args:
-            request: HTTP POST запрос.
-
-        Request Body (JSON):
-            {
-                'id_rasb': 'идентификатор' (опционально),
-                'description': 'описание' (опционально)
-            }
-
-        Returns:
-            Response: JSON с полем 'id' содержащим UUID номенклатуры.
-
-        Status Codes:
-            200 OK: UUID успешно получен
-            400 BAD REQUEST: Не передано ни одного поля для поиска
-            404 NOT FOUND: Номенклатура не найдена
-        """
-        id_rasb = request.data.get("id_rasb") 
-
-        if not id_rasb:
-            return Response(
-                {"error": "Необходимо передать хотя бы одно поле: 'id_rasb'"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        filters = {}
-        if id_rasb:
-            filters["id_rasb"] = id_rasb
-
-        try:
-            nomenclature = Nomenclature.objects.get(**filters)
-        except Nomenclature.DoesNotExist:
-            return Response(
-                {"error": "Номенклатура не найдена"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        except Nomenclature.MultipleObjectsReturned:
-            return Response(
-                {"error": "Найдено несколько номенклатур с такими параметрами"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+        nomenclature = Nomenclature.objects.get(
+            id_rasb=request.data["id_rasb"]
+        )
         return Response({"id": nomenclature.pk})
+
 
     @extend_schema(
         summary="Получить номенклатуры по списку ID",
