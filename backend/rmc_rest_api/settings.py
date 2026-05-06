@@ -363,7 +363,9 @@ if DEBUG:
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
         'INTERCEPT_REDIRECTS': False,
-        'RESULTS_CACHE_SIZE': 100,      # Увеличиваем кеш (было 25 по умолчанию) [citation:8]
+        'RESULTS_CACHE_SIZE': 10000,      # Увеличиваем кеш (было 25 по умолчанию) [citation:8]
+        # 👇 УВЕЛИЧИВАЕМ РАЗМЕР (10MB на запрос вместо 1MB)
+        'RESULT_CACHE_SIZE': 10000 * 1024,  # 10 MB на запрос
         'RENDER_PANELS': True,          # Принудительный рендер
     }
     
