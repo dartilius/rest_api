@@ -350,56 +350,7 @@ if DEBUG:
     
     print("✅ Debug Toolbar configured with all panels")
 
-# ---------------------------------- FIX SQL PARSE ERROR ---------------------------------- #
-# Патч для обхода ошибки "Maximum number of tokens exceeded"
 
-if DEBUG:
-    from debug_toolbar.panels.sql import utils
-    import sqlparse
-    from sqlparse.engine import grouping
-    
-    # Сохраняем оригинальные функции
-    _original_group_matching = grouping._group_matching
-    _original_parse = sqlparse.parse
-    
-    def _safe_group_matching(tlist, cls):
-        """Безопасная группировка токенов"""
-        try:
-            return _original_group_matching(tlist, cls)
-        except Exception as e:
-            if 'Maximum number of tokens exceeded' in str(e):
-                return tlist
-            raise
-    
-    def _safe_parse(sql):
-        """Безопасный парсинг SQL"""
-        if len(sql) > 50000:
-            return []
-        try:
-            return _original_parse(sql)
-        except Exception as e:
-            if 'Maximum number of tokens exceeded' in str(e):
-                return []
-            raise
-    
-    # Применяем патчи
-    grouping._group_matching = _safe_group_matching
-    sqlparse.parse = _safe_parse
-    
-    # Отключаем форматирование для очень больших запросов
-    _original_reformat = utils.reformat_sql
-    
-    def _safe_reformat_sql(sql, with_toggle=True):
-        if len(sql) > 10000:
-            return sql
-        try:
-            return _original_reformat(sql, with_toggle)
-        except:
-            return sql
-    
-    utils.reformat_sql = _safe_reformat_sql
-    
-    print("✅ SQL parsing fixes applied for large queries")
 
 # ---------------------------- PRODUCTION SETTINGS -------------------------- #
 
@@ -499,6 +450,56 @@ LOGGING = {
     },
 }
 
+# ---------------------------------- FIX SQL PARSE ERROR ---------------------------------- #
+# Патч для обхода ошибки "Maximum number of tokens exceeded"
+
+if DEBUG:
+    from debug_toolbar.panels.sql import utils
+    import sqlparse
+    from sqlparse.engine import grouping
+    
+    # Сохраняем оригинальные функции
+    _original_group_matching = grouping._group_matching
+    _original_parse = sqlparse.parse
+    
+    def _safe_group_matching(tlist, cls):
+        """Безопасная группировка токенов"""
+        try:
+            return _original_group_matching(tlist, cls)
+        except Exception as e:
+            if 'Maximum number of tokens exceeded' in str(e):
+                return tlist
+            raise
+    
+    def _safe_parse(sql):
+        """Безопасный парсинг SQL"""
+        if len(sql) > 50000:
+            return []
+        try:
+            return _original_parse(sql)
+        except Exception as e:
+            if 'Maximum number of tokens exceeded' in str(e):
+                return []
+            raise
+    
+    # Применяем патчи
+    grouping._group_matching = _safe_group_matching
+    sqlparse.parse = _safe_parse
+    
+    # Отключаем форматирование для очень больших запросов
+    _original_reformat = utils.reformat_sql
+    
+    def _safe_reformat_sql(sql, with_toggle=True):
+        if len(sql) > 10000:
+            return sql
+        try:
+            return _original_reformat(sql, with_toggle)
+        except:
+            return sql
+    
+    utils.reformat_sql = _safe_reformat_sql
+    
+    print("✅ SQL parsing fixes applied for large queries")
 
 # import os
 # from datetime import timedelta as td
