@@ -350,57 +350,6 @@ if DEBUG:
     
     print("✅ Debug Toolbar configured with all panels")
 
-# ---------------------------------- FIX SQL PARSE ERROR ---------------------------------- #
-# Патч для обхода ошибки "Maximum number of tokens exceeded"
-
-if DEBUG:
-    from debug_toolbar.panels.sql import utils
-    import sqlparse
-    from sqlparse.engine import grouping
-    
-    # Сохраняем оригинальные функции
-    _original_group_matching = grouping._group_matching
-    _original_parse = sqlparse.parse
-    
-    def _safe_group_matching(tlist, cls):
-        """Безопасная группировка токенов"""
-        try:
-            return _original_group_matching(tlist, cls)
-        except Exception as e:
-            if 'Maximum number of tokens exceeded' in str(e):
-                return tlist
-            raise
-    
-    def _safe_parse(sql):
-        """Безопасный парсинг SQL"""
-        if len(sql) > 50000:
-            return []
-        try:
-            return _original_parse(sql)
-        except Exception as e:
-            if 'Maximum number of tokens exceeded' in str(e):
-                return []
-            raise
-    
-    # Применяем патчи
-    grouping._group_matching = _safe_group_matching
-    sqlparse.parse = _safe_parse
-    
-    # Отключаем форматирование для очень больших запросов
-    _original_reformat = utils.reformat_sql
-    
-    def _safe_reformat_sql(sql, with_toggle=True):
-        if len(sql) > 10000:
-            return sql
-        try:
-            return _original_reformat(sql, with_toggle)
-        except:
-            return sql
-    
-    utils.reformat_sql = _safe_reformat_sql
-    
-    print("✅ SQL parsing fixes applied for large queries")
-
 # ---------------------------- PRODUCTION SETTINGS -------------------------- #
 
 if not DEBUG:
@@ -428,7 +377,6 @@ OPENSEARCH_DSL_AUTOSYNC = False
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 try:
     os.makedirs(LOG_DIR, exist_ok=True)
-    # Проверяем права на запись
     test_file = os.path.join(LOG_DIR, '.test_write')
     with open(test_file, 'w') as f:
         f.write('test')
@@ -437,7 +385,6 @@ try:
 except Exception as e:
     print(f"❌ Cannot write to LOG_DIR: {LOG_DIR}")
     print(f"Error: {e}")
-    # Fallback - используем /tmp если не можем писать в LOG_DIR
     LOG_DIR = '/tmp'
     os.makedirs(LOG_DIR, exist_ok=True)
     print(f"⚠️ Using fallback LOG_DIR: {LOG_DIR}")
@@ -498,6 +445,62 @@ LOGGING = {
         },
     },
 }
+
+# ---------------------------------- FIX SQL PARSE ERROR ---------------------------------- #
+# Патч для обхода ошибки "Maximum number of tokens exceeded"
+# ВАЖНО: этот код должен быть в самом КОНЦЕ файла, после всех настроек!
+
+if DEBUG:
+    # Отложенный импорт - только после того как все settings загружены
+    def apply_sql_patch():
+        try:
+            from debug_toolbar.panels.sql import utils
+            import sqlparse
+            from sqlparse.engine import grouping
+            
+            # Сохраняем оригинальные функции
+            _original_group_matching = grouping._group_matching
+            _original_parse = sqlparse.parse
+            
+            def _safe_group_matching(tlist, cls):
+                try:
+                    return _original_group_matching(tlist, cls)
+                except Exception as e:
+                    if 'Maximum number of tokens exceeded' in str(e):
+                        return tlist
+                    raise
+            
+            def _safe_parse(sql):
+                if len(sql) > 50000:
+                    return []
+                try:
+                    return _original_parse(sql)
+                except Exception as e:
+                    if 'Maximum number of tokens exceeded' in str(e):
+                        return []
+                    raise
+            
+            grouping._group_matching = _safe_group_matching
+            sqlparse.parse = _safe_parse
+            
+            _original_reformat = utils.reformat_sql
+            
+            def _safe_reformat_sql(sql, with_toggle=True):
+                if len(sql) > 10000:
+                    return sql
+                try:
+                    return _original_reformat(sql, with_toggle)
+                except:
+                    return sql
+            
+            utils.reformat_sql = _safe_reformat_sql
+            
+            print("✅ SQL parsing fixes applied for large queries")
+        except Exception as e:
+            print(f"⚠️ Could not apply SQL patch: {e}")
+    
+    # Вызываем патч после загрузки всех настроек
+    apply_sql_patch()
 
 
 # import os
