@@ -114,39 +114,39 @@ TEMPLATES = [
     },
 ]
 
-# Базовый MIDDLEWARE
-# MIDDLEWARE = [
-#     'corsheaders.middleware.CorsMiddleware',
-#     'django.middleware.security.SecurityMiddleware',
-#     'django.contrib.sessions.middleware.SessionMiddleware',
-#     'django.middleware.common.CommonMiddleware',
-#     'django.middleware.csrf.CsrfViewMiddleware',
-#     'django.contrib.auth.middleware.AuthenticationMiddleware',
-#     'django.contrib.messages.middleware.MessageMiddleware',
-#     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-# ]
+Базовый MIDDLEWARE
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
 
-# # Добавляем debug toolbar только в DEBUG режиме
-# if DEBUG:
-#     MIDDLEWARE += ['api.middleware.IntegrityMiddleware', 'debug_toolbar.middleware.DebugToolbarMiddleware']
+# Добавляем debug toolbar только в DEBUG режиме
+if DEBUG:
+    MIDDLEWARE += ['api.middleware.IntegrityMiddleware', 'debug_toolbar.middleware.DebugToolbarMiddleware']
 
-# ROOT_URLCONF = 'rmc_rest_api.urls'
+ROOT_URLCONF = 'rmc_rest_api.urls'
 
-# TEMPLATES = [
-#     {
-#         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-#         'DIRS': [os.path.join(BASE_DIR, 'templates')],
-#         'APP_DIRS': True,
-#         'OPTIONS': {
-#             'context_processors': [
-#                 'django.template.context_processors.debug',
-#                 'django.template.context_processors.request',
-#                 'django.contrib.auth.context_processors.auth',
-#                 'django.contrib.messages.context_processors.messages',
-#             ],
-#         },
-#     },
-# ]
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 WSGI_APPLICATION = 'rmc_rest_api.wsgi.application'
 
@@ -342,71 +342,22 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',)
 }
 
-# ---------------------------------- DEBUG TOOLBAR ---------------------------------- #
-
-if DEBUG:
-    # Базовые настройки INTERNAL_IPS
-    INTERNAL_IPS = [
-        '127.0.0.1',
-        'localhost',
-        '192.168.0.8',    # Ваш проводной IP
-        '192.168.0.67',   # Ваш WiFi IP
-        '172.17.0.1',     # Docker сеть стандартная
-        '172.18.0.1',     # Ваша Docker сеть
-    ]
-    
-    # Принудительно показываем тулбар для всех запросов
-    def show_toolbar(request):
-        return True
-    
-    # Это минимальная конфигурация, которая должна решить проблему
-    DEBUG_TOOLBAR_CONFIG = {
-        'SHOW_TOOLBAR_CALLBACK': show_toolbar,
-        'INTERCEPT_REDIRECTS': False,
-        'RESULTS_CACHE_SIZE': 10000,      # Увеличиваем кеш (было 25 по умолчанию) [citation:8]
-        # 👇 УВЕЛИЧИВАЕМ РАЗМЕР (10MB на запрос вместо 1MB)
-        'RESULT_CACHE_SIZE': 10000 * 1024,  # 10 MB на запрос
-        'RENDER_PANELS': True,          # Принудительный рендер
-    }
-    
-    # Явно указываем панели (SQLPanel включен по умолчанию, но лучше явно)
-    DEBUG_TOOLBAR_PANELS = [
-        'debug_toolbar.panels.history.HistoryPanel',
-        'debug_toolbar.panels.versions.VersionsPanel',
-        'debug_toolbar.panels.timer.TimerPanel',
-        'debug_toolbar.panels.settings.SettingsPanel',
-        'debug_toolbar.panels.headers.HeadersPanel',
-        'debug_toolbar.panels.request.RequestPanel',
-        'debug_toolbar.panels.sql.SQLPanel',   # 👈 ЗАКОММЕНТИРОВАТЬ
-        'debug_toolbar.panels.staticfiles.StaticFilesPanel',
-        'debug_toolbar.panels.templates.TemplatesPanel',
-        'debug_toolbar.panels.cache.CachePanel',
-        'debug_toolbar.panels.signals.SignalsPanel',
-        'debug_toolbar.panels.logging.LoggingPanel',
-        'debug_toolbar.panels.redirects.RedirectsPanel',
-        'debug_toolbar.panels.profiling.ProfilingPanel',
-    ]
-    
-    import mimetypes
-    mimetypes.add_type('application/javascript', '.js', True)
-    
-    print("✅ Debug Toolbar configured")
 
 # ------------------------------ DEBUG TOOLBAR ------------------------------ #
 
 
-# if DEBUG:
-#     def show_toolbar(request):
-#         return True
+if DEBUG:
+    def show_toolbar(request):
+        return True
 
 
-#     DEBUG_TOOLBAR_CONFIG = {
-#         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
-#     }
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': show_toolbar,
+    }
 
-#     import mimetypes
+    import mimetypes
 
-#     mimetypes.add_type('application/javascript', '.js', True)
+    mimetypes.add_type('application/javascript', '.js', True)
 
 # ---------------------------- PRODUCTION SETTINGS -------------------------- #
 
