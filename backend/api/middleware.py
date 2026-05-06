@@ -93,9 +93,9 @@ class IntegrityMiddleware:
         return None
 
 
-        class DisableSQLPanelForNomenclatureMiddleware:
+class DisableSQLPanelForNomenclatureMiddleware:
     """Отключает SQL панель для страницы номенклатуры, чтобы избежать SQLParseError"""
-
+    
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -117,7 +117,7 @@ class IntegrityMiddleware:
                         flags=re.DOTALL
                     )
                     response.content = content.encode('utf-8')
-                except Exception as e:
+                except Exception:
                     # Если ошибка - просто игнорируем
                     pass
         
