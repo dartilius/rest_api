@@ -91,34 +91,4 @@ class IntegrityMiddleware:
             return None
 
         return None
-
-
-class DisableSQLPanelForNomenclatureMiddleware:
-    """Отключает SQL панель для страницы номенклатуры, чтобы избежать SQLParseError"""
-    
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        response = self.get_response(request)
         
-        # Проверяем, что это страница номенклатуры в админке
-        if '/admin/nomenclatures/nomenclature/' in request.path:
-            if hasattr(response, 'content') and response.content:
-                try:
-                    content = response.content.decode('utf-8')
-                    # Находим и удаляем SQL панель из HTML
-                    import re
-                    # Удаляем всю секцию SQL панели
-                    content = re.sub(
-                        r'<div id="djdt-sql-panel".*?</div>\s*',
-                        '',
-                        content,
-                        flags=re.DOTALL
-                    )
-                    response.content = content.encode('utf-8')
-                except Exception:
-                    # Если ошибка - просто игнорируем
-                    pass
-        
-        return response
