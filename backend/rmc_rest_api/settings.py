@@ -343,53 +343,48 @@ SIMPLE_JWT = {
 }
 
 # ---------------------------------- DEBUG TOOLBAR ---------------------------------- #
+
 if DEBUG:
-    # Автоматическое определение всех IP для Docker и локальной сети
-    import socket
-    import netifaces
-    
+    # Базовые настройки INTERNAL_IPS
     INTERNAL_IPS = [
         '127.0.0.1',
         'localhost',
-        '0.0.0.0',
-        '10.0.2.2',  # Android эмулятор
-        '172.17.0.1',  # Стандартная Docker сеть
-        '172.18.0.1',  # Ваша Docker сеть (br-765290dbce74)
-        '172.19.0.1',  # Доп. Docker сеть
-        '192.168.0.1',  # Локальная сеть
-        '192.168.0.8',  # Ваш проводной IP
-        '192.168.0.67',  # Ваш WiFi IP
+        '192.168.0.8',    # Ваш проводной IP
+        '192.168.0.67',   # Ваш WiFi IP
+        '172.17.0.1',     # Docker сеть стандартная
+        '172.18.0.1',     # Ваша Docker сеть
     ]
-    
-    # Добавляем все IP из сетей 172.x.x.x, 192.168.x.x, 10.x.x.x
-    try:
-        for interface in netifaces.interfaces():
-            addrs = netifaces.ifaddresses(interface)
-            if netifaces.AF_INET in addrs:
-                for addr in addrs[netifaces.AF_INET]:
-                    ip = addr['addr']
-                    if ip.startswith(('172.', '192.168.', '10.')):
-                        INTERNAL_IPS.append(ip)
-                    # Также добавляем сеть целиком
-                    if ip.startswith('172.'):
-                        parts = ip.split('.')
-                        if len(parts) >= 2:
-                            INTERNAL_IPS.append(f"{parts[0]}.{parts[1]}.0.0/16")
-    except Exception as e:
-        print(f"⚠️ Не удалось автоматически определить IP: {e}")
-    
-    # Убираем дубликаты
-    INTERNAL_IPS = list(set(INTERNAL_IPS))
     
     # Принудительно показываем тулбар для всех запросов
     def show_toolbar(request):
         return True
     
+    # Это минимальная конфигурация, которая должна решить проблему
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
         'INTERCEPT_REDIRECTS': False,
-        'ENABLE_STACKTRACES': True,
+        'RESULTS_CACHE_SIZE': 100,      # Увеличиваем кеш (было 25 по умолчанию) [citation:8]
+        'RENDER_PANELS': True,          # Принудительный рендер
     }
+    
+    # Явно указываем панели (SQLPanel включен по умолчанию, но лучше явно)
+    DEBUG_TOOLBAR_PANELS = [
+        'debug_toolbar.panels.history.HistoryPanel',
+        'debug_toolbar.panels.sql.SQLPanel',           # Ваша SQL панель
+        'debug_toolbar.panels.timer.TimerPanel',
+        'debug_toolbar.panels.settings.SettingsPanel',
+        'debug_toolbar.panels.headers.HeadersPanel',
+        'debug_toolbar.panels.request.RequestPanel',
+        'debug_toolbar.panels.staticfiles.StaticFilesPanel',
+        'debug_toolbar.panels.templates.TemplatesPanel',
+        'debug_toolbar.panels.cache.CachePanel',
+        'debug_toolbar.panels.logging.LoggingPanel',
+    ]
+    
+    import mimetypes
+    mimetypes.add_type('application/javascript', '.js', True)
+    
+    print("✅ Debug Toolbar configured")
 
 # ------------------------------ DEBUG TOOLBAR ------------------------------ #
 
