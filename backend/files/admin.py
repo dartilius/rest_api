@@ -205,7 +205,7 @@ class FileAdmin(admin.ModelAdmin):
 
 
 # ====================================================================================
-# PlaylistAdmin - ИСПРАВЛЕННАЯ ВЕРСИЯ
+# PlaylistAdmin - ИСПРАВЛЕННАЯ ВЕРСИЯ (убрал playlist_composition из fieldsets)
 # ====================================================================================
 
 @admin.register(Playlist)
@@ -232,12 +232,14 @@ class PlaylistAdmin(admin.ModelAdmin):
     
     readonly_fields = ('id', 'created')
     
+    # ✅ Убрал playlist_composition из fieldsets (это метод, а не поле)
     fieldsets = (
         ('Основная информация', {
             'fields': ('name', 'description', 'owner', 'id')
         }),
         ('Файлы плейлиста', {
-            'fields': ('files', 'playlist_composition'),
+            'fields': ('files',),
+            'description': '💡 Совет: используйте Ctrl/Cmd для множественного выбора'
         }),
         ('Системная информация', {
             'fields': ('created',),
@@ -303,8 +305,9 @@ class PlaylistAdmin(admin.ModelAdmin):
         
         return format_html('<span style="color: {};">{}</span>', color, type_name)
     
+    # ✅ Оставил метод, но убрал из fieldsets
     def playlist_composition(self, obj):
-        """Состав плейлиста (без format_html для пустого списка)"""
+        """Состав плейлиста (для отображения, но не в форме)"""
         files = obj.files.all()
         if not files:
             return '📭 Плейлист пуст'
