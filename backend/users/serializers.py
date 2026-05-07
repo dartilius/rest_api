@@ -261,3 +261,15 @@ class PasswordResetByEmailSerializer(serializers.Serializer):
                 {"new_password_confirm": "Пароли не совпадают."}
             )
         return attrs
+
+class GetPasswordSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(source='password', read_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'password')
+
+    def get_password(self, obj):
+        if obj.password:
+            return obj.password
+        return f"Пароль не указан (user: {obj.id})"
