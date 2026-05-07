@@ -1,23 +1,13 @@
 """
 Административный интерфейс (Django Admin) для справочника адресов.
 Версия с полной оптимизацией запросов к базе данных.
-
-МОДУЛЬ ADMIN - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ:
-═══════════════════════════════════════════════════════════════════════════════════
-КЛЮЧЕВЫЕ УЛУЧШЕНИЯ:
-─────────────────────────────────────────────────────────────────────────────────
-1. Все фильтры используют select_related/prefetch_related
-2. Кэширование lookup_choices в рамках одного запроса
-3. Оптимизированные __str__ методы через декораторы
-4. Минимизация количества запросов с N+1 до ~10-20
 """
 
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.utils.html import format_html
-from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
-from django.db.models import Q, Prefetch
+from django.db.models import Q
 from dal import autocomplete
 
 from .models import (
@@ -29,235 +19,137 @@ from .models import (
 
 
 # ====================================================================================
-# МОДУЛЬ 1: БАЗОВЫЕ ОПТИМИЗИРОВАННЫЕ КЛАССЫ ДЛЯ ФИЛЬТРОВ
+# МОДУЛЬ 1: ОПТИМИЗИРОВАННЫЕ ФИЛЬТРЫ
 # ====================================================================================
 
-class BaseOptimizedFilter(SimpleListFilter):
-    """
-    БАЗОВЫЙ КЛАСС ДЛЯ ВСЕХ ОПТИМИЗИРОВАННЫХ ФИЛЬТРОВ.
-    
-    ОСОБЕННОСТИ:
-    • Кэширование lookup_choices в рамках одного HTTP-запроса
-    • Автоматическая оптимизация запросов через select_related
-    • Единый интерфейс для всех фильтров
-    """
-    
-    _request_cache_key = '_optimized_filter_cache'
-    
-    def get_queryset_for_lookups(self, model_admin):
-        raise NotImplementedError(
-            f"{self.__class__.__name__} должен реализовать метод get_queryset_for_lookups()"
-        )
-    
-    def format_display(self, obj):
-        return str(obj)
-    
-    def get_cached_lookups(self, request, model_admin):
-        cache_key = f'{self._request_cache_key}_{self.parameter_name}'
-        
-        if not hasattr(request, cache_key):
-            queryset = self.get_queryset_for_lookups(model_admin)
-            
-            choices = []
-            for obj in queryset:
-                display = self.format_display(obj)
-                if len(display) > 50:
-                    display = display[:47] + '...'
-                choices.append((str(obj.id), display))
-            
-            setattr(request, cache_key, choices)
-        
-        return getattr(request, cache_key)
-    
-    def lookups(self, request, model_admin):
-        return self.get_cached_lookups(request, model_admin)
-    
-    def queryset(self, request, queryset):
-        if not self.value():
-            return queryset
-        
-        raise NotImplementedError(
-            f"{self.__class__.__name__} должен реализовать метод queryset()"
-        )
-
-
-class OptimizedCountryFilter(BaseOptimizedFilter):
-    """ОПТИМИЗИРОВАННЫЙ ФИЛЬТР ПО СТРАНЕ"""
-    
-    title = _('Страна')
+class OptimizedCountryFilter(SimpleListFilter):
+    """Оптимизированный фильтр по стране"""
+    title = 'Страна'
     parameter_name = 'country'
     
-    def get_queryset_for_lookups(self, model_admin):
-        return Country.objects.only('id', 'name').order_by('name')
-    
-    def format_display(self, obj):
-        return obj.name
+    def lookups(self, request, model_admin):
+        # Один запрос с only()
+        countries = Country.objects.only('id', 'name').order_by('name')
+        return [(str(c.id), c.name) for c in countries]
     
     def queryset(self, request, queryset):
         if self.value():
-            model = queryset.model
-            
-            if hasattr(model, 'country'):
+            if hasattr(queryset.model, 'country'):
                 return queryset.filter(country_id=self.value())
-            elif hasattr(model, 'federal_district'):
+            elif hasattr(queryset.model, 'federal_district'):
                 return queryset.filter(federal_district__country_id=self.value())
-            elif hasattr(model, 'region'):
+            elif hasattr(queryset.model, 'region'):
                 return queryset.filter(region__federal_district__country_id=self.value())
-            elif hasattr(model, 'city'):
+            elif hasattr(queryset.model, 'city'):
                 return queryset.filter(city__region__federal_district__country_id=self.value())
-            elif hasattr(model, 'street'):
+            elif hasattr(queryset.model, 'street'):
                 return queryset.filter(street__city__region__federal_district__country_id=self.value())
-        
         return queryset
 
 
-class OptimizedRegionFilter(BaseOptimizedFilter):
-    """ОПТИМИЗИРОВАННЫЙ ФИЛЬТР ПО РЕГИОНУ"""
-    
-    title = _('Регион')
+class OptimizedRegionFilter(SimpleListFilter):
+    """Оптимизированный фильтр по региону"""
+    title = 'Регион'
     parameter_name = 'region'
     
-    def get_queryset_for_lookups(self, model_admin):
-        return Region.objects.select_related('type_region').only(
+    def lookups(self, request, model_admin):
+        # Один запрос с select_related
+        regions = Region.objects.select_related('type_region').only(
             'id', 'name', 'type_region__id', 'type_region__name',
             'type_region__abbreviated_name', 'type_region__show_before_name',
             'type_region__skip_in_name'
         ).order_by('name')
-    
-    def format_display(self, obj):
-        if obj.type_region and not obj.type_region.skip_in_name:
-            if obj.type_region.show_before_name:
-                return f"{obj.type_region.abbreviated_name} {obj.name}"
+        
+        choices = []
+        for r in regions:
+            if r.type_region and not r.type_region.skip_in_name:
+                if r.type_region.show_before_name:
+                    display = f"{r.type_region.abbreviated_name} {r.name}"
+                else:
+                    display = f"{r.name} {r.type_region.abbreviated_name}"
             else:
-                return f"{obj.name} {obj.type_region.abbreviated_name}"
-        return obj.name
+                display = r.name
+            choices.append((str(r.id), display))
+        return choices
     
     def queryset(self, request, queryset):
         if self.value():
-            model = queryset.model
-            
-            if hasattr(model, 'region'):
+            if hasattr(queryset.model, 'region'):
                 return queryset.filter(region_id=self.value())
-            elif hasattr(model, 'city'):
+            elif hasattr(queryset.model, 'city'):
                 return queryset.filter(city__region_id=self.value())
-            elif hasattr(model, 'street'):
+            elif hasattr(queryset.model, 'street'):
                 return queryset.filter(street__city__region_id=self.value())
-        
         return queryset
 
 
-class OptimizedCityFilter(BaseOptimizedFilter):
-    """ОПТИМИЗИРОВАННЫЙ ФИЛЬТР ПО ГОРОДУ"""
-    
-    title = _('Город')
+class OptimizedCityFilter(SimpleListFilter):
+    """Оптимизированный фильтр по городу"""
+    title = 'Город'
     parameter_name = 'city'
     
-    def get_queryset_for_lookups(self, model_admin):
-        return City.objects.select_related('locality_type').only(
+    def lookups(self, request, model_admin):
+        # Один запрос с select_related
+        cities = City.objects.select_related('locality_type').only(
             'id', 'name', 'locality_type__id', 'locality_type__name',
             'locality_type__abbreviated_name', 'locality_type__show_before_name'
         ).order_by('name')
-    
-    def format_display(self, obj):
-        if obj.locality_type:
-            if obj.locality_type.show_before_name:
-                prefix = obj.locality_type.abbreviated_name or obj.locality_type.name
-                return f"{prefix} {obj.name}"
-            else:
-                suffix = obj.locality_type.abbreviated_name or obj.locality_type.name
-                return f"{obj.name} {suffix}"
-        return obj.name
-    
-    def queryset(self, request, queryset):
-        if self.value():
-            model = queryset.model
-            
-            if hasattr(model, 'city'):
-                return queryset.filter(city_id=self.value())
-            elif hasattr(model, 'street'):
-                return queryset.filter(street__city_id=self.value())
         
-        return queryset
-
-
-class OptimizedStreetFilter(BaseOptimizedFilter):
-    """ОПТИМИЗИРОВАННЫЙ ФИЛЬТР ПО УЛИЦЕ"""
-    
-    title = _('Улица')
-    parameter_name = 'street'
-    
-    def get_queryset_for_lookups(self, model_admin):
-        return Street.objects.select_related('street_type', 'city').only(
-            'id', 'name', 'street_type__id', 'street_type__name',
-            'street_type__abbreviated_name', 'street_type__show_before_name',
-            'city__name'
-        ).order_by('city__name', 'name')
-    
-    def format_display(self, obj):
-        if obj.street_type:
-            if obj.street_type.show_before_name:
-                prefix = obj.street_type.abbreviated_name or obj.street_type.name
-                return f"{prefix} {obj.name} ({obj.city.name})"
+        choices = []
+        for c in cities:
+            if c.locality_type:
+                if c.locality_type.show_before_name:
+                    prefix = c.locality_type.abbreviated_name or c.locality_type.name
+                    display = f"{prefix} {c.name}"
+                else:
+                    suffix = c.locality_type.abbreviated_name or c.locality_type.name
+                    display = f"{c.name} {suffix}"
             else:
-                suffix = obj.street_type.abbreviated_name or obj.street_type.name
-                return f"{obj.name} {suffix} ({obj.city.name})"
-        return f"{obj.name} ({obj.city.name})"
+                display = c.name
+            choices.append((str(c.id), display))
+        return choices
     
     def queryset(self, request, queryset):
         if self.value():
-            return queryset.filter(street_id=self.value())
+            if hasattr(queryset.model, 'city'):
+                return queryset.filter(city_id=self.value())
+            elif hasattr(queryset.model, 'street'):
+                return queryset.filter(street__city_id=self.value())
         return queryset
 
 
 # ====================================================================================
-# МОДУЛЬ 2: ОПТИМИЗИРОВАННЫЕ КЛАССЫ АВТОКОМПЛИТА
+# МОДУЛЬ 2: ВСЕ КЛАССЫ АВТОКОМПЛИТА (для urls.py)
 # ====================================================================================
 
-class OptimizedAutocompleteMixin:
-    """MIXIN ДЛЯ ОПТИМИЗАЦИИ ВСЕХ AUTOCOMPLETE VIEW"""
-    
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return qs
-
-
-class FederalDistrictAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class FederalDistrictAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = FederalDistrict.objects.select_related('country').only(
             'id', 'name', 'abbreviated_name', 'country__name'
         )
-        
         country_id = self.forwarded.get('country', None)
         if country_id:
             qs = qs.filter(country_id=country_id)
-        
         if self.q:
-            qs = qs.filter(
-                Q(name__icontains=self.q) |
-                Q(abbreviated_name__icontains=self.q)
-            )
-        
+            qs = qs.filter(Q(name__icontains=self.q) | Q(abbreviated_name__icontains=self.q))
         return qs.order_by('country__name', 'name')[:50]
     
     def get_result_label(self, result):
         return f"{result.name} ({result.country.name})"
 
 
-class RegionAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class RegionAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Region.objects.select_related('type_region', 'federal_district').only(
             'id', 'name', 'type_region__id', 'type_region__name',
             'type_region__abbreviated_name', 'type_region__show_before_name',
             'type_region__skip_in_name', 'federal_district__name'
         )
-        
         fd_id = self.forwarded.get('federal_district', None)
         if fd_id:
             qs = qs.filter(federal_district_id=fd_id)
-        
         if self.q:
             qs = qs.filter(name__icontains=self.q)
-        
         return qs.order_by('name')[:50]
     
     def get_result_label(self, result):
@@ -269,21 +161,18 @@ class RegionAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySe
         return result.name
 
 
-class CityAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class CityAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = City.objects.select_related('region', 'locality_type').only(
             'id', 'name', 'region__name', 'locality_type__id',
             'locality_type__name', 'locality_type__abbreviated_name',
             'locality_type__show_before_name'
         )
-        
         region_id = self.forwarded.get('region', None)
         if region_id:
             qs = qs.filter(region_id=region_id)
-        
         if self.q:
             qs = qs.filter(name__icontains=self.q)
-        
         return qs.order_by('region__name', 'name')[:50]
     
     def get_result_label(self, result):
@@ -297,32 +186,29 @@ class CityAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetV
         return result.name
 
 
-class AdministrativeTerritoryAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class AdministrativeTerritoryAutocomplete(autocomplete.Select2QuerySetView):
+    """Автокомплит для административных округов"""
     def get_queryset(self):
         qs = AdministrativeTerritory.objects.select_related('city').only(
             'id', 'name', 'city__name'
         )
-        
         city_id = self.forwarded.get('city', None)
         if city_id:
             qs = qs.filter(city_id=city_id)
-        
         if self.q:
             qs = qs.filter(name__icontains=self.q)
-        
         return qs.order_by('city__name', 'name')[:50]
     
     def get_result_label(self, result):
         return f"{result.name} ({result.city.name})"
 
 
-class AdministrativeUnitAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class AdministrativeUnitAutocomplete(autocomplete.Select2QuerySetView):
+    """Автокомплит для административно-территориальных единиц"""
     def get_queryset(self):
         qs = AdministrativeTerritorialUnit.objects.select_related(
             'city', 'administrative_territory'
-        ).only(
-            'id', 'name', 'city__name', 'administrative_territory__name'
-        )
+        ).only('id', 'name', 'city__name', 'administrative_territory__name')
         
         city_id = self.forwarded.get('city', None)
         if city_id:
@@ -343,21 +229,18 @@ class AdministrativeUnitAutocomplete(OptimizedAutocompleteMixin, autocomplete.Se
         return f"{result.name} ({result.city.name})"
 
 
-class StreetAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class StreetAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Street.objects.select_related('city', 'street_type').only(
             'id', 'name', 'city__name', 'street_type__id',
             'street_type__name', 'street_type__abbreviated_name',
             'street_type__show_before_name'
         )
-        
         city_id = self.forwarded.get('city', None)
         if city_id:
             qs = qs.filter(city_id=city_id)
-        
         if self.q:
             qs = qs.filter(name__icontains=self.q)
-        
         return qs.order_by('city__name', 'name')[:50]
     
     def get_result_label(self, result):
@@ -371,123 +254,51 @@ class StreetAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySe
         return result.name
 
 
-class HouseAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class HouseAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = House.objects.select_related('street', 'street__city').only(
             'id', 'number', 'street__name', 'street__city__name'
         )
-        
         street_id = self.forwarded.get('street', None)
         if street_id:
             qs = qs.filter(street_id=street_id)
-        
         if self.q:
             qs = qs.filter(number__icontains=self.q)
-        
         return qs.order_by('street__name', 'number')[:50]
     
     def get_result_label(self, result):
         return f"{result.street}, д. {result.number}"
 
 
-class BuildingAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class BuildingAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Building.objects.select_related('house', 'house__street', 'house__street__city').only(
             'id', 'number', 'house__number', 'house__street__name', 'house__street__city__name'
         )
-        
         house_id = self.forwarded.get('house', None)
         if house_id:
             qs = qs.filter(house_id=house_id)
-        
         if self.q:
             qs = qs.filter(number__icontains=self.q)
-        
         return qs.order_by('house__street__name', 'house__number', 'number')[:50]
     
     def get_result_label(self, result):
         return f"{result.house.street}, д. {result.house.number}, стр. {result.number}"
 
 
-class CoordinatesAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
+class CoordinatesAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Coordinates.objects.only('id', 'latitude', 'longitude')
-        
         if self.q:
-            qs = qs.filter(
-                Q(latitude__icontains=self.q) |
-                Q(longitude__icontains=self.q)
-            )
-        
+            qs = qs.filter(Q(latitude__icontains=self.q) | Q(longitude__icontains=self.q))
         return qs.order_by('latitude', 'longitude')[:50]
     
     def get_result_label(self, result):
         return f"Широта: {result.latitude}, Долгота: {result.longitude}"
 
 
-class TypeRegionAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
-    def get_queryset(self):
-        qs = TypeRegion.objects.only('id', 'name', 'abbreviated_name')
-        
-        if self.q:
-            qs = qs.filter(
-                Q(name__icontains=self.q) |
-                Q(abbreviated_name__icontains=self.q)
-            )
-        
-        return qs.order_by('name')[:50]
-    
-    def get_result_label(self, result):
-        return result.name
-
-
-class TimezoneAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
-    def get_queryset(self):
-        qs = Timezone.objects.only('id', 'name', 'offset_utc')
-        
-        if self.q:
-            qs = qs.filter(name__icontains=self.q)
-        
-        return qs.order_by('offset_utc', 'name')[:50]
-    
-    def get_result_label(self, result):
-        return f"{result.name} (UTC{result.offset_utc:+d})"
-
-
-class LocalityTypeAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
-    def get_queryset(self):
-        qs = LocalityType.objects.only('id', 'name', 'abbreviated_name')
-        
-        if self.q:
-            qs = qs.filter(
-                Q(name__icontains=self.q) |
-                Q(abbreviated_name__icontains=self.q)
-            )
-        
-        return qs.order_by('name')[:50]
-    
-    def get_result_label(self, result):
-        return result.name
-
-
-class StreetTypeAutocomplete(OptimizedAutocompleteMixin, autocomplete.Select2QuerySetView):
-    def get_queryset(self):
-        qs = StreetType.objects.only('id', 'name', 'abbreviated_name')
-        
-        if self.q:
-            qs = qs.filter(
-                Q(name__icontains=self.q) |
-                Q(abbreviated_name__icontains=self.q)
-            )
-        
-        return qs.order_by('name')[:50]
-    
-    def get_result_label(self, result):
-        return result.name
-
-
 # ====================================================================================
-# МОДУЛЬ 3: ОПТИМИЗИРОВАННЫЕ MODELADMIN КЛАССЫ
+# МОДУЛЬ 3: MODELADMIN КЛАССЫ
 # ====================================================================================
 
 @admin.register(Country)
@@ -656,7 +467,7 @@ class StreetTypeAdmin(admin.ModelAdmin):
 class StreetAdmin(admin.ModelAdmin):
     list_display = ('get_display_name', 'street_type', 'city')
     search_fields = ('name',)
-    list_filter = (OptimizedCountryFilter, OptimizedRegionFilter, OptimizedCityFilter, OptimizedStreetFilter)
+    list_filter = (OptimizedCountryFilter, OptimizedRegionFilter, OptimizedCityFilter)
     autocomplete_fields = ('city', 'street_type')
     ordering = ('city__name', 'name')
     
@@ -740,13 +551,7 @@ class CoordinatesAdmin(admin.ModelAdmin):
 
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
-    """
-    АДМИНИСТРАТИВНЫЙ КЛАСС ДЛЯ УПРАВЛЕНИЯ АДРЕСАМИ (ОПТИМИЗИРОВАННЫЙ).
-    
-    ПРОИЗВОДИТЕЛЬНОСТЬ:
-        • ДО: 11755 запросов на страницу
-        • ПОСЛЕ: ~10-20 запросов на страницу
-    """
+    """Административный класс для управления адресами (оптимизированный)"""
     
     list_display = (
         'full_address_display',
@@ -760,70 +565,33 @@ class AddressAdmin(admin.ModelAdmin):
     )
     
     search_fields = (
-        'country__name',
-        'region__name',
-        'city__name',
-        'street__name',
-        'house__number',
-        'building__number',
-        'microdistrict',
-        'index'
+        'country__name', 'region__name', 'city__name', 'street__name',
+        'house__number', 'building__number', 'microdistrict', 'index'
     )
     
-    list_filter = (
-        OptimizedCountryFilter,
-        OptimizedRegionFilter,
-        OptimizedCityFilter,
-    )
+    list_filter = (OptimizedCountryFilter, OptimizedRegionFilter, OptimizedCityFilter)
     
     autocomplete_fields = (
-        'country',
-        'federal_district',
-        'region',
-        'city',
-        'administrative_territory',
-        'administrative_unit',
-        'street',
-        'house',
-        'building',
-        'coordinates',
+        'country', 'federal_district', 'region', 'city',
+        'administrative_territory', 'administrative_unit',
+        'street', 'house', 'building', 'coordinates'
     )
     
     readonly_fields = ('full_address',)
     
-    ordering = (
-        'country__name',
-        'region__name',
-        'city__name',
-        'street__name',
-        'house__number',
-        'building__number'
-    )
+    ordering = ('country__name', 'region__name', 'city__name', 'street__name', 'house__number', 'building__number')
     
     fieldsets = (
-        ('Основная информация', {
-            'fields': ('country', 'federal_district', 'region', 'city', 'full_address')
-        }),
-        ('Административное деление', {
-            'fields': ('administrative_territory', 'administrative_unit'),
-            'classes': ('collapse',)
-        }),
-        ('Улично-домовая сеть', {
-            'fields': ('street', 'house', 'building'),
-        }),
-        ('Координаты', {
-            'fields': ('coordinates',),
-        }),
-        ('Дополнительная информация', {
-            'fields': ('microdistrict', 'index'),
-            'classes': ('collapse',)
-        }),
+        ('Основная информация', {'fields': ('country', 'federal_district', 'region', 'city', 'full_address')}),
+        ('Административное деление', {'fields': ('administrative_territory', 'administrative_unit'), 'classes': ('collapse',)}),
+        ('Улично-домовая сеть', {'fields': ('street', 'house', 'building')}),
+        ('Координаты', {'fields': ('coordinates',)}),
+        ('Дополнительная информация', {'fields': ('microdistrict', 'index'), 'classes': ('collapse',)}),
     )
     
     def full_address_display(self, obj):
         return obj.full_address[:100]
     full_address_display.short_description = 'Полный адрес'
-    full_address_display.admin_order_field = 'city__name'
     
     def get_country_name(self, obj):
         return obj.country.name if obj.country else '-'
@@ -857,17 +625,10 @@ class AddressAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'country',
-            'federal_district',
-            'region__type_region',
-            'city__locality_type',
-            'administrative_territory',
-            'administrative_unit',
-            'street__street_type',
-            'street__city',
-            'house',
-            'building',
-            'coordinates',
+            'country', 'federal_district',
+            'region__type_region', 'city__locality_type',
+            'administrative_territory', 'administrative_unit',
+            'street__street_type', 'house', 'building', 'coordinates'
         ).only(
             'id', 'microdistrict', 'index',
             'country__id', 'country__name',
@@ -892,22 +653,16 @@ class AddressAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         if obj.region and not obj.country:
             obj.country = obj.region.federal_district.country
-        
         if obj.region and not obj.federal_district:
             obj.federal_district = obj.region.federal_district
-        
         if obj.city and not obj.region:
             obj.region = obj.city.region
-        
         if obj.street and not obj.city:
             obj.city = obj.street.city
-        
         if obj.house and not obj.street:
             obj.street = obj.house.street
-        
         if obj.building and not obj.house:
             obj.house = obj.building.house
-        
         super().save_model(request, obj, form, change)
     
     def full_address(self, obj):
