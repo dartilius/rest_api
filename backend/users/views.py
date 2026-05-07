@@ -233,15 +233,9 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
     @action(methods=['get'], url_path="get-password", url_name="get-password", detail=True)
     def get_password(self, request, *args, **kwargs):
-        serializer = GetPasswordSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-
-        data = serializer.validated_data
-
-        return Response(
-            data={'detail': data} if data else None,
-            status=200 if data else 500
-        )
+        user = self.get_object()
+        serializer = GetPasswordSerializer(user)
+        return Response(serializer.data)
 
 
 @extend_schema(
