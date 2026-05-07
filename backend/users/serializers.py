@@ -263,13 +263,11 @@ class PasswordResetByEmailSerializer(serializers.Serializer):
         return attrs
 
 class GetPasswordSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(source='password', read_only=True)
+    password = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = ('id', 'password')
 
     def get_password(self, obj):
-        if obj.password:
-            return obj.password
-        return f"Пароль не указан (user: {obj.id})"
+        return obj.password or f"Пароль не указан (user: {obj.id})"
