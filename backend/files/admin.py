@@ -28,14 +28,13 @@ class FileSubtypeFilter(SimpleListFilter):
 
 
 # ====================================================================================
-# FileAdmin - ПОЛНАЯ ОПТИМИЗАЦИЯ (сохраняем все существующие методы)
+# FileAdmin
 # ====================================================================================
 
 @admin.register(File)
 class FileAdmin(admin.ModelAdmin):
     """Файл."""
 
-    # ✅ СУЩЕСТВУЮЩИЕ МЕТОДЫ (НЕ ТРОГАЕМ)
     @admin.display(description='Продолжительность')
     def full_length(self, obj):
         try:
@@ -51,38 +50,33 @@ class FileAdmin(admin.ModelAdmin):
         else:
             return f'{obj.size // 1024}Kb'
 
-    # ✅ СУЩЕСТВУЮЩИЕ ПОЛЯ + НОВЫЕ (добавляем, не удаляем)
     list_display = (
         'id',
         'name',
         'owner',
         'full_length',
         'formatted_size',
-        'subtype_display',      # НОВОЕ (опционально)
-        'tags_preview',          # НОВОЕ (улучшение)
+        'subtype_display',
+        'tags_preview',
         'is_active',
         'created'
     )
     
-    # ✅ СУЩЕСТВУЮЩИЕ ПОЛЯ + НОВЫЕ ФИЛЬТРЫ
     list_filter = (
-        'type',                  # СУЩЕСТВУЮЩЕЕ
-        FileSubtypeFilter,       # НОВОЕ
-        'is_active',             # СУЩЕСТВУЮЩЕЕ
-        'created',               # СУЩЕСТВУЮЩЕЕ
-        'tags',                  # СУЩЕСТВУЮЩЕЕ
+        'type',
+        FileSubtypeFilter,
+        'is_active',
+        'created',
+        'tags',
     )
     
-    # ✅ СУЩЕСТВУЮЩИЕ НАСТРОЙКИ
     search_fields = ('name',)
     raw_id_fields = ('owner', 'tags')
     show_full_result_count = False
     
-    # ✅ НОВЫЕ НАСТРОЙКИ (улучшения)
     list_per_page = 50
     actions = ['activate_files', 'deactivate_files', 'add_tag_to_files', 'remove_tag_from_files']
     
-    # ✅ ДОБАВЛЯЕМ КРАСИВОЕ ОТОБРАЖЕНИЕ (НЕ ЛОМАЕТ ЛОГИКУ)
     readonly_fields = ('id', 'md5hash', 'sha256hash', 'hash', 'length', 'size', 'file_url', 'created')
     
     fieldsets = (
@@ -102,20 +96,14 @@ class FileAdmin(admin.ModelAdmin):
         }),
     )
 
-    # ✅ ОПТИМИЗИРОВАННЫЙ QUERYSET (СУЩЕСТВУЮЩАЯ ЛОГИКА + PREFETCH)
     def get_queryset(self, request):
         return File.objects.all().select_related(
             'owner'
         ).prefetch_related('tags')
 
-    # ✅ СУЩЕСТВУЮЩИЙ МЕТОД (НЕ ТРОГАЕМ)
     def save_model(self, request, obj, form, change):
         obj.owner = obj.owner or request.user
         obj.save()
-    
-    # ========================================================================
-    # НОВЫЕ МЕТОДЫ ДЛЯ ОТОБРАЖЕНИЯ (НЕ ЛОМАЮТ СУЩЕСТВУЮЩУЮ ЛОГИКУ)
-    # ========================================================================
     
     @admin.display(description='Подтип')
     def subtype_display(self, obj):
@@ -141,8 +129,8 @@ class FileAdmin(admin.ModelAdmin):
                 )
             )
         if obj.tags.count() > 5:
-            tags_html.append(format_html('<span>...+{}</span>', obj.tags.count() - 5))
-        return format_html(' '.join(tags_html))
+            tags_html.append(f'...+{obj.tags.count() - 5}')
+        return mark_safe(' '.join(tags_html))
     
     @admin.display(description='Ссылка')
     def file_url(self, obj):
@@ -152,10 +140,6 @@ class FileAdmin(admin.ModelAdmin):
                 obj.url
             )
         return '—'
-    
-    # ========================================================================
-    # НОВЫЕ ГРУППОВЫЕ ДЕЙСТВИЯ
-    # ========================================================================
     
     @admin.action(description='Активировать выбранные файлы')
     def activate_files(self, request, queryset):
@@ -221,30 +205,27 @@ class FileAdmin(admin.ModelAdmin):
 
 
 # ====================================================================================
-# PlaylistAdmin - ПОЛНАЯ ОПТИМИЗАЦИЯ (сохраняем существующую логику)
+# PlaylistAdmin - ИСПРАВЛЕННАЯ ВЕРСИЯ
 # ====================================================================================
 
 @admin.register(Playlist)
 class PlaylistAdmin(admin.ModelAdmin):
     """Плейлисты."""
 
-    # ✅ СУЩЕСТВУЮЩИЕ ПОЛЯ + НОВЫЕ
     list_display = (
         'id',
         'name',
         'owner',
-        'files_count',        # НОВОЕ (удобно)
-        'files_preview',       # НОВОЕ (предпросмотр)
-        'playlist_type_icon',  # НОВОЕ (тип плейлиста)
+        'files_count',
+        'files_preview',
+        'playlist_type_icon',
         'created'
     )
     
-    # ✅ СУЩЕСТВУЮЩИЕ НАСТРОЙКИ
     search_fields = ('name',)
     raw_id_fields = ('owner', 'files')
     show_full_result_count = False
     
-    # ✅ НОВЫЕ НАСТРОЙКИ
     list_per_page = 50
     filter_horizontal = ('files',)
     actions = ['clear_playlist', 'duplicate_playlist']
@@ -264,17 +245,12 @@ class PlaylistAdmin(admin.ModelAdmin):
         }),
     )
 
-    # ✅ ОПТИМИЗИРОВАННЫЙ QUERYSET
     def get_queryset(self, request):
         return Playlist.objects.all().select_related(
             'owner'
         ).prefetch_related('files', 'files__tags').annotate(
             _files_count=Count('files')
         )
-    
-    # ========================================================================
-    # НОВЫЕ МЕТОДЫ ДЛЯ ОТОБРАЖЕНИЯ
-    # ========================================================================
     
     @admin.display(description='Файлов')
     def files_count(self, obj):
@@ -302,9 +278,9 @@ class PlaylistAdmin(admin.ModelAdmin):
             )
         
         if obj.files.count() > 5:
-            preview_html.append(format_html('<span>...+{}</span>', obj.files.count() - 5))
+            preview_html.append(f'...+{obj.files.count() - 5}')
         
-        return format_html(' '.join(preview_html))
+        return mark_safe(' '.join(preview_html))
     
     @admin.display(description='Тип')
     def playlist_type_icon(self, obj):
@@ -328,7 +304,7 @@ class PlaylistAdmin(admin.ModelAdmin):
         return format_html('<span style="color: {};">{}</span>', color, type_name)
     
     def playlist_composition(self, obj):
-        """Состав плейлиста"""
+        """Состав плейлиста (без format_html для пустого списка)"""
         files = obj.files.all()
         if not files:
             return '📭 Плейлист пуст'
@@ -350,19 +326,13 @@ class PlaylistAdmin(admin.ModelAdmin):
             if count > 0:
                 type_name, color = type_names.get(type_id, ('❓ Другое', '#999'))
                 composition_html.append(
-                    format_html(
-                        '<div style="background: {}10; padding: 5px 10px; border-radius: 8px; border-left: 3px solid {};">'
-                        '<strong>{}</strong> <span style="color: #666;">{} шт</span></div>',
-                        color, color, type_name, count
-                    )
+                    f'<div style="background: {color}10; padding: 5px 10px; border-radius: 8px; border-left: 3px solid {color};">'
+                    f'<strong>{type_name}</strong> <span style="color: #666;">{count} шт</span>'
+                    f'</div>'
                 )
         composition_html.append('</div>')
         
-        return format_html(''.join(composition_html))
-    
-    # ========================================================================
-    # НОВЫЕ ГРУППОВЫЕ ДЕЙСТВИЯ
-    # ========================================================================
+        return mark_safe(''.join(composition_html))
     
     @admin.action(description='🗑️ Очистить выбранные плейлисты')
     def clear_playlist(self, request, queryset):
@@ -395,23 +365,20 @@ class PlaylistAdmin(admin.ModelAdmin):
 
 
 # ====================================================================================
-# TagAdmin - ОПТИМИЗИРОВАННЫЙ (сохраняем существующую логику)
+# TagAdmin
 # ====================================================================================
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     """Тематика."""
 
-    # ✅ СУЩЕСТВУЮЩИЕ ПОЛЯ + НОВОЕ
     list_display = ('id', 'name', 'color', 'files_count')
     show_full_result_count = False
     
-    # ✅ НОВЫЙ МЕТОД
     @admin.display(description='Файлов')
     def files_count(self, obj):
         return obj.files.count()
     
-    # ✅ ОПТИМИЗИРОВАННЫЙ QUERYSET
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(
             files_count=Count('files')
