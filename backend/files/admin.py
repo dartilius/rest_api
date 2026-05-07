@@ -1,49 +1,20 @@
-"""
-Административный интерфейс для управления файлами, плейлистами и тегами.
-
-ОПТИМИЗИРОВАННАЯ ВЕРСИЯ:
-═══════════════════════════════════════════════════════════════════════════════════
-• Исправлены N+1 запросы в списках
-• Добавлены фильтры по типу и подтипу
-• Улучшен UX для работы с плейлистами
-• Групповые операции с файлами
-• ПОЛНАЯ СОВМЕСТИМОСТЬ с заказами и репликациями
-
-ВАЖНО: Все изменения только в админке, API и бизнес-логика не затронуты!
-"""
-
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.utils.html import format_html
-from django.utils.translation import gettext_lazy as _
-from django.db.models import Q, Count
+from django.db.models import Count
 from django import forms
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from .models import File, Playlist, Tag, TYPES, SUBTYPES, TYPE_CHOICES, SUBTYPE_CHOICES
+from .models import File, Playlist, Tag, TYPES, SUBTYPES, SUBTYPE_CHOICES
 
 
 # ====================================================================================
-# МОДУЛЬ 1: ОПТИМИЗИРОВАННЫЕ ФИЛЬТРЫ
+# НОВЫЕ ОПТИМИЗИРОВАННЫЕ ФИЛЬТРЫ
 # ====================================================================================
-
-class FileTypeFilter(SimpleListFilter):
-    """Фильтр по типу файла"""
-    title = 'Тип файла'
-    parameter_name = 'file_type'
-    
-    def lookups(self, request, model_admin):
-        return [(key, value) for key, value in TYPES.items()]
-    
-    def queryset(self, request, queryset):
-        if self.value():
-            return queryset.filter(type=self.value())
-        return queryset
-
 
 class FileSubtypeFilter(SimpleListFilter):
-    """Фильтр по подтипу файла (только для админки)"""
+    """Фильтр по подтипу файла"""
     title = 'Подтип файла'
     parameter_name = 'subtype'
     
@@ -56,197 +27,63 @@ class FileSubtypeFilter(SimpleListFilter):
         return queryset
 
 
-class FileActiveFilter(SimpleListFilter):
-    """Фильтр по статусу активности"""
-    title = 'Статус'
-    parameter_name = 'is_active'
-    
-    def lookups(self, request, model_admin):
-        return [
-            (1, 'Активные'),
-            (0, 'Архивные'),
-        ]
-    
-    def queryset(self, request, queryset):
-        if self.value() == '1':
-            return queryset.filter(is_active=True)
-        elif self.value() == '0':
-            return queryset.filter(is_active=False)
-        return queryset
-
-
 # ====================================================================================
-# МОДУЛЬ 2: КАСТОМНЫЙ ВИДЖЕТ ДЛЯ PLAYLIST
-# ====================================================================================
-
-class PlaylistFileWidget(forms.SelectMultiple):
-    """Кастомный виджет для выбора файлов с группировкой по типу"""
-    
-    def __init__(self, attrs=None):
-        super().__init__(attrs)
-    
-    def render(self, name, value, attrs=None, renderer=None):
-        # Добавляем кнопки для быстрого выбора
-        buttons_html = """
-        <div class="playlist-bulk-actions" style="margin-top: 10px; margin-bottom: 10px;">
-            <button type="button" class="button" onclick="selectAllFiles()" style="margin-right: 5px;">📁 Выбрать все</button>
-            <button type="button" class="button" onclick="deselectAllFiles()" style="margin-right: 5px;">🗑️ Снять все</button>
-            <button type="button" class="button" onclick="selectMusicFiles()" style="margin-right: 5px;">🎵 Музыку</button>
-            <button type="button" class="button" onclick="selectVideoFiles()" style="margin-right: 5px;">🎬 Видео</button>
-            <button type="button" class="button" onclick="selectImageFiles()" style="margin-right: 5px;">🖼️ Изображения</button>
-            <button type="button" class="button" onclick="selectTickerFiles()" style="margin-right: 5px;">📜 Бегущую строку</button>
-            <button type="button" class="button" onclick="selectAdFiles()">📢 Рекламу</button>
-        </div>
-        <script>
-            function selectAllFiles() {
-                var selects = document.querySelectorAll('select[multiple] option');
-                for(var i = 0; i < selects.length; i++) {
-                    selects[i].selected = true;
-                }
-            }
-            function deselectAllFiles() {
-                var selects = document.querySelectorAll('select[multiple] option');
-                for(var i = 0; i < selects.length; i++) {
-                    selects[i].selected = false;
-                }
-            }
-            function selectMusicFiles() {
-                var selects = document.querySelectorAll('select[multiple] option');
-                for(var i = 0; i < selects.length; i++) {
-                    if(selects[i].text.includes('🎵')) {
-                        selects[i].selected = true;
-                    }
-                }
-            }
-            function selectVideoFiles() {
-                var selects = document.querySelectorAll('select[multiple] option');
-                for(var i = 0; i < selects.length; i++) {
-                    if(selects[i].text.includes('🎬')) {
-                        selects[i].selected = true;
-                    }
-                }
-            }
-            function selectImageFiles() {
-                var selects = document.querySelectorAll('select[multiple] option');
-                for(var i = 0; i < selects.length; i++) {
-                    if(selects[i].text.includes('🖼️')) {
-                        selects[i].selected = true;
-                    }
-                }
-            }
-            function selectTickerFiles() {
-                var selects = document.querySelectorAll('select[multiple] option');
-                for(var i = 0; i < selects.length; i++) {
-                    if(selects[i].text.includes('📜')) {
-                        selects[i].selected = true;
-                    }
-                }
-            }
-            function selectAdFiles() {
-                var selects = document.querySelectorAll('select[multiple] option');
-                for(var i = 0; i < selects.length; i++) {
-                    if(selects[i].text.includes('📢')) {
-                        selects[i].selected = true;
-                    }
-                }
-            }
-        </script>
-        """
-        return mark_safe(buttons_html + super().render(name, value, attrs, renderer))
-
-
-class PlaylistForm(forms.ModelForm):
-    """Кастомная форма для плейлиста"""
-    
-    files = forms.ModelMultipleChoiceField(
-        queryset=File.active.all(),
-        widget=PlaylistFileWidget(attrs={'style': 'width: 100%; height: 400px;'}),
-        required=False,
-        label='Файлы'
-    )
-    
-    class Meta:
-        model = Playlist
-        fields = '__all__'
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            self.fields['files'].initial = self.instance.files.all()
-
-
-# ====================================================================================
-# МОДУЛЬ 3: ОПТИМИЗИРОВАННЫЙ ADMIN ДЛЯ ТЕГОВ
-# ====================================================================================
-
-@admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
-    """Администрирование тегов (оптимизированное)"""
-    
-    list_display = ('id', 'colored_name', 'color_preview', 'files_count')
-    search_fields = ('name',)
-    list_filter = ('color',)
-    ordering = ('name',)
-    
-    def colored_name(self, obj):
-        return format_html(
-            '<span style="color: {};">{}</span>',
-            obj.color if obj.color else '#000000',
-            obj.name
-        )
-    colored_name.short_description = 'Название'
-    
-    def color_preview(self, obj):
-        if obj.color:
-            return format_html(
-                '<div style="width: 30px; height: 20px; background-color: {}; border: 1px solid #ccc;"></div>',
-                obj.color
-            )
-        return '-'
-    color_preview.short_description = 'Цвет'
-    
-    def files_count(self, obj):
-        return obj.files.count()
-    files_count.short_description = 'Файлов'
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).annotate(
-            files_count=Count('files')
-        ).only('id', 'name', 'color')
-
-
-# ====================================================================================
-# МОДУЛЬ 4: ОПТИМИЗИРОВАННЫЙ ADMIN ДЛЯ ФАЙЛОВ
+# FileAdmin - ПОЛНАЯ ОПТИМИЗАЦИЯ (сохраняем все существующие методы)
 # ====================================================================================
 
 @admin.register(File)
 class FileAdmin(admin.ModelAdmin):
-    """Администрирование файлов (оптимизированное, с поддержкой подтипов)"""
-    
+    """Файл."""
+
+    # ✅ СУЩЕСТВУЮЩИЕ МЕТОДЫ (НЕ ТРОГАЕМ)
+    @admin.display(description='Продолжительность')
+    def full_length(self, obj):
+        try:
+            return f'{obj.length:%H:%M:%S}'
+        except TypeError:
+            return obj.length
+
+    @admin.display(description='Размер')
+    def formatted_size(self, obj):
+        if obj.size // 1024 >= 1:
+            formatted_tail = obj.size % 1048576 // 1000
+            return f'{obj.size // 1048576}.{formatted_tail}Mb'
+        else:
+            return f'{obj.size // 1024}Kb'
+
+    # ✅ СУЩЕСТВУЮЩИЕ ПОЛЯ + НОВЫЕ (добавляем, не удаляем)
     list_display = (
         'id',
-        'file_preview',
+        'name',
         'owner',
-        'file_type_icon',
-        'subtype_display',
-        'formatted_size',
         'full_length',
-        'tags_preview',
+        'formatted_size',
+        'subtype_display',      # НОВОЕ (опционально)
+        'tags_preview',          # НОВОЕ (улучшение)
         'is_active',
         'created'
     )
     
-    search_fields = ('name', 'hash', 'owner__email', 'owner__first_name', 'owner__last_name')
+    # ✅ СУЩЕСТВУЮЩИЕ ПОЛЯ + НОВЫЕ ФИЛЬТРЫ
+    list_filter = (
+        'type',                  # СУЩЕСТВУЮЩЕЕ
+        FileSubtypeFilter,       # НОВОЕ
+        'is_active',             # СУЩЕСТВУЮЩЕЕ
+        'created',               # СУЩЕСТВУЮЩЕЕ
+        'tags',                  # СУЩЕСТВУЮЩЕЕ
+    )
     
-    list_filter = (FileTypeFilter, FileSubtypeFilter, FileActiveFilter, 'tags', 'created')
+    # ✅ СУЩЕСТВУЮЩИЕ НАСТРОЙКИ
+    search_fields = ('name',)
+    raw_id_fields = ('owner', 'tags')
+    show_full_result_count = False
     
-    readonly_fields = ('id', 'md5hash', 'sha256hash', 'hash', 'length', 'size', 'file_url', 'created', 'modified')
-    
-    ordering = ('-created',)
-    
+    # ✅ НОВЫЕ НАСТРОЙКИ (улучшения)
     list_per_page = 50
-    
     actions = ['activate_files', 'deactivate_files', 'add_tag_to_files', 'remove_tag_from_files']
+    
+    # ✅ ДОБАВЛЯЕМ КРАСИВОЕ ОТОБРАЖЕНИЕ (НЕ ЛОМАЕТ ЛОГИКУ)
+    readonly_fields = ('id', 'md5hash', 'sha256hash', 'hash', 'length', 'size', 'file_url', 'created')
     
     fieldsets = (
         ('Основная информация', {
@@ -256,7 +93,7 @@ class FileAdmin(admin.ModelAdmin):
             'fields': ('source', 'file_url')
         }),
         ('Техническая информация', {
-            'fields': ('id', 'md5hash', 'sha256hash', 'hash', 'length', 'size', 'created', 'modified'),
+            'fields': ('id', 'md5hash', 'sha256hash', 'hash', 'length', 'size', 'created'),
             'classes': ('collapse',)
         }),
         ('Теги', {
@@ -264,54 +101,32 @@ class FileAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
+    # ✅ ОПТИМИЗИРОВАННЫЙ QUERYSET (СУЩЕСТВУЮЩАЯ ЛОГИКА + PREFETCH)
     def get_queryset(self, request):
-        """Оптимизация: предзагрузка связанных данных"""
-        return super().get_queryset(request).select_related(
+        return File.objects.all().select_related(
             'owner'
         ).prefetch_related('tags')
+
+    # ✅ СУЩЕСТВУЮЩИЙ МЕТОД (НЕ ТРОГАЕМ)
+    def save_model(self, request, obj, form, change):
+        obj.owner = obj.owner or request.user
+        obj.save()
     
     # ========================================================================
-    # МЕТОДЫ ДЛЯ ОТОБРАЖЕНИЯ
+    # НОВЫЕ МЕТОДЫ ДЛЯ ОТОБРАЖЕНИЯ (НЕ ЛОМАЮТ СУЩЕСТВУЮЩУЮ ЛОГИКУ)
     # ========================================================================
     
-    def file_preview(self, obj):
-        """Предпросмотр файла с иконкой"""
-        icons = {
-            0: '🎵',
-            1: '🎬',
-            2: '🖼️',
-            3: '📜',
-            4: '📢',
-        }
-        icon = icons.get(obj.type, '📄')
-        name = obj.name[:50] + '...' if len(obj.name) > 50 else obj.name
-        return format_html(f'{icon} <strong>{name}</strong>')
-    file_preview.short_description = 'Файл'
-    
-    def file_type_icon(self, obj):
-        """Иконка типа файла"""
-        type_icons = {
-            0: '🎵 Музыка',
-            1: '🎬 Видео',
-            2: '🖼️ Изображение',
-            3: '📜 Бегущая строка',
-            4: '📢 Реклама',
-        }
-        return type_icons.get(obj.type, '❓ Неизвестно')
-    file_type_icon.short_description = 'Тип'
-    
+    @admin.display(description='Подтип')
     def subtype_display(self, obj):
-        """Отображение подтипа"""
-        if obj.subtype:
+        if hasattr(obj, 'subtype') and obj.subtype:
             icon = getattr(obj, 'subtype_icon', '📄')
             name = getattr(obj, 'subtype_display', obj.subtype)
-            return format_html(f'{icon} {name}')
+            return f'{icon} {name}'
         return '—'
-    subtype_display.short_description = 'Подтип'
     
+    @admin.display(description='Теги')
     def tags_preview(self, obj):
-        """Предпросмотр тегов"""
         tags = obj.tags.all()[:5]
         if not tags:
             return '—'
@@ -328,40 +143,18 @@ class FileAdmin(admin.ModelAdmin):
         if obj.tags.count() > 5:
             tags_html.append(format_html('<span>...+{}</span>', obj.tags.count() - 5))
         return format_html(' '.join(tags_html))
-    tags_preview.short_description = 'Теги'
     
-    @admin.display(description='Длительность')
-    def full_length(self, obj):
-        try:
-            if obj.length:
-                return f'{obj.length:%H:%M:%S}'
-            return '—'
-        except (TypeError, AttributeError):
-            return obj.length or '—'
-    
-    @admin.display(description='Размер')
-    def formatted_size(self, obj):
-        if not obj.size:
-            return '—'
-        if obj.size < 1024:
-            return f'{obj.size} B'
-        elif obj.size < 1048576:
-            return f'{obj.size / 1024:.1f} KB'
-        else:
-            return f'{obj.size / 1048576:.1f} MB'
-    
+    @admin.display(description='Ссылка')
     def file_url(self, obj):
-        """Ссылка на файл"""
         if obj.url:
             return format_html(
-                '<a href="{}" target="_blank" style="font-size: 12px;">🔗 Открыть в новом окне</a>',
+                '<a href="{}" target="_blank">🔗 Открыть</a>',
                 obj.url
             )
         return '—'
-    file_url.short_description = 'Ссылка'
     
     # ========================================================================
-    # ГРУППОВЫЕ ДЕЙСТВИЯ
+    # НОВЫЕ ГРУППОВЫЕ ДЕЙСТВИЯ
     # ========================================================================
     
     @admin.action(description='Активировать выбранные файлы')
@@ -425,46 +218,38 @@ class FileAdmin(admin.ModelAdmin):
             'action': 'remove_tag_from_files',
         }
         return self.render_changeform(request, context)
-    
-    def save_model(self, request, obj, form, change):
-        if not obj.owner:
-            obj.owner = request.user
-        super().save_model(request, obj, form, change)
 
 
 # ====================================================================================
-# МОДУЛЬ 5: ОПТИМИЗИРОВАННЫЙ ADMIN ДЛЯ ПЛЕЙЛИСТОВ
+# PlaylistAdmin - ПОЛНАЯ ОПТИМИЗАЦИЯ (сохраняем существующую логику)
 # ====================================================================================
 
 @admin.register(Playlist)
 class PlaylistAdmin(admin.ModelAdmin):
-    """Администрирование плейлистов (улучшенный UX, полная совместимость)"""
-    
-    form = PlaylistForm
-    
+    """Плейлисты."""
+
+    # ✅ СУЩЕСТВУЮЩИЕ ПОЛЯ + НОВЫЕ
     list_display = (
         'id',
         'name',
         'owner',
-        'files_count_display',
-        'files_preview',
-        'playlist_type_icon',
+        'files_count',        # НОВОЕ (удобно)
+        'files_preview',       # НОВОЕ (предпросмотр)
+        'playlist_type_icon',  # НОВОЕ (тип плейлиста)
         'created'
     )
     
-    search_fields = ('name', 'description', 'owner__email', 'owner__first_name', 'owner__last_name')
+    # ✅ СУЩЕСТВУЮЩИЕ НАСТРОЙКИ
+    search_fields = ('name',)
+    raw_id_fields = ('owner', 'files')
+    show_full_result_count = False
     
-    list_filter = ('created',)
-    
-    filter_horizontal = ('files',)
-    
-    readonly_fields = ('id', 'created', 'modified', 'playlist_composition')
-    
-    ordering = ('-created',)
-    
+    # ✅ НОВЫЕ НАСТРОЙКИ
     list_per_page = 50
-    
+    filter_horizontal = ('files',)
     actions = ['clear_playlist', 'duplicate_playlist']
+    
+    readonly_fields = ('id', 'created')
     
     fieldsets = (
         ('Основная информация', {
@@ -472,72 +257,60 @@ class PlaylistAdmin(admin.ModelAdmin):
         }),
         ('Файлы плейлиста', {
             'fields': ('files', 'playlist_composition'),
-            'description': '💡 Совет: используйте кнопки выше для быстрого выбора файлов по типу'
         }),
         ('Системная информация', {
-            'fields': ('created', 'modified'),
+            'fields': ('created',),
             'classes': ('collapse',)
         }),
     )
-    
+
+    # ✅ ОПТИМИЗИРОВАННЫЙ QUERYSET
     def get_queryset(self, request):
-        """Оптимизация: предзагрузка связанных данных с аннотацией"""
-        return super().get_queryset(request).select_related(
+        return Playlist.objects.all().select_related(
             'owner'
         ).prefetch_related('files', 'files__tags').annotate(
             _files_count=Count('files')
         )
     
     # ========================================================================
-    # МЕТОДЫ ДЛЯ ОТОБРАЖЕНИЯ
+    # НОВЫЕ МЕТОДЫ ДЛЯ ОТОБРАЖЕНИЯ
     # ========================================================================
     
-    def files_count_display(self, obj):
-        """Количество файлов в плейлисте"""
+    @admin.display(description='Файлов')
+    def files_count(self, obj):
         count = getattr(obj, '_files_count', obj.files.count())
         if count == 0:
-            return format_html('<span style="color: #999;">📁 0</span>')
-        return format_html('<span style="font-weight: bold;">📁 {}</span>', count)
-    files_count_display.short_description = 'Файлов'
-    files_count_display.admin_order_field = '_files_count'
+            return '📁 0'
+        return f'📁 {count}'
     
+    @admin.display(description='Файлы')
     def files_preview(self, obj):
-        """Предпросмотр первых 5 файлов"""
         files = obj.files.all()[:5]
         if not files:
-            return format_html('<span style="color: #999;">— нет файлов —</span>')
+            return '—'
         
         preview_html = []
         for file in files:
-            type_icon = {
-                0: '🎵',
-                1: '🎬',
-                2: '🖼️',
-                3: '📜',
-                4: '📢',
-            }.get(file.type, '📄')
-            
+            type_icon = {0: '🎵', 1: '🎬', 2: '🖼️', 3: '📜', 4: '📢'}.get(file.type, '📄')
             file_url = reverse('admin:files_file_change', args=[file.id])
-            name = file.name[:25] + '...' if len(file.name) > 25 else file.name
+            name = file.name[:20] + '...' if len(file.name) > 20 else file.name
             preview_html.append(
                 format_html(
-                    '<a href="{}" title="{}" style="text-decoration: none; margin-right: 10px; font-size: 12px;">'
-                    '{} {}</a>',
+                    '<a href="{}" title="{}" style="text-decoration: none; margin-right: 8px;">{} {}</a>',
                     file_url, file.name, type_icon, name
                 )
             )
         
         if obj.files.count() > 5:
-            preview_html.append(format_html('<span style="color: #666;">...+{}</span>', obj.files.count() - 5))
+            preview_html.append(format_html('<span>...+{}</span>', obj.files.count() - 5))
         
         return format_html(' '.join(preview_html))
-    files_preview.short_description = 'Файлы'
     
+    @admin.display(description='Тип')
     def playlist_type_icon(self, obj):
-        """Определение типа плейлиста по первому файлу"""
         first_file = obj.files.first()
         if not first_file:
-            return format_html('<span style="color: #999;">❓ Пустой</span>')
+            return '❓ Пустой'
         
         type_info = {
             0: ('🎵 Музыкальный', '#4CAF50'),
@@ -548,16 +321,14 @@ class PlaylistAdmin(admin.ModelAdmin):
         }
         type_name, color = type_info.get(first_file.type, ('❓ Смешанный', '#999'))
         
-        # Проверяем, все ли файлы одного типа
         types = set(obj.files.values_list('type', flat=True).distinct())
         if len(types) > 1:
-            return format_html('<span style="color: #FF9800;">⚠️ Смешанный тип</span>')
+            return format_html('<span style="color: #FF9800;">⚠️ Смешанный</span>')
         
         return format_html('<span style="color: {};">{}</span>', color, type_name)
-    playlist_type_icon.short_description = 'Тип'
     
     def playlist_composition(self, obj):
-        """Состав плейлиста с группировкой по типам"""
+        """Состав плейлиста"""
         files = obj.files.all()
         if not files:
             return '📭 Плейлист пуст'
@@ -581,17 +352,16 @@ class PlaylistAdmin(admin.ModelAdmin):
                 composition_html.append(
                     format_html(
                         '<div style="background: {}10; padding: 5px 10px; border-radius: 8px; border-left: 3px solid {};">'
-                        '<strong>{}</strong> <span style="color: #666;">{} файлов</span></div>',
+                        '<strong>{}</strong> <span style="color: #666;">{} шт</span></div>',
                         color, color, type_name, count
                     )
                 )
         composition_html.append('</div>')
         
         return format_html(''.join(composition_html))
-    playlist_composition.short_description = 'Состав плейлиста'
     
     # ========================================================================
-    # ГРУППОВЫЕ ДЕЙСТВИЯ
+    # НОВЫЕ ГРУППОВЫЕ ДЕЙСТВИЯ
     # ========================================================================
     
     @admin.action(description='🗑️ Очистить выбранные плейлисты')
@@ -614,7 +384,7 @@ class PlaylistAdmin(admin.ModelAdmin):
             )
             new_playlist.files.set(playlist.files.all())
             created_count += 1
-        self.message_user(request, f'✅ Создано {created_count} копий плейлистов.')
+        self.message_user(request, f'✅ Создано {created_count} копий.')
     
     def save_model(self, request, obj, form, change):
         if not obj.owner:
@@ -622,6 +392,30 @@ class PlaylistAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         if 'files' in form.cleaned_data:
             obj.files.set(form.cleaned_data['files'])
+
+
+# ====================================================================================
+# TagAdmin - ОПТИМИЗИРОВАННЫЙ (сохраняем существующую логику)
+# ====================================================================================
+
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+    """Тематика."""
+
+    # ✅ СУЩЕСТВУЮЩИЕ ПОЛЯ + НОВОЕ
+    list_display = ('id', 'name', 'color', 'files_count')
+    show_full_result_count = False
+    
+    # ✅ НОВЫЙ МЕТОД
+    @admin.display(description='Файлов')
+    def files_count(self, obj):
+        return obj.files.count()
+    
+    # ✅ ОПТИМИЗИРОВАННЫЙ QUERYSET
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            files_count=Count('files')
+        )
 
 
 
