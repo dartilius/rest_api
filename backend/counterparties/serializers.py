@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from addresses.models import Address
 from brands.models import Brand
-from brands.serializers import BrandShortSerializer, BrandSerializer
+from brands.serializers import BrandShortSerializer, BrandListSerializer
 from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
 from users.models import CustomUser
 from users.serializers import CustomUserShortSerializer
@@ -167,7 +167,7 @@ class CounterpartiesListSerializer(serializers.ModelSerializer):
         fields = ("id", "name", 'contact_persons', 'brands', 'inn')
 
 class FullTenantsSerializer(serializers.ModelSerializer):
-    brands = BrandSerializer(many=True, read_only=True)
+    brands = BrandListSerializer(many=True, read_only=True)
     contact_persons = CustomUserShortSerializer(many=True, read_only=True)
 
     class Meta:
