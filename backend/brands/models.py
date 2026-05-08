@@ -4,6 +4,7 @@ from django.db import models
 from django.utils import timezone
 from django_minio_backend import MinioBackend
 from django.utils.text import slugify
+from transliterate import translit
 import re
 """ чтобы soft-deleted объекты не возвращались """
 
@@ -70,14 +71,18 @@ class Brand(models.Model):
         super().save(*args, **kwargs)
 
     def _generate_slug(self):
-        # транслитерация кириллицы через slugify не работает,
-        # поэтому чистим и берём часть uuid как суффикс
-        base = re.sub(r'[^\w\s-]', '', self.name.lower()).strip()
+        try:
+            name_latin = translit(self.name, 'ru', reversed=True)
+        except Exception:
+            name_latin = self.name
+
+        base = re.sub(r'[^\w\s-]', '', name_latin.lower()).strip()
         base = re.sub(r'[\s_-]+', '-', base) or str(self.id)[:8]
         slug = base[:90]
-        # на случай коллизии
+
         if Brand.all_objects.filter(slug=slug).exclude(id=self.id).exists():
             slug = f"{slug[:85]}-{str(self.id)[:8]}"
+
         return slug
 
     """Мягкое удаление."""
