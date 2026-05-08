@@ -280,7 +280,9 @@ class BrandViewSet(viewsets.ModelViewSet):
     def assigned(self, request, *args, **kwargs):
         """Бренды, у которых есть хотя бы одна номенклатура."""
         queryset = Brand.objects.filter(
-            nomenclatures__for_web=True
+            nomenclatures__is_active=True,
+            nomenclatures__for_web=True,
+            nomenclatures__typeOfPlace__name="Торговый центр"
         ).distinct()
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
@@ -296,7 +298,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     def nomenclatures(self, request, *args, **kwargs):
         """Номенклатуры прикреплённые к бренду."""
         brand = self.get_object()
-        queryset = brand.nomenclatures.filter(is_active=True)
+        queryset = brand.nomenclatures.filter(is_active=True, for_web=True)
 
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
