@@ -297,7 +297,12 @@ class BrandViewSet(viewsets.ModelViewSet):
     def nomenclatures(self, request, *args, **kwargs):
         """Номенклатуры прикреплённые к бренду."""
         brand = self.get_object()
-        queryset = brand.nomenclatures.filter(is_active=True)
+        # queryset = brand.nomenclatures.filter(is_active=True)
+        queryset = Brand.objects.filter(
+            nomenclatures__is_active=True
+        ).distinct()
+        print("IDs в queryset:",
+              queryset.values_list('id', flat=True).filter(id='6522d961-e20e-466c-9819-9fa344361f9e'))
 
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
