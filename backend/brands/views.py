@@ -18,7 +18,7 @@ from api.constants import (
 from api.pagination import CustomLimitOffsetPagination
 from brands.filters import BrandFilter
 from brands.models import Brand
-from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
+from brands.serializers import BrandCreateSerializer, BrandShortSerializer, BrandDetailSerializer, BrandListSerializer
 from services.api_1c_client import api_1c, logger
 
 
@@ -40,7 +40,7 @@ from services.api_1c_client import api_1c, logger
                          status_codes=[HTTP_200_OK],
                      )
                  ] + DEFAULT_SCHEMA_EXAMPLES,
-        responses={HTTP_200_OK: BrandSerializer(many=True)} | DEFAULT_SCHEMA_RESPONSES,
+        responses={HTTP_200_OK: BrandListSerializer(many=True)} | DEFAULT_SCHEMA_RESPONSES,
     ),
     retrieve=extend_schema(
         summary="Получить расшифровку бренда",
@@ -68,7 +68,7 @@ from services.api_1c_client import api_1c, logger
                          },
                      )
                  ] + DEFAULT_SCHEMA_EXAMPLES,
-        responses={HTTP_200_OK: BrandSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        responses={HTTP_200_OK: BrandListSerializer} | DEFAULT_SCHEMA_RESPONSES,
     ),
     destroy=extend_schema(
         summary="Удалить бренд",
@@ -154,8 +154,8 @@ from services.api_1c_client import api_1c, logger
                 location=OpenApiParameter.PATH
             )
         ],
-        request=BrandSerializer,
-        responses={HTTP_200_OK: BrandSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        request=BrandListSerializer,
+        responses={HTTP_200_OK: BrandListSerializer} | DEFAULT_SCHEMA_RESPONSES,
         examples=[
                      OpenApiExample(
                          "Поля для обновления бренда",
@@ -177,7 +177,9 @@ class BrandViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return BrandCreateSerializer
-        return BrandSerializer
+        elif self.action == "retrieve":
+            return BrandDetailSerializer
+        return BrandListSerializer
 
     def create(self, request, *args, **kwargs):
         name = request.data.get("name")
@@ -282,5 +284,5 @@ class BrandViewSet(viewsets.ModelViewSet):
 
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
-        serializer = BrandSerializer(page, many=True)
+        serializer = BrandListSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)

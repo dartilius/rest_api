@@ -18,13 +18,19 @@ class BrandCreateSerializer(serializers.ModelSerializer):
         fields = ("name", "logotype", "description", "code1c")
         extra_kwargs = {'name': {'validators': []}}
 
-class BrandSerializer(serializers.ModelSerializer):
+class BrandListSerializer(serializers.ModelSerializer):
     logotype = Base64FileField(required=False)
 
     class Meta:
         model = Brand
-        fields = ("id", "name", "logotype", "created", "description", "code1c")
-        read_only_fields = ("id", "created", "code1c")
+        fields = ("id", "name", "logotype", "slug")
+        read_only_fields = ("id", "slug")
+
+class BrandDetailSerializer(serializers.ModelSerializer):
+    logotype = Base64FileField(required=False)
+    class Meta:
+        model = Brand
+        fields= "__all__"
 
 
 class BrandShortSerializer(serializers.ModelSerializer):
