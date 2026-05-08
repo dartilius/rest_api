@@ -106,9 +106,6 @@ class TypeOfPlace(models.Model):
         verbose_name = "Тип места"
         verbose_name_plural = "Типы мест"
 
-    @property
-    def display_name(self):
-        return self.abbreviation or self.name
 
 
 class NomenclatureTenant(models.Model):
