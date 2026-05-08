@@ -4,7 +4,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from rest_framework import serializers
 from brands.models import Brand
-from brands.serializers import BrandSerializer, BrandCardSerializer
+from brands.serializers import BrandListSerializer, BrandCardSerializer
 from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, TenantsShortSerializer, FullTenantsSerializer
 from files.serializers import Base64FileField
@@ -268,12 +268,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    # READ
-    tenants = NomenclatureTenantResponseSerializer(
-        source='nomenclature_tenants',
-        many=True,
-        read_only=True
-    )
 
     # WRITE
     tenants_id = TenantWriteSerializer(
@@ -281,7 +275,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    brand = BrandSerializer(read_only=True)  # чисто чтение
+    brand = BrandListSerializer(read_only=True)  # чисто чтение
     brand_id = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(),
         source="brand",
@@ -324,7 +318,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "status",
             "last_answer",
             "legalEntity",
-            'tenants',
             "brand",
             "interior",
             "exterior",
@@ -413,15 +406,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 "longitude": longitude
             }
         }
-
-
-    def get_tenants(self, obj):
-        """Возвращаем арендаторов с этажом"""
-        return NomenclatureTenantSerializer(
-            obj.nomenclature_tenants.select_related('tenant').prefetch_related('tenant__brands').all(),
-            many=True,
-            context=self.context
-        ).data
 
     def validate_settings(self, value):
         """
@@ -1163,7 +1147,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     # abbreviation = serializers.SerializerMethodField()
     # status = serializers.SerializerMethodField()
-    brand = BrandSerializer()
+    brand = BrandListSerializer()
     legalEntity = CounterpartiesShortSerializer()
     exterior = serializers.SerializerMethodField()
     address = AddressReadSerializer(source="address.address")
