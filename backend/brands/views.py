@@ -19,6 +19,7 @@ from api.pagination import CustomLimitOffsetPagination
 from brands.filters import BrandFilter
 from brands.models import Brand
 from brands.serializers import BrandCreateSerializer, BrandShortSerializer, BrandDetailSerializer, BrandListSerializer
+from nomenclatures.models import Nomenclature
 from nomenclatures.serializers import NomenclatureShortSerializer
 from services.api_1c_client import api_1c, logger
 
@@ -288,10 +289,14 @@ class BrandViewSet(viewsets.ModelViewSet):
     )
     def assigned(self, request, *args, **kwargs):
         """Бренды, у которых есть хотя бы одна номенклатура."""
+        active_nomenclature_ids = Nomenclature.web.filter(
+            typeOfPlace__name="Торговый центр",
+        ).values('brand_id').distinct()
+
         queryset = Brand.objects.filter(
-            nomenclatures__for_web=True,
-            nomenclatures__typeOfPlace__name="Торговый центр",
-        ).distinct()
+            id__in=active_nomenclature_ids
+        )
+
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
         serializer = BrandListSerializer(page, many=True)
