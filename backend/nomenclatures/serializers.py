@@ -1330,7 +1330,7 @@ class NomenclatureShortSerializer(serializers.ModelSerializer):
         parts = []
 
         if obj.typeOfPlace:
-            parts.append(obj.type_of_place_display)
+            parts.append(obj.typeOfPlace.name)
 
         if obj.brand:
             parts.append(obj.brand.name)
