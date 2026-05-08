@@ -232,7 +232,7 @@ class BrandViewSet(viewsets.ModelViewSet):
             brand = Brand.all_objects.get(id=uuid_obj)
             if brand.is_deleted:
                 raise NotFound("Бренд не найден.")
-            return self._validate_brand_has_active_nomenclatures(brand)
+            return brand
         except (ValueError, Brand.DoesNotExist):
             pass
 
@@ -241,7 +241,7 @@ class BrandViewSet(viewsets.ModelViewSet):
             brand = Brand.all_objects.get(code1c=identifier)
             if brand.is_deleted:
                 raise NotFound("Бренд не найден.")
-            return self._validate_brand_has_active_nomenclatures(brand)
+            return brand
         except Brand.DoesNotExist:
             pass
 
@@ -256,8 +256,8 @@ class BrandViewSet(viewsets.ModelViewSet):
 
     def _validate_brand_has_active_nomenclatures(self, brand: Brand) -> Brand:
         has_active = brand.nomenclatures.filter(
-            is_active=True,
             for_web=True,
+            typeOfPlace__name="Торговый центр"
         ).exists()
         if not has_active:
             raise NotFound("Бренд не найден.")
