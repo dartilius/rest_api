@@ -280,8 +280,9 @@ class BrandViewSet(viewsets.ModelViewSet):
     def assigned(self, request, *args, **kwargs):
         """Бренды, у которых есть хотя бы одна номенклатура."""
         queryset = Brand.objects.filter(
+            nomenclatures__isnull=False,
             nomenclatures__is_active=True,
-            nomenclatures__typeOfPlace__name="Торговый центр"
+            nomenclatures__typeOfPlace__name="Торговый центр",
         ).distinct()
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
