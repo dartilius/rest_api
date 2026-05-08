@@ -19,6 +19,7 @@ from api.pagination import CustomLimitOffsetPagination
 from brands.filters import BrandFilter
 from brands.models import Brand
 from brands.serializers import BrandCreateSerializer, BrandShortSerializer, BrandDetailSerializer, BrandListSerializer
+from nomenclatures.serializers import NomenclatureShortSerializer
 from services.api_1c_client import api_1c, logger
 
 
@@ -285,4 +286,20 @@ class BrandViewSet(viewsets.ModelViewSet):
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
         serializer = BrandListSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    @action(
+        methods=["GET"],
+        detail=True,
+        url_path="nomenclatures",
+        url_name="nomenclatures",
+    )
+    def nomenclatures(self, request, *args, **kwargs):
+        """Номенклатуры прикреплённые к бренду."""
+        brand = self.get_object()
+        queryset = brand.nomenclatures.filter(is_deleted=False)
+
+        paginator = CustomLimitOffsetPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = NomenclatureShortSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)

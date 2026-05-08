@@ -1318,3 +1318,33 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
             address_parts.append(house_number)
 
         return ', '.join(address_parts)
+
+class NomenclatureShortSerializer(serializers.ModelSerializer):
+    nameForFront = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Nomenclature
+        fields = ["id", "nameForFront"]
+
+    def get_nameForFront(self, obj):
+        parts = []
+
+        if obj.typeOfPlace:
+            parts.append(obj.type_of_place_display)
+
+        if obj.brand:
+            parts.append(obj.brand.name)
+
+        if obj.address and obj.address.address:
+            addr = obj.address.address
+            address_parts = []
+            if addr.city:
+                address_parts.append(f"г. {addr.city.name}")
+            if addr.street:
+                address_parts.append(f"ул. {addr.street.name}")
+            if addr.house:
+                address_parts.append(addr.house.number)
+            if address_parts:
+                parts.append(", ".join(address_parts))
+
+        return " | ".join(filter(None, parts)) or None
