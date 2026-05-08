@@ -15,6 +15,7 @@ from rest_framework.decorators import action
 from api.constants import (
     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
 )
+from api.pagination import CustomLimitOffsetPagination
 from brands.filters import BrandFilter
 from brands.models import Brand
 from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
@@ -169,7 +170,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     lookup_field = "id_or_code1c"
     http_method_names = ["get", "post", "patch", "delete"]
-    queryset = Brand.objects.all().filter(nomenclatures__isnull=False).distinct()
+    queryset = Brand.objects.all().distinct()
     filter_backends = [DjangoFilterBackend]
     filterset_class = BrandFilter
 
@@ -218,9 +219,6 @@ class BrandViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_object(self):
-        """
-        Получаем бренд по UUID или code1c.
-        """
         identifier = self.kwargs.get(self.lookup_field)
         if not identifier:
             raise NotFound("Не указан идентификатор бренда.")
@@ -238,6 +236,15 @@ class BrandViewSet(viewsets.ModelViewSet):
         # пробуем code1c
         try:
             brand = Brand.all_objects.get(code1c=identifier)
+            if brand.is_deleted:
+                raise NotFound("Бренд не найден.")
+            return brand
+        except Brand.DoesNotExist:
+            pass
+
+        # пробуем slug
+        try:
+            brand = Brand.all_objects.get(slug=identifier)
             if brand.is_deleted:
                 raise NotFound("Бренд не найден.")
             return brand
@@ -260,3 +267,20 @@ class BrandViewSet(viewsets.ModelViewSet):
         brand.logotype = None
         brand.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        methods=["GET"],
+        detail=False,
+        url_path="assigned",
+        url_name="assigned",
+    )
+    def assigned(self, request, *args, **kwargs):
+        """Бренды, у которых есть хотя бы одна номенклатура."""
+        queryset = Brand.objects.filter(
+            nomenclatures__isnull=False
+        ).distinct()
+
+        paginator = CustomLimitOffsetPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = BrandSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)

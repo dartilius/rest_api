@@ -3,7 +3,8 @@ from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.utils import timezone
 from django_minio_backend import MinioBackend
-
+from django.utils.text import slugify
+import re
 """ чтобы soft-deleted объекты не возвращались """
 
 class BrandManager(models.Manager):
@@ -17,6 +18,10 @@ class BrandManager(models.Manager):
 class Brand(models.Model):
     id = models.UUIDField(
         verbose_name="ИД", primary_key=True, editable=False, default=uuid4
+    )
+    slug = models.SlugField(
+        max_length=100, unique=True, blank=True, null=True,
+        verbose_name="Slug"
     )
     code1c = models.CharField(
         verbose_name="Код из 1С", max_length=64, blank=True, null=True, unique=True
@@ -58,6 +63,22 @@ class Brand(models.Model):
             models.Index(fields=["name"]),
             models.Index(fields=["description"]),
         ]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = self._generate_slug()
+        super().save(*args, **kwargs)
+
+    def _generate_slug(self):
+        # транслитерация кириллицы через slugify не работает,
+        # поэтому чистим и берём часть uuid как суффикс
+        base = re.sub(r'[^\w\s-]', '', self.name.lower()).strip()
+        base = re.sub(r'[\s_-]+', '-', base) or str(self.id)[:8]
+        slug = base[:90]
+        # на случай коллизии
+        if Brand.all_objects.filter(slug=slug).exclude(id=self.id).exists():
+            slug = f"{slug[:85]}-{str(self.id)[:8]}"
+        return slug
 
     """Мягкое удаление."""
 
