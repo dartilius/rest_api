@@ -9,14 +9,32 @@ from tasks.models import Task
 from users.models import CustomUser
 
 
-
+@shared_task(base=Singleton)
 def update_opensearch_for_instance(instance_id):
     """Обновление документа в OpenSearch для конкретной номенклатуры."""
     try:
         from nomenclatures.documents import NomenclatureDocument
         from nomenclatures.models import Nomenclature
 
-        nomenclature = Nomenclature.objects.get(id=instance_id)
+        # 🔴 Добавляем оптимизацию запроса
+        nomenclature = (
+            Nomenclature.objects
+            .select_related(
+                'brand',
+                'legalEntity',
+                'typeOfPlace',
+                'responsible_radio',
+                'responsible_ad',
+                'responsible_technic',
+                'responsible_technic_on_address',
+                'responsible_placement_marketing',
+            )
+            .prefetch_related(
+                'nomenclature_tenants__tenant',
+                'nomenclature_tenants__brand',
+            )
+            .get(id=instance_id)
+        )
 
         # Индексация документа в OpenSearch
         NomenclatureDocument().index(nomenclature)
