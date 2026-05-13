@@ -449,6 +449,14 @@ LOGGING = {
             'class': 'logging.FileHandler',
             'filename': BASE_DIR / 'logs' / 'api_1c.log',
         },
+        # 🔴 НОВЫЙ HANDLER ДЛЯ OPENSEARCH
+        'opensearch_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'opensearch.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'feedback': {
@@ -461,9 +469,20 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
-        'services.api_1c': {  # путь до твоего модуля
+        'services.api_1c': {
             'handlers': ['file', 'console'],
             'level': 'INFO',
+        },
+        # 🔴 НОВЫЙ LOGGER ДЛЯ OPENSEARCH
+        'nomenclatures.services.opensearch_search': {
+            'handlers': ['opensearch_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'nomenclatures.filters': {
+            'handlers': ['opensearch_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }

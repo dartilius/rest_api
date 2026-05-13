@@ -113,7 +113,9 @@
 
 from opensearchpy import Q
 from nomenclatures.documents import NomenclatureDocument
+import logging
 
+logger = logging.getLogger(__name__)
 
 class NomenclatureOpenSearchService:
     @staticmethod
@@ -126,7 +128,10 @@ class NomenclatureOpenSearchService:
         query = (query or '').strip()
 
         if not query:
+            logger.info("Пустой поисковый запрос")
             return s[:limit]
+
+        logger.info(f"🔍 Начало поиска: '{query}'")
 
         # MUST queries (обязательные условия для релевантности)
         must_queries = []
@@ -198,5 +203,16 @@ class NomenclatureOpenSearchService:
             minimum_should_match=0,
             boost_mode='multiply'
         )
+        logger.debug(f"OpenSearch Query: {s.to_dict()}")
 
-        return s.extra(size=limit)
+        result = s.extra(size=limit)
+
+        # 🔴 ЛОГИРОВАНИЕ РЕЗУЛЬТАТА
+        response = result.execute()
+        logger.info(f"✅ Поиск '{query}': найдено {response.hits.total['value']} результатов")
+
+        for i, hit in enumerate(response[:5], 1):
+            logger.debug(f"  {i}. {hit.meta.id} - Score: {hit.meta.score:.2f}")
+
+
+        return result
