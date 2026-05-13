@@ -171,7 +171,7 @@ class NomenclatureOpenSearchService:
                     # 🔴 Арендаторы
                     'tenants_data.tenant.first_name^4',
                     'tenants_data.tenant.last_name^4',
-                    'tenants_data.tenant.description^6'
+                    'tenants_data.tenant.description^6',
                     'tenants_data.tenant.keyword^6',
                     'tenants_data.brand.name^4',        # бренд арендатора
                 ]
