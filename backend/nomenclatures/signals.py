@@ -3,7 +3,7 @@ from django.dispatch import receiver
 import logging
 
 from counterparties.models import Counterparty
-from nomenclatures.models import Nomenclature
+from nomenclatures.models import Nomenclature, NomenclatureTenant
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +13,24 @@ from nomenclatures.tasks import update_opensearch_for_instance
 def update_search_vector_signal(sender, instance, **kwargs):
     update_opensearch_for_instance.delay(str(instance.id))
 
+# 🔴 Когда добавляют/меняют арендатора
+@receiver(post_save, sender=NomenclatureTenant)
+def update_opensearch_on_tenant_change(sender, instance, **kwargs):
+    """Обновить OpenSearch при изменении арендатора"""
+    update_opensearch_for_instance.delay(str(instance.nomenclature_id))
+
+# 🔴 Когда удаляют арендатора
+@receiver(post_delete, sender=NomenclatureTenant)
+def update_opensearch_on_tenant_delete(sender, instance, **kwargs):
+    """Обновить OpenSearch при удалении арендатора"""
+    update_opensearch_for_instance.delay(str(instance.nomenclature_id))
+
 @receiver(post_delete, sender=Nomenclature)
 def delete_from_opensearch(sender, instance, **kwargs):
     from nomenclatures.documents import NomenclatureDocument
     try:
-        NomenclatureDocument().update(instance, action='delete')
+        doc = NomenclatureDocument()
+        doc.delete(instance)  # ← исправил: было action='delete'
     except Exception as e:
         logger.error(f"Ошибка удаления из OpenSearch: {e}")
 
@@ -43,7 +56,6 @@ def nomenclature_set_broadcast(sender, instance, **kwargs):
     if old_id and old_id != instance.legalEntity_id:
         if not Nomenclature.objects.filter(legalEntity_id=old_id).exists():
             Counterparty.objects.filter(pk=old_id).update(broadcast=False)
-
 
 
 @receiver(post_delete, sender=Nomenclature)
