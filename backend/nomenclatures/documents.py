@@ -296,15 +296,16 @@ class NomenclatureDocument(Document):
                 ])
 
         # tenants
+                # tenants
         for item in instance.nomenclature_tenants.all():
             if item.tenant:
                 parts.extend([
-                    getattr(instance.legalEntity, 'first_name', '') or '',
-                    getattr(instance.legalEntity, 'first_name', '') or '',
-                    getattr(instance.legalEntity, 'middle_name', '') or '',
-                    getattr(instance.legalEntity, 'description', '') or '',
-                    getattr(instance.legalEntity, 'keyword', '') or '',
-                    getattr(instance.legalEntity, 'additional_name', '') or '',
+                    getattr(item.tenant, 'first_name', '') or '',
+                    getattr(item.tenant, 'middle_name', '') or '',
+                    getattr(item.tenant, 'last_name', '') or '',
+                    getattr(item.tenant, 'description', '') or '',
+                    getattr(item.tenant, 'keyword', '') or '',
+                    getattr(item.tenant, 'additional_name', '') or '',
                 ])
 
             if item.brand:
