@@ -242,11 +242,77 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
         )
 
+    # def list(self, request, *args, **kwargs):
+    #     search_term = request.query_params.get('search')
+
+    #     if search_term:
+    #         cache_key = f"nomenclature_search_os_v2_{hash(search_term)}"
+    #         cached_result = cache.get(cache_key)
+    #         if cached_result:
+    #             return Response(cached_result)
+
+    #         try:
+    #             os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
+    #             ids = [hit.meta.id for hit in os_results]
+
+    #             if not ids:
+    #                 result = {'count': 0, 'next': None, 'previous': None, 'results': []}
+    #                 cache.set(cache_key, result, self.CACHE_TIMEOUT)
+    #                 return Response(result)
+
+    #             queryset = (
+    #                 Nomenclature.web.filter(id__in=ids)
+    #                 .order_by(Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]))
+    #                 .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
+    #                 .prefetch_related(
+    #                     'images',
+    #                     Prefetch(
+    #                         'tenants',
+    #                         queryset=Counterparty.objects.only(
+    #                             'id', 'first_name', 'last_name',
+    #                             'middle_name', 'additional_name', 'keyword'
+    #                         ).prefetch_related('brands')
+    #                     )
+    #                 )
+    #                 .defer('description', 'settings', 'hw_info')
+    #             )
+
+    #             page = self.paginate_queryset(queryset)
+    #             if page is not None:
+    #                 serializer = self.get_serializer(page, many=True)
+    #                 result = self.get_paginated_response(serializer.data).data
+    #             else:
+    #                 serializer = self.get_serializer(queryset, many=True)
+    #                 result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
+
+    #             cache.set(cache_key, result, self.CACHE_TIMEOUT)
+    #             return Response(result)
+
+    #         except Exception:
+    #             queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
+    #             serializer = self.get_serializer(queryset, many=True)
+    #             return Response(
+    #                 {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
+
+    #     # обычный список
+    #     queryset = self.filter_queryset(self.get_queryset())
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
+
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response({'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
+
     def list(self, request, *args, **kwargs):
         search_term = request.query_params.get('search')
 
         if search_term:
-            cache_key = f"nomenclature_search_os_v2_{hash(search_term)}"
+            # 🔴 НОВОЕ: Добавить параметры пагинации в ключ кэша
+            page = request.query_params.get('page', 1)
+            limit = request.query_params.get('limit', self.paginator.page_size)
+            cache_key = f"nomenclature_search_os_v2_{hash(search_term)}_{page}_{limit}"
+
             cached_result = cache.get(cache_key)
             if cached_result:
                 return Response(cached_result)
@@ -293,16 +359,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 serializer = self.get_serializer(queryset, many=True)
                 return Response(
                     {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
-
-        # обычный список
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):
