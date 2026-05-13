@@ -9,7 +9,7 @@ from tasks.models import Task
 from users.models import CustomUser
 
 
-@shared_task
+
 def update_opensearch_for_instance(instance_id):
     """Обновление документа в OpenSearch для конкретной номенклатуры."""
     try:
