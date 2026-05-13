@@ -241,114 +241,79 @@ class NomenclatureOpenSearchService:
 
         logger.info(f"🔍 Начало поиска: '{query}'")
 
-        # 🔴 ВСЕ ПОЛЯ ВСЕх СУЩНОСТЕЙ
-        all_fields = [
-            # === НОМЕНКЛАТУРА ===
+        # 🔴 ПРИОРИТЕТНЫЕ ПОЛЯ (главные)
+        primary_fields = [
             'name^10',
             'code1c^10',
+            'id_rasb^6',
+            'brand.name^8',
+            'brand.code1c^8',
+            'typeOfPlace.name^8',
+            'typeOfPlace.abbreviation^8',
+            'address.city^9',
+            'legalEntity.description^7',
+            'legalEntity.keyword^8',
+            'tenants_data.tenant.description^7',
+            'tenants_data.tenant.keyword^7',
+            'tenants_data.brand.name^7',
+        ]
+
+        # 🔴 ВТОРИЧНЫЕ ПОЛЯ (дополнительные)
+        secondary_fields = [
             'description^5',
             'id_rasb^6',
             'square^4',
-            'possibility^3',
-            'version^5',
-            'timezone^3',
-
-            # === АДРЕСА ===
-            'address.city^9',
-            'address.street^8',
-            'address.house^7',
-
-            # === БРЕНДЫ ===
-            'brand.name^8',
-            'brand.code1c^8',
-
-            # === ТИП МЕСТА ===
-            'typeOfPlace.name^8',
-            'typeOfPlace.abbreviation^8',
             'typeOfPlace.code1c^7',
             'typeOfPlace.tariff^6',
-            'typeOfPlace.tariff_single^6',
-            'typeOfPlace.display_name^6',
-
-            # === ЮР.ЛИЦО ===
-            'legalEntity.description^7',
-            'legalEntity.keyword^8',
+            'address.street^8',
+            'address.house^7',
             'legalEntity.first_name^7',
-            'legalEntity.middle_name^6',
             'legalEntity.last_name^7',
-            'legalEntity.additional_name^6',
-
-            # === ОТВЕТСТВЕННЫЙ ЗА РАДИО ===
-            'responsible_radio.email^5',
-            'responsible_radio.first_name^5',
-            'responsible_radio.last_name^5',
-            'responsible_radio.full_name^6',
-
-            # === ОТВЕТСТВЕННЫЙ ЗА РАЗМЕЩЕНИЕ ===
-            'responsible_ad.email^5',
-            'responsible_ad.first_name^5',
-            'responsible_ad.last_name^5',
-            'responsible_ad.full_name^6',
-
-            # === ОТВЕТСТВЕННЫЙ ЗА ТЕХНИКУ ===
-            'responsible_technic.email^5',
-            'responsible_technic.first_name^5',
-            'responsible_technic.last_name^5',
-            'responsible_technic.full_name^6',
-
-            # === ОТВЕТСТВЕННЫЙ ЗА ТЕХНИКУ НА АДРЕСЕ ===
-            'responsible_technic_on_address.email^5',
-            'responsible_technic_on_address.first_name^5',
-            'responsible_technic_on_address.last_name^5',
-            'responsible_technic_on_address.full_name^6',
-
-            # === ОТВЕТСТВЕННЫЙ ЗА МАРКЕТИНГ ===
-            'responsible_placement_marketing.email^5',
-            'responsible_placement_marketing.first_name^5',
-            'responsible_placement_marketing.last_name^5',
-            'responsible_placement_marketing.full_name^6',
-
-            # === АРЕНДАТОРЫ ===
-            'tenants_data.tenant.description^7',
-            'tenants_data.tenant.keyword^7',
+            'responsible_ad.first_name^4',
+            'responsible_ad.last_name^4',
+            'responsible_ad.full_name^5',
             'tenants_data.tenant.first_name^6',
-            'tenants_data.tenant.middle_name^5',
             'tenants_data.tenant.last_name^6',
-            'tenants_data.tenant.additional_name^5',
-            'tenants_data.brand.code1c^7',
-            'tenants_data.brand.name^7',
-            'tenants_data.floor^4',
+            'tenants_data.brand.code1c^6',
         ]
 
-        # 🔴 ОСНОВНОЙ ПОИСК - гибкий, вернет что-то в любом случае
-        # Ищет по ВСЕм полям, любое совпадение возвращает результат
+        # MUST query - основной поиск по ПРИОРИТЕТНЫМ полям
+        # Это предотвращает попадание лишних объектов
         must_queries = [
             Q(
                 'multi_match',
                 query=query,
                 type='best_fields',
-                fuzziness='AUTO',
-                operator='or',  # ← любое слово в любом поле
-                fields=all_fields,
+                fuzziness=1,  # 🔴 максимум 1 опечатка вместо AUTO
+                operator='or',
+                fields=primary_fields,
             )
         ]
 
-        # SHOULD - бонусы за точные совпадения
+        # SHOULD queries
         should_queries = [
-            # Точные коды
+            # Точные совпадения по кодам
             Q('term', **{'code1c.raw': query}),
             Q('term', **{'brand.code1c.raw': query}),
             Q('term', **{'typeOfPlace.code1c.raw': query}),
             Q('term', **{'legalEntity.keyword.raw': query}),
             Q('term', **{'tenants_data.tenant.keyword.raw': query}),
-            Q('term', **{'tenants_data.brand.code1c.raw': query}),
 
             # Фразы (высокий приоритет)
             Q('match_phrase', **{'name': {'query': query, 'boost': 3}}),
             Q('match_phrase', **{'address.city': {'query': query, 'boost': 2}}),
             Q('match_phrase', **{'brand.name': {'query': query, 'boost': 2}}),
-            Q('match_phrase', **{'typeOfPlace.name': {'query': query, 'boost': 2}}),
-            Q('match_phrase', **{'tenants_data.tenant.description': {'query': query, 'boost': 2}}),
+
+            # 🔴 НОВОЕ: Поиск по вторичным полям с повышенным fuzziness
+            Q(
+                'multi_match',
+                query=query,
+                type='best_fields',
+                fuzziness='AUTO',
+                operator='or',
+                fields=secondary_fields,
+                boost=0.5,  # 🔴 снизили вес вторичных полей
+            ),
         ]
 
         # ФИНАЛЬНЫЙ ЗАПРОС
@@ -360,7 +325,8 @@ class NomenclatureOpenSearchService:
             boost_mode='multiply'
         )
 
-        logger.debug(f"Query fields: {all_fields}")
+        logger.debug(f"Primary fields: {primary_fields}")
+        logger.debug(f"Secondary fields: {secondary_fields}")
         logger.debug(f"Query: {s.to_dict()}")
 
         result = s.extra(size=limit)
