@@ -8,7 +8,7 @@ STATUSES = {0: True, 1: False}
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
     """Администрирование брендов."""
-    list_display = ("id", "name", "is_deleted", "code1c", "nomenclature_count")
+    list_display = ("id", "name", "is_deleted", "code1c", "nomenclature_count", "slug")
     search_fields = ("name",)
     show_full_result_count = False
 
