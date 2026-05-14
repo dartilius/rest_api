@@ -256,10 +256,7 @@ class BrandViewSet(viewsets.ModelViewSet):
             raise NotFound("Бренд не найден.")
 
     def _validate_brand_has_active_nomenclatures(self, brand: Brand) -> Brand:
-        has_active = brand.nomenclatures.filter(
-            for_web=True,
-            typeOfPlace__name="Торговый центр"
-        ).exists()
+        has_active = Nomenclature.web.filter(brand=brand).exists()
         if not has_active:
             raise NotFound("Бренд не найден.")
         return brand
@@ -309,7 +306,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     def nomenclatures(self, request, *args, **kwargs):
         """Номенклатуры прикреплённые к бренду."""
         brand = self.get_object()
-        queryset = brand.nomenclatures.filter(is_active=True, for_web=True)
+        queryset = Nomenclature.web.filter(brand=brand)
 
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
