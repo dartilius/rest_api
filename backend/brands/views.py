@@ -289,9 +289,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     )
     def assigned(self, request, *args, **kwargs):
         """Бренды, у которых есть хотя бы одна номенклатура."""
-        active_nomenclature_ids = Nomenclature.web.filter(
-            typeOfPlace__name="Торговый центр",
-        ).values('brand_id').distinct()
+        active_nomenclature_ids = Nomenclature.web.values('brand_id').distinct()
 
         queryset = Brand.objects.filter(
             id__in=active_nomenclature_ids
