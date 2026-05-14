@@ -181,6 +181,8 @@ class BrandViewSet(viewsets.ModelViewSet):
             return BrandCreateSerializer
         elif self.action == "retrieve":
             return BrandDetailSerializer
+        elif self.action in ("partial_update", "update"):
+            return BrandCreateSerializer  # или отдельный patch-сериализатор
         return BrandListSerializer
 
     def create(self, request, *args, **kwargs):
