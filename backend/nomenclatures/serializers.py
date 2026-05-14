@@ -1321,10 +1321,13 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
 
 class NomenclatureShortSerializer(serializers.ModelSerializer):
     nameForFront = serializers.SerializerMethodField()
+    formattedAddress = serializers.SerializerMethodField()
+    exterior = serializers.SerializerMethodField()
 
     class Meta:
         model = Nomenclature
-        fields = ["id", "nameForFront"]
+        fields = ["id", "nameForFront", "formattedAddress", "exterior",  "typeOfPlace",
+            "pricePerMonth",]
 
     def get_nameForFront(self, obj):
         parts = []
@@ -1348,3 +1351,38 @@ class NomenclatureShortSerializer(serializers.ModelSerializer):
                 parts.append(", ".join(address_parts))
 
         return " | ".join(filter(None, parts)) or None
+
+    def get_formattedAddress(self, obj):
+        try:
+            nomenclature_address = obj.address
+        except ObjectDoesNotExist:
+            return ""
+
+        if not nomenclature_address or not nomenclature_address.address:
+            return ""
+
+        address = nomenclature_address.address
+        address_parts = []
+
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        return ', '.join(address_parts)
+
+    def get_exterior(self, obj):
+        image = obj.images.filter(type="exterior").first()
+        if not image:
+            return []
+        return InNomenclaturePhotoSerializer([image], many=True).data
