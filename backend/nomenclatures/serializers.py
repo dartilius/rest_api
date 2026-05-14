@@ -1326,8 +1326,7 @@ class NomenclatureShortSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Nomenclature
-        fields = ["id", "nameForFront", "formattedAddress", "exterior",  "typeOfPlace",
-            "pricePerMonth",]
+        fields = ["id", "nameForFront", "formattedAddress", "exterior",  "typeOfPlace", "pricePerMonth"]
 
     def get_nameForFront(self, obj):
         parts = []
