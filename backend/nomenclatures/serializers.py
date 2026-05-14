@@ -1323,7 +1323,7 @@ class NomenclatureShortSerializer(serializers.ModelSerializer):
     nameForFront = serializers.SerializerMethodField()
     formattedAddress = serializers.SerializerMethodField()
     exterior = serializers.SerializerMethodField()
-
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
     class Meta:
         model = Nomenclature
         fields = ["id", "nameForFront", "formattedAddress", "exterior",  "typeOfPlace", "pricePerMonth"]
