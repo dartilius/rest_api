@@ -370,34 +370,24 @@ class Nomenclature(APIBaseObjectModel):
         return self.typeOfPlace.abbreviation or self.typeOfPlace.name
 
     @property
-    def formatted_address(self) -> str:
-        """
-        Короткий формат адреса.
-
-        Пример:
-        г. Красноярск, ул. Красноярский рабочий, 27, стр. 78
-        """
-
+    def full_address(self) -> str:
         components = []
 
-        # Город
-        city = self._get_city()
-        if city:
-            components.append(str(city))
+        # 1. Город
+        if self.city:
+            components.append(str(self.city))
 
-        # Улица
+        # 2. Улица (с учётом street_type)
         if self.street:
             components.append(str(self.street))
 
-        # Дом
-        if self.house:
-            components.append(self.house.number)
-
-        # Строение
+        # 3. Дом ИЛИ строение
         if self.building:
             components.append(f"стр. {self.building.number}")
+        elif self.house:
+            components.append(f"д. {self.house.number}")
 
-        return ", ".join(filter(None, components))
+        return ", ".join(components)
 
     # @property
     # def formatted_address(self):
