@@ -370,56 +370,36 @@ class Nomenclature(APIBaseObjectModel):
         return self.typeOfPlace.abbreviation or self.typeOfPlace.name
 
     @property
-    def formatted_address(self) -> str:
-        components = []
+    def formatted_address(self):
+        addr = getattr(self, 'address', None)
 
-        # 1. Город
-        if self.city:
-            components.append(str(self.city))
+        if not addr or not addr.address:
+            return None
 
-        # 2. Улица (с учётом street_type)
-        if self.street:
-            components.append(str(self.street))
+        a = addr.address
 
-        # 3. Дом ИЛИ строение
-        if self.building:
-            components.append(f"стр. {self.building.number}")
-        elif self.house:
-            components.append(f"д. {self.house.number}")
+        if not a.city or not a.house:
+            return None
 
-        return ", ".join(components)
+        city = str(a.city)
 
-    # @property
-    # def formatted_address(self):
-    #     addr = getattr(self, 'address', None)
-    #
-    #     if not addr or not addr.address:
-    #         return None
-    #
-    #     a = addr.address
-    #
-    #     if not a.city or not a.house:
-    #         return None
-    #
-    #     city = str(a.city)
-    #
-    #     street_obj = a.street or getattr(a.house, 'street', None)
-    #
-    #     street = str(street_obj) if street_obj else None
-    #
-    #     house = f"д. {a.house.number}"
-    #
-    #     building = (
-    #         f"стр.{a.building.number}"
-    #         if a.building else None
-    #     )
-    #
-    #     address_parts = filter(
-    #         None,
-    #         [city, street, house, building]
-    #     )
-    #
-    #     return ", ".join(address_parts)
+        street_obj = a.street or getattr(a.house, 'street', None)
+
+        street = str(street_obj) if street_obj else None
+
+        house = f"д. {a.house.number}"
+
+        building = (
+            f"стр.{a.building.number}"
+            if a.building else None
+        )
+
+        address_parts = filter(
+            None,
+            [city, street, house, building]
+        )
+
+        return ", ".join(address_parts)
 
     @property
     def name_for_front(self):
