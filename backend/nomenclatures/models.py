@@ -370,36 +370,67 @@ class Nomenclature(APIBaseObjectModel):
         return self.typeOfPlace.abbreviation or self.typeOfPlace.name
 
     @property
-    def formatted_address(self):
-        addr = getattr(self, 'address', None)
+    @extend_schema_field(OpenApiTypes.STR)
+    def formatted_address(self) -> str:
+        """
+        Короткий формат адреса.
 
-        if not addr or not addr.address:
-            return None
+        Пример:
+        г. Красноярск, ул. Красноярский рабочий, 27, стр. 78
+        """
 
-        a = addr.address
+        components = []
 
-        if not a.city or not a.house:
-            return None
+        # Город
+        city = self._get_city()
+        if city:
+            components.append(str(city))
 
-        city = str(a.city)
+        # Улица
+        if self.street:
+            components.append(str(self.street))
 
-        street_obj = a.street or getattr(a.house, 'street', None)
+        # Дом
+        if self.house:
+            components.append(self.house.number)
 
-        street = str(street_obj) if street_obj else None
+        # Строение
+        if self.building:
+            components.append(f"стр. {self.building.number}")
 
-        house = f"д. {a.house.number}"
+        return ", ".join(filter(None, components))
 
-        building = (
-            f"стр.{a.building.number}"
-            if a.building else None
-        )
-
-        address_parts = filter(
-            None,
-            [city, street, house, building]
-        )
-
-        return ", ".join(address_parts)
+    # @property
+    # def formatted_address(self):
+    #     addr = getattr(self, 'address', None)
+    #
+    #     if not addr or not addr.address:
+    #         return None
+    #
+    #     a = addr.address
+    #
+    #     if not a.city or not a.house:
+    #         return None
+    #
+    #     city = str(a.city)
+    #
+    #     street_obj = a.street or getattr(a.house, 'street', None)
+    #
+    #     street = str(street_obj) if street_obj else None
+    #
+    #     house = f"д. {a.house.number}"
+    #
+    #     building = (
+    #         f"стр.{a.building.number}"
+    #         if a.building else None
+    #     )
+    #
+    #     address_parts = filter(
+    #         None,
+    #         [city, street, house, building]
+    #     )
+    #
+    #     return ", ".join(address_parts)
 
     @property
     def name_for_front(self):
