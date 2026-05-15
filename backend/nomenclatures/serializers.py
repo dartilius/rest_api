@@ -1207,22 +1207,17 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         if not nomenclature_address or not nomenclature_address.address:
             return ""
 
-        address = nomenclature_address.address
+        a = nomenclature_address.address
 
-        address_parts = []
+        if not a.city:
+            return ""
 
-        if address.city:
-            address_parts.append(str(address.city))  # "г. Красноярск" через __str__
+        city = str(a.city)
+        street = str(a.street) if a.street else None
+        house = f"д. {a.house.number}" if a.house else None
+        building = f"стр. {a.building.number}" if a.building else None
 
-        if address.street:
-            address_parts.append(str(address.street))  # "ул. Ленина" через __str__
-
-        if address.house:
-            house_str = f"д. {address.house.number}"
-            if address.building:
-                house_str += f", стр. {address.building.number}"
-            address_parts.append(house_str)
-
+        address_parts = filter(None, [city, street, house, building])
         return ", ".join(address_parts)
 
     def to_representation(self, value):
