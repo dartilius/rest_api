@@ -371,37 +371,37 @@ class Nomenclature(APIBaseObjectModel):
 
     @property
     def name_for_front(self):
-
         if not self.brand:
             return None
 
-        if not self.address or not self.address.address:
+        addr = getattr(self, 'address', None)
+        if not addr or not addr.address:
             return None
 
-        if not self.address.address.city:
-            return None
+        a = addr.address  # это объект Address
 
-        if not self.address.address.house:
+        if not a.city:
+            return None
+        if not a.house:
             return None
 
         brand = self.brand
-        city = f"г. {self.address.address.city.name}"
-        street = f"ул. {self.address.address.street.name}"
-        house = self.address.address.house.number
+        city = str(a.city)  # "г. Красноярск" — через __str__ City
+        street = str(a.street) if a.street else None  # "ул. Ленина" — через __str__ Street
+        house = f"д. {a.house.number}"
+        building = f"стр. {a.building.number}" if a.building else None
+
+        # Собираем адресную строку
+        address_parts = filter(None, [city, street, house, building])
+        address_str = ", ".join(address_parts)
 
         place = self.typeOfPlace
-
         if place:
-            if place.abbreviation:
-                place_name = place.abbreviation
-            elif place.tariff_single:
-                place_name = place.tariff_single
-            else:
-                place_name = place.name
+            place_name = place.abbreviation or place.tariff_single or place.name
         else:
             place_name = ""
 
-        return f'Размещение ролика на радио {place_name} "{brand.name}"\n {city}, {street}, {house}'
+        return f'Размещение ролика на радио {place_name} "{brand.name}"\n {address_str}'
 
     def __str__(self):
         return self.name
@@ -418,9 +418,16 @@ class Nomenclature(APIBaseObjectModel):
             )
         ]
         indexes = [
-            GinIndex(name='nom_name_trgm_idx',
+            GinIndex(
+                name='nom_operator_trgm_idx',
+                fields=['operator'],
+                opclasses=["gin_trgm_ops"],
+            ),
+            GinIndex(
+                name='nom_name_trgm_idx',
                      fields=['name'],
-                     opclasses=['gin_trgm_ops']),
+                     opclasses=['gin_trgm_ops']
+            ),
             GinIndex(
                 name="nomenclature_name_gin_idx",
                 fields=["name"],
