@@ -1199,15 +1199,11 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             return "Не выходила в сеть"
 
     def get_formattedAddress(self, obj):
-        """Форматирует адрес с проверкой наличия всех частей"""
         try:
-            # Пытаемся получить связанный адрес
             nomenclature_address = obj.address
         except ObjectDoesNotExist:
-            # Если связи нет, возвращаем пустую строку
             return ""
 
-        # Если связь есть, но нет самого адреса
         if not nomenclature_address or not nomenclature_address.address:
             return ""
 
@@ -1215,28 +1211,19 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
         address_parts = []
 
-        # Проверяем и добавляем город
-        if address.city and address.city.name:
-            address_parts.append(f"г. {address.city.name}")
+        if address.city:
+            address_parts.append(str(address.city))  # "г. Красноярск" через __str__
 
-        # Проверяем и добавляем улицу
-        if address.street and address.street.name:
-            address_parts.append(f"ул. {address.street.name}")
+        if address.street:
+            address_parts.append(str(address.street))  # "ул. Ленина" через __str__
 
-        # Проверяем наличие номера дома или строения
-        house_number = None
-        if address.house and address.house.number:
-            house_number = address.house.number
-        elif address.building and address.building.number:
-            house_number = address.building.number
+        if address.house:
+            house_str = f"д. {address.house.number}"
+            if address.building:
+                house_str += f", стр. {address.building.number}"
+            address_parts.append(house_str)
 
-        if house_number:
-            address_parts.append(house_number)
-
-        # Если есть улица, но нет номера, все равно возвращаем "город, улица"
-        # Если есть только город, возвращаем только город
-
-        return ', '.join(address_parts)
+        return ", ".join(address_parts)
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
