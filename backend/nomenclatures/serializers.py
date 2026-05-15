@@ -1145,18 +1145,20 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
-    # abbreviation = serializers.SerializerMethodField()
-    # status = serializers.SerializerMethodField()
+
     brand = BrandListSerializer()
     legalEntity = CounterpartiesShortSerializer()
     exterior = serializers.SerializerMethodField()
-    address = AddressReadSerializer(source="address.address")
-    formattedAddress = serializers.SerializerMethodField()
-    # contentType = serializers.ChoiceField(
-    #     choices=list(AVAILABLE_CONTENT_TYPES.values()),
-    #     required=False
-    # )
-    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
+
+    formattedAddress = serializers.CharField(
+        source="formatted_address",
+        read_only=True
+    )
+
+    nameForFront = serializers.CharField(
+        source="name_for_front",
+        read_only=True
+    )
 
     class Meta:
 
@@ -1169,7 +1171,6 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "legalEntity",
             "brand",
             "exterior",
-            "address",
             "formattedAddress",
             # "contentType",
             "typeOfPlace",
@@ -1177,7 +1178,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "code1c",
             # "abbreviation",
         )
-        extra_fields = ("nameForFront",)
+        extra_fields = ("nameForFront", "formattedAddress")
         read_only_fields = fields
         model = Nomenclature
 
@@ -1198,35 +1199,6 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         except AttributeError:
             return "Не выходила в сеть"
 
-    def get_formattedAddress(self, obj):
-        try:
-            nomenclature_address = obj.address
-        except ObjectDoesNotExist:
-            return ""
-
-        if not nomenclature_address or not nomenclature_address.address:
-            return ""
-
-        a = nomenclature_address.address
-
-        if not a.city:
-            return ""
-
-        city = str(a.city)
-        street = str(a.street) if a.street else None
-        house = f"д. {a.house.number}" if a.house else None
-        building = f"стр. {a.building.number}" if a.building else None
-
-        address_parts = filter(None, [city, street, house, building])
-        return ", ".join(address_parts)
-
-    def to_representation(self, value):
-        repr_ = super().to_representation(value)
-
-        if "address" in repr_:
-            repr_.pop("address")
-
-        return repr_
 
 
 

@@ -370,38 +370,52 @@ class Nomenclature(APIBaseObjectModel):
         return self.typeOfPlace.abbreviation or self.typeOfPlace.name
 
     @property
+    def formatted_address(self):
+        addr = getattr(self, 'address', None)
+
+        if not addr or not addr.address:
+            return None
+
+        a = addr.address
+
+        if not a.city or not a.house:
+            return None
+
+        city = str(a.city)
+        street = str(a.street) if a.street else None
+        house = f"д. {a.house.number}"
+        building = f"стр. {a.building.number}" if a.building else None
+
+        address_parts = filter(None, [city, street, house, building])
+
+        return ", ".join(address_parts)
+
+    @property
     def name_for_front(self):
         if not self.brand:
             return None
 
-        addr = getattr(self, 'address', None)
-        if not addr or not addr.address:
+        address_str = self.formatted_address
+
+        if not address_str:
             return None
-
-        a = addr.address  # это объект Address
-
-        if not a.city:
-            return None
-        if not a.house:
-            return None
-
-        brand = self.brand
-        city = str(a.city)  # "г. Красноярск" — через __str__ City
-        street = str(a.street) if a.street else None  # "ул. Ленина" — через __str__ Street
-        house = f"д. {a.house.number}"
-        building = f"стр. {a.building.number}" if a.building else None
-
-        # Собираем адресную строку
-        address_parts = filter(None, [city, street, house, building])
-        address_str = ", ".join(address_parts)
 
         place = self.typeOfPlace
+
         if place:
-            place_name = place.abbreviation or place.tariff_single or place.name
+            place_name = (
+                    place.abbreviation
+                    or place.tariff_single
+                    or place.name
+            )
         else:
             place_name = ""
 
-        return f'Размещение ролика на радио {place_name} "{brand.name}"\n {address_str}'
+        return (
+            f'Размещение ролика на радио '
+            f'{place_name} "{self.brand.name}"\n '
+            f'{address_str}'
+        )
 
     def __str__(self):
         return self.name
