@@ -370,7 +370,7 @@ class Nomenclature(APIBaseObjectModel):
         return self.typeOfPlace.abbreviation or self.typeOfPlace.name
 
     @property
-    def full_address(self) -> str:
+    def formatted_address(self) -> str:
         components = []
 
         # 1. Город
