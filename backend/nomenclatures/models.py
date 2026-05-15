@@ -382,11 +382,22 @@ class Nomenclature(APIBaseObjectModel):
             return None
 
         city = str(a.city)
-        street = str(a.street) if a.street else None
-        house = f"д. {a.house.number}"
-        building = f"стр. {a.building.number}" if a.building else None
 
-        address_parts = filter(None, [city, street, house, building])
+        street_obj = a.street or getattr(a.house, 'street', None)
+
+        street = str(street_obj) if street_obj else None
+
+        house = f"д. {a.house.number}"
+
+        building = (
+            f"стр.{a.building.number}"
+            if a.building else None
+        )
+
+        address_parts = filter(
+            None,
+            [city, street, house, building]
+        )
 
         return ", ".join(address_parts)
 
