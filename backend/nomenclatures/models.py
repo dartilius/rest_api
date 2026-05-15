@@ -370,7 +370,6 @@ class Nomenclature(APIBaseObjectModel):
         return self.typeOfPlace.abbreviation or self.typeOfPlace.name
 
     @property
-    @extend_schema_field(OpenApiTypes.STR)
     def formatted_address(self) -> str:
         """
         Короткий формат адреса.
