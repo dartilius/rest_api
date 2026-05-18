@@ -1,3 +1,30 @@
+# orders/models.py
+"""
+Модели для управления заказами.
+
+БЕССРОЧНЫЕ ЗАКАЗЫ (is_permanent):
+───────────────────────────────────────────────────────────────────────────────
+Поле is_permanent (BooleanField) добавлено в базовый класс BaseOrder.
+
+Когда is_permanent = True:
+- Заказ не имеет даты окончания (broadcast_interval.upper может быть None)
+- Используется как резервный плейлист
+- Имеет низший приоритет при выборе плейлиста для воспроизведения
+
+Когда is_permanent = False:
+- Обычный срочный заказ с указанным интервалом вещания
+- Имеет высокий приоритет при попадании в текущий период
+
+ЛОГИКА ВЫБОРА ПЛЕЙЛИСТА НА КЛИЕНТЕ:
+───────────────────────────────────────────────────────────────────────────────
+1. Сначала проверяются срочные заказы (is_permanent=False)
+   с датами, попадающими в текущий период
+2. Если срочных заказов нет — используется бессрочный заказ
+   (is_permanent=True) для соответствующего типа контента
+3. Для каждого типа контента (музыка/видео/картинки) может быть
+   только один активный бессрочный заказ
+"""
+
 from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
 
@@ -32,7 +59,19 @@ BROADCAST_TYPES = {
 
 
 class BaseOrder(APIBaseObjectModel):
-    """Заказ."""
+    """
+    Базовый класс для всех типов заказов.
+
+    АТРИБУТЫ:
+        description (str): Описание заказа (опционально)
+        broadcast_interval (DateTimeRangeField): Интервал вещания
+            Для бессрочных заказов может быть None или содержать только lower
+        status (int): Статус заказа (0-4)
+        client (ForeignKey): Рабочая станция (номенклатура)
+        playlist (ForeignKey): Плейлист с файлами для воспроизведения
+        parameters (JSON): Дополнительные параметры заказа
+        is_permanent (bool): Флаг бессрочного заказа (новое поле)
+    """
 
     description = models.TextField(
         null=True,
@@ -40,7 +79,9 @@ class BaseOrder(APIBaseObjectModel):
         verbose_name='Описание'
     )
     broadcast_interval = DateTimeRangeField(
-        verbose_name='Интервал работы заказа'
+        verbose_name='Интервал работы заказа',
+        null=True,  # 🔥 Может быть NULL для бессрочных заказов
+        blank=True
     )
     status = models.PositiveSmallIntegerField(
         choices=STATUSES,
@@ -71,7 +112,13 @@ class BaseOrder(APIBaseObjectModel):
 
 
 class AdOrder(BaseOrder):
-    """Рекламный заказ."""
+    """
+    Рекламный заказ.
+
+    Дополнительные атрибуты:
+        slides (JSON): Слайды для рекламы (опционально)
+        broadcast_type (int): Тип вещания (0-6)
+    """
 
     slides = models.JSONField(
         verbose_name='Слайды',
@@ -91,11 +138,30 @@ class AdOrder(BaseOrder):
 
 
 class BgOrder(BaseOrder):
-    """Фоновый заказ."""
+    """
+    Фоновый заказ.
+
+    Дополнительные атрибуты:
+        order_type (int): Тип фона (0-3)
+           0 - Фоновая музыка
+           1 - Фоновые видео
+           2 - Фоновые картинки
+           3 - Бегущая строка
+    """
 
     order_type = models.PositiveSmallIntegerField(
         choices=ORDER_TYPES,
         verbose_name='Тип фона'
+    )
+
+    # 🔥 НОВОЕ ПОЛЕ — Бессрочный заказ
+    is_permanent = models.BooleanField(
+        default=False,
+        verbose_name='Бессрочный заказ',
+        help_text=(
+            'Если включено — заказ не имеет даты окончания и используется '
+            'как резервный плейлист. Играет когда нет активных заказов с датами.'
+        )
     )
 
     class Meta:
