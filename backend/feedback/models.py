@@ -1,3 +1,4 @@
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 
@@ -28,6 +29,22 @@ class Feedback(models.Model):
     )
     message = models.CharField(
         verbose_name="Текст обращения",
+        null=True,
+        blank=True,
+    )
+    pathname = models.CharField(
+        verbose_name="Раздел сайта",
+        null=True,
+        blank=True,
+    )
+    brand_id = models.CharField(
+        verbose_name="ID бренда",
+        null=True,
+        blank=True,
+    )
+    nomenclatures_ids = ArrayField(
+        base_field=models.CharField(),
+        verbose_name="ID номенклатур",
         null=True,
         blank=True,
     )
