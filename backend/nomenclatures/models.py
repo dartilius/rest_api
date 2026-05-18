@@ -1,7 +1,5 @@
 import hashlib
-from functools import lru_cache
 from uuid import uuid4
-from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
@@ -9,7 +7,6 @@ from django_minio_backend import MinioBackend
 from django.utils.translation import gettext_lazy as _
 from addresses.models import Address as AddressBook
 from api import APIBaseObjectModel, Article, UUIDPKField
-from django.utils import timezone
 
 TIMEZONES = {
     "Etc/GMT+11": "UTC -11",
@@ -109,9 +106,6 @@ class TypeOfPlace(models.Model):
         verbose_name = "Тип места"
         verbose_name_plural = "Типы мест"
 
-    @property
-    def display_name(self):
-        return self.abbreviation or self.name
 
 
 class NomenclatureTenant(models.Model):
@@ -156,6 +150,18 @@ class NomenclatureTenant(models.Model):
 
 class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
+
+    for_web = models.BooleanField(
+        default=True,
+        verbose_name="Отображать в веб"
+    )
+
+    slots_per_hour = models.CharField(
+        verbose_name="Кол-во выходов в час",
+        null=True,
+        blank=True,
+        default=1
+    )
 
     keys_validator = KeysValidator(
         keys=("mon", "tue", "wed", "thu", "fri", "sat", "sun"),
@@ -229,8 +235,6 @@ class Nomenclature(APIBaseObjectModel):
     description = models.TextField(
         blank=True, null=True, verbose_name="Описание"
     )
-    search_vector = SearchVectorField(null=True, default='')
-    search_vector_updated_at = models.DateTimeField(auto_now_add=True)
 
     responsible_radio = models.ForeignKey(
         'users.CustomUser',
@@ -366,72 +370,63 @@ class Nomenclature(APIBaseObjectModel):
         return self.typeOfPlace.abbreviation or self.typeOfPlace.name
 
     @property
-    def name_for_front(self):
+    def formatted_address(self):
+        addr = getattr(self, 'address', None)
 
+        if not addr or not addr.address:
+            return None
+
+        a = addr.address
+
+        if not a.city or not a.house:
+            return None
+
+        city = str(a.city)
+
+        street_obj = a.street or getattr(a.house, 'street', None)
+
+        street = str(street_obj) if street_obj else None
+
+        house = f"д. {a.house.number}"
+
+        building = (
+            f"стр.{a.building.number}"
+            if a.building else None
+        )
+
+        address_parts = filter(
+            None,
+            [city, street, house, building]
+        )
+
+        return ", ".join(address_parts)
+
+    @property
+    def name_for_front(self):
         if not self.brand:
             return None
 
-        if not self.address or not self.address.address:
-            return None
+        address_str = self.formatted_address
 
-        if not self.address.address.city:
+        if not address_str:
             return None
-
-        if not self.address.address.house:
-            return None
-
-        brand = self.brand
-        city = f"г. {self.address.address.city.name}"
-        street = f"ул. {self.address.address.street.name}"
-        house = self.address.address.house.number
 
         place = self.typeOfPlace
 
         if place:
-            if place.abbreviation:
-                place_name = place.abbreviation
-            elif place.tariff_single:
-                place_name = place.tariff_single
-            else:
-                place_name = place.name
+            place_name = (
+                    place.abbreviation
+                    or place.tariff_single
+                    or place.name
+            )
         else:
             place_name = ""
 
-        return f'Размещение ролика на радио {place_name} "{brand.name}", {city}, {street}, {house}'
-
-    def update_search_vector(self, tenants_text='', save=True):
-        """Обновляет search_vector для конкретной номенклатуры"""
-        from django.contrib.postgres.search import SearchVector
-        from django.db.models import Value
-
-        self.search_vector = (
-                SearchVector(Value(self.name or ''), weight='A') +
-                SearchVector(Value(self.contentType or ''), weight='C') +
-                SearchVector(Value(self.typeOfPlace.name if self.typeOfPlace else ''), weight='B') +
-                SearchVector(Value(self.version or ''), weight='B') +
-                SearchVector(Value(self.code1c or ''), weight='A') +
-                SearchVector(Value(self.brand.name if self.brand else ''), weight='A') +
-                SearchVector(Value(self.legalEntity.first_name if self.legalEntity else ''), weight='A') +
-                SearchVector(Value(self.legalEntity.last_name if self.legalEntity else ''), weight='B') +
-                SearchVector(Value(self.legalEntity.keyword if self.legalEntity else ''), weight='A') +
-                SearchVector(Value(self.legalEntity.additional_name if self.legalEntity else ''), weight='C') +
-                SearchVector(Value(self.responsible_radio.first_name if self.responsible_radio else ''), weight='A') +
-                SearchVector(Value(self.responsible_ad.first_name if self.responsible_ad else ''), weight='A') +
-                SearchVector(Value(self.responsible_technic.first_name if self.responsible_technic else ''),
-                             weight='A') +
-                SearchVector(
-                    Value(self.responsible_technic_on_address.last_name if self.responsible_technic_on_address else ''),
-                    weight='B') +
-                SearchVector(Value(self.responsible_radio.last_name if self.responsible_radio else ''), weight='B') +
-                SearchVector(Value(self.responsible_ad.last_name if self.responsible_ad else ''), weight='B') +
-                SearchVector(Value(self.responsible_technic.last_name if self.responsible_technic else ''),
-                             weight='B') +
-                SearchVector(Value(tenants_text), weight='B')
+        return (
+            f'Размещение ролика на радио '
+            f'{place_name} "{self.brand.name}"\n '
+            f'{address_str}'
         )
-
-        if save:
-            self.search_vector_updated_at = timezone.now()
-            self.save(update_fields=['search_vector', 'search_vector_updated_at'])
 
     def __str__(self):
         return self.name
@@ -448,11 +443,10 @@ class Nomenclature(APIBaseObjectModel):
             )
         ]
         indexes = [
-            GinIndex(fields=['search_vector'], name='nomenclature_search_gin'),
             GinIndex(
-                name='nomenclature_search_active_idx',
-                fields=['search_vector'],
-                condition=models.Q(is_active=True)  # Только для активных записей
+                name='nom_name_trgm_idx',
+                     fields=['name'],
+                     opclasses=['gin_trgm_ops']
             ),
             GinIndex(
                 name="nomenclature_name_gin_idx",

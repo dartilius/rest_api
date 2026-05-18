@@ -1,5 +1,8 @@
-from uuid import UUID
 from typing import Callable, Optional
+from uuid import UUID
+
+from django.core.cache import cache
+from django.db.models import Count, Case, When, Value, IntegerField, Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.utils import inline_serializer, OpenApiResponse
@@ -12,10 +15,11 @@ from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
 )
-from rest_framework.filters import SearchFilter
-from django.db.models import Count, Case, When, Value, IntegerField, Prefetch
-from api.constants import restricted_update, VersionsSerializer
+
+from api.constants import VersionsSerializer
+from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
+from nomenclatures.services.opensearch_search import NomenclatureOpenSearchService
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
@@ -23,11 +27,8 @@ from ..models import Nomenclature, TypeOfPlace
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    ShortBrandNomenclatureSerializer, PhotoSerializer,
-    NomenclatureSearchSerializer
+    ShortBrandNomenclatureSerializer, PhotoSerializer, NomenclatureCardSerializer,
 )
-from counterparties.models import Counterparty
-from django.core.cache import cache
 
 
 @extend_schema_view(
@@ -142,7 +143,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         - destroy: IsAuthenticated + IsStaff
     """
 
-    queryset = Nomenclature.active.select_related(
+    queryset = Nomenclature.web.select_related(
         "legalEntity",
         "brand",
         "responsible_ad",
@@ -151,8 +152,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     serializer_class = NomenclatureSerializer
     permission_classes = [StaffCUDallRead]
-    filter_backends = [DjangoFilterBackend, SearchFilter]
-    search_fields = ['search_vector']
+    filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
     CACHE_TIMEOUT = 300
 
@@ -167,7 +167,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             # Для списка всегда используем NomenclatureListSerializer
             # (и для обычного списка, и для поиска)
-            serializer_class = NomenclatureListSerializer
+            serializer_class = NomenclatureCardSerializer
         else:
             serializer_class = NomenclatureSerializer
 
@@ -181,7 +181,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         base_qs = super().get_queryset()
 
         # Для поиска - оптимизированный queryset (все нужные поля для ListSerializer)
-        if self.action == "list" and self.request.query_params.get('search'):
+        if self.action == "list" and self.request.query_params.get('search_text'):
             return base_qs.select_related(
                 'brand',
                 'typeOfPlace',
@@ -242,55 +242,125 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
         )
 
+    # def list(self, request, *args, **kwargs):
+    #     search_term = request.query_params.get('search')
+
+    #     if search_term:
+    #         cache_key = f"nomenclature_search_os_v2_{hash(search_term)}"
+    #         cached_result = cache.get(cache_key)
+    #         if cached_result:
+    #             return Response(cached_result)
+
+    #         try:
+    #             os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
+    #             ids = [hit.meta.id for hit in os_results]
+
+    #             if not ids:
+    #                 result = {'count': 0, 'next': None, 'previous': None, 'results': []}
+    #                 cache.set(cache_key, result, self.CACHE_TIMEOUT)
+    #                 return Response(result)
+
+    #             queryset = (
+    #                 Nomenclature.web.filter(id__in=ids)
+    #                 .order_by(Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]))
+    #                 .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
+    #                 .prefetch_related(
+    #                     'images',
+    #                     Prefetch(
+    #                         'tenants',
+    #                         queryset=Counterparty.objects.only(
+    #                             'id', 'first_name', 'last_name',
+    #                             'middle_name', 'additional_name', 'keyword'
+    #                         ).prefetch_related('brands')
+    #                     )
+    #                 )
+    #                 .defer('description', 'settings', 'hw_info')
+    #             )
+
+    #             page = self.paginate_queryset(queryset)
+    #             if page is not None:
+    #                 serializer = self.get_serializer(page, many=True)
+    #                 result = self.get_paginated_response(serializer.data).data
+    #             else:
+    #                 serializer = self.get_serializer(queryset, many=True)
+    #                 result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
+
+    #             cache.set(cache_key, result, self.CACHE_TIMEOUT)
+    #             return Response(result)
+
+    #         except Exception:
+    #             queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
+    #             serializer = self.get_serializer(queryset, many=True)
+    #             return Response(
+    #                 {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
+
+    #     # обычный список
+    #     queryset = self.filter_queryset(self.get_queryset())
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
+
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response({'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
 
     def list(self, request, *args, **kwargs):
-        """
-        Переопределяем list для кэширования результатов поиска.
-        """
-
         search_term = request.query_params.get('search')
 
-        # --- 🔍 РЕЖИМ ПОИСКА С КЭШЕМ ---
-        if search_term:
-            cache_key = f"nomenclature_search_v2_{hash(search_term)}"
+        if not search_term:
+            return super().list(request, *args, **kwargs)
 
-            cached_result = cache.get(cache_key)
+        cache_page = request.query_params.get('page', 1)
+        cache_limit = request.query_params.get('limit', self.paginator.page_size)
+        cache_key = f"nomenclature_search_os_v2_{hash(search_term)}_{cache_page}_{cache_limit}"
 
-            # ✅ Проверяем кэш
-            if cached_result is not None:
-                return Response(cached_result)
+        cached_result = cache.get(cache_key)
+        if cached_result:
+            return Response(cached_result)
 
-            # Получаем queryset с оптимизациями для поиска
-            queryset = self.filter_queryset(self.get_queryset())[:50]
+        try:
+            os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
+            ids = [hit.meta.id for hit in os_results]
 
-            # Используем NomenclatureListSerializer для сериализации
-            serializer = NomenclatureListSerializer(queryset, many=True)
+            if not ids:
+                result = {'count': 0, 'next': None, 'previous': None, 'results': []}
+                cache.set(cache_key, result, self.CACHE_TIMEOUT)
+                return Response(result)
 
-            # Формируем ответ в формате пагинации (как ожидает фронтенд)
-            result = {
-                'count': len(serializer.data),
-                'next': None,  # Для поиска пагинация отключена
-                'previous': None,
-                'results': serializer.data
-            }
+            queryset = (
+                Nomenclature.web.filter(id__in=ids)
+                .order_by(Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]))
+                .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
+                .prefetch_related(
+                    'images',
+                    Prefetch(
+                        'tenants',
+                        queryset=Counterparty.objects.only(
+                            'id', 'first_name', 'last_name',
+                            'middle_name', 'additional_name', 'keyword'
+                        ).prefetch_related('brands')
+                    )
+                )
+                .defer('description', 'settings', 'hw_info')
+            )
 
-            # Кэшируем результат
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                result = self.get_paginated_response(serializer.data).data
+            else:
+                serializer = self.get_serializer(queryset, many=True)
+                result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
+
             cache.set(cache_key, result, self.CACHE_TIMEOUT)
-
             return Response(result)
 
-        # --- 📄 ОБЫЧНЫЙ СПИСОК С ПАГИНАЦИЕЙ ---
-        queryset = self.filter_queryset(self.get_queryset())
+        except Exception:
+            queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(
+                {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
 
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = NomenclatureListSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = NomenclatureListSerializer(queryset, many=True)
-
-        # Для единообразия возвращаем в том же формате
-        return serializer
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):
@@ -380,31 +450,20 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def grouped(self, request):
-        """
-        /api/nomenclature/grouped/?by=brand
-        /api/nomenclature/grouped/?by=legal
-        /api/nomenclature/grouped/?by=place
-        /api/nomenclature/grouped/?by=address
+        qs = Nomenclature.web.select_related('brand', 'typeOfPlace')
 
-        Поддерживает все фильтры из NomenclatureFilter:
-        ?search=..., ?name=..., ?brand_id=..., ?status=..., ?version=...,
-        ?legal_entity_name=..., ?brand_name=..., ?type_of_place=...
-        """
-
-        qs = Nomenclature.active.select_related('brand')
-
-        # Применяем фильтры из NomenclatureFilter
         filterset = self.filterset_class(
             request.query_params,
             queryset=qs,
             request=request
         )
-        qs = filterset.qs
+
+        qs = filterset.qs.annotate(
+            tenants_count=Count("tenants", distinct=True)
+        )
 
         group_by = request.query_params.get('by')
 
-        # функции для получения ключа группы из сериализованных данных
-        # ShortBrandNomenclatureSerializer возвращает: brand_name, brand_id, brand_logotype
         GROUP_MAP = {
             'brand': lambda x: x['brand_name'] if x['brand_id'] else None,
         }
@@ -414,39 +473,45 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 'error': 'Invalid group param',
                 'allowed': list(GROUP_MAP.keys())
             }, status=400)
-        page = self.paginate_queryset(qs)
-        serializer = ShortBrandNomenclatureSerializer(page or qs, many=True)
+
+        serializer = ShortBrandNomenclatureSerializer(qs, many=True)
         data = serializer.data
 
         grouped = {}
-
         for item in data:
             key = GROUP_MAP[group_by](item)
 
-            brand_id = item['brand_id']
-            logo = item['brand_logotype']
-
             if key not in grouped:
-                # первый элемент группы
                 grouped[key] = {
                     'name': key,
-                    'items': {
-                        'brand_id': brand_id,
-                        'brand_logotype': logo,
-                        'amount': 1
-                    }
+                    'typeOfPlace': item['type_of_place'],
+                    'brand_id': item['brand_id'],
+                    'brand_logotype': item['brand_logotype'],
+                    'amount': 1,
+                    'tenants_count': item.get('tenants_count', 0),
                 }
             else:
-                # увеличиваем счётчик
-                grouped[key]['items']['amount'] += 1
+                grouped[key]['amount'] += 1
+                grouped[key]['tenants_count'] += item.get('tenants_count', 0)
 
-        result = list(grouped.values())
+        TC = "Торговый центр"
 
-        return (
-            self.get_paginated_response(result)
-            if page is not None
-            else Response(result)
-        )
+        def sort_key(x):
+            is_tc = x['typeOfPlace'] == TC
+            if is_tc:
+                # ТЦ: сначала по убыванию арендаторов, затем по убыванию amount
+                return 0, -x['tenants_count'], -x['amount'], ''
+            else:
+                # Остальные: по алфавиту typeOfPlace, затем по убыванию amount
+                return 1, 0, -x['amount'], x['typeOfPlace'] or ''
+
+        result = sorted(grouped.values(), key=sort_key)
+        for item in result:
+            item.pop('tenants_count', None)
+        page = self.paginate_queryset(result)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response(result)
 
     def perform_create(self, serializer):
         """
@@ -1043,63 +1108,75 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         permission_classes=[AllowAny],
     )
     def get_id(self, request):
-        """
-        Получить UUID номенклатуры по её описанию.
-
-        Этот метод выполняет обратный поиск - по описанию номенклатуры
-        возвращает её уникальный идентификатор (UUID).
-
-        Доступен всем пользователям без аутентификации (AllowAny).
-
-        Args:
-            request: HTTP GET запрос.
-
-        Request Body (JSON):
-            {
-                'description': 'Основное описание номенклатуры'
-            }
-
-        Returns:
-            Response: JSON с полем 'id' содержащим UUID номенклатуры.
-                     Структура: {
-                         'id': '123e4567-e89b-12d3-a456-426614174000'
-                     }
-
-        Status Codes:
-            200 OK: UUID успешно получен
-            400 BAD REQUEST: Поле 'description' не передано
-            404 NOT FOUND: Номенклатура с таким описанием не найдена
-
-        Examples:
-            >>> # Успешный поиск
-            >>> response = client.get(
-            ...     '/api/nomenclatures/get_uuid_by_id/',
-            ...     data={'description': 'Основное описание номенклатуры'}
-            ... )
-            >>> response.status_code
-            200
-            >>> response.data['id']
-            '123e4567-e89b-12d3-a456-426614174000'
-
-            >>> # Описание не найдено
-            >>> response = client.get(...)
-            >>> response.status_code
-            404
-
-        Warning:
-            - Предполагает, что описания уникальны или используется .get()
-            - Может выбросить исключение MultipleObjectsReturned если есть дубликаты
-            - Case-sensitive поиск по совпадению
-            - Медленнее прямого поиска по ID
-
-        Note:
-            Обычно используется в обратных интеграциях, где система знает
-            описание, но нужен UUID для дальнейших операций.
-        """
         nomenclature = Nomenclature.objects.get(
-            description=request.data["description"]
+            id_rasb=request.data["id_rasb"]
         )
         return Response({"id": nomenclature.pk})
+
+
+    @extend_schema(
+        summary="Получить номенклатуры по списку ID",
+        parameters=[
+            OpenApiParameter(
+                name='ids',
+                description='UUID через запятую',
+                required=True,
+                type=str,
+            ),
+        ],
+        responses={200: NomenclatureListSerializer(many=True)},
+        tags=['Номенклатуры'],
+    )
+    @action(
+        detail=False,
+        methods=['GET'],
+        url_path='bulk',
+        permission_classes=[AllowAny],
+    )
+    def bulk(self, request):
+        raw = request.query_params.get('ids', '')
+        if not raw:
+            return Response(
+                {'error': 'Параметр ids обязателен'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # парсим и валидируем UUID
+        ids = []
+        for part in raw.split(','):
+            part = part.strip()
+            try:
+                ids.append(UUID(part))
+            except ValueError:
+                return Response(
+                    {'error': f'Невалидный UUID: {part}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if len(ids) > 100:
+            return Response(
+                {'error': 'Максимум 100 ID за запрос'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = (
+            Nomenclature.web.filter(id__in=ids)
+            .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
+            .prefetch_related(
+                'images',
+                Prefetch(
+                    'tenants',
+                    queryset=Counterparty.objects.only(
+                        'id', 'first_name', 'last_name',
+                        'middle_name', 'additional_name', 'keyword'
+                    ).prefetch_related('brands')
+                )
+            )
+            .defer('description', 'settings', 'hw_info')
+        )
+
+        serializer = NomenclatureCardSerializer(queryset, many=True)
+        return Response(serializer.data)
 
     @staticmethod
     def _is_admin(user):

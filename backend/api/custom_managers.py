@@ -29,6 +29,9 @@ class CustomUserManager(UserManager):
 
         return self._create_user(email, password, **extra_fields)
 
+class ForWebManager(Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(for_web=True, is_active=True)
 
 class ActiveManager(Manager):
     def get_queryset(self):

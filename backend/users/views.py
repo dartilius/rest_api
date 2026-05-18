@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
@@ -18,7 +19,7 @@ from users.filters import CustomUserFilter
 from users.models import CustomUser
 from users.permissions import SuperuserCUDAuthRetrieve
 from users.serializers import CustomUserSerializer, RegisterUserSerializer, \
-    CustomUserShortSerializer
+    CustomUserShortSerializer, PasswordResetByEmailSerializer, GetPasswordSerializer
 
 
 @extend_schema_view(
@@ -175,7 +176,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             ),
         },
     )
-    @action(methods=['post'], url_path="register", url_name="register", detail=False)
+    @action(methods=['post'], url_path="register", url_name="register", detail=False, permission_classes=[AllowAny])
     def register(self, request, *args, **kwargs):
         serializer = RegisterUserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -195,6 +196,46 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             {"detail": "Регистрация успешна", "id": str(user.id)},
             status=HTTP_201_CREATED
         )
+
+    @extend_schema(
+        summary="Сброс пароля по email",
+        request=PasswordResetByEmailSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[OpenApiExample(name="Успешно", value={"detail": "Пароль успешно изменён."})]
+            ),
+            **DEFAULT_SCHEMA_RESPONSES,
+        }
+    )
+    @action(
+        methods=['post'],
+        url_path="reset-password",
+        url_name="reset-password",
+        detail=False,
+        permission_classes=[AllowAny],
+    )
+    def reset_password(self, request, *args, **kwargs):
+        serializer = PasswordResetByEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        validated = serializer.validated_data
+
+        try:
+            user = CustomUser.objects.get(email=validated['email'], is_active=True)
+        except CustomUser.DoesNotExist:
+            raise NotFound("Пользователь с таким email не найден.")
+
+        user.set_password(validated['new_password'])
+        user.save(update_fields=['password'])
+
+        return Response({"detail": "Пароль успешно изменён."})
+
+    @action(methods=['get'], url_path="get-password", url_name="get-password", detail=True)
+    def get_password(self, request, *args, **kwargs):
+        user = self.get_object()
+        serializer = GetPasswordSerializer(user)
+        return Response(serializer.data)
 
 
 @extend_schema(

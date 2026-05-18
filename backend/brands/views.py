@@ -11,12 +11,17 @@ from rest_framework.status import (
     HTTP_200_OK, HTTP_204_NO_CONTENT,
 )
 from rest_framework.decorators import action
+
 from api.constants import (
     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
 )
+from api.pagination import CustomLimitOffsetPagination
 from brands.filters import BrandFilter
 from brands.models import Brand
-from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShortSerializer
+from brands.serializers import BrandCreateSerializer, BrandShortSerializer, BrandDetailSerializer, BrandListSerializer
+from nomenclatures.models import Nomenclature
+from nomenclatures.serializers import NomenclatureShortSerializer
+from services.api_1c_client import api_1c, logger
 
 
 @extend_schema_view(
@@ -37,7 +42,7 @@ from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShor
                          status_codes=[HTTP_200_OK],
                      )
                  ] + DEFAULT_SCHEMA_EXAMPLES,
-        responses={HTTP_200_OK: BrandSerializer(many=True)} | DEFAULT_SCHEMA_RESPONSES,
+        responses={HTTP_200_OK: BrandListSerializer(many=True)} | DEFAULT_SCHEMA_RESPONSES,
     ),
     retrieve=extend_schema(
         summary="Получить расшифровку бренда",
@@ -65,7 +70,7 @@ from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShor
                          },
                      )
                  ] + DEFAULT_SCHEMA_EXAMPLES,
-        responses={HTTP_200_OK: BrandSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        responses={HTTP_200_OK: BrandListSerializer} | DEFAULT_SCHEMA_RESPONSES,
     ),
     destroy=extend_schema(
         summary="Удалить бренд",
@@ -151,8 +156,8 @@ from brands.serializers import BrandCreateSerializer, BrandSerializer, BrandShor
                 location=OpenApiParameter.PATH
             )
         ],
-        request=BrandSerializer,
-        responses={HTTP_200_OK: BrandSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        request=BrandListSerializer,
+        responses={HTTP_200_OK: BrandListSerializer} | DEFAULT_SCHEMA_RESPONSES,
         examples=[
                      OpenApiExample(
                          "Поля для обновления бренда",
@@ -167,22 +172,48 @@ class BrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     lookup_field = "id_or_code1c"
     http_method_names = ["get", "post", "patch", "delete"]
-    queryset = Brand.objects.all().filter(nomenclatures__isnull=False).distinct()
+    queryset = Brand.objects.all().distinct()
     filter_backends = [DjangoFilterBackend]
     filterset_class = BrandFilter
 
     def get_serializer_class(self):
         if self.action == "create":
             return BrandCreateSerializer
-        return BrandSerializer
+        elif self.action == "retrieve":
+            return BrandDetailSerializer
+        elif self.action in ("partial_update", "update"):
+            return BrandCreateSerializer  # или отдельный patch-сериализатор
+        return BrandListSerializer
 
     def create(self, request, *args, **kwargs):
+        name = request.data.get("name")
+        if Brand.all_objects.filter(name=name, is_deleted=False).exists():
+            return Response(
+                {"detail": f"Бренд с названием '{name}' уже существует"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         brand = serializer.save()
+
+        try:
+            response = api_1c.post("/CreateBrand", {
+                "brandName": brand.name,
+                "brandDescription": brand.description or '',
+            })
+            response.raise_for_status()
+            code1c = response.json().get("brandCode")
+            if code1c:
+                if Brand.objects.filter(code1c=code1c).exclude(id=brand.id).exists():
+                    logger.warning("code1c %s уже занят другим брендом", code1c)
+                else:
+                    brand.code1c = code1c
+                    brand.save(update_fields=["code1c"])
+        except Exception as e:
+            logger.warning("Не удалось создать бренд в 1С: %s", e)
+
         short = BrandShortSerializer(brand)
         return Response(short.data, status=status.HTTP_201_CREATED)
-
     # def partial_update(self, request, *args, **kwargs):
 
 
@@ -194,9 +225,6 @@ class BrandViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_object(self):
-        """
-        Получаем бренд по UUID или code1c.
-        """
         identifier = self.kwargs.get(self.lookup_field)
         if not identifier:
             raise NotFound("Не указан идентификатор бренда.")
@@ -218,7 +246,22 @@ class BrandViewSet(viewsets.ModelViewSet):
                 raise NotFound("Бренд не найден.")
             return brand
         except Brand.DoesNotExist:
+            pass
+
+        # пробуем slug
+        try:
+            brand = Brand.all_objects.get(slug=identifier)
+            if brand.is_deleted:
+                raise NotFound("Бренд не найден.")
+            return self._validate_brand_has_active_nomenclatures(brand)
+        except Brand.DoesNotExist:
             raise NotFound("Бренд не найден.")
+
+    def _validate_brand_has_active_nomenclatures(self, brand: Brand) -> Brand:
+        has_active = Nomenclature.web.filter(brand=brand).exists()
+        if not has_active:
+            raise NotFound("Бренд не найден.")
+        return brand
 
     @action(
         methods=["POST"],
@@ -236,3 +279,38 @@ class BrandViewSet(viewsets.ModelViewSet):
         brand.logotype = None
         brand.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        methods=["GET"],
+        detail=False,
+        url_path="assigned",
+        url_name="assigned",
+    )
+    def assigned(self, request, *args, **kwargs):
+        """Бренды, у которых есть хотя бы одна номенклатура."""
+        active_nomenclature_ids = Nomenclature.web.values('brand_id').distinct()
+
+        queryset = Brand.objects.filter(
+            id__in=active_nomenclature_ids
+        )
+
+        paginator = CustomLimitOffsetPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = BrandListSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    @action(
+        methods=["GET"],
+        detail=True,
+        url_path="nomenclatures",
+        url_name="nomenclatures",
+    )
+    def nomenclatures(self, request, *args, **kwargs):
+        """Номенклатуры прикреплённые к бренду."""
+        brand = self.get_object()
+        queryset = Nomenclature.web.filter(brand=brand)
+
+        paginator = CustomLimitOffsetPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = NomenclatureShortSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)

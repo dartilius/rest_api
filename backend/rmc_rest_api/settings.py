@@ -1,6 +1,6 @@
+import os
 from datetime import timedelta as td
 from pathlib import Path
-import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'django_opensearch_dsl',
     'corsheaders',
     'colorfield',
     'django_minio_backend',
@@ -44,13 +45,79 @@ INSTALLED_APPS = [
     'ch_statistic',
     'tasks',
     'promotions',
+    'placement_order',
+    'feedback.apps.FeedbackConfig',
+    'services.apps.ServicesConfig',
 ]
+
+# ---------------------------------- MAIL ---------------------------------- #
+# Базовые настройки
+
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'email.krasrm.com')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'info@krasrm.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+# Настройки TLS/SSL
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
+
+# Выбор бэкенда
+if DEBUG or os.environ.get('DISABLE_EMAIL_SSL_VERIFY', 'true').lower() == 'true':
+    # Используем кастомный бэкенд с отключенной проверкой SSL
+    EMAIL_BACKEND = 'feedback.email_backend.CustomEmailBackend'
+    print("⚠️  Using email backend without SSL verification")
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+# Таймаут для SMTP
+EMAIL_TIMEOUT = 10  # секунд
+
+# Дополнительные настройки безопасности (если нужно)
+if not DEBUG:
+    EMAIL_SSL_CERTFILE = None
+    EMAIL_SSL_KEYFILE = None
+
 
 # Базовый MIDDLEWARE
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# Добавляем IntegrityMiddleware только для DEBUG (но уже не трогаем debug_toolbar)
+if DEBUG:
+    MIDDLEWARE += ['api.middleware.IntegrityMiddleware']
+
+ROOT_URLCONF = 'rmc_rest_api.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+#Базовый MIDDLEWARE
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -61,7 +128,7 @@ MIDDLEWARE = [
 
 # Добавляем debug toolbar только в DEBUG режиме
 if DEBUG:
-    MIDDLEWARE.append('api.middleware.IntegrityMiddleware')
+    MIDDLEWARE += ['api.middleware.IntegrityMiddleware', 'debug_toolbar.middleware.DebugToolbarMiddleware']
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
 
@@ -107,7 +174,6 @@ if CLICKHOUSE_HOST:
         'PORT': os.environ.get('CLICKHOUSE_PORT'),
         'PASSWORD': os.environ.get('CLICKHOUSE_PASSWORD'),
     }
-
 
 DATABASE_ROUTERS = ['rmc_rest_api.dbrouters.ClickHouseRouter']
 
@@ -190,7 +256,6 @@ CACHES = {
 }
 # Время жизни кэша по умолчанию (в секундах)
 CACHE_TTL = 60 * 5  # 5 минут
-
 
 # ---------------------------------- MINIO ---------------------------------- #
 from datetime import timedelta
@@ -280,9 +345,11 @@ SIMPLE_JWT = {
 
 # ------------------------------ DEBUG TOOLBAR ------------------------------ #
 
+
 if DEBUG:
     def show_toolbar(request):
         return True
+
 
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
@@ -303,6 +370,123 @@ if not DEBUG:
     # Лимиты для загрузки
     DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
     FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+
+# ---------------------------- OPENSEARCH SETTINGS -------------------------- #
+OPENSEARCH_DSL = {
+    'default': {
+        'hosts': 'opensearch:9200',
+        # для prod с авторизацией:
+        # 'hosts': [{"scheme": "https", "host": "opensearch.host", "port": 9200}],
+        # 'http_auth': ('admin', 'password'),
+        # 'timeout': 30,
+    }
+}
+# Отключаем автосинк — будем синкать через Celery вручную
+OPENSEARCH_DSL_AUTOSYNC = False
+
+# settings.py (в конец файла)
+
+# ---------------------------- LOGGING -------------------------- #
+
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Создаем директорию для логов с обработкой ошибок
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+try:
+    os.makedirs(LOG_DIR, exist_ok=True)
+    # Проверяем права на запись
+    test_file = os.path.join(LOG_DIR, '.test_write')
+    with open(test_file, 'w') as f:
+        f.write('test')
+    os.remove(test_file)
+    print(f"✅ LOG_DIR is writable: {LOG_DIR}")
+except Exception as e:
+    print(f"❌ Cannot write to LOG_DIR: {LOG_DIR}")
+    print(f"Error: {e}")
+    # Fallback - используем /tmp если не можем писать в LOG_DIR
+    LOG_DIR = '/tmp'
+    os.makedirs(LOG_DIR, exist_ok=True)
+    print(f"⚠️ Using fallback LOG_DIR: {LOG_DIR}")
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} | {module} | {funcName}:{lineno} | {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '[{levelname}] {asctime} | {message}',
+            'style': '{',
+            'datefmt': '%H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'feedback_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'feedback.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
+        'email_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'email.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'api_1c.log',
+        },
+        # 🔴 НОВЫЙ HANDLER ДЛЯ OPENSEARCH
+        'opensearch_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'opensearch.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'feedback': {
+            'handlers': ['feedback_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'feedback.email': {
+            'handlers': ['email_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'services.api_1c': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+        },
+        # 🔴 НОВЫЙ LOGGER ДЛЯ OPENSEARCH
+        'nomenclatures.services.opensearch_search': {
+            'handlers': ['opensearch_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'nomenclatures.filters': {
+            'handlers': ['opensearch_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
 
 
 # from datetime import timedelta as td

@@ -1,10 +1,57 @@
-import uuid
-from django.db import models
+import logging
+
 from django_filters import (
     AllValuesMultipleFilter, CharFilter, FilterSet, UUIDFilter,
-    BaseInFilter, OrderingFilter, BooleanFilter
+    BaseInFilter, OrderingFilter
 )
+import uuid
 from nomenclatures.models import Nomenclature, NomenclatureTenant
+
+logger = logging.getLogger(__name__)
+
+
+def full_text_search(queryset, value):
+    """
+    Поиск через OpenSearch/Django DSL.
+    Фолбэк на Django ORM, если OpenSearch недоступен.
+    """
+    if not value:
+        return queryset
+
+    try:
+        from nomenclatures.documents import NomenclatureDocument
+
+        # Поиск по агрегированному полю search_text
+        search = NomenclatureDocument.search().query(
+            'match',
+            search_text={
+                'query': value,
+                'fuzziness': 'AUTO',
+                'operator': 'and'
+            }
+        )
+
+        response = search[:1000].execute()  # лимит
+        ids = [uuid.UUID(hit.meta.id) for hit in response]  # UUID преобразуем
+
+        logger.info('OpenSearch: запрос="%s", найдено=%d', value, len(ids))
+
+        if not ids:
+            return queryset.none()
+
+        # Сохраняем порядок релевантности
+        from django.db.models import Case, When
+        preserved_order = Case(
+            *[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]
+        )
+        return queryset.filter(pk__in=ids).order_by(preserved_order)
+
+    except Exception as e:
+        logger.error('OpenSearch недоступен, fallback: %s', e)
+        # ORM fallback: ищем по нескольким полям
+        return queryset.filter(
+            name__icontains=value
+        )
 
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
@@ -15,22 +62,6 @@ class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
             # Убираем пустые значения
             value = [v.strip() for v in value.split(",") if v.strip()]
         return super().filter(qs, value)
-
-def full_text_search(queryset, value):
-    if not value:
-        return queryset
-
-    from django.contrib.postgres.search import SearchQuery, SearchRank
-
-    query = SearchQuery(value)
-
-    # Используем существующее поле search_vector, а не создаем новый вектор
-    return (
-        queryset
-        .annotate(rank=SearchRank('search_vector', query))
-        .filter(search_vector=query)
-        .order_by('-rank')
-    )
 
 
 class NomenclatureFilter(FilterSet):
@@ -45,7 +76,7 @@ class NomenclatureFilter(FilterSet):
     # СУЩЕСТВУЮЩИЕ ФИЛЬТРЫ НОМЕНКЛАТУР
     # ==========================================================================
 
-    search = CharFilter(method='filter_full_text',  label='Универсальный поиск')
+    search = CharFilter(method='filter_full_text', label='Универсальный поиск')
 
     versions = AllValuesMultipleFilter(field_name='version')
     version = CharFilter(field_name='version', lookup_expr='icontains')
@@ -137,7 +168,6 @@ class NomenclatureFilter(FilterSet):
         else:
             return queryset
 
-
     @property
     def qs(self):
         """
@@ -170,6 +200,7 @@ class NomenclatureTenantFilter(FilterSet):
     class Meta:
         model = NomenclatureTenant
         fields = ["floor"]
+
 
 # ==============================================================================
 # ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ (УПРОЩЕННЫЕ)

@@ -1,10 +1,10 @@
 from django.contrib import admin
-from django.utils.html import format_html
-from django.db.models import Prefetch, Count
 from django.core.cache import cache
+from django.db.models import Prefetch, Count
+from django.db.models import prefetch_related_objects
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.db.models import prefetch_related_objects
+from django.utils.html import format_html
 
 from nomenclatures.models import (
     Nomenclature,
@@ -34,10 +34,12 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "brand_name",
         "legal_entity_name",
         "tenants_count_display",
+        "id_rasb",
+        "for_web"
     )
 
     list_display_links = ("name",)
-    search_fields = ("name", "code1c", "article")
+    search_fields = ("name", "code1c", "article", "id_rasb")
     list_filter = ("is_active", "timezone", "brand", "contentType")
     show_full_result_count = True
     list_per_page = 50
@@ -188,36 +190,63 @@ class NomenclatureAdmin(admin.ModelAdmin):
         updated = queryset.update(is_active=True)
         self.message_user(request, f'Активировано {updated} номенклатур')
         cache.delete_pattern("nomenclature_admin_qs_*")
+
     activate.short_description = "Активировать выбранные"
 
     def deactivate(self, request, queryset):
         updated = queryset.update(is_active=False)
         self.message_user(request, f'Деактивировано {updated} номенклатур')
         cache.delete_pattern("nomenclature_admin_qs_*")
+
     deactivate.short_description = "Деактивировать выбранные"
 
     def clear_cache(self, request, queryset):
         cache.delete_pattern("nomenclature_admin_qs_*")
         self.message_user(request, 'Кэш очищен')
+
     clear_cache.short_description = "Очистить кэш"
+
+
+from django.contrib import admin
+from django.db.models import Q
 
 
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
-    list_display = ("nomenclature_name", "brand", "tenant_id", "floor")
-    search_fields = ("nomenclature__name", "brand__name", "tenant_id")
+    list_display = ("nomenclature_name", "tenant", "brand", "floor", "atm")
+    search_fields = ("floor",)
+    list_filter = ("atm", "brand", "floor")
+    autocomplete_fields = ("nomenclature", "tenant", "brand")
     show_full_result_count = True
     list_per_page = 50
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
             "nomenclature",
-            "brand"  # Если бренд связан напрямую
+            "tenant",
+            "brand",
         )
 
     @admin.display(description="Номенклатура", ordering="nomenclature__name")
     def nomenclature_name(self, obj):
         return obj.nomenclature.name if obj.nomenclature else "-"
+
+    def get_search_results(self, request, queryset, search_term):
+        if not search_term:
+            return queryset, False
+
+        queryset = queryset.filter(
+            Q(nomenclature__brand__name__icontains=search_term)
+            | Q(floor__icontains=search_term)
+            | Q(nomenclature__name__icontains=search_term)
+            | Q(nomenclature__code1c__icontains=search_term)
+            | Q(nomenclature__article__icontains=search_term)
+            | Q(nomenclature__id_rasb__icontains=search_term)
+            | Q(brand__name__icontains=search_term)
+        ).distinct()
+
+        return queryset, False
+
 
 @admin.register(TypeOfPlace)
 class TypeOfPlaceAdmin(admin.ModelAdmin):

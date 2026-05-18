@@ -4,7 +4,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from rest_framework import serializers
 from brands.models import Brand
-from brands.serializers import BrandSerializer
+from brands.serializers import BrandListSerializer, BrandCardSerializer
 from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, TenantsShortSerializer, FullTenantsSerializer
 from files.serializers import Base64FileField
@@ -95,10 +95,11 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
 
 class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
     """Схема для отображения номенклатуры в списке."""
-
     brand_name = serializers.CharField(source='brand.name', default='Без значения')
     brand_id = serializers.CharField(source='brand.id', default=None)
-    brand_logotype = serializers.CharField(source='brand.logotype', default=None)
+    brand_logotype = Base64FileField(source="brand.logotype", default=None)
+    type_of_place = serializers.CharField(source='typeOfPlace.name', default=None)
+    tenants_count = serializers.IntegerField(read_only=True)  # ← из annotate
 
     class Meta:
         model = Nomenclature
@@ -106,13 +107,16 @@ class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
             "brand_name",
             "brand_id",
             "brand_logotype",
+            "type_of_place",
+            "tenants_count",
         )
         read_only_fields = fields
 
 
 class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
     """Сериализатор для ответа с арендаторами номенклатуры"""
-    id = serializers.UUIDField(source='tenant.id', read_only=True)
+    id = serializers.UUIDField(read_only=True)
+    tenant_id = serializers.SerializerMethodField()
     brands_list = serializers.SerializerMethodField()
     logotype = serializers.SerializerMethodField()
     floor = serializers.CharField(read_only=True)
@@ -123,7 +127,7 @@ class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NomenclatureTenant
-        fields = ('id', 'brands_list', 'logotype', 'floor', 'atm', 'brand_id')
+        fields = ('id', 'brands_list', 'logotype', 'floor', 'atm', 'brand_id', 'tenant_id')
 
     def get_brands_list(self, obj):
         """Возвращаем имя бренда"""
@@ -142,6 +146,9 @@ class NomenclatureTenantResponseSerializer(serializers.ModelSerializer):
     def get_brand_id(self, obj):
         """Возвращаем ID бренда для отладки"""
         return str(obj.brand.id) if obj.brand else None
+
+    def get_tenant_id(self, obj):
+        return str(obj.tenant.id) if obj.tenant else None
 
 class NomenclatureSearchSerializer(serializers.ModelSerializer):
     brand_name = serializers.SerializerMethodField()
@@ -261,12 +268,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    # READ
-    tenants = NomenclatureTenantResponseSerializer(
-        source='nomenclature_tenants',
-        many=True,
-        read_only=True
-    )
 
     # WRITE
     tenants_id = TenantWriteSerializer(
@@ -274,7 +275,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    brand = BrandSerializer(read_only=True)  # чисто чтение
+    brand = BrandListSerializer(read_only=True)  # чисто чтение
     brand_id = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(),
         source="brand",
@@ -302,6 +303,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     )
     address = AddressReadSerializer(source="address.address", read_only=True)
     formattedAddress = serializers.SerializerMethodField()
+    worktime_start = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
+    worktime_end = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
 
     class Meta:
         fields = "__all__"
@@ -315,7 +318,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             "status",
             "last_answer",
             "legalEntity",
-            'tenants',
             "brand",
             "interior",
             "exterior",
@@ -349,7 +351,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                     "longitude": None
                 }
             }
-    
+
         address = nomenclature_address.address
 
         if not address:
@@ -385,7 +387,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         # 🔥 ИСПРАВЛЕНО: проверяем наличие coordinates и его атрибутов
         latitude = None
         longitude = None
-    
+
         if hasattr(address, 'coordinates') and address.coordinates:
             try:
                 if hasattr(address.coordinates, 'latitude'):
@@ -404,15 +406,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 "longitude": longitude
             }
         }
-
-
-    def get_tenants(self, obj):
-        """Возвращаем арендаторов с этажом"""
-        return NomenclatureTenantSerializer(
-            obj.nomenclature_tenants.select_related('tenant').prefetch_related('tenant__brands').all(),
-            many=True,
-            context=self.context
-        ).data
 
     def validate_settings(self, value):
         """
@@ -1152,28 +1145,32 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализация списка номенклатур."""
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
-    # abbreviation = serializers.SerializerMethodField()
-    # status = serializers.SerializerMethodField()
-    brand = BrandSerializer()
+
+    brand = BrandListSerializer()
     legalEntity = CounterpartiesShortSerializer()
     exterior = serializers.SerializerMethodField()
-    address = AddressReadSerializer(source="address.address")
-    formattedAddress = serializers.SerializerMethodField()
-    # contentType = serializers.ChoiceField(
-    #     choices=list(AVAILABLE_CONTENT_TYPES.values()),
-    #     required=False
-    # )
+
+    formattedAddress = serializers.CharField(
+        source="formatted_address",
+        read_only=True
+    )
+
+    nameForFront = serializers.CharField(
+        source="name_for_front",
+        read_only=True
+    )
 
     class Meta:
+
         fields = (
             "id",
             "name",
+            "nameForFront",
             # "timezone",
             # "status",
             "legalEntity",
             "brand",
             "exterior",
-            "address",
             "formattedAddress",
             # "contentType",
             "typeOfPlace",
@@ -1181,6 +1178,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "code1c",
             # "abbreviation",
         )
+        extra_fields = ("nameForFront", "formattedAddress")
         read_only_fields = fields
         model = Nomenclature
 
@@ -1201,53 +1199,6 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         except AttributeError:
             return "Не выходила в сеть"
 
-    def get_formattedAddress(self, obj):
-        """Форматирует адрес с проверкой наличия всех частей"""
-        try:
-            # Пытаемся получить связанный адрес
-            nomenclature_address = obj.address
-        except ObjectDoesNotExist:
-            # Если связи нет, возвращаем пустую строку
-            return ""
-
-        # Если связь есть, но нет самого адреса
-        if not nomenclature_address or not nomenclature_address.address:
-            return ""
-
-        address = nomenclature_address.address
-
-        address_parts = []
-
-        # Проверяем и добавляем город
-        if address.city and address.city.name:
-            address_parts.append(f"г. {address.city.name}")
-
-        # Проверяем и добавляем улицу
-        if address.street and address.street.name:
-            address_parts.append(f"ул. {address.street.name}")
-
-        # Проверяем наличие номера дома или строения
-        house_number = None
-        if address.house and address.house.number:
-            house_number = address.house.number
-        elif address.building and address.building.number:
-            house_number = address.building.number
-
-        if house_number:
-            address_parts.append(house_number)
-
-        # Если есть улица, но нет номера, все равно возвращаем "город, улица"
-        # Если есть только город, возвращаем только город
-
-        return ', '.join(address_parts)
-
-    def to_representation(self, value):
-        repr_ = super().to_representation(value)
-
-        if "address" in repr_:
-            repr_.pop("address")
-
-        return repr_
 
 
 
@@ -1263,3 +1214,128 @@ class StatusHistorySerializer(serializers.ModelSerializer):
         repr_ = super().to_representation(value)
         repr_["change_time"] = f"{value.change_time:%Y-%m-%d %H:%M:%S}"
         return repr_
+
+class NomenclatureCardSerializer(serializers.ModelSerializer):
+    """Минимальный сериализатор для карточек каталога и корзины."""
+    brand = BrandCardSerializer()
+    exterior = serializers.SerializerMethodField()
+    formattedAddress = serializers.SerializerMethodField()
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
+    slotsPerHour = serializers.CharField(source="slots_per_hour", read_only=True)
+
+    class Meta:
+        model = Nomenclature
+        fields = (
+            "id",
+            "nameForFront",
+            "brand",
+            "exterior",
+            "formattedAddress",
+            "typeOfPlace",
+            "pricePerMonth",
+            "slotsPerHour"
+        )
+        read_only_fields = fields
+
+    def get_exterior(self, obj):
+        image = obj.images.filter(type="exterior").first()
+        if not image:
+            return []
+        return InNomenclaturePhotoSerializer([image], many=True).data
+
+    def get_formattedAddress(self, obj):
+        try:
+            nomenclature_address = obj.address
+        except ObjectDoesNotExist:
+            return ""
+
+        if not nomenclature_address or not nomenclature_address.address:
+            return ""
+
+        address = nomenclature_address.address
+        address_parts = []
+
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        return ', '.join(address_parts)
+
+class NomenclatureShortSerializer(serializers.ModelSerializer):
+    nameForFront = serializers.SerializerMethodField()
+    formattedAddress = serializers.SerializerMethodField()
+    exterior = serializers.SerializerMethodField()
+    typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
+    class Meta:
+        model = Nomenclature
+        fields = ["id", "nameForFront", "formattedAddress", "exterior",  "typeOfPlace", "pricePerMonth"]
+
+    def get_nameForFront(self, obj):
+        parts = []
+
+        if obj.typeOfPlace:
+            parts.append(obj.typeOfPlace.name)
+
+        if obj.brand:
+            parts.append(obj.brand.name)
+
+        if obj.address and obj.address.address:
+            addr = obj.address.address
+            address_parts = []
+            if addr.city:
+                address_parts.append(f"г. {addr.city.name}")
+            if addr.street:
+                address_parts.append(f"ул. {addr.street.name}")
+            if addr.house:
+                address_parts.append(addr.house.number)
+            if address_parts:
+                parts.append(", ".join(address_parts))
+
+        return " | ".join(filter(None, parts)) or None
+
+    def get_formattedAddress(self, obj):
+        try:
+            nomenclature_address = obj.address
+        except ObjectDoesNotExist:
+            return ""
+
+        if not nomenclature_address or not nomenclature_address.address:
+            return ""
+
+        address = nomenclature_address.address
+        address_parts = []
+
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        return ', '.join(address_parts)
+
+    def get_exterior(self, obj):
+        image = obj.images.filter(type="exterior").first()
+        if not image:
+            return []
+        return InNomenclaturePhotoSerializer([image], many=True).data

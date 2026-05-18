@@ -148,7 +148,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
             repr_.pop(field, None)
 
         # Добавляем role и дату
-        repr_['role'] = value.get_role_display()
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
 
         # Собираем full_name как словарь
@@ -185,7 +184,6 @@ class CustomUserListSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
-        repr_['role'] = value.get_role_display()
 
         full_name_dict = {
             'first_name': value.first_name,
@@ -251,3 +249,25 @@ class ManagerSerializer(serializers.ModelSerializer):
             repr_.pop(field, None)
 
         return repr_
+
+class PasswordResetByEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    new_password = serializers.CharField(write_only=True, required=True)
+    new_password_confirm = serializers.CharField(write_only=True, required=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Пароли не совпадают."}
+            )
+        return attrs
+
+class GetPasswordSerializer(serializers.ModelSerializer):
+    password = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'password')
+
+    def get_password(self, obj):
+        return obj.password or f"Пароль не указан (user: {obj.id})"

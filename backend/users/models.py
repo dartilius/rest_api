@@ -1,7 +1,5 @@
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
-from django.contrib.postgres.fields import ArrayField
-from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
@@ -10,8 +8,7 @@ from django.contrib.postgres.indexes import GinIndex
 from api import ContactInformation
 from api.base_objects import UUIDPKField
 from api.custom_managers import CustomUserManager
-from django.conf import settings
-
+from django.utils import timezone
 
 CONTACT_PERSON_ROLES = [
     ('broadcast', 'Корп. вещание'),
@@ -123,6 +120,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         blank=True,
         null=True,
         verbose_name='Код 1с'
+    )
+
+    token_1c_access = models.TextField(
+        blank=True, null=True,
+        verbose_name='Access-токен 1С'
+    )
+    token_1c_refresh = models.TextField(
+        blank=True, null=True,
+        verbose_name='Refresh-токен 1С'
     )
 
     @property

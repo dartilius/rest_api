@@ -26,10 +26,13 @@ urlpatterns = [
 
     path('api/', include('brands.urls')),
 
+    path('api/', include('feedback.urls')),
+
     path('api/', include('users.urls')),
     path('api/', include('files.urls')),
     path('api/', include('orders.urls')),
     path('api/', include('tasks.urls')),
+    path("api/", include("placement_order.urls")),
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
     path('logout/', LogoutView.as_view(), name='logout'),

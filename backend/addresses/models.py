@@ -445,13 +445,35 @@ class Region(models.Model):
         ]
 
     def __str__(self):
-        """Форматированное строковое представление региона."""
-        if self.type_region and not self.type_region.skip_in_name:
-            if self.type_region.show_before_name:
-                return f"{self.type_region.abbreviated_name} {self.name}"
+        """
+        ФОРМАТИРОВАННОЕ СТРОКОВОЕ ПРЕДСТАВЛЕНИЕ РЕГИОНА.
+        
+        ОПТИМИЗИРОВАННАЯ ВЕРСИЯ:
+        • Проверяет наличие загруженного type_region
+        • Использует кэширование через hasattr
+        • Не вызывает дополнительных запросов при предзагрузке
+        """
+        # Проверяем, загружен ли type_region (через select_related)
+        if hasattr(self, '_cached_type_region'):
+            type_region = self._cached_type_region
+        else:
+            type_region = self.type_region
+        
+        if type_region and not type_region.skip_in_name:
+            if type_region.show_before_name:
+                return f"{type_region.abbreviated_name} {self.name}"
             else:
-                return f"{self.name} {self.type_region.abbreviated_name}"
+                return f"{self.name} {type_region.abbreviated_name}"
         return self.name
+
+    # def __str__(self):
+    #     """Форматированное строковое представление региона."""
+    #     if self.type_region and not self.type_region.skip_in_name:
+    #         if self.type_region.show_before_name:
+    #             return f"{self.type_region.abbreviated_name} {self.name}"
+    #         else:
+    #             return f"{self.name} {self.type_region.abbreviated_name}"
+    #     return self.name
 
 
 # ====================================================================================
@@ -661,15 +683,38 @@ class City(models.Model):
         ]
 
     def __str__(self):
-        """Форматированное строковое представление города."""
-        if self.locality_type:
-            if self.locality_type.show_before_name:
-                prefix = self.locality_type.abbreviated_name or self.locality_type.name
+        """
+        ФОРМАТИРОВАННОЕ СТРОКОВОЕ ПРЕДСТАВЛЕНИЕ ГОРОДА.
+        
+        ОПТИМИЗИРОВАННАЯ ВЕРСИЯ:
+        • Проверяет наличие загруженного locality_type
+        • Использует кэширование через hasattr
+        """
+        # Проверяем, загружен ли locality_type
+        if hasattr(self, '_cached_locality_type'):
+            locality_type = self._cached_locality_type
+        else:
+            locality_type = self.locality_type
+        
+        if locality_type:
+            if locality_type.show_before_name:
+                prefix = locality_type.abbreviated_name or locality_type.name
                 return f"{prefix} {self.name}"
             else:
-                suffix = self.locality_type.abbreviated_name or self.locality_type.name
+                suffix = locality_type.abbreviated_name or locality_type.name
                 return f"{self.name} {suffix}"
         return self.name
+
+    # def __str__(self):
+    #     """Форматированное строковое представление города."""
+    #     if self.locality_type:
+    #         if self.locality_type.show_before_name:
+    #             prefix = self.locality_type.abbreviated_name or self.locality_type.name
+    #             return f"{prefix} {self.name}"
+    #         else:
+    #             suffix = self.locality_type.abbreviated_name or self.locality_type.name
+    #             return f"{self.name} {suffix}"
+    #     return self.name
 
 
 class AdministrativeTerritory(models.Model):
@@ -972,15 +1017,36 @@ class Street(models.Model):
         ]
 
     def __str__(self):
-        """Форматированное строковое представление улицы."""
-        if self.street_type:
-            if self.street_type.show_before_name:
-                prefix = self.street_type.abbreviated_name or self.street_type.name
+        """
+        ФОРМАТИРОВАННОЕ СТРОКОВОЕ ПРЕДСТАВЛЕНИЕ УЛИЦЫ.
+        
+        ОПТИМИЗИРОВАННАЯ ВЕРСИЯ:
+        • Проверяет наличие загруженного street_type
+        """
+        if hasattr(self, '_cached_street_type'):
+            street_type = self._cached_street_type
+        else:
+            street_type = self.street_type
+        
+        if street_type:
+            if street_type.show_before_name:
+                prefix = street_type.abbreviated_name or street_type.name
                 return f"{prefix} {self.name}"
             else:
-                suffix = self.street_type.abbreviated_name or self.street_type.name
+                suffix = street_type.abbreviated_name or street_type.name
                 return f"{self.name} {suffix}"
         return self.name
+
+    # def __str__(self):
+    #     """Форматированное строковое представление улицы."""
+    #     if self.street_type:
+    #         if self.street_type.show_before_name:
+    #             prefix = self.street_type.abbreviated_name or self.street_type.name
+    #             return f"{prefix} {self.name}"
+    #         else:
+    #             suffix = self.street_type.abbreviated_name or self.street_type.name
+    #             return f"{self.name} {suffix}"
+    #     return self.name
 
 
 class House(models.Model):

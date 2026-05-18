@@ -8,64 +8,43 @@ from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
 
-@shared_task
-def update_all_search_vectors_for_instance(instance_id):
-    """Обновление search_vector через update (не вызывает сигнал)"""
-    from django.contrib.postgres.search import SearchVector
-    from django.db.models import Value, F
-    from django.db.models.functions import Concat, Coalesce
-    from django.contrib.postgres.aggregates import StringAgg
-    from nomenclatures.models import Nomenclature, NomenclatureTenant
 
+@shared_task(base=Singleton)
+def update_opensearch_for_instance(instance_id):
+    """Обновление документа в OpenSearch для конкретной номенклатуры."""
     try:
-        # Получаем данные для обновления
-        n = Nomenclature.objects.get(id=instance_id)
+        from nomenclatures.documents import NomenclatureDocument
+        from nomenclatures.models import Nomenclature
 
-        tenants_agg = NomenclatureTenant.objects.filter(
-            nomenclature=n
-        ).annotate(
-            tenant_text=Concat(
-                Coalesce('tenant__first_name', Value('')), Value(' '),
-                Coalesce('tenant__last_name', Value('')), Value(' '),
-                Coalesce('tenant__additional_name', Value('')), Value(' '),
-                Coalesce('tenant__keyword', Value('')), Value(' '),
-                Coalesce('floor', Value(''))
+        # 🔴 Добавляем оптимизацию запроса
+        nomenclature = (
+            Nomenclature.objects
+            .select_related(
+                'brand',
+                'legalEntity',
+                'typeOfPlace',
+                'responsible_radio',
+                'responsible_ad',
+                'responsible_technic',
+                'responsible_technic_on_address',
+                'responsible_placement_marketing',
             )
-        ).aggregate(
-            all_tenants=StringAgg('tenant_text', delimiter=' ')
-        )['all_tenants'] or ''
-
-        # Формируем search_vector выражение
-        search_vector = (
-            SearchVector(Value(n.name or ''), weight='A') +
-            SearchVector(Value(n.contentType or ''), weight='C') +
-            SearchVector(Value(n.typeOfPlace.name if n.typeOfPlace else ''), weight='B') +
-            SearchVector(Value(n.version or ''), weight='B') +
-            SearchVector(Value(n.code1c or ''), weight='A') +
-            SearchVector(Value(n.brand.name if n.brand else ''), weight='A') +
-            SearchVector(Value(n.legalEntity.first_name if n.legalEntity else ''), weight='A') +
-            SearchVector(Value(n.legalEntity.last_name if n.legalEntity else ''), weight='B') +
-            SearchVector(Value(n.legalEntity.keyword if n.legalEntity else ''), weight='A') +
-            SearchVector(Value(n.legalEntity.additional_name if n.legalEntity else ''), weight='C') +
-            SearchVector(Value(n.responsible_radio.first_name if n.responsible_radio else ''), weight='A') +
-            SearchVector(Value(n.responsible_ad.first_name if n.responsible_ad else ''), weight='A') +
-            SearchVector(Value(n.responsible_technic.first_name if n.responsible_technic else ''), weight='A') +
-            SearchVector(Value(n.responsible_technic_on_address.last_name if n.responsible_technic_on_address else ''), weight='B') +
-            SearchVector(Value(n.responsible_radio.last_name if n.responsible_radio else ''), weight='B') +
-            SearchVector(Value(n.responsible_ad.last_name if n.responsible_ad else ''), weight='B') +
-            SearchVector(Value(n.responsible_technic.last_name if n.responsible_technic else ''), weight='B') +
-            SearchVector(Value(tenants_agg), weight='B')
+            .prefetch_related(
+                'nomenclature_tenants__tenant',
+                'nomenclature_tenants__brand',
+            )
+            .get(id=instance_id)
         )
 
-        # Используем update - он НЕ вызывает сигнал
-        Nomenclature.objects.filter(id=instance_id).update(
-            search_vector=search_vector
-        )
+        # Индексация документа в OpenSearch
+        NomenclatureDocument().index(nomenclature)
 
-        print(f"✅ Обновлен search_vector для номенклатуры {instance_id}")
-
+        print(f"✅ OpenSearch обновлён для номенклатуры {instance_id}")
+    except Nomenclature.DoesNotExist:
+        print(f"❌ Номенклатура {instance_id} не найдена")
     except Exception as e:
-        print(f"❌ Ошибка при обработке номенклатуры {instance_id}: {e}")
+        print(f"❌ Ошибка OpenSearch для {instance_id}: {e}")
+
 
 def get_owner(owner_id):
     return CustomUser.objects.get(pk=owner_id)
