@@ -85,7 +85,7 @@ class PlacementOrder(models.Model):
     def clean(self):
         from django.core.exceptions import ValidationError
         from django.utils import timezone
-        from datetime import timedelta
+        from datetime import timedelta, date as date_type
 
         errors = {}
 
@@ -94,13 +94,25 @@ class PlacementOrder(models.Model):
         if self.all_days and self.days_of_week:
             errors["days_of_week"] = "Нельзя указывать дни недели при all_days = true."
 
-        now = timezone.now()
-        min_start = now + timedelta(days=2)
+        today = timezone.localdate()
+        min_start = today + timedelta(days=2)
 
-        if self.start_date and self.start_date < min_start:
+        def to_date(value):
+            if value is None:
+                return None
+            if isinstance(value, date_type):
+                return value
+            if hasattr(value, 'date'):
+                return value.date()
+            return value
+
+        start = to_date(self.start_date)
+        end = to_date(self.end_date)
+
+        if start and start < min_start:
             errors["start_date"] = "Дата начала должна быть минимум через 2 дня от текущей даты."
 
-        if self.start_date and self.end_date and self.end_date <= self.start_date:
+        if start and end and end <= start:
             errors["end_date"] = "Дата окончания должна быть минимум на 1 день позже даты начала."
 
         if errors:
