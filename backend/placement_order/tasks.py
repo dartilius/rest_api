@@ -54,7 +54,7 @@ def send_placement_order_email(
         )
 
         owner = order.owner
-        owner_name = owner.get_full_name() or owner.email
+        owner_name = f"{owner.first_name or ''} {owner.email}".strip()
 
         # даты
         start = order.start_date.strftime("%d.%m.%Y") if order.start_date else "—"
@@ -88,7 +88,7 @@ def send_placement_order_email(
             total_price += price
 
             responsible = item.responsible
-            responsible_name = responsible.get_full_name() if responsible else "—"
+            responsible_name = f"{responsible.first_name} {responsible.email}".strip() if responsible else "—"
 
             items_lines.append(
                 f"  • {place_name} «{brand_name}» {address}\n"
