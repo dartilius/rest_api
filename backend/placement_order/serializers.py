@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from nomenclatures.models import Nomenclature
 from .models import PlacementOrder, PlacementOrderItem
+from django.utils.dateparse import parse_datetime, parse_date
 
 class PlacementOrderItemSerializer(serializers.ModelSerializer):
     nomenclature_name = serializers.CharField(
@@ -37,7 +38,8 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
         source="nomenclatures"
     )
     items = PlacementOrderItemSerializer(many=True, read_only=True)
-
+    start_date = serializers.CharField(write_only=True)
+    end_date = serializers.CharField(write_only=True)
     class Meta:
         model = PlacementOrder
         fields = [
@@ -56,6 +58,14 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
         end_date = attrs.get("end_date")
 
         errors = {}
+        for field in ("start_date", "end_date"):
+            value = attrs.get(field)
+            if isinstance(value, str):
+                # пробуем сначала как datetime, потом как date
+                parsed = parse_datetime(value) or parse_date(value)
+                if parsed is None:
+                    raise serializers.ValidationError({field: "Неверный формат даты."})
+                attrs[field] = parsed.date() if hasattr(parsed, "date") else parsed
 
         # дни недели
         if not all_days and not days_of_week:
