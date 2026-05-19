@@ -23,6 +23,9 @@ class PlacementOrderAdmin(admin.ModelAdmin):
         ("Основное", {
             "fields": ("owner", "duration")
         }),
+        ("Даты размещения", {
+            "fields": ("start_date", "end_date")
+        }),
         ("Дни размещения", {
             "fields": ("all_days", "days_of_week")
         }),

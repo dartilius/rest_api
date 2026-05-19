@@ -43,6 +43,13 @@ class PlacementOrder(models.Model):
         related_name="placement_orders",
         verbose_name="Места размещения"
     )
+
+    start_date = models.DateField(
+        verbose_name='Дата начала'
+    )
+    end_date = models.DateField(
+        verbose_name='Дата окончания'
+    )
     duration = PositiveIntegerField(
         verbose_name="Кол-во дней"
     )
@@ -75,15 +82,28 @@ class PlacementOrder(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        if not self.all_days and not self.days_of_week:
-            raise ValidationError({
-                "days_of_week": "Укажите дни недели, если all_days = false."
-            })
-        if self.all_days and self.days_of_week:
-            raise ValidationError({
-                "days_of_week": "Нельзя указывать дни недели при all_days = true."
-            })
+        from django.utils import timezone
+        from datetime import timedelta
 
+        errors = {}
+
+        if not self.all_days and not self.days_of_week:
+            errors["days_of_week"] = "Укажите дни недели, если all_days = false."
+        if self.all_days and self.days_of_week:
+            errors["days_of_week"] = "Нельзя указывать дни недели при all_days = true."
+
+        today = timezone.now().date()
+        min_start = today + timedelta(days=2)
+
+        if self.start_date and self.start_date < min_start:
+            errors["start_date"] = "Дата начала должна быть минимум через 2 дня от текущей даты."
+
+        if self.start_date and self.end_date:
+            if self.end_date <= self.start_date:
+                errors["end_date"] = "Дата окончания должна быть минимум на 1 день позже даты начала."
+
+        if errors:
+            raise ValidationError(errors)
 
 class PlacementOrderItem(models.Model):
     """Промежуточная модель — одна строка = одно место в заказе."""
