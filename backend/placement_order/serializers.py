@@ -38,8 +38,9 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
         source="nomenclatures"
     )
     items = PlacementOrderItemSerializer(many=True, read_only=True)
-    start_date = serializers.DateTimeField(required=False, allow_null=True)
-    end_date = serializers.DateTimeField(required=False, allow_null=True)
+    start_date = serializers.DateField(required=False, allow_null=True)
+    end_date = serializers.DateField(required=False, allow_null=True)
+
     class Meta:
         model = PlacementOrder
         fields = [
@@ -69,13 +70,11 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
         today = timezone.localdate()
         min_start = today + timedelta(days=2)
 
-        start_date_only = start_date.date() if hasattr(start_date, 'date') else start_date
-        end_date_only = end_date.date() if hasattr(end_date, 'date') else end_date
-
-        if start_date and start_date_only < min_start:
+        if start_date and start_date < min_start:
             errors["start_date"] = "Дата начала должна быть минимум через 2 дня от текущей даты."
 
-        if start_date and end_date and end_date_only <= start_date_only:
+        # end_date минимум на 1 день позже start_date
+        if start_date and end_date and end_date <= start_date:
             errors["end_date"] = "Дата окончания должна быть минимум на 1 день позже даты начала."
 
         if errors:

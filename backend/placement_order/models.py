@@ -44,12 +44,12 @@ class PlacementOrder(models.Model):
         verbose_name="Места размещения"
     )
 
-    start_date = models.DateTimeField(
+    start_date = models.DateField(
         verbose_name='Дата начала',
         blank=True,
         null=True
     )
-    end_date = models.DateTimeField(
+    end_date = models.DateField(
         verbose_name='Дата окончания',
         blank=True,
         null=True
