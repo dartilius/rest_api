@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from datetime import date, timedelta
-from django.utils.dateparse import parse_datetime, parse_date
+from datetime import timedelta
+from django.utils import timezone
 
 from nomenclatures.models import Nomenclature
 from .models import PlacementOrder, PlacementOrderItem
@@ -30,18 +30,6 @@ class PlacementOrderItemSerializer(serializers.ModelSerializer):
         return nomenclatures
 
 
-def parse_date_flexible(value) -> date | None:
-    """Парсит ISO datetime или date строку, возвращает date."""
-    if isinstance(value, date):
-        return value
-    if not isinstance(value, str):
-        return None
-    parsed = parse_datetime(value) or parse_date(value)
-    if parsed is None:
-        return None
-    return parsed.date() if hasattr(parsed, "date") else parsed
-
-
 class PlacementOrderSerializer(serializers.ModelSerializer):
     nomenclature_ids = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -61,20 +49,6 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
             "items",
         ]
         read_only_fields = ["owner"]
-        extra_kwargs = {
-            "start_date": {"required": True},
-            "end_date": {"required": True},
-        }
-
-    def to_internal_value(self, data):
-        # до стандартной валидации — конвертируем строки в date
-        mutable = data.copy() if hasattr(data, "copy") else dict(data)
-        for field in ("start_date", "end_date"):
-            value = mutable.get(field)
-            if value:
-                parsed = parse_date_flexible(value)
-                mutable[field] = str(parsed) if parsed else value  # DateField ожидает YYYY-MM-DD
-        return super().to_internal_value(mutable)
 
     def validate(self, attrs):
         all_days = attrs.get("all_days", True)
@@ -91,8 +65,8 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
             errors["days_of_week"] = "Нельзя указывать дни недели при all_days = true."
 
         # start_date минимум +2 дня от сегодня
-        today = date.today()
-        min_start = today + timedelta(days=2)
+        now = timezone.now()
+        min_start = now + timedelta(days=2)
 
         if start_date and start_date < min_start:
             errors["start_date"] = "Дата начала должна быть минимум через 2 дня от текущей даты."
