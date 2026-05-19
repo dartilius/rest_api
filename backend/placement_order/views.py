@@ -37,6 +37,12 @@ class PlacementOrderViewSet(mixins.CreateModelMixin,
         ])
 
         try:
+            from placement_order.tasks import send_placement_order_email
+            send_placement_order_email.delay(order_id=str(order.id))
+        except Exception as e:
+            logger.warning(f"Не удалось запустить таск письма: {e}")
+
+        try:
             payload = {
                 "duration": order.duration,
                 "all_days": order.all_days,
