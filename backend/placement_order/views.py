@@ -18,9 +18,6 @@ class PlacementOrderViewSet(mixins.CreateModelMixin,
     def get_queryset(self):
         return PlacementOrder.objects.filter(
             owner=self.request.user
-        ).prefetch_related(
-            "items__nomenclature",
-            "items__responsible"
         )
 
     def perform_create(self, serializer):

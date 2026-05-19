@@ -77,8 +77,6 @@ class PlacementOrder(models.Model):
         auto_now_add=True,
         verbose_name='Дата создания'
     )
-    objects = models.Manager()
-    active = ActiveManager()
 
     class Meta:
         verbose_name = "Заказ на размещение"
