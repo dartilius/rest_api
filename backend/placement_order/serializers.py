@@ -38,7 +38,8 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
         source="nomenclatures"
     )
     items = PlacementOrderItemSerializer(many=True, read_only=True)
-
+    start_date = serializers.DateTimeField(required=False, allow_null=True)
+    end_date = serializers.DateTimeField(required=False, allow_null=True)
     class Meta:
         model = PlacementOrder
         fields = [
