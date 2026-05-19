@@ -45,10 +45,14 @@ class PlacementOrder(models.Model):
     )
 
     start_date = models.DateField(
-        verbose_name='Дата начала'
+        verbose_name='Дата начала',
+        blank=True,
+        null=True
     )
     end_date = models.DateField(
-        verbose_name='Дата окончания'
+        verbose_name='Дата окончания',
+        blank=True,
+        null=True
     )
     duration = PositiveIntegerField(
         verbose_name="Кол-во дней"
