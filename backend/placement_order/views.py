@@ -21,9 +21,11 @@ class PlacementOrderViewSet(mixins.CreateModelMixin,
         )
 
     def perform_create(self, serializer):
+        print("validated_data:", serializer.validated_data)
         nomenclatures = serializer.validated_data.pop("nomenclatures")
-
         order = serializer.save(owner=self.request.user)
+        print("order.start_date:", order.start_date)
+        print("order.end_date:", order.end_date)
 
         PlacementOrderItem.objects.bulk_create([
             PlacementOrderItem(
