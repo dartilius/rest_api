@@ -66,14 +66,16 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
             errors["days_of_week"] = "Нельзя указывать дни недели при all_days = true."
 
         # start_date минимум +2 дня от сегодня
-        now = timezone.now()
-        min_start = now + timedelta(days=2)
+        today = timezone.localdate()
+        min_start = today + timedelta(days=2)
 
-        if start_date and start_date < min_start:
+        start_date_only = start_date.date() if hasattr(start_date, 'date') else start_date
+        end_date_only = end_date.date() if hasattr(end_date, 'date') else end_date
+
+        if start_date and start_date_only < min_start:
             errors["start_date"] = "Дата начала должна быть минимум через 2 дня от текущей даты."
 
-        # end_date минимум на 1 день позже start_date
-        if start_date and end_date and end_date <= start_date:
+        if start_date and end_date and end_date_only <= start_date_only:
             errors["end_date"] = "Дата окончания должна быть минимум на 1 день позже даты начала."
 
         if errors:
