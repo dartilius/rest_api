@@ -16,7 +16,11 @@ from nomenclatures.models import (
     TypeOfPlace,
     NomenclatureTenant, DiscountRule
 )
-
+class DiscountRuleInline(admin.TabularInline):
+    model = DiscountRule
+    extra = 1
+    fields = ("days_from", "days_to", "coefficient")
+    ordering = ("days_from",)
 
 @admin.register(Nomenclature)
 class NomenclatureAdmin(admin.ModelAdmin):
@@ -370,12 +374,6 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
         if not obj.address:
             return "-"
         return str(obj.address)[:50]
-
-class DiscountRuleInline(admin.TabularInline):
-    model = DiscountRule
-    extra = 1
-    fields = ("days_from", "days_to", "coefficient")
-    ordering = ("days_from",)
 
 
 @admin.register(DiscountRule)
