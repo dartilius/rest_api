@@ -147,6 +147,73 @@ class NomenclatureTenant(models.Model):
             models.Index(fields=['brand', 'tenant']),
         ]
 
+class DiscountRule(models.Model):
+    """
+    Правило скидки по длительности размещения для конкретной номенклатуры.
+
+    Пример:
+        nomenclature=..., days_from=30, days_to=59, coefficient=0.90
+        nomenclature=..., days_from=60, days_to=None, coefficient=0.85
+    """
+
+    nomenclature = models.ForeignKey(
+        "Nomenclature",
+        on_delete=models.CASCADE,
+        related_name="discount_rules",
+        verbose_name="Номенклатура"
+    )
+
+    days_from = models.PositiveIntegerField(
+        verbose_name="Дней (от)",
+        help_text="Включительно"
+    )
+
+    days_to = models.PositiveIntegerField(
+        verbose_name="Дней (до)",
+        null=True,
+        blank=True,
+        help_text="Включительно. Пусто = без верхней границы"
+    )
+
+    coefficient = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        verbose_name="Коэффициент скидки",
+        help_text="Множитель цены: 1.000 = без скидки, 0.900 = скидка 10%"
+    )
+
+    class Meta:
+        db_table = "discount_rule"
+        ordering = ("nomenclature", "days_from")
+        verbose_name = "Правило скидки"
+        verbose_name_plural = "Правила скидок"
+        indexes = [
+            models.Index(fields=["nomenclature", "days_from"]),
+        ]
+
+    def __str__(self):
+        if self.days_to is not None:
+            return f"{self.nomenclature} | {self.days_from}–{self.days_to} дн. → ×{self.coefficient}"
+        return f"{self.nomenclature} | {self.days_from}+ дн. → ×{self.coefficient}"
+
+    @classmethod
+    def get_coefficient(cls, nomenclature_id, duration_days: int):
+        """
+        Возвращает коэффициент скидки для конкретной номенклатуры и кол-ва дней.
+        Если подходящего правила нет — возвращает 1 (без скидки).
+        """
+        rule = (
+            cls.objects
+            .filter(nomenclature_id=nomenclature_id)
+            .filter(days_from__lte=duration_days)
+            .filter(
+                models.Q(days_to__gte=duration_days) |
+                models.Q(days_to__isnull=True)
+            )
+            .order_by("-days_from")
+            .first()
+        )
+        return rule.coefficient if rule else 1
 
 class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
