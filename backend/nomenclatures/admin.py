@@ -14,7 +14,7 @@ from nomenclatures.models import (
     NomenclatureImage,
     NomenclatureAddress,
     TypeOfPlace,
-    NomenclatureTenant
+    NomenclatureTenant, DiscountRule
 )
 
 
@@ -37,7 +37,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "id_rasb",
         "for_web"
     )
-
+    inlines = [DiscountRuleInline]
     list_display_links = ("name",)
     search_fields = ("name", "code1c", "article", "id_rasb")
     list_filter = ("is_active", "timezone", "brand", "contentType")
@@ -371,6 +371,41 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
             return "-"
         return str(obj.address)[:50]
 
+class DiscountRuleInline(admin.TabularInline):
+    model = DiscountRule
+    extra = 1
+    fields = ("days_from", "days_to", "coefficient")
+    ordering = ("days_from",)
+
+
+@admin.register(DiscountRule)
+class DiscountRuleAdmin(admin.ModelAdmin):
+    list_display = ("nomenclature_name", "days_from", "days_to", "coefficient", "discount_percent")
+    list_filter = ("nomenclature",)
+    search_fields = ("nomenclature__name", "nomenclature__code1c")
+    list_per_page = 50
+    raw_id_fields = ("nomenclature",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("nomenclature").only(
+            "id", "days_from", "days_to", "coefficient",
+            "nomenclature__name", "nomenclature__id"
+        )
+
+    @admin.display(description="Номенклатура", ordering="nomenclature__name")
+    def nomenclature_name(self, obj):
+        return obj.nomenclature.name if obj.nomenclature else "-"
+
+    @admin.display(description="Скидка")
+    def discount_percent(self, obj):
+        percent = (1 - obj.coefficient) * 100
+        if percent <= 0:
+            return "—"
+        color = "green" if percent >= 15 else "orange"
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}%</span>',
+            color, f"{percent:.1f}"
+        )
 
 # ========== ИНВАЛИДАЦИЯ КЭША ==========
 @receiver(post_save, sender=Nomenclature)

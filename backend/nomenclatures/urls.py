@@ -4,6 +4,7 @@ from nomenclatures.views import (
     NomenclatureViewSet, NomenclatureOrderViewSet, NomenclatureStatisticViewSet,
     NomenclatureTaskViewSet, NomenclaturePhotoViewSet, TypeOfPlaceViewSet, NomenclatureTenantViewSet
 )
+from nomenclatures.views.discount import DiscountRuleViewSet  # добавить
 
 router = routers.DefaultRouter()
 router.register('nomenclatures', NomenclatureViewSet, basename='nomenclature')
@@ -15,6 +16,7 @@ router.register('place', TypeOfPlaceViewSet, basename='place')
 
 nomenclature_router = routers.NestedDefaultRouter(router, 'nomenclatures', lookup='nomenclature')
 nomenclature_router.register('tenant', NomenclatureTenantViewSet, basename='nomenclature-tenant')
+nomenclature_router.register('discounts', DiscountRuleViewSet, basename='nomenclature-discounts')  # добавить
 
 urlpatterns = [
     path('', include(router.urls)),

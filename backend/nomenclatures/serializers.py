@@ -16,7 +16,7 @@ from nomenclatures.models import (
     NomenclatureAddress,
     AVAILABLE_CONTENT_TYPES,
     TypeOfPlace,
-    NomenclatureTenant,
+    NomenclatureTenant, DiscountRule,
 )
 from addresses.models import Address as AddressBook
 from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
@@ -40,6 +40,11 @@ ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
 #             'additional_name',
 #             'keyword',
 #         )
+
+class DiscountRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiscountRule
+        fields = ["id", "days_from", "days_to", "coefficient"]
 
 
 class PhotoSerializer(serializers.ModelSerializer):
