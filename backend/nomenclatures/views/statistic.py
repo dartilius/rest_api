@@ -302,6 +302,29 @@ class NomenclatureHistoryViewSet(viewsets.GenericViewSet):
         # Возвращаем ответ с кодом 200 OK
         return Response(serializer.data, status=HTTP_200_OK)
 
+# ──────────────────────────────────────────────────────────────────────
+# КЛАСС-АГРЕГАТОР ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ
+# ──────────────────────────────────────────────────────────────────────
+
+class NomenclatureStatisticViewSet(
+    ADStatisticViewSet,
+    MusicStatisticViewSet,
+    VideoStatisticViewSet,
+    ImageStatisticViewSet,
+    TickerStatisticViewSet,
+    NomenclatureHistoryViewSet
+):
+    """
+    Агрегатор для обратной совместимости со старым кодом.
+    
+    Объединяет все ViewSet статистики в один класс,
+    чтобы старый импорт NomenclatureStatisticViewSet продолжал работать.
+    
+    Все методы (get_ad_stat, get_music_stat, status_history и т.д.)
+    доступны через этот класс.
+    """
+    pass
+
 
 # from rest_framework import viewsets
 # from rest_framework.decorators import action
