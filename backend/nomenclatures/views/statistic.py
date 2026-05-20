@@ -1,15 +1,25 @@
 """
-Модуль представлений (views) для приложения ch_statistic.
+Модуль представлений (views) для статистики номенклатур.
 
-Содержит ViewSet для работы со статистикой с использованием 
-абстрактного базового класса для устранения дублирования кода.
+Этот модуль предоставляет API эндпоинты для получения статистики
+различных типов контента (реклама, музыка, видео, изображения, бегущие строки)
+а также истории статусов номенклатур.
+
+Все эндпоинты используют единую логику:
+- Проверка существования номенклатуры (404 если не найдена)
+- Фильтрация по дате через параметр 'date'
+- Сортировка от старых к новым
+- Отсутствие пагинации (возвращаются все записи)
+
+Author: Development Team
+Date: 2026-05-20
 """
 
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
 
 from api.constants import get_instance_or_404
 from ch_statistic.models import (
@@ -31,210 +41,368 @@ from nomenclatures.serializers import StatusHistorySerializer
 from users.permissions import StaffCUDallRead
 
 
-# ──────────────────────────────────────────────────────────────────────
-# АБСТРАКТНЫЙ БАЗОВЫЙ КЛАСС (общая логика для статистики контента)
-# ──────────────────────────────────────────────────────────────────────
+# ============================================================================
+# ЕДИНЫЙ VIEWSET ДЛЯ ВСЕЙ СТАТИСТИКИ
+# ============================================================================
 
-class BaseStatisticViewSet(viewsets.GenericViewSet):
+class NomenclatureStatisticViewSet(viewsets.GenericViewSet):
     """
-    Абстрактный базовый ViewSet для статистики контента.
-    
-    Содержит общую логику для всех типов статистики:
-    - Проверка существования номенклатуры
-    - Фильтрация по дате
-    - Сортировка
-    - Метод get_statistics (который переопределяют наследники)
-    
-    Наследники должны определить:
-        - model: класс модели (ADStat, MusicStat, etc.)
-        - serializer_class: класс сериализатора
+    ViewSet для получения статистики по номенклатуре.
+
+    Этот ViewSet объединяет все методы статистики в одном классе.
+    Такой подход выбран для сохранения обратной совместимости с API:
+    - /api/statistics/{uuid}/ad_stat/         - статистика рекламы
+    - /api/statistics/{uuid}/music_stat/      - статистика музыки
+    - /api/statistics/{uuid}/video_stat/      - статистика видео
+    - /api/statistics/{uuid}/image_stat/      - статистика изображений
+    - /api/statistics/{uuid}/ticker_stat/     - статистика бегущих строк
+    - /api/statistics/{uuid}/status_history/  - история статусов
+
+    Особенности:
+        - Все методы используют GET запросы
+        - Поддерживается фильтрация по дате через параметр 'date'
+        - Нет пагинации (возвращаются ВСЕ записи)
+        - Сортировка по полю 'played' (от старых к новым)
+        - Требуется авторизация (StaffCUDallRead)
+
+    Параметры фильтрации по дате (для всех методов статистики):
+        date (str, optional) - фильтр по дате в формате:
+            - YYYY-MM-DD (конкретный день)
+            - YYYY-MM (весь месяц)
+            - YYYY (весь год)
+            - Пример: ?date=2026-05-20
     """
-    
-    # Абстрактные атрибуты (должны быть переопределены в наследниках)
-    model = None           # Модель статистики
-    serializer_class = None  # Сериализатор для этой модели
-    
+
+    # Права доступа: персонал может читать, создавать, обновлять, удалять
+    # Обычные пользователи - только чтение
     permission_classes = [StaffCUDallRead]
-    
-    def _get_filtered_stats(self, request, pk):
+
+    # =========================================================================
+    # ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    # =========================================================================
+
+    def _get_filtered_stats(self, model, request, pk):
         """
-        Универсальный метод для получения отфильтрованной по дате статистики.
-        
+        Универсальный метод для получения отфильтрованной статистики.
+
+        Этот метод инкапсулирует общую логику для всех типов статистики:
+        1. Проверка существования номенклатуры (иначе 404)
+        2. Фильтрация по client = pk
+        3. Фильтрация по дате (если передан параметр 'date')
+        4. Сортировка от старых к новым
+
         Args:
-            request: HTTP запрос (для получения параметра date)
-            pk: UUID номенклатуры
-            
+            model (class): Модель статистики (ADStat, MusicStat, VideoStat и т.д.)
+            request (Request): HTTP запрос для получения параметра 'date'
+            pk (str): UUID номенклатуры (client)
+
         Returns:
             QuerySet: Отфильтрованный и отсортированный QuerySet
+
+        Example:
+            stats = self._get_filtered_stats(MusicStat, request, '123e4567...')
         """
-        # Проверяем существование номенклатуры
+        # Шаг 1: Проверяем существование номенклатуры
+        # Если номенклатура не найдена, функция выбрасывает HTTP 404
         get_instance_or_404(Nomenclature, pk)
-        
-        # Получаем параметр date из запроса
+
+        # Шаг 2: Получаем параметр 'date' из query string
+        # request.query_params - это аналог request.GET в DRF
         date = request.query_params.get("date")
-        
-        # Базовый запрос - все записи для этого клиента
-        statistics = self.model.objects.filter(client=pk)
-        
-        # Фильтрация по дате (если указана)
+
+        # Шаг 3: Базовый запрос - все записи для данного клиента
+        statistics = model.objects.filter(client=pk)
+
+        # Шаг 4: Фильтрация по дате (если указана)
+        # Используем __contains (LIKE) для поиска подстроки
+        # Это позволяет фильтровать по:
+        # - YYYY-MM-DD (конкретный день)
+        # - YYYY-MM (весь месяц)
+        # - YYYY (весь год)
         if date:
             statistics = statistics.filter(played__contains=date)
-        
-        # Сортировка от старых к новым
+
+        # Шаг 5: Сортировка от старых к новым по времени проигрывания
         statistics = statistics.order_by("played")
-        
+
         return statistics
-    
-    def get_statistics(self, request, pk=None):
-        """
-        Основной метод для получения статистики.
-        Может быть переопределен в наследниках для кастомной логики.
-        """
-        statistics = self._get_filtered_stats(request, pk)
-        serializer = self.serializer_class(statistics, many=True)
-        return Response(serializer.data, status=HTTP_200_OK)
 
+    # =========================================================================
+    # СТАТИСТИКА РЕКЛАМЫ
+    # =========================================================================
 
-# ──────────────────────────────────────────────────────────────────────
-# КОНКРЕТНЫЕ VIEWSET ДЛЯ КАЖДОГО ТИПА СТАТИСТИКИ КОНТЕНТА
-# ──────────────────────────────────────────────────────────────────────
-
-class ADStatisticViewSet(BaseStatisticViewSet):
-    """ViewSet для статистики рекламы."""
-    
-    model = ADStat
-    serializer_class = NomenclatureAdStatSerializer
-    
     @extend_schema(
         summary="Получить статистику рекламы по номенклатуре",
         description="""
-        Возвращает полный список показов рекламных роликов.
-        Поддерживает фильтрацию по дате через параметр 'date'.
-        
-        Параметры:
-            date (str, optional) - фильтр по дате (YYYY-MM-DD, YYYY-MM, YYYY)
+        Возвращает полный список показов рекламных роликов на указанной номенклатуре.
+
+        Особенности:
+            - БЕЗ пагинации (возвращаются все записи)
+            - Поддерживается фильтрация по дате через параметр 'date'
+            - Сортировка по времени проигрывания (от старых к новым)
+
+        Параметры запроса:
+            date (str, optional) - фильтр по дате в формате:
+                - YYYY-MM-DD (конкретный день)
+                - YYYY-MM (весь месяц)
+                - YYYY (весь год)
+
+        Примеры:
+            GET /api/statistics/123e4567/ad_stat/
+            GET /api/statistics/123e4567/ad_stat/?date=2026-05-20
+            GET /api/statistics/123e4567/ad_stat/?date=2026-05
+
+        Ответ:
+            Массив объектов с полями:
+            - client: UUID номенклатуры
+            - file: идентификатор файла
+            - played: дата/время проигрывания (формат: YYYY-MM-DD HH:MM:SS)
+            - length: хронометраж (секунды)
+            - ad_block: время начала рекламного блока (HH:MM:SS)
         """,
-        responses={HTTP_200_OK: NomenclatureAdStatSerializer(many=True)}
+        responses={
+            HTTP_200_OK: NomenclatureAdStatSerializer(many=True),
+        },
+        tags=["Номенклатуры - Статистика"]
     )
     @action(detail=True, methods=["GET"], url_path="ad_stat")
     def get_ad_stat(self, request, pk=None):
-        """Получение статистики рекламы."""
-        return self.get_statistics(request, pk)
+        """
+        Получение статистики рекламы.
 
+        Args:
+            request (Request): HTTP GET запрос
+            pk (str): UUID номенклатуры
 
-class MusicStatisticViewSet(BaseStatisticViewSet):
-    """ViewSet для статистики музыки."""
-    
-    model = MusicStat
-    serializer_class = NomenclatureMusicStatSerializer
-    
+        Returns:
+            Response: JSON со списком записей статистики рекламы
+        """
+        statistics = self._get_filtered_stats(ADStat, request, pk)
+        serializer = NomenclatureAdStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    # =========================================================================
+    # СТАТИСТИКА МУЗЫКИ
+    # =========================================================================
+
     @extend_schema(
         summary="Получить статистику музыки по номенклатуре",
         description="""
-        Возвращает полный список проигрываний музыки.
-        Поддерживает фильтрацию по дате через параметр 'date'.
-        
-        Параметры:
-            date (str, optional) - фильтр по дате (YYYY-MM-DD, YYYY-MM, YYYY)
+        Возвращает полный список проигрываний музыки на указанной номенклатуре.
+
+        Особенности:
+            - БЕЗ пагинации (возвращаются все записи)
+            - Поддерживается фильтрация по дате через параметр 'date'
+            - Сортировка по времени проигрывания (от старых к новым)
+
+        Параметры запроса:
+            date (str, optional) - фильтр по дате в формате:
+                - YYYY-MM-DD (конкретный день)
+                - YYYY-MM (весь месяц)
+                - YYYY (весь год)
+
+        Примеры:
+            GET /api/statistics/123e4567/music_stat/
+            GET /api/statistics/123e4567/music_stat/?date=2026-05-20
+            GET /api/statistics/123e4567/music_stat/?date=2026-05
+
+        Ответ:
+            Массив объектов с полями:
+            - client: UUID номенклатуры
+            - file: идентификатор файла
+            - played: дата/время проигрывания (формат: YYYY-MM-DD HH:MM:SS)
+            - length: хронометраж (секунды)
+
+        Примечание:
+            В отличие от рекламы, у музыки НЕТ поля ad_block.
         """,
-        responses={HTTP_200_OK: NomenclatureMusicStatSerializer(many=True)}
+        responses={
+            HTTP_200_OK: NomenclatureMusicStatSerializer(many=True),
+        },
+        tags=["Номенклатуры - Статистика"]
     )
     @action(detail=True, methods=["GET"], url_path="music_stat")
     def get_music_stat(self, request, pk=None):
-        """Получение статистики музыки."""
-        return self.get_statistics(request, pk)
+        """
+        Получение статистики музыки.
 
+        Args:
+            request (Request): HTTP GET запрос
+            pk (str): UUID номенклатуры
 
-class VideoStatisticViewSet(BaseStatisticViewSet):
-    """ViewSet для статистики видео."""
-    
-    model = VideoStat
-    serializer_class = NomenclatureVideoStatSerializer
-    
+        Returns:
+            Response: JSON со списком записей статистики музыки
+        """
+        statistics = self._get_filtered_stats(MusicStat, request, pk)
+        serializer = NomenclatureMusicStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    # =========================================================================
+    # СТАТИСТИКА ВИДЕО
+    # =========================================================================
+
     @extend_schema(
         summary="Получить статистику фоновых видео по номенклатуре",
         description="""
-        Возвращает полный список воспроизведений видео.
-        Поддерживает фильтрацию по дате через параметр 'date'.
-        
-        Параметры:
-            date (str, optional) - фильтр по дате (YYYY-MM-DD, YYYY-MM, YYYY)
+        Возвращает полный список воспроизведений видео на указанной номенклатуре.
+
+        Особенности:
+            - БЕЗ пагинации (возвращаются все записи)
+            - Поддерживается фильтрация по дате через параметр 'date'
+            - Сортировка по времени проигрывания (от старых к новым)
+
+        Параметры запроса:
+            date (str, optional) - фильтр по дате в формате:
+                - YYYY-MM-DD (конкретный день)
+                - YYYY-MM (весь месяц)
+                - YYYY (весь год)
+
+        Примеры:
+            GET /api/statistics/123e4567/video_stat/
+            GET /api/statistics/123e4567/video_stat/?date=2026-05-20
+            GET /api/statistics/123e4567/video_stat/?date=2026-05
+
+        Ответ:
+            Массив объектов с полями:
+            - client: UUID номенклатуры
+            - file: идентификатор файла
+            - played: дата/время проигрывания (формат: YYYY-MM-DD HH:MM:SS)
+            - length: хронометраж (секунды)
         """,
-        responses={HTTP_200_OK: NomenclatureVideoStatSerializer(many=True)}
+        responses={
+            HTTP_200_OK: NomenclatureVideoStatSerializer(many=True),
+        },
+        tags=["Номенклатуры - Статистика"]
     )
     @action(detail=True, methods=["GET"], url_path="video_stat")
     def get_video_stat(self, request, pk=None):
-        """Получение статистики видео."""
-        return self.get_statistics(request, pk)
+        """
+        Получение статистики видео.
 
+        Args:
+            request (Request): HTTP GET запрос
+            pk (str): UUID номенклатуры
 
-class ImageStatisticViewSet(BaseStatisticViewSet):
-    """ViewSet для статистики изображений."""
-    
-    model = ImageStat
-    serializer_class = NomenclatureImageStatSerializer
-    
+        Returns:
+            Response: JSON со списком записей статистики видео
+        """
+        statistics = self._get_filtered_stats(VideoStat, request, pk)
+        serializer = NomenclatureVideoStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    # =========================================================================
+    # СТАТИСТИКА ИЗОБРАЖЕНИЙ
+    # =========================================================================
+
     @extend_schema(
         summary="Получить статистику фоновых изображений по номенклатуре",
         description="""
-        Возвращает полный список отображений изображений.
-        Поддерживает фильтрацию по дате через параметр 'date'.
-        
-        Параметры:
-            date (str, optional) - фильтр по дате (YYYY-MM-DD, YYYY-MM, YYYY)
+        Возвращает полный список отображений изображений на указанной номенклатуре.
+
+        Особенности:
+            - БЕЗ пагинации (возвращаются все записи)
+            - Поддерживается фильтрация по дате через параметр 'date'
+            - Сортировка по времени отображения (от старых к новым)
+
+        Параметры запроса:
+            date (str, optional) - фильтр по дате в формате:
+                - YYYY-MM-DD (конкретный день)
+                - YYYY-MM (весь месяц)
+                - YYYY (весь год)
+
+        Примеры:
+            GET /api/statistics/123e4567/image_stat/
+            GET /api/statistics/123e4567/image_stat/?date=2026-05-20
+            GET /api/statistics/123e4567/image_stat/?date=2026-05
+
+        Ответ:
+            Массив объектов с полями:
+            - client: UUID номенклатуры
+            - file: идентификатор файла
+            - played: дата/время отображения (формат: YYYY-MM-DD HH:MM:SS)
+            - length: длительность показа (секунды)
         """,
-        responses={HTTP_200_OK: NomenclatureImageStatSerializer(many=True)}
+        responses={
+            HTTP_200_OK: NomenclatureImageStatSerializer(many=True),
+        },
+        tags=["Номенклатуры - Статистика"]
     )
     @action(detail=True, methods=["GET"], url_path="image_stat")
     def get_image_stat(self, request, pk=None):
-        """Получение статистики изображений."""
-        return self.get_statistics(request, pk)
+        """
+        Получение статистики изображений.
 
+        Args:
+            request (Request): HTTP GET запрос
+            pk (str): UUID номенклатуры
 
-class TickerStatisticViewSet(BaseStatisticViewSet):
-    """ViewSet для статистики бегущих строк."""
-    
-    model = TickerStat
-    serializer_class = NomenclatureTickerStatSerializer
-    
+        Returns:
+            Response: JSON со списком записей статистики изображений
+        """
+        statistics = self._get_filtered_stats(ImageStat, request, pk)
+        serializer = NomenclatureImageStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    # =========================================================================
+    # СТАТИСТИКА БЕГУЩИХ СТРОК
+    # =========================================================================
+
     @extend_schema(
         summary="Получить статистику бегущих строк по номенклатуре",
         description="""
-        Возвращает полный список отображений бегущих строк.
-        Поддерживает фильтрацию по дате через параметр 'date'.
-        
+        Возвращает полный список отображений бегущих строк на указанной номенклатуре.
+
         Бегущие строки - это динамический текстовый контент, который 
         прокручивается по экрану (новости, объявления, акции).
-        
-        Параметры:
-            date (str, optional) - фильтр по дате (YYYY-MM-DD, YYYY-MM, YYYY)
+
+        Особенности:
+            - БЕЗ пагинации (возвращаются все записи)
+            - Поддерживается фильтрация по дате через параметр 'date'
+            - Сортировка по времени отображения (от старых к новым)
+
+        Параметры запроса:
+            date (str, optional) - фильтр по дате в формате:
+                - YYYY-MM-DD (конкретный день)
+                - YYYY-MM (весь месяц)
+                - YYYY (весь год)
+
+        Примеры:
+            GET /api/statistics/123e4567/ticker_stat/
+            GET /api/statistics/123e4567/ticker_stat/?date=2026-05-20
+            GET /api/statistics/123e4567/ticker_stat/?date=2026-05
+
+        Ответ:
+            Массив объектов с полями:
+            - client: UUID номенклатуры
+            - file: идентификатор файла
+            - played: дата/время отображения (формат: YYYY-MM-DD HH:MM:SS)
+            - length: длительность показа (секунды)
         """,
-        responses={HTTP_200_OK: NomenclatureTickerStatSerializer(many=True)}
+        responses={
+            HTTP_200_OK: NomenclatureTickerStatSerializer(many=True),
+        },
+        tags=["Номенклатуры - Статистика"]
     )
     @action(detail=True, methods=["GET"], url_path="ticker_stat")
     def get_ticker_stat(self, request, pk=None):
-        """Получение статистики бегущих строк."""
-        return self.get_statistics(request, pk)
+        """
+        Получение статистики бегущих строк.
 
+        Args:
+            request (Request): HTTP GET запрос
+            pk (str): UUID номенклатуры
 
-# ──────────────────────────────────────────────────────────────────────
-# ОТДЕЛЬНЫЙ VIEWSET ДЛЯ ИСТОРИИ СТАТУСОВ (другая логика)
-# ──────────────────────────────────────────────────────────────────────
+        Returns:
+            Response: JSON со списком записей статистики бегущих строк
+        """
+        statistics = self._get_filtered_stats(TickerStat, request, pk)
+        serializer = NomenclatureTickerStatSerializer(statistics, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
 
-@extend_schema(tags=["Номенклатуры - История статусов"])
-class NomenclatureHistoryViewSet(viewsets.GenericViewSet):
-    """
-    ViewSet для получения истории изменений статуса номенклатуры.
-    
-    Этот ViewSet выделен отдельно, так как:
-    1. Работает с другой моделью (StatusHistory, а не статистикой контента)
-    2. Не использует фильтрацию по дате
-    3. Не требует абстракции (только один метод)
-    4. Данные хранятся в связанной модели через поле history
-    """
-    
-    permission_classes = [StaffCUDallRead]
-    
+    # =========================================================================
+    # ИСТОРИЯ СТАТУСОВ
+    # =========================================================================
+
     @extend_schema(
         summary="Получить историю доступности номенклатуры",
         description="""
@@ -261,69 +429,50 @@ class NomenclatureHistoryViewSet(viewsets.GenericViewSet):
         - Фильтрация по дате НЕ поддерживается (возвращается вся история)
         - Для долгоживущих систем история может быть очень большой
         - Рекомендуется добавить пагинацию или фильтрацию при необходимости
+
+        Пример:
+            GET /api/statistics/123e4567/status_history/
+
+        Ответ:
+            Массив объектов с полями:
+            - change_time: дата и время изменения статуса
+            - status: новый статус (online, offline, error, updating)
         """,
-        request=None,
         responses={
             HTTP_200_OK: StatusHistorySerializer(many=True),
-            HTTP_404_NOT_FOUND: {"description": "Номенклатура не найдена"},
-        }
+        },
+        tags=["Номенклатуры - Статистика"]
     )
     @action(detail=True, methods=["GET"], url_path="status_history")
     def status_history(self, request, pk=None):
         """
         Получение истории статусов номенклатуры.
-        
-        Использует связанную модель history (django-simple-history или аналог).
-        История автоматически заполняется при каждом изменении номенклатуры.
-        
+
+        Этот метод отличается от других, так как:
+        1. Работает с моделью StatusHistory, а не со статистикой контента
+        2. Данные получаются через связанное поле .history
+        3. Не поддерживает фильтрацию по дате
+
         Args:
-            request: HTTP GET запрос
-            pk: UUID номенклатуры
-            
+            request (Request): HTTP GET запрос
+            pk (str): UUID номенклатуры
+
         Returns:
-            Response: JSON со списком исторических событий, каждое содержит:
-                - id: уникальный идентификатор события
-                - status: статус (online, offline, error, updating)
-                - changed_at: дата и время изменения
-                - reason: причина изменения (если есть)
-                - duration: длительность состояния (если применимо)
+            Response: JSON со списком исторических событий
         """
         # Получаем объект номенклатуры (404 если не найдена)
         nomenclature = get_instance_or_404(Nomenclature, pk)
-        
+
         # Получаем всю историю изменений (обратная связь OneToMany)
-        # .all() возвращает все записи, связанные с этой номенклатурой
+        # django-simple-history автоматически создает поле .history
         history = nomenclature.history.all()
-        
+
         # Сериализуем историю в JSON
         # many=True - т.к. это список объектов
         serializer = StatusHistorySerializer(history, many=True)
-        
+
         # Возвращаем ответ с кодом 200 OK
         return Response(serializer.data, status=HTTP_200_OK)
-
-# ──────────────────────────────────────────────────────────────────────
-# КЛАСС-АГРЕГАТОР ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ
-# ──────────────────────────────────────────────────────────────────────
-
-class NomenclatureStatisticViewSet(
-    ADStatisticViewSet,
-    MusicStatisticViewSet,
-    VideoStatisticViewSet,
-    ImageStatisticViewSet,
-    TickerStatisticViewSet,
-    NomenclatureHistoryViewSet
-):
-    """
-    Агрегатор для обратной совместимости со старым кодом.
-    
-    Объединяет все ViewSet статистики в один класс,
-    чтобы старый импорт NomenclatureStatisticViewSet продолжал работать.
-    
-    Все методы (get_ad_stat, get_music_stat, status_history и т.д.)
-    доступны через этот класс.
-    """
-    pass
 
 
 # from rest_framework import viewsets
