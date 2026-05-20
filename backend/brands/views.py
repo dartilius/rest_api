@@ -16,6 +16,7 @@ from api.constants import (
     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
 )
 from api.pagination import CustomLimitOffsetPagination
+from brands.documents import BrandDocument
 from brands.filters import BrandFilter
 from brands.models import Brand
 from brands.serializers import BrandCreateSerializer, BrandShortSerializer, BrandDetailSerializer, BrandListSerializer
@@ -23,6 +24,7 @@ from nomenclatures.models import Nomenclature
 from nomenclatures.serializers import NomenclatureShortSerializer
 from services.api_1c_client import api_1c, logger
 
+OPENSEARCH_MAX_RESULTS = 1000
 
 @extend_schema_view(
     list=extend_schema(
@@ -182,15 +184,71 @@ class BrandViewSet(viewsets.ModelViewSet):
         elif self.action == "retrieve":
             return BrandDetailSerializer
         elif self.action in ("partial_update", "update"):
-            return BrandCreateSerializer  # или отдельный patch-сериализатор
+            return BrandCreateSerializer
         return BrandListSerializer
+
+    # ------------------------------------------------------------------ #
+    #  LIST с OpenSearch                                                   #
+    # ------------------------------------------------------------------ #
+    def list(self, request, *args, **kwargs):
+        search_query = request.query_params.get("search", "").strip()
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        if search_query:
+            matched_ids = self._opensearch_brand_ids(search_query)
+            queryset = queryset.filter(id__in=matched_ids)
+
+        paginator = CustomLimitOffsetPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = BrandListSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    def _opensearch_brand_ids(self, query: str) -> list:
+        """
+        Ищет бренды в OpenSearch по name, description (fulltext + edge ngram),
+        code1c и slug (точное совпадение prefix).
+        Возвращает список UUID строк.
+        """
+        try:
+            search = BrandDocument.search().filter("term", is_deleted=False)
+
+            search = search.query(
+                Q(
+                    "multi_match",
+                    query=query,
+                    fields=[
+                        "name^3",
+                        "name.autocomplete^2",
+                        "description",
+                        "description.autocomplete",
+                    ],
+                    fuzziness="AUTO",
+                    type="best_fields",
+                )
+                | Q("prefix", code1c={"value": query.lower()})
+                | Q("prefix", slug={"value": query.lower()})
+            )
+
+            search = search.extra(size=OPENSEARCH_MAX_RESULTS)
+            response = search.execute()
+            return [hit.meta.id for hit in response]
+        except Exception as e:
+            logger.warning("OpenSearch недоступен, fallback на БД: %s", e)
+            return list(
+                Brand.objects.filter(name__icontains=query).values_list("id", flat=True)
+            )
+
+    # ------------------------------------------------------------------ #
+    #  Остальные методы — без изменений                                    #
+    # ------------------------------------------------------------------ #
 
     def create(self, request, *args, **kwargs):
         name = request.data.get("name")
         if Brand.all_objects.filter(name=name, is_deleted=False).exists():
             return Response(
                 {"detail": f"Бренд с названием '{name}' уже существует"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -199,7 +257,7 @@ class BrandViewSet(viewsets.ModelViewSet):
         try:
             response = api_1c.post("/CreateBrand", {
                 "brandName": brand.name,
-                "brandDescription": brand.description or '',
+                "brandDescription": brand.description or "",
             })
             response.raise_for_status()
             code1c = response.json().get("brandCode")
@@ -212,14 +270,9 @@ class BrandViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.warning("Не удалось создать бренд в 1С: %s", e)
 
-        short = BrandShortSerializer(brand)
-        return Response(short.data, status=status.HTTP_201_CREATED)
-    # def partial_update(self, request, *args, **kwargs):
-
+        return Response(BrandShortSerializer(brand).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
-        """Мягкое удаление бренда."""
-
         brand = self.get_object()
         brand.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -229,7 +282,6 @@ class BrandViewSet(viewsets.ModelViewSet):
         if not identifier:
             raise NotFound("Не указан идентификатор бренда.")
 
-        # пробуем UUID
         try:
             uuid_obj = UUID(str(identifier))
             brand = Brand.all_objects.get(id=uuid_obj)
@@ -239,7 +291,6 @@ class BrandViewSet(viewsets.ModelViewSet):
         except (ValueError, Brand.DoesNotExist):
             pass
 
-        # пробуем code1c
         try:
             brand = Brand.all_objects.get(code1c=identifier)
             if brand.is_deleted:
@@ -248,7 +299,6 @@ class BrandViewSet(viewsets.ModelViewSet):
         except Brand.DoesNotExist:
             pass
 
-        # пробуем slug
         try:
             brand = Brand.all_objects.get(slug=identifier)
             if brand.is_deleted:
@@ -258,20 +308,12 @@ class BrandViewSet(viewsets.ModelViewSet):
             raise NotFound("Бренд не найден.")
 
     def _validate_brand_has_active_nomenclatures(self, brand: Brand) -> Brand:
-        has_active = Nomenclature.web.filter(brand=brand).exists()
-        if not has_active:
+        if not Nomenclature.web.filter(brand=brand).exists():
             raise NotFound("Бренд не найден.")
         return brand
 
-    @action(
-        methods=["POST"],
-        detail=True,
-        url_path="unpin_logo",
-    )
+    @action(methods=["POST"], detail=True, url_path="unpin_logo")
     def unpin_logo(self, request, pk=None, *args, **kwargs):
-        """
-        Открепить логотип от бренда. Логотип будет удален из системы, если не прикреплен ни к одному бренду.
-        """
         identifier = self.kwargs.get(self.lookup_field)
         uuid_obj = UUID(str(identifier))
         brand = Brand.all_objects.get(id=uuid_obj)
@@ -280,37 +322,18 @@ class BrandViewSet(viewsets.ModelViewSet):
         brand.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(
-        methods=["GET"],
-        detail=False,
-        url_path="assigned",
-        url_name="assigned",
-    )
+    @action(methods=["GET"], detail=False, url_path="assigned", url_name="assigned")
     def assigned(self, request, *args, **kwargs):
-        """Бренды, у которых есть хотя бы одна номенклатура."""
-        active_nomenclature_ids = Nomenclature.web.values('brand_id').distinct()
-
-        queryset = Brand.objects.filter(
-            id__in=active_nomenclature_ids
-        )
-
+        active_ids = Nomenclature.web.values("brand_id").distinct()
+        queryset = Brand.objects.filter(id__in=active_ids)
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
-        serializer = BrandListSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return paginator.get_paginated_response(BrandListSerializer(page, many=True).data)
 
-    @action(
-        methods=["GET"],
-        detail=True,
-        url_path="nomenclatures",
-        url_name="nomenclatures",
-    )
+    @action(methods=["GET"], detail=True, url_path="nomenclatures", url_name="nomenclatures")
     def nomenclatures(self, request, *args, **kwargs):
-        """Номенклатуры прикреплённые к бренду."""
         brand = self.get_object()
         queryset = Nomenclature.web.filter(brand=brand)
-
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
-        serializer = NomenclatureShortSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return paginator.get_paginated_response(NomenclatureShortSerializer(page, many=True).data)
