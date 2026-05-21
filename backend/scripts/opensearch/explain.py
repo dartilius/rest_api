@@ -1,10 +1,10 @@
 """
 Проверка почему конкретный объект попал в результаты поиска.
-Показывает контекст вхождения запроса в поле search_text.
+Показывает в каких конкретно полях найдено вхождение запроса.
 
 Использование:
-    docker exec -it backend python scripts/opensearch/explain.py <uuid> апт
-    docker exec -it backend python scripts/opensearch/explain.py <uuid> апт --index brands
+    docker exec -it backend python scripts_opensearch/explain.py <uuid> апт
+    docker exec -it backend python scripts_opensearch/explain.py <uuid> апт --index brands
 """
 
 import sys
@@ -38,43 +38,76 @@ except Exception as e:
     sys.exit(1)
 
 source = doc["_source"]
-name = source.get("name", "—")
-print(f"\n📄 Документ: {name[:80]}")
-print(f"   UUID: {args.uuid}")
-print(f"   Индекс: {args.index}\n")
-
-# ищем вхождения в search_text
-text = source.get("search_text", "")
 query_lower = args.query.lower()
-text_lower = text.lower()
+ctx = args.context
 
-print(f"🔍 Поиск '{args.query}' в search_text ({len(text)} символов):\n")
 
-pos = 0
-found = 0
-while True:
-    idx = text_lower.find(query_lower, pos)
-    if idx == -1:
-        break
-    found += 1
-    ctx_start = max(0, idx - args.context)
-    ctx_end = min(len(text), idx + len(args.query) + args.context)
-    context = text[ctx_start:ctx_end].replace("\n", " ")
-    print(f"  [{found}] позиция {idx}: ...{context}...")
-    pos = idx + 1
+def find_in_text(text, label, results):
+    """Ищет вхождения query в тексте, добавляет в results."""
+    if not text:
+        return
+    text_str = str(text)
+    text_lower = text_str.lower()
+    pos = 0
+    while True:
+        idx = text_lower.find(query_lower, pos)
+        if idx == -1:
+            break
+        ctx_start = max(0, idx - ctx)
+        ctx_end = min(len(text_str), idx + len(args.query) + ctx)
+        snippet = text_str[ctx_start:ctx_end].replace("\n", " ").strip()
+        results.append((label, snippet))
+        pos = idx + 1
 
-if found == 0:
-    print(f"  ❌ Вхождений не найдено в search_text.")
-    print(f"     Возможно, объект попал через fuzziness или другое поле.\n")
 
-    # проверяем другие поля
-    check_fields = ["name", "code1c", "id_rasb", "description"]
-    print("  Проверка других полей:")
-    for field in check_fields:
-        val = str(source.get(field, "") or "").lower()
-        if query_lower in val:
-            print(f"    ✅ найдено в поле '{field}': {source.get(field, '')[:80]}")
+def scan_object(obj, prefix, results):
+    """Рекурсивно сканирует объект (dict/list/str) и ищет вхождения."""
+    if isinstance(obj, str):
+        find_in_text(obj, prefix, results)
+    elif isinstance(obj, dict):
+        for key, val in obj.items():
+            scan_object(val, f"{prefix}.{key}", results)
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            scan_object(item, f"{prefix}[{i}]", results)
+
+
+# Поля для проверки (кроме search_text — оно агрегированное)
+SKIP_FIELDS = {"search_text"}
+
+name = source.get("name", "—")
+print(f"\n📄 {name[:80]}")
+print(f"   UUID : {args.uuid}")
+print(f"   Индекс: {args.index}")
+print(f"   Поиск : '{args.query}'\n")
+
+all_results = []
+
+for field, value in source.items():
+    if field in SKIP_FIELDS:
+        continue
+    scan_object(value, field, all_results)
+
+# отдельно проверяем search_text целиком
+search_text = source.get("search_text", "")
+st_results = []
+find_in_text(search_text, "search_text", st_results)
+
+if all_results:
+    print(f"✅ Найдено в полях ({len(all_results)} вхождений):\n")
+    for label, snippet in all_results:
+        print(f"  [{label}]")
+        print(f"    ...{snippet}...")
+        print()
 else:
-    print(f"\n  Итого вхождений: {found}")
+    print("❌ В конкретных полях не найдено.\n")
+
+if st_results:
+    print(f"📦 search_text ({len(st_results)} вхождений):\n")
+    for label, snippet in st_results:
+        print(f"    ...{snippet}...")
+    print()
+elif not all_results:
+    print("   Возможно, объект попал через fuzziness (похожие токены).")
 
 print()
