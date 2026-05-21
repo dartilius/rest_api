@@ -141,6 +141,7 @@ services:
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
+      - ./backend/scripts/backend:/app/scripts
       - ./backend/addresses/migrations:/app/addresses/migrations
       - ./backend/brands/migrations:/app/brands/migrations
       - ./backend/users/migrations:/app/users/migrations
@@ -336,8 +337,6 @@ services:
     mem_limit: 2G
     mem_reservation: 1G
     cpus: '2'
-volumes:
-  opensearch-data:
 
 #volumes:
 #brand_logs:
