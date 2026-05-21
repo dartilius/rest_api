@@ -10,7 +10,7 @@
 import os
 import django
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rmc_rest_api.settings")
 django.setup()
 
 import argparse
