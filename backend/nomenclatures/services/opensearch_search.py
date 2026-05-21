@@ -236,12 +236,10 @@ class NomenclatureOpenSearchService:
         query = (query or '').strip()
 
         if not query:
-            logger.info("Пустой поисковый запрос")
             return s[:limit]
 
         logger.info(f"🔍 Начало поиска: '{query}'")
 
-        # 🔴 ПРИОРИТЕТНЫЕ ПОЛЯ (главные)
         primary_fields = [
             'name^10',
             'code1c^10',
@@ -250,7 +248,6 @@ class NomenclatureOpenSearchService:
             'brand.code1c^8',
             'typeOfPlace.name^8',
             'typeOfPlace.abbreviation^8',
-            'address.city^9',
             'legalEntity.description^7',
             'legalEntity.keyword^8',
             'tenants_data.tenant.description^7',
@@ -258,15 +255,11 @@ class NomenclatureOpenSearchService:
             'tenants_data.brand.name^7',
         ]
 
-        # 🔴 ВТОРИЧНЫЕ ПОЛЯ (дополнительные)
         secondary_fields = [
             'description^5',
-            'id_rasb^6',
             'square^4',
             'typeOfPlace.code1c^7',
             'typeOfPlace.tariff^6',
-            'address.street^8',
-            'address.house^7',
             'legalEntity.first_name^7',
             'legalEntity.last_name^7',
             'responsible_ad.first_name^4',
@@ -277,34 +270,37 @@ class NomenclatureOpenSearchService:
             'tenants_data.brand.code1c^6',
         ]
 
-        # MUST query - основной поиск по ПРИОРИТЕТНЫМ полям
-        # Это предотвращает попадание лишних объектов
-        must_queries = [
-            Q(
-                'multi_match',
-                query=query,
-                type='best_fields',
-                fuzziness=1,  # 🔴 максимум 1 опечатка вместо AUTO
-                operator='or',
-                fields=primary_fields,
-            )
-        ]
+        # must: достаточно совпасть хотя бы в одном из вариантов
+        must_query = Q(
+            'bool',
+            should=[
+                # 1. Полнотекстовый поиск с fuzziness (опечатки)
+                Q(
+                    'multi_match',
+                    query=query,
+                    type='best_fields',
+                    fuzziness=1,
+                    operator='or',
+                    fields=primary_fields,
+                ),
+                # 2. Частичное вхождение через search_text (edge ngram)
+                Q('match', search_text={'query': query, 'boost': 3}),
+                # 3. Prefix по name.raw для коротких запросов (< 20 символов)
+                Q('prefix', **{'name': {'value': query.lower(), 'boost': 5}}),
+                # 4. Wildcard — крайний случай для середины строки
+                Q('wildcard', **{'name': {'value': f'*{query.lower()}*', 'boost': 1}}),
+            ],
+            minimum_should_match=1,
+        )
 
-        # SHOULD queries
         should_queries = [
-            # Точные совпадения по кодам
             Q('term', **{'code1c.raw': query}),
             Q('term', **{'brand.code1c.raw': query}),
             Q('term', **{'typeOfPlace.code1c.raw': query}),
             Q('term', **{'legalEntity.keyword.raw': query}),
             Q('term', **{'tenants_data.tenant.keyword.raw': query}),
-
-            # Фразы (высокий приоритет)
             Q('match_phrase', **{'name': {'query': query, 'boost': 3}}),
-            Q('match_phrase', **{'address.city': {'query': query, 'boost': 2}}),
             Q('match_phrase', **{'brand.name': {'query': query, 'boost': 2}}),
-
-            # 🔴 НОВОЕ: Поиск по вторичным полям с повышенным fuzziness
             Q(
                 'multi_match',
                 query=query,
@@ -312,29 +308,20 @@ class NomenclatureOpenSearchService:
                 fuzziness='AUTO',
                 operator='or',
                 fields=secondary_fields,
-                boost=0.5,  # 🔴 снизили вес вторичных полей
+                boost=0.5,
             ),
         ]
 
-        # ФИНАЛЬНЫЙ ЗАПРОС
         s = s.query(
             'bool',
-            must=must_queries,
+            must=[must_query],
             should=should_queries,
             minimum_should_match=0,
-            boost_mode='multiply'
         )
-
-        logger.debug(f"Primary fields: {primary_fields}")
-        logger.debug(f"Secondary fields: {secondary_fields}")
-        logger.debug(f"Query: {s.to_dict()}")
 
         result = s.extra(size=limit)
         response = result.execute()
         total = response.hits.total['value']
-
         logger.info(f"✅ Поиск '{query}': найдено {total} результатов")
-        for i, hit in enumerate(response[:5], 1):
-            logger.debug(f"  {i}. Score: {hit.meta.score:.2f} - {getattr(hit, 'name', 'N/A')}")
 
         return result
