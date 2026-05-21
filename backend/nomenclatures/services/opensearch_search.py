@@ -28,9 +28,9 @@ class NomenclatureOpenSearchService:
             'brand.code1c^8',
             'typeOfPlace.name^8',
             'typeOfPlace.abbreviation^8',
-            'legalEntity.description^7',
+            # 'legalEntity.description^7',
             'legalEntity.keyword^8',
-            'tenants_data.tenant.description^7',
+            # 'tenants_data.tenant.description^7',
             'tenants_data.tenant.keyword^7',
             'tenants_data.brand.name^7',
         ]

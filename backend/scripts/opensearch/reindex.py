@@ -7,6 +7,8 @@
     docker exec -it backend python scripts/opensearch/reindex.py --index brands
 """
 
+
+import sys
 import os
 
 sys.path.insert(0, "/app")
