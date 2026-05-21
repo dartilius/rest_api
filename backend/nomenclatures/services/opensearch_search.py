@@ -50,23 +50,23 @@ class NomenclatureOpenSearchService:
             'tenants_data.brand.code1c^6',
         ]
 
-        fuzziness = 1 if len(query) >= 5 else 0
         short_query = len(query) <= 4
 
+        # must: только точное совпадение — определяет попадает ли объект в выдачу
         must_should = [
             Q(
                 'multi_match',
                 query=query,
                 type='best_fields',
-                fuzziness=fuzziness,
+                fuzziness=0,
                 operator='or',
                 fields=primary_fields,
             ),
             Q('prefix', **{'name': {'value': query.lower(), 'boost': 5}}),
         ]
 
-        # search_text через edge ngram добавляем только для длинных запросов —
-        # для коротких (3-4 символа) он даёт слишком много шума через похожие токены
+        # search_text через edge ngram — только для длинных запросов (5+ символов)
+        # для коротких даёт слишком много шума
         if not short_query:
             must_should.append(
                 Q('match', search_text={'query': query, 'boost': 3})
@@ -78,22 +78,39 @@ class NomenclatureOpenSearchService:
             minimum_should_match=1,
         )
 
+        # should: поднимает score для более релевантных результатов,
+        # но не добавляет лишние объекты (fuzziness только здесь)
         should_queries = [
+            # точные совпадения по кодам — максимальный буст
             Q('term', **{'code1c.raw': query}),
             Q('term', **{'brand.code1c.raw': query}),
             Q('term', **{'typeOfPlace.code1c.raw': query}),
             Q('term', **{'legalEntity.keyword.raw': query}),
             Q('term', **{'tenants_data.tenant.keyword.raw': query}),
+
+            # фразовые совпадения
             Q('match_phrase', **{'name': {'query': query, 'boost': 3}}),
             Q('match_phrase', **{'brand.name': {'query': query, 'boost': 2}}),
+
+            # fuzziness только в should — поднимает score для похожих,
+            # но не добавляет нерелевантные объекты в выдачу
             Q(
                 'multi_match',
                 query=query,
                 type='best_fields',
-                fuzziness=fuzziness,
+                fuzziness=1,
+                operator='or',
+                fields=primary_fields,
+                boost=0.3,
+            ),
+            Q(
+                'multi_match',
+                query=query,
+                type='best_fields',
+                fuzziness=1,
                 operator='or',
                 fields=secondary_fields,
-                boost=0.5,
+                boost=0.2,
             ),
         ]
 
