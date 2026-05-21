@@ -6,10 +6,13 @@
 """
 
 import os
-import django
 
+sys.path.insert(0, "/app")
+
+import django
 from dotenv import load_dotenv
-load_dotenv()
+
+load_dotenv("/app/.env")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rmc_rest_api.settings")
 django.setup()
 
