@@ -181,7 +181,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         base_qs = super().get_queryset()
 
         # Для поиска - оптимизированный queryset (все нужные поля для ListSerializer)
-        if self.action == "list" and self.request.query_params.get('search_text'):
+        if self.action == "list" and self.request.query_params.get('search'):
             return base_qs.select_related(
                 'brand',
                 'typeOfPlace',
@@ -242,68 +242,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
         )
 
-    # def list(self, request, *args, **kwargs):
-    #     search_term = request.query_params.get('search')
-
-    #     if search_term:
-    #         cache_key = f"nomenclature_search_os_v2_{hash(search_term)}"
-    #         cached_result = cache.get(cache_key)
-    #         if cached_result:
-    #             return Response(cached_result)
-
-    #         try:
-    #             os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
-    #             ids = [hit.meta.id for hit in os_results]
-
-    #             if not ids:
-    #                 result = {'count': 0, 'next': None, 'previous': None, 'results': []}
-    #                 cache.set(cache_key, result, self.CACHE_TIMEOUT)
-    #                 return Response(result)
-
-    #             queryset = (
-    #                 Nomenclature.web.filter(id__in=ids)
-    #                 .order_by(Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]))
-    #                 .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
-    #                 .prefetch_related(
-    #                     'images',
-    #                     Prefetch(
-    #                         'tenants',
-    #                         queryset=Counterparty.objects.only(
-    #                             'id', 'first_name', 'last_name',
-    #                             'middle_name', 'additional_name', 'keyword'
-    #                         ).prefetch_related('brands')
-    #                     )
-    #                 )
-    #                 .defer('description', 'settings', 'hw_info')
-    #             )
-
-    #             page = self.paginate_queryset(queryset)
-    #             if page is not None:
-    #                 serializer = self.get_serializer(page, many=True)
-    #                 result = self.get_paginated_response(serializer.data).data
-    #             else:
-    #                 serializer = self.get_serializer(queryset, many=True)
-    #                 result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
-
-    #             cache.set(cache_key, result, self.CACHE_TIMEOUT)
-    #             return Response(result)
-
-    #         except Exception:
-    #             queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
-    #             serializer = self.get_serializer(queryset, many=True)
-    #             return Response(
-    #                 {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
-
-    #     # обычный список
-    #     queryset = self.filter_queryset(self.get_queryset())
-    #     page = self.paginate_queryset(queryset)
-    #     if page is not None:
-    #         serializer = self.get_serializer(page, many=True)
-    #         return self.get_paginated_response(serializer.data)
-
-    #     serializer = self.get_serializer(queryset, many=True)
-    #     return Response({'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
-
     def list(self, request, *args, **kwargs):
         search_term = request.query_params.get('search')
 
@@ -325,6 +263,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             return Response(cached_result)
 
         try:
+            from collections import Counter
+
             os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
             ids = [hit.meta.id for hit in os_results]
 
@@ -333,9 +273,10 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 cache.set(cache_key, result, self.CACHE_TIMEOUT)
                 return Response(result)
 
+            tc_ids = set(TypeOfPlace.objects.filter(is_mall=True).values_list('id', flat=True))
+
             queryset = (
                 Nomenclature.web.filter(id__in=ids)
-                .order_by(Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]))
                 .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
                 .prefetch_related(
                     'images',
@@ -348,14 +289,28 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     )
                 )
                 .defer('description', 'settings', 'hw_info')
+                .annotate(tenants_count=Count('tenants', distinct=True))
             )
 
-            page = self.paginate_queryset(queryset)
+            # считаем частоту брендов в рамках всей выдачи
+            brand_freq = Counter(
+                n.brand_id for n in queryset if n.brand_id is not None
+            )
+
+            def sort_key(n):
+                is_mall = 0 if (n.typeOfPlace_id in tc_ids) else 1
+                tenants = -n.tenants_count
+                brand_pop = -brand_freq.get(n.brand_id, 0)
+                return (is_mall, tenants, brand_pop)
+
+            sorted_list = sorted(queryset, key=sort_key)
+
+            page = self.paginator.paginate_queryset(sorted_list, request)
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
                 result = self.get_paginated_response(serializer.data).data
             else:
-                serializer = self.get_serializer(queryset, many=True)
+                serializer = self.get_serializer(sorted_list, many=True)
                 result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
 
             cache.set(cache_key, result, self.CACHE_TIMEOUT)
@@ -365,7 +320,71 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
             serializer = self.get_serializer(queryset, many=True)
             return Response(
-                {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
+                {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
+            )
+
+    # def list(self, request, *args, **kwargs):
+    #     search_term = request.query_params.get('search')
+    #
+    #     if search_term is not None and len(search_term.strip()) < 3:
+    #         return Response(
+    #             {"detail": "Поисковый запрос должен содержать не менее 3 символов."},
+    #             status=status.HTTP_400_BAD_REQUEST
+    #         )
+    #
+    #     if not search_term:
+    #         return super().list(request, *args, **kwargs)
+    #
+    #     cache_page = request.query_params.get('page', 1)
+    #     cache_limit = request.query_params.get('limit', self.paginator.page_size)
+    #     cache_key = f"nomenclature_search_os_v2_{hash(search_term)}_{cache_page}_{cache_limit}"
+    #
+    #     cached_result = cache.get(cache_key)
+    #     if cached_result:
+    #         return Response(cached_result)
+    #
+    #     try:
+    #         os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
+    #         ids = [hit.meta.id for hit in os_results]
+    #
+    #         if not ids:
+    #             result = {'count': 0, 'next': None, 'previous': None, 'results': []}
+    #             cache.set(cache_key, result, self.CACHE_TIMEOUT)
+    #             return Response(result)
+    #
+    #         queryset = (
+    #             Nomenclature.web.filter(id__in=ids)
+    #             .order_by(Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]))
+    #             .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
+    #             .prefetch_related(
+    #                 'images',
+    #                 Prefetch(
+    #                     'tenants',
+    #                     queryset=Counterparty.objects.only(
+    #                         'id', 'first_name', 'last_name',
+    #                         'middle_name', 'additional_name', 'keyword'
+    #                     ).prefetch_related('brands')
+    #                 )
+    #             )
+    #             .defer('description', 'settings', 'hw_info')
+    #         )
+    #
+    #         page = self.paginate_queryset(queryset)
+    #         if page is not None:
+    #             serializer = self.get_serializer(page, many=True)
+    #             result = self.get_paginated_response(serializer.data).data
+    #         else:
+    #             serializer = self.get_serializer(queryset, many=True)
+    #             result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
+    #
+    #         cache.set(cache_key, result, self.CACHE_TIMEOUT)
+    #         return Response(result)
+    #
+    #     except Exception:
+    #         queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
+    #         serializer = self.get_serializer(queryset, many=True)
+    #         return Response(
+    #             {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
 
 
     @action(detail=True, methods=["get"], url_path="tabs")
