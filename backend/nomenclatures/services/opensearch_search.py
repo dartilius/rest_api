@@ -269,26 +269,22 @@ class NomenclatureOpenSearchService:
             'tenants_data.tenant.last_name^6',
             'tenants_data.brand.code1c^6',
         ]
-
+        fuzziness = 1 if len(query) >= 5 else 0
         # must: достаточно совпасть хотя бы в одном из вариантов
         must_query = Q(
             'bool',
             should=[
-                # 1. Полнотекстовый поиск с fuzziness (опечатки)
                 Q(
                     'multi_match',
                     query=query,
                     type='best_fields',
-                    fuzziness=1,
+                    fuzziness=fuzziness,
                     operator='or',
                     fields=primary_fields,
                 ),
-                # 2. Частичное вхождение через search_text (edge ngram)
                 Q('match', search_text={'query': query, 'boost': 3}),
-                # 3. Prefix по name.raw для коротких запросов (< 20 символов)
                 Q('prefix', **{'name': {'value': query.lower(), 'boost': 5}}),
-                # 4. Wildcard — крайний случай для середины строки
-                Q('wildcard', **{'name': {'value': f'*{query.lower()}*', 'boost': 1}}),
+                # wildcard убран
             ],
             minimum_should_match=1,
         )
@@ -305,7 +301,7 @@ class NomenclatureOpenSearchService:
                 'multi_match',
                 query=query,
                 type='best_fields',
-                fuzziness='AUTO',
+                fuzziness=fuzziness,
                 operator='or',
                 fields=secondary_fields,
                 boost=0.5,

@@ -307,6 +307,12 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         search_term = request.query_params.get('search')
 
+        if search_term is not None and len(search_term.strip()) < 3:
+            return Response(
+                {"detail": "Поисковый запрос должен содержать не менее 3 символов."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         if not search_term:
             return super().list(request, *args, **kwargs)
 
