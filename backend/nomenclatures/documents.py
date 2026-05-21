@@ -29,7 +29,6 @@ class NomenclatureDocument(Document):
         'first_name': fields.TextField(fields={'raw': fields.KeywordField()}),
         'middle_name': fields.TextField(),
         'last_name': fields.TextField(),
-        'description': fields.TextField(fields={'raw': fields.KeywordField()}),
         'keyword': fields.TextField(fields={'raw': fields.KeywordField()}),
         'additional_name': fields.TextField(fields={'raw': fields.KeywordField()}),
     })
@@ -84,12 +83,9 @@ class NomenclatureDocument(Document):
             'first_name': fields.TextField(fields={'raw': fields.KeywordField()}),
             'middle_name': fields.TextField(),
             'last_name': fields.TextField(),
-            'description': fields.TextField(fields={'raw': fields.KeywordField()}),
             'keyword': fields.TextField(fields={'raw': fields.KeywordField()}),
             'additional_name': fields.TextField(fields={'raw': fields.KeywordField()}),
         }),
-        'floor': fields.TextField(fields={'raw': fields.KeywordField()}),
-        'atm': fields.BooleanField(),
         'brand': fields.ObjectField(properties={
             'name': fields.TextField(fields={'raw': fields.KeywordField()}),
             'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
@@ -166,7 +162,6 @@ class NomenclatureDocument(Document):
             'first_name': getattr(instance.legalEntity, 'first_name', '') or '',
             'middle_name': getattr(instance.legalEntity, 'middle_name', '') or '',
             'last_name': getattr(instance.legalEntity, 'last_name', '') or '',
-            'description': getattr(instance.legalEntity, 'description', '') or '',
             'keyword': getattr(instance.legalEntity, 'keyword', '') or '',
             'additional_name': getattr(instance.legalEntity, 'additional_name', '') or '',
         }
@@ -226,12 +221,9 @@ class NomenclatureDocument(Document):
                     'first_name': getattr(tenant, 'first_name', '') or '',
                     'middle_name': getattr(tenant, 'middle_name', '') or '',
                     'last_name': getattr(tenant, 'last_name', '') or '',
-                    'description': getattr(tenant, 'description', '') or '',
                     'keyword': getattr(tenant, 'keyword', '') or '',
                     'additional_name': getattr(tenant, 'additional_name', '') or '',
                 },
-                'floor': item.floor or '',
-                'atm': item.atm,
                 'brand': {
                     'name': getattr(brand, 'name', '') if brand else '',
                     'code1c': getattr(brand, 'code1c', '') if brand else '',
@@ -271,7 +263,6 @@ class NomenclatureDocument(Document):
                 getattr(instance.legalEntity, 'first_name', '') or '',
                 getattr(instance.legalEntity, 'first_name', '') or '',
                 getattr(instance.legalEntity, 'middle_name', '') or '',
-                getattr(instance.legalEntity, 'description', '') or '',
                 getattr(instance.legalEntity, 'keyword', '') or '',
                 getattr(instance.legalEntity, 'additional_name', '') or '',
             ])
@@ -300,7 +291,6 @@ class NomenclatureDocument(Document):
                     getattr(item.tenant, 'first_name', '') or '',
                     getattr(item.tenant, 'middle_name', '') or '',
                     getattr(item.tenant, 'last_name', '') or '',
-                    getattr(item.tenant, 'description', '') or '',
                     getattr(item.tenant, 'keyword', '') or '',
                     getattr(item.tenant, 'additional_name', '') or '',
                 ])
@@ -310,10 +300,5 @@ class NomenclatureDocument(Document):
                     getattr(item.brand, 'name', '') or '',
                     getattr(item.brand, 'code1c', '') or '',
                 ])
-
-            parts.extend([
-                item.floor or '',
-                'банкомат' if item.atm else '',
-            ])
 
         return ' '.join(filter(None, parts))
