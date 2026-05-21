@@ -37,7 +37,6 @@ class NomenclatureDocument(Document):
     typeOfPlace = fields.ObjectField(properties={
         'name': fields.TextField(fields={'raw': fields.KeywordField()}),
         'abbreviation': fields.TextField(fields={'raw': fields.KeywordField()}),
-        'display_name': fields.TextField(),
         'tariff': fields.TextField(),
         'tariff_single': fields.TextField(),
         'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
@@ -179,7 +178,6 @@ class NomenclatureDocument(Document):
         return {
             'name': instance.typeOfPlace.name or '',
             'abbreviation': instance.typeOfPlace.abbreviation or '',
-            'display_name': instance.typeOfPlace.display_name or '',
             'tariff': instance.typeOfPlace.tariff or '',
             'tariff_single': instance.typeOfPlace.tariff_single or '',
             'code1c': instance.typeOfPlace.code1c or '',
@@ -255,7 +253,6 @@ class NomenclatureDocument(Document):
             parts.extend([
                 instance.typeOfPlace.name or '',
                 instance.typeOfPlace.abbreviation or '',
-                instance.typeOfPlace.display_name or '',
                 instance.typeOfPlace.tariff or '',
                 instance.typeOfPlace.tariff_single or '',
                 instance.typeOfPlace.code1c or '',
