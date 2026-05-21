@@ -141,7 +141,7 @@ services:
     env_file: .env
     volumes:
       - ./scripts/backend:/app/scripts
-      - ./backend/scripts/backend:/app/scripts
+      - ./backend/scripts/backend:/app/scripts_opensearch
       - ./backend/addresses/migrations:/app/addresses/migrations
       - ./backend/brands/migrations:/app/brands/migrations
       - ./backend/users/migrations:/app/users/migrations
