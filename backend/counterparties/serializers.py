@@ -115,10 +115,7 @@ class CounterpartiesSerializer(serializers.ModelSerializer):
         return obj.name
     class Meta:
         model = Counterparty
-        fields = (
-            'id', 'name', 'code1c', 'brands', 'contact_persons', 'broadcast',
-            'opf', 'inn', 'address'
-        )
+        fields = "__all__"
         read_only_fields = ('id', 'code1c', 'created', 'name')
 
 
