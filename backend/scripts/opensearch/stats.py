@@ -5,6 +5,7 @@
     docker exec -it backend python scripts/opensearch/stats.py
 """
 
+import sys
 import os
 
 sys.path.insert(0, "/app")
