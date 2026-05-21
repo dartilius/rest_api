@@ -8,6 +8,8 @@
 import os
 import django
 
+from dotenv import load_dotenv
+load_dotenv()
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rmc_rest_api.settings")
 django.setup()
 
