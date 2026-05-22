@@ -1,4 +1,4 @@
-from datetime import datetime as dt
+from django.utils import timezone
 
 from celery import shared_task
 from celery_singleton import Singleton
@@ -32,7 +32,7 @@ def update_order_status():
 
     for order in waiting_adorders:
         order_start = order.broadcast_interval.lower
-        if order_start <= dt.now():
+        if order_start <= timezone.now():
             order.status = ON_AIR
             adorders_started.append(order)
     count += len(adorders_started)
@@ -40,7 +40,7 @@ def update_order_status():
 
     for order in ending_adorders:
         order_end = order.broadcast_interval.upper
-        if order_end <= dt.now():
+        if order_end <= timezone.now():
             order.status = COMPLETED
             order.is_active = False
             adorders_ended.append(order)
@@ -49,7 +49,7 @@ def update_order_status():
 
     for order in waiting_bgorders:
         order_start = order.broadcast_interval.lower
-        if order_start <= dt.now():
+        if order_start <= timezone.now():
             order.status = ON_AIR
             bgorders_started.append(order)
     count += len(bgorders_started)
@@ -57,7 +57,7 @@ def update_order_status():
 
     for order in ending_bgorders:
         order_end = order.broadcast_interval.upper
-        if order_end <= dt.now():
+        if order_end <= timezone.now():
             order.status = COMPLETED
             order.is_active = False
             bgorders_ended.append(order)

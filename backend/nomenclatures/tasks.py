@@ -2,12 +2,12 @@ from itertools import chain
 
 from celery import shared_task
 from celery_singleton import Singleton
-from datetime import datetime, timedelta
 from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
-
+from datetime import timedelta
+from django.utils import timezone
 
 @shared_task(base=Singleton)
 def update_opensearch_for_instance(instance_id):
@@ -68,7 +68,7 @@ def update_nomenclature_status():
     OFFLINE_1_HOUR = 2
 
     for status in statuses:
-        now_time = datetime.now()
+        now_time = timezone.now()
         new_status = ONLINE
         current_status = status.status
         last_answer = status.last_answer_date
