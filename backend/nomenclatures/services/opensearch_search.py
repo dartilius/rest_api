@@ -59,7 +59,7 @@ class NomenclatureOpenSearchService:
                     operator='or',
                     fields=primary_fields,
                 ),
-                Q('prefix', **{'name': {'value': query.lower(), 'boost': 5}}),
+                Q('prefix', **{'name.raw': {'value': query.lower(), 'boost': 5}}),
             ],
             minimum_should_match=1,
         )
