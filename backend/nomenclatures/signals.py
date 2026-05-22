@@ -19,8 +19,14 @@ def invalidate_search_cache_on_save(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Nomenclature)
-def update_search_vector(sender, instance, **kwargs):
-    instance.update_search_vector()
+def update_nomenclature_search_vector(sender, instance, created, **kwargs):
+    """Обновляет search_vector при сохранении номенклатуры."""
+    if kwargs.get('raw', False):
+        return
+
+    # Проверяем, изменилось ли for_web
+    if created or instance.tracker.has_changed('for_web') if hasattr(instance, 'tracker') else True:
+        instance.update_search_vector()
 
 @receiver(post_delete, sender=Nomenclature)
 def invalidate_search_cache_on_delete(sender, instance, **kwargs):

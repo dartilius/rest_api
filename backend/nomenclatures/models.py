@@ -434,16 +434,16 @@ class Nomenclature(APIBaseObjectModel):
         db_index=True,
     )
 
+    # nomenclatures/models.py
+
     def update_search_vector(self):
         """Обновляет денормализованное поле поиска только для for_web=True."""
-        # Очищаем поле если не для веба
         if not self.for_web:
-            if self.search_vector:  # Оптимизация: обновляем только если было заполнено
-                self.search_vector = ''
-                self.save(update_fields=['search_vector'])
+            if self.search_vector:
+                # Используем update вместо save, чтобы не вызывать сигналы
+                Nomenclature.objects.filter(pk=self.pk).update(search_vector='')
             return
 
-        # Если for_web=True, заполняем данными
         parts = [
             self.name or '',
             self.code1c or '',
@@ -454,14 +454,12 @@ class Nomenclature(APIBaseObjectModel):
             self.contentType or '',
         ]
 
-        # Brand
         if self.brand:
             parts.extend([
                 self.brand.name or '',
                 self.brand.code1c or '',
             ])
 
-        # Legal Entity
         if self.legalEntity:
             parts.extend([
                 self.legalEntity.first_name or '',
@@ -471,7 +469,6 @@ class Nomenclature(APIBaseObjectModel):
                 self.legalEntity.additional_name or '',
             ])
 
-        # Type of Place
         if self.typeOfPlace:
             parts.extend([
                 self.typeOfPlace.name or '',
@@ -481,7 +478,6 @@ class Nomenclature(APIBaseObjectModel):
                 self.typeOfPlace.tariff_single or '',
             ])
 
-        # Responsible users
         responsible_users = [
             self.responsible_radio,
             self.responsible_ad,
@@ -499,7 +495,6 @@ class Nomenclature(APIBaseObjectModel):
                     f'{user.first_name} {user.last_name}'.strip(),
                 ])
 
-        # Tenants
         for relation in self.nomenclature_tenants.all():
             if relation.tenant:
                 parts.extend([
@@ -515,8 +510,10 @@ class Nomenclature(APIBaseObjectModel):
                     relation.brand.code1c or '',
                 ])
 
-        self.search_vector = ' '.join(filter(None, parts)).lower()
-        self.save(update_fields=['search_vector'])
+        new_vector = ' '.join(filter(None, parts)).lower()
+
+        # Используем update вместо save, чтобы избежать рекурсии
+        Nomenclature.objects.filter(pk=self.pk).update(search_vector=new_vector)
 
     @property
     def brand_logo(self):
