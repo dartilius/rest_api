@@ -1,4 +1,4 @@
-from django.utils import timezone
+from datetime import datetime as dt
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -531,7 +531,7 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
             data["file_urls"] = files_urls
 
         NomenclatureAvailability.objects.update_or_create(
-            client=nomenclature, defaults={"last_answer_date": timezone.now()}
+            client=nomenclature, defaults={"last_answer_date": dt.now()}
         )
         pending_tasks = sorted(
             Task.objects.filter(client=pk, status=0), key=lambda t: t.priority
