@@ -18,6 +18,10 @@ def invalidate_search_cache_on_save(sender, instance, **kwargs):
     NomenclatureSearchService.clear_cache()
 
 
+@receiver(post_save, sender=Nomenclature)
+def update_search_vector(sender, instance, **kwargs):
+    instance.update_search_vector()
+
 @receiver(post_delete, sender=Nomenclature)
 def invalidate_search_cache_on_delete(sender, instance, **kwargs):
     """Очищает кэш поиска при удалении номенклатуры."""
