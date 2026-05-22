@@ -17,6 +17,7 @@ class NomenclatureDocument(Document):
     description = fields.TextField()
     square = fields.TextField()
     is_active = fields.BooleanField()
+    for_web = fields.BooleanField()
     id_rasb = fields.TextField(fields={'raw': fields.KeywordField()})
 
     # --- Связанные сущности ---
@@ -144,6 +145,9 @@ class NomenclatureDocument(Document):
 
     def prepare_is_active(self, instance):
         return instance.is_active
+
+    def prepare_for_web(self, instance):
+        return instance.for_web
 
     def prepare_brand(self, instance):
         if not instance.brand:
