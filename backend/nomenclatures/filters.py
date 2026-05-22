@@ -12,47 +12,41 @@ logger = logging.getLogger(__name__)
 
 def full_text_search(queryset, value):
     """
-    Поиск через OpenSearch/Django DSL.
-    Фолбэк на Django ORM, если OpenSearch недоступен.
+    Поиск через Django ORM с использованием search_vector.
     """
     if not value:
         return queryset
 
+    value = value.strip().lower()
+
+    logger.info(f'Django ORM поиск: запрос="{value}"')
+
     try:
-        from nomenclatures.documents import NomenclatureDocument
+        # Используем search_vector для поиска
+        from django.db.models import Q
 
-        # Поиск по агрегированному полю search_text
-        search = NomenclatureDocument.search().query(
-            'match',
-            search_text={
-                'query': value,
-                'fuzziness': 'AUTO',
-                'operator': 'and'
-            }
-        )
+        conditions = Q()
 
-        response = search[:1000].execute()  # лимит
-        ids = [uuid.UUID(hit.meta.id) for hit in response]  # UUID преобразуем
+        # Точные совпадения по кодам (приоритет)
+        conditions |= Q(code1c__iexact=value)
+        conditions |= Q(id_rasb__iexact=value)
 
-        logger.info('OpenSearch: запрос="%s", найдено=%d', value, len(ids))
+        # Поиск по search_vector (основной)
+        conditions |= Q(search_vector__icontains=value)
 
-        if not ids:
-            return queryset.none()
+        # Поиск по началу имени (дополнительно)
+        conditions |= Q(name__istartswith=value)
 
-        # Сохраняем порядок релевантности
-        from django.db.models import Case, When
-        preserved_order = Case(
-            *[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]
-        )
-        return queryset.filter(pk__in=ids).order_by(preserved_order)
+        result = queryset.filter(conditions)
+
+        logger.info(f'Найдено результатов: {result.count()}')
+
+        return result
 
     except Exception as e:
-        logger.error('OpenSearch недоступен, fallback: %s', e)
-        # ORM fallback: ищем по нескольким полям
-        return queryset.filter(
-            name__icontains=value
-        )
-
+        logger.error(f'Ошибка поиска: {e}')
+        # Fallback на простой поиск по имени
+        return queryset.filter(name__icontains=value)
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
     """Поддерживает фильтрацию UUID через запятую (в URL)."""

@@ -180,8 +180,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         """Оптимизирует queryset в зависимости от типа запроса."""
         base_qs = super().get_queryset()
 
-        # Для поиска - оптимизированный queryset (все нужные поля для ListSerializer)
-        if self.action == "list" and self.request.query_params.get('search_text'):
+        # Для поиска - теперь используем search_vector
+        if self.action == "list" and self.request.query_params.get('search'):
             return base_qs.select_related(
                 'brand',
                 'typeOfPlace',
@@ -194,7 +194,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     queryset=Counterparty.objects.only(
                         'id', 'first_name', 'last_name',
                         'middle_name', 'additional_name', 'keyword'
-                    ).prefetch_related('brands')  # Добавляем prefetch для брендов
+                    ).prefetch_related('brands')
                 )
             ).defer(
                 'description', 'settings', 'hw_info'
@@ -231,7 +231,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     queryset=Counterparty.objects.only(
                         'id', 'first_name', 'last_name',
                         'middle_name', 'additional_name', 'keyword'
-                    ).prefetch_related('brands')  # Добавляем prefetch для брендов
+                    ).prefetch_related('brands')
                 )
             )
             .annotate(tenants_count=Count("tenants", distinct=True))
@@ -254,29 +254,38 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         if not search_term:
             return super().list(request, *args, **kwargs)
 
+        # Кэшируем финальный результат (сериализованные данные)
         cache_page = request.query_params.get('page', 1)
         cache_limit = request.query_params.get('limit', self.paginator.page_size)
-        cache_key = f"nomenclature_search_os_v2_{hash(search_term)}_{cache_page}_{cache_limit}"
+        cache_key = f"nomenclature_search_result_{hash(search_term)}_{cache_page}_{cache_limit}"
 
         cached_result = cache.get(cache_key)
         if cached_result:
+            logger.info(f"📦 Взят из кэша результат для '{search_term}'")
             return Response(cached_result)
 
         try:
             from collections import Counter
+            from nomenclatures.services.search import NomenclatureSearchService
 
-            os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
-            ids = [hit.meta.id for hit in os_results]
+            # Получаем queryset через сервис (он сам решит, брать из кэша или нет)
+            base_queryset = NomenclatureSearchService.search(
+                query=search_term,
+                for_web=True,
+                limit=5000,
+                use_cache=True
+            )
 
-            if not ids:
+            if not base_queryset:
                 result = {'count': 0, 'next': None, 'previous': None, 'results': []}
                 cache.set(cache_key, result, self.CACHE_TIMEOUT)
                 return Response(result)
 
             tc_ids = set(TypeOfPlace.objects.filter(is_mall=True).values_list('id', flat=True))
 
+            # Дополняем queryset для отображения
             queryset = (
-                Nomenclature.web.filter(id__in=ids)
+                base_queryset
                 .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
                 .prefetch_related(
                     'images',
@@ -292,7 +301,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 .annotate(tenants_count=Count('tenants', distinct=True))
             )
 
-            # считаем частоту брендов в рамках всей выдачи
+            # Считаем частоту брендов
             brand_freq = Counter(
                 n.brand_id for n in queryset if n.brand_id is not None
             )
@@ -305,23 +314,36 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
             sorted_list = sorted(queryset, key=sort_key)
 
+            # Пагинация
             page = self.paginator.paginate_queryset(sorted_list, request)
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
                 result = self.get_paginated_response(serializer.data).data
             else:
                 serializer = self.get_serializer(sorted_list, many=True)
-                result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
+                result = {
+                    'count': len(serializer.data),
+                    'next': None,
+                    'previous': None,
+                    'results': serializer.data
+                }
 
+            # Кэшируем финальный результат
             cache.set(cache_key, result, self.CACHE_TIMEOUT)
+            logger.info(f"💾 Закэширован результат для '{search_term}'")
             return Response(result)
 
-        except Exception:
+        except Exception as e:
+            logger.error(f'Search error: {e}', exc_info=True)
+            # Fallback на простой поиск
             queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
             serializer = self.get_serializer(queryset, many=True)
-            return Response(
-                {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
-            )
+            return Response({
+                'count': len(serializer.data),
+                'next': None,
+                'previous': None,
+                'results': serializer.data
+            })
 
     # def list(self, request, *args, **kwargs):
     #     search_term = request.query_params.get('search')

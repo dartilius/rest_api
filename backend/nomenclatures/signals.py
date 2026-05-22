@@ -4,24 +4,24 @@ import logging
 
 from counterparties.models import Counterparty
 from nomenclatures.models import Nomenclature, NomenclatureTenant
+from nomenclatures.services.search import NomenclatureSearchService
 
 logger = logging.getLogger(__name__)
 
 from nomenclatures.tasks import update_opensearch_for_instance
 
 @receiver(post_save, sender=Nomenclature)
-def update_nomenclature_search_vector(sender, instance, created, **kwargs):
-    """Обновляет search_vector при сохранении номенклатуры."""
+def invalidate_search_cache_on_save(sender, instance, **kwargs):
+    """Очищает кэш поиска при изменении номенклатуры."""
     if kwargs.get('raw', False):
         return
+    NomenclatureSearchService.clear_cache()
 
-    instance.update_search_vector()
 
-@receiver(m2m_changed, sender=Nomenclature.tenants.through)
-def update_search_vector_on_tenants_change(sender, instance, action, **kwargs):
-    """Обновляет search_vector при изменении арендаторов."""
-    if action in ['post_add', 'post_remove', 'post_clear']:
-        instance.update_search_vector()
+@receiver(post_delete, sender=Nomenclature)
+def invalidate_search_cache_on_delete(sender, instance, **kwargs):
+    """Очищает кэш поиска при удалении номенклатуры."""
+    NomenclatureSearchService.clear_cache()
 
 @receiver(post_save, sender=Nomenclature)
 def update_search_vector_signal(sender, instance, **kwargs):
