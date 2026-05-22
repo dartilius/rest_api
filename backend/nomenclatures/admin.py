@@ -43,7 +43,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
     )
     inlines = [DiscountRuleInline]
     list_display_links = ("name",)
-    search_fields = ("name", "code1c", "article", "id_rasb")
+    search_fields = ("name", "code1c", "article", "id_rasb", "brand.name")
     list_filter = ("is_active", "timezone", "brand", "contentType")
     show_full_result_count = True
     list_per_page = 50
