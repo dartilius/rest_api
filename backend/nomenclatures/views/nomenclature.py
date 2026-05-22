@@ -29,7 +29,9 @@ from ..serializers import (
     NomenclatureListSerializer,
     ShortBrandNomenclatureSerializer, PhotoSerializer, NomenclatureCardSerializer,
 )
+import logging
 
+logger = logging.getLogger(__name__)
 
 @extend_schema_view(
     grouped=extend_schema(
