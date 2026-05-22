@@ -1,4 +1,4 @@
-from django.db.models.signals import pre_save, post_save, post_delete
+from django.db.models.signals import pre_save, post_save, post_delete, m2m_changed
 from django.dispatch import receiver
 import logging
 
@@ -8,6 +8,20 @@ from nomenclatures.models import Nomenclature, NomenclatureTenant
 logger = logging.getLogger(__name__)
 
 from nomenclatures.tasks import update_opensearch_for_instance
+
+@receiver(post_save, sender=Nomenclature)
+def update_nomenclature_search_vector(sender, instance, created, **kwargs):
+    """Обновляет search_vector при сохранении номенклатуры."""
+    if kwargs.get('raw', False):
+        return
+
+    instance.update_search_vector()
+
+@receiver(m2m_changed, sender=Nomenclature.tenants.through)
+def update_search_vector_on_tenants_change(sender, instance, action, **kwargs):
+    """Обновляет search_vector при изменении арендаторов."""
+    if action in ['post_add', 'post_remove', 'post_clear']:
+        instance.update_search_vector()
 
 @receiver(post_save, sender=Nomenclature)
 def update_search_vector_signal(sender, instance, **kwargs):

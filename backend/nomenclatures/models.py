@@ -435,11 +435,22 @@ class Nomenclature(APIBaseObjectModel):
     )
 
     def update_search_vector(self):
-        """Обновляет денормализованное поле поиска."""
+        """Обновляет денормализованное поле поиска только для for_web=True."""
+        # Очищаем поле если не для веба
+        if not self.for_web:
+            if self.search_vector:  # Оптимизация: обновляем только если было заполнено
+                self.search_vector = ''
+                self.save(update_fields=['search_vector'])
+            return
+
+        # Если for_web=True, заполняем данными
         parts = [
             self.name or '',
             self.code1c or '',
             self.description or '',
+            self.id_rasb or '',
+            self.square or '',
+            self.possibility or '',
             self.contentType or '',
         ]
 
