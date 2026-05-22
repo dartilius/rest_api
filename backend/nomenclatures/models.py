@@ -426,6 +426,87 @@ class Nomenclature(APIBaseObjectModel):
         default=0.0,
     )
 
+    search_vector = models.TextField(
+        blank=True,
+        default='',
+        verbose_name="Поисковый вектор",
+        help_text="Денормализованное поле для полнотекстового поиска",
+        db_index=True,
+    )
+
+    def update_search_vector(self):
+        """Обновляет денормализованное поле поиска."""
+        parts = [
+            self.name or '',
+            self.code1c or '',
+            self.description or '',
+            self.contentType or '',
+        ]
+
+        # Brand
+        if self.brand:
+            parts.extend([
+                self.brand.name or '',
+                self.brand.code1c or '',
+            ])
+
+        # Legal Entity
+        if self.legalEntity:
+            parts.extend([
+                self.legalEntity.first_name or '',
+                self.legalEntity.middle_name or '',
+                self.legalEntity.last_name or '',
+                self.legalEntity.keyword or '',
+                self.legalEntity.additional_name or '',
+            ])
+
+        # Type of Place
+        if self.typeOfPlace:
+            parts.extend([
+                self.typeOfPlace.name or '',
+                self.typeOfPlace.abbreviation or '',
+                self.typeOfPlace.code1c or '',
+                self.typeOfPlace.tariff or '',
+                self.typeOfPlace.tariff_single or '',
+            ])
+
+        # Responsible users
+        responsible_users = [
+            self.responsible_radio,
+            self.responsible_ad,
+            self.responsible_technic,
+            self.responsible_technic_on_address,
+            self.responsible_placement_marketing,
+        ]
+
+        for user in responsible_users:
+            if user:
+                parts.extend([
+                    user.email or '',
+                    user.first_name or '',
+                    user.last_name or '',
+                    f'{user.first_name} {user.last_name}'.strip(),
+                ])
+
+        # Tenants
+        for relation in self.nomenclature_tenants.all():
+            if relation.tenant:
+                parts.extend([
+                    relation.tenant.first_name or '',
+                    relation.tenant.middle_name or '',
+                    relation.tenant.last_name or '',
+                    relation.tenant.keyword or '',
+                    relation.tenant.additional_name or '',
+                ])
+            if relation.brand:
+                parts.extend([
+                    relation.brand.name or '',
+                    relation.brand.code1c or '',
+                ])
+
+        self.search_vector = ' '.join(filter(None, parts)).lower()
+        self.save(update_fields=['search_vector'])
+
     @property
     def brand_logo(self):
         return self.brand.logotype
@@ -558,6 +639,7 @@ class Nomenclature(APIBaseObjectModel):
             # СОСТАВНЫЕ ИНДЕКСЫ ДЛЯ ЧАСТЫХ КОМБИНАЦИЙ
             models.Index(fields=['brand', 'typeOfPlace']),
             models.Index(fields=['legalEntity', 'brand']),
+            models.Index(fields=['search_vector']),
 
         ]
 
