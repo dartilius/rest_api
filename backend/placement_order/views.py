@@ -42,27 +42,27 @@ class PlacementOrderViewSet(mixins.CreateModelMixin,
         except Exception as e:
             logger.warning(f"Не удалось запустить таск письма: {e}")
 
-        try:
-            payload = {
-                "duration": order.duration,
-                "all_days": order.all_days,
-                "days_of_week": order.days_of_week,
-                "owner": order.owner.code1c,
-                "items": [
-                    {
-                        "nomenclature": item.nomenclature.code1c,
-                        "responsible": item.responsible.code1c if item.responsible else None,
-                    }
-                    for item in order.items.select_related("nomenclature", "responsible").all()
-                ]
-            }
-            response = api_1c.post("/CreatePlacementOrder", payload)
-            response.raise_for_status()
-            code1c = response.json().get("code1c")
-            if code1c:
-                order.code1c = code1c
-                order.save(update_fields=["code1c"])
-            else:
-                logger.warning("PlacementOrder %s создан без code1c", order.id)
-        except Exception as e:
-            logger.warning("Не удалось отправить PlacementOrder в 1С: %s", e)
+        # try:
+        #     payload = {
+        #         "duration": order.duration,
+        #         "all_days": order.all_days,
+        #         "days_of_week": order.days_of_week,
+        #         "owner": order.owner.code1c,
+        #         "items": [
+        #             {
+        #                 "nomenclature": item.nomenclature.code1c,
+        #                 "responsible": item.responsible.code1c if item.responsible else None,
+        #             }
+        #             for item in order.items.select_related("nomenclature", "responsible").all()
+        #         ]
+        #     }
+            # response = api_1c.post("/CreatePlacementOrder", payload)
+            # response.raise_for_status()
+            # code1c = response.json().get("code1c")
+            # if code1c:
+            #     order.code1c = code1c
+            #     order.save(update_fields=["code1c"])
+            # else:
+            #     logger.warning("PlacementOrder %s создан без code1c", order.id)
+        # except Exception as e:
+        #     logger.warning("Не удалось отправить PlacementOrder в 1С: %s", e)

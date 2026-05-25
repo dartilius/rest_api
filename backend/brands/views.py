@@ -1,5 +1,5 @@
 from uuid import UUID
-
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample, OpenApiParameter
 from rest_framework import status
@@ -254,21 +254,21 @@ class BrandViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         brand = serializer.save()
 
-        try:
-            response = api_1c.post("/CreateBrand", {
-                "brandName": brand.name,
-                "brandDescription": brand.description or "",
-            })
-            response.raise_for_status()
-            code1c = response.json().get("brandCode")
-            if code1c:
-                if Brand.objects.filter(code1c=code1c).exclude(id=brand.id).exists():
-                    logger.warning("code1c %s уже занят другим брендом", code1c)
-                else:
-                    brand.code1c = code1c
-                    brand.save(update_fields=["code1c"])
-        except Exception as e:
-            logger.warning("Не удалось создать бренд в 1С: %s", e)
+        # try:
+        #     response = api_1c.post("/CreateBrand", {
+        #         "brandName": brand.name,
+        #         "brandDescription": brand.description or "",
+        #     })
+        #     response.raise_for_status()
+        #     code1c = response.json().get("brandCode")
+        #     if code1c:
+        #         if Brand.objects.filter(code1c=code1c).exclude(id=brand.id).exists():
+        #             logger.warning("code1c %s уже занят другим брендом", code1c)
+        #         else:
+        #             brand.code1c = code1c
+        #             brand.save(update_fields=["code1c"])
+        # except Exception as e:
+        #     logger.warning("Не удалось создать бренд в 1С: %s", e)
 
         return Response(BrandShortSerializer(brand).data, status=status.HTTP_201_CREATED)
 
