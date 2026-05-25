@@ -195,6 +195,11 @@ class BrandViewSet(viewsets.ModelViewSet):
 
         queryset = self.filter_queryset(self.get_queryset())
 
+        # только бренды, у которых есть номенклатуры
+        queryset = queryset.filter(
+            id__in=Nomenclature.web.values("brand_id").distinct()
+        )
+
         if search_query:
             matched_ids = self._opensearch_brand_ids(search_query)
             queryset = queryset.filter(id__in=matched_ids)
@@ -236,7 +241,10 @@ class BrandViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.warning("OpenSearch недоступен, fallback на БД: %s", e)
             return list(
-                Brand.objects.filter(name__icontains=query).values_list("id", flat=True)
+                Brand.objects.filter(
+                    name__icontains=query,
+                    id__in=Nomenclature.web.values("brand_id").distinct()
+                ).values_list("id", flat=True)
             )
 
     # ------------------------------------------------------------------ #
