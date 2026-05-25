@@ -334,6 +334,12 @@ class BrandViewSet(viewsets.ModelViewSet):
     def assigned(self, request, *args, **kwargs):
         active_ids = Nomenclature.web.values("brand_id").distinct()
         queryset = Brand.objects.filter(id__in=active_ids)
+
+        search_query = request.query_params.get("search", "").strip()
+        if search_query:
+            matched_ids = self._opensearch_brand_ids(search_query)
+            queryset = queryset.filter(id__in=matched_ids)
+
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(queryset, request)
         return paginator.get_paginated_response(BrandListSerializer(page, many=True).data)
