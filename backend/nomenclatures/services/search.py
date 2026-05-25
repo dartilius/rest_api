@@ -90,7 +90,6 @@ class NomenclatureSearchService:
         """Добавляет оптимизации к queryset."""
         return queryset.select_related(
             'brand',
-            'legalEntity',
             'typeOfPlace',
             'responsible_radio',
             'responsible_ad',

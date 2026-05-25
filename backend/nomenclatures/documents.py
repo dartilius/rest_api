@@ -26,14 +26,6 @@ class NomenclatureDocument(Document):
         'code1c': fields.TextField(fields={'raw': fields.KeywordField()}),
     })
 
-    legalEntity = fields.ObjectField(properties={
-        'first_name': fields.TextField(fields={'raw': fields.KeywordField()}),
-        'middle_name': fields.TextField(),
-        'last_name': fields.TextField(),
-        'keyword': fields.TextField(fields={'raw': fields.KeywordField()}),
-        'additional_name': fields.TextField(fields={'raw': fields.KeywordField()}),
-    })
-
     typeOfPlace = fields.ObjectField(properties={
         'name': fields.TextField(fields={'raw': fields.KeywordField()}),
         'abbreviation': fields.TextField(fields={'raw': fields.KeywordField()}),
@@ -129,7 +121,6 @@ class NomenclatureDocument(Document):
             super().get_queryset(filter_=filter_, exclude=exclude, count=count, alias=alias)
             .select_related(
                 'brand',
-                'legalEntity',
                 'typeOfPlace',
                 'responsible_radio',
                 'responsible_ad',
@@ -156,18 +147,6 @@ class NomenclatureDocument(Document):
         return {
             'name': getattr(instance.brand, 'name', '') or '',
             'code1c': getattr(instance.brand, 'code1c', '') or '',
-        }
-
-    def prepare_legalEntity(self, instance):
-        if not instance.legalEntity:
-            return None
-
-        return {
-            'first_name': getattr(instance.legalEntity, 'first_name', '') or '',
-            'middle_name': getattr(instance.legalEntity, 'middle_name', '') or '',
-            'last_name': getattr(instance.legalEntity, 'last_name', '') or '',
-            'keyword': getattr(instance.legalEntity, 'keyword', '') or '',
-            'additional_name': getattr(instance.legalEntity, 'additional_name', '') or '',
         }
 
     def prepare_typeOfPlace(self, instance):
@@ -261,15 +240,7 @@ class NomenclatureDocument(Document):
                 getattr(instance.brand, 'code1c', '') or '',
             ])
 
-        # legalEntity
-        if instance.legalEntity:
-            parts.extend([
-                getattr(instance.legalEntity, 'first_name', '') or '',
-                getattr(instance.legalEntity, 'first_name', '') or '',
-                getattr(instance.legalEntity, 'middle_name', '') or '',
-                getattr(instance.legalEntity, 'keyword', '') or '',
-                getattr(instance.legalEntity, 'additional_name', '') or '',
-            ])
+
         # users
         users = [
             instance.responsible_radio,
