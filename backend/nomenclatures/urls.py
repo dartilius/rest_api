@@ -5,7 +5,7 @@ from nomenclatures.views import (
     NomenclatureTaskViewSet, NomenclaturePhotoViewSet, TypeOfPlaceViewSet, NomenclatureTenantViewSet
 )
 from nomenclatures.views.discount import DiscountRuleViewSet  # добавить
-from nomenclatures.views.tenant import grouped_tenants_global
+from nomenclatures.views.tenant import grouped_tenants_global, tenant_detail
 router = routers.DefaultRouter()
 router.register('nomenclatures', NomenclatureViewSet, basename='nomenclature')
 router.register('orders', NomenclatureOrderViewSet, basename='order')
