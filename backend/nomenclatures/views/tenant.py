@@ -3,7 +3,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from uuid import UUID
-
+from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action, permission_classes
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -151,24 +151,87 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
 @permission_classes([AllowAny])
 def grouped_tenants_global(request):
     """
-    Возвращает сгруппированный список брендов арендаторов по всем номенклатурам:
-    - name: название бренда или 'Без бренда'
-    - count: общее количество арендованных мест
+    GET /api/tenants/grouped/
+    Один арендатор может появляться несколько раз — по одному на каждый бренд.
     """
     queryset = (
         NomenclatureTenant.objects
-        .select_related("brand")
-        .values("brand__name")
+        .select_related("tenant", "brand")
+        .values("tenant_id", "tenant__code1c", "brand_id", "brand__name")
         .annotate(count=Count("id"))
         .order_by("-count")
     )
 
+    paginator = CustomLimitOffsetPagination()
+    paginated_queryset = paginator.paginate_queryset(queryset, request)
+
+    if paginated_queryset is None:
+        paginated_queryset = []
+
     result = [
         {
-            "name": item["brand__name"] or "Без бренда",
-            "count": item["count"]
+            "tenant_id": item["tenant_id"],
+            "tenant_code1c": item["tenant__code1c"],
+            "brand_id": item["brand_id"],
+            "brand_name": item["brand__name"] or "Без бренда",
+            "count": item["count"],
         }
-        for item in queryset
+        for item in paginated_queryset
     ]
-    paginator = CustomLimitOffsetPagination()
+
     return paginator.get_paginated_response(result)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def tenant_detail(request, tenant_pk: str):
+    """
+    GET /api/tenants/<uuid>/
+    GET /api/tenants/<code1c>/
+    """
+    try:
+        UUID(hex=tenant_pk)
+        tenant_filter = "tenant__id"
+    except (ValueError, AttributeError):
+        tenant_filter = "tenant__code1c"
+
+    qs = (
+        NomenclatureTenant.objects
+        .filter(**{tenant_filter: tenant_pk})
+        .select_related("tenant", "brand", "nomenclature", "nomenclature__typeOfPlace")
+        .prefetch_related("tenant__brands")
+        .order_by("nomenclature__name")
+    )
+
+    if not qs.exists():
+        raise NotFound("Арендатор не найден.")
+
+    first = qs.first()
+    if first is None:
+        raise NotFound("Арендатор не найден.")
+
+    tenant = first.tenant
+
+    places = [
+        {
+            "nomenclature_id": str(entry.nomenclature.id),
+            "nomenclature_code1c": entry.nomenclature.code1c,
+            "nomenclature_name": entry.nomenclature.name,
+            "type_of_place": entry.nomenclature.type_of_place_display,
+            "floor": entry.floor or None,
+            "atm": entry.atm,
+            "brand_id": str(entry.brand.id) if entry.brand else None,
+            "brand_name": entry.brand.name if entry.brand else None,
+        }
+        for entry in qs
+    ]
+
+    return Response({
+        "tenant_id": str(tenant.id),
+        "tenant_code1c": tenant.code1c,
+        "tenant_name": tenant.name,       # property, не __str__, чтобы не дёргать brands M2M
+        "opf": tenant.opf,
+        "inn": tenant.inn,
+        "keyword": tenant.keyword,
+        "total_places": len(places),
+        "places": places,
+    })

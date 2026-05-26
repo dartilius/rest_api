@@ -21,5 +21,6 @@ nomenclature_router.register('discounts', DiscountRuleViewSet, basename='nomencl
 urlpatterns = [
     path('', include(router.urls)),
     path('tenants/grouped/', grouped_tenants_global, name='grouped-tenants-global'),
+    path('tenants/<str:tenant_pk>/', tenant_detail, name='tenant-detail'),
     path('', include(nomenclature_router.urls)),
 ]
