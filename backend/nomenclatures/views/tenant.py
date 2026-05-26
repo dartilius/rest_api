@@ -165,10 +165,14 @@ def grouped_tenants_global(request):
 
     result = [
         {
+            "id": item["id"],
             "name": item["brand__name"] or "Без бренда",
             "count": item["count"]
         }
         for item in queryset
     ]
+    paginator = CustomLimitOffsetPagination()
+    # page = paginator.paginate_queryset(result, request)
+    return paginator.get_paginated_response(result)
 
-    return Response(result)
+    # return Response(CustomLimitOffsetPaginationresult)
