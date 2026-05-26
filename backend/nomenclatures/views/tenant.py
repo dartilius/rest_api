@@ -4,9 +4,9 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from uuid import UUID
 
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
 from rest_framework.filters import SearchFilter
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Count
 from api.pagination import CustomLimitOffsetPagination
@@ -148,6 +148,7 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         ])
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def grouped_tenants_global(request):
     """
     Возвращает сгруппированный список брендов арендаторов по всем номенклатурам:
