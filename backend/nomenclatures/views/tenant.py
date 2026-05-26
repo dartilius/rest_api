@@ -8,12 +8,12 @@ from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-
+from django.db.models import Count
 from api.pagination import CustomLimitOffsetPagination
 from nomenclatures.filters import NomenclatureTenantFilter
 from nomenclatures.models import NomenclatureTenant
 from nomenclatures.serializers import TenantWriteSerializer, NomenclatureTenantResponseSerializer
-from services.api_1c_client import api_1c, logger
+from rest_framework.decorators import api_view
 from users.permissions import SuperuserCUDAuthRetrieve
 
 
@@ -146,3 +146,28 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             {"label": f"Этаж {floor}", "value": floor}
             for floor in floors
         ])
+
+@api_view(['GET'])
+def grouped_tenants_global(request):
+    """
+    Возвращает сгруппированный список брендов арендаторов по всем номенклатурам:
+    - name: название бренда или 'Без бренда'
+    - count: общее количество арендованных мест
+    """
+    queryset = (
+        NomenclatureTenant.objects
+        .select_related("brand")
+        .values("brand__name")
+        .annotate(count=Count("id"))
+        .order_by("-count")
+    )
+
+    result = [
+        {
+            "name": item["brand__name"] or "Без бренда",
+            "count": item["count"]
+        }
+        for item in queryset
+    ]
+
+    return Response(result)
