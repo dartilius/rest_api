@@ -267,17 +267,11 @@ def tenant_detail(request, tenant_pk: str):
         {
             "nomenclatureId": str(entry.nomenclature.id),
             "nomenclatureCode1c": entry.nomenclature.code1c,
-            "nomenclatureName": entry.nomenclature.name,
+            "formattedAddress": entry.nomenclature.formatted_address,
+            "brandName": entry.brand.name if entry.brand else None,
             "typeOfPlace": entry.nomenclature.type_of_place_display,
             "floor": entry.floor or None,
             "atm": entry.atm,
-            "brandId": str(entry.brand.id) if entry.brand else None,
-            "brandName": entry.brand.name if entry.brand else None,
-            "brandLogotype": (
-                entry.brand.logotype.url
-                if entry.brand and entry.brand.logotype
-                else None
-            ),
             "exterior": get_first_exterior(entry.nomenclature),
         }
         for entry in qs
