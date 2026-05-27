@@ -2,6 +2,7 @@ import hashlib
 from datetime import time
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 from brands.models import Brand
 from brands.serializers import BrandListSerializer, BrandCardSerializer
@@ -29,6 +30,12 @@ serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.Inte
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
 ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
+
+
+def format_local_datetime(value):
+    if timezone.is_naive(value):
+        value = timezone.make_aware(value, timezone.get_default_timezone())
+    return timezone.localtime(value).isoformat(timespec="seconds")
 
 # class TenantShortSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -1217,7 +1224,7 @@ class StatusHistorySerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_["change_time"] = f"{value.change_time:%Y-%m-%d %H:%M:%S}"
+        repr_["change_time"] = format_local_datetime(value.change_time)
         return repr_
 
 class NomenclatureCardSerializer(serializers.ModelSerializer):
