@@ -35,7 +35,7 @@ ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
 def format_local_datetime(value):
     if timezone.is_naive(value):
         value = timezone.make_aware(value, timezone.get_default_timezone())
-    return timezone.localtime(value).isoformat(timespec="seconds")
+    return f"{timezone.localtime(value):%Y-%m-%d %H:%M:%S}"
 
 # class TenantShortSerializer(serializers.ModelSerializer):
 #     class Meta:
