@@ -10,6 +10,21 @@ from nomenclatures.models import Nomenclature, NomenclatureTenant
 logger = logging.getLogger(__name__)
 
 
+
+class GroupedTenantFilter(FilterSet):
+
+    search = CharFilter(method="filter_search")
+
+    class Meta:
+        model = NomenclatureTenant
+        fields = []
+
+    def filter_search(self, queryset, name, value):
+        from django.db.models import Q
+        return queryset.filter(
+            Q(brand__name__icontains=value)
+        )
+
 def full_text_search(queryset, value):
     """
     Поиск через Django ORM с использованием search_vector.

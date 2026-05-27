@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from django.db.models import Count, Prefetch
 from api.pagination import CustomLimitOffsetPagination
 from brands.models import Brand
-from nomenclatures.filters import NomenclatureTenantFilter
+from nomenclatures.filters import NomenclatureTenantFilter, GroupedTenantFilter
 from nomenclatures.models import NomenclatureTenant, NomenclatureImage
 from nomenclatures.serializers import (
     InNomenclaturePhotoSerializer,
@@ -161,9 +161,18 @@ def grouped_tenants_global(request):
     GET /api/tenants/grouped/
     Один арендатор может появляться несколько раз — по одному на каждый бренд.
     """
-    queryset = (
+    base_qs = (
         NomenclatureTenant.objects
         .select_related("tenant", "brand")
+    )
+
+    base_qs = GroupedTenantFilter(
+        request.GET,
+        queryset=base_qs
+    ).qs
+
+    queryset = (
+        base_qs
         .values("tenant_id", "tenant__code1c", "brand_id", "brand__name")
         .annotate(count=Count("id"))
         .order_by("-count", "tenant_id")
