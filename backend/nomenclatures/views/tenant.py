@@ -8,11 +8,16 @@ from rest_framework.decorators import action, permission_classes
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from api.pagination import CustomLimitOffsetPagination
+from brands.models import Brand
 from nomenclatures.filters import NomenclatureTenantFilter
-from nomenclatures.models import NomenclatureTenant
-from nomenclatures.serializers import TenantWriteSerializer, NomenclatureTenantResponseSerializer
+from nomenclatures.models import NomenclatureTenant, NomenclatureImage
+from nomenclatures.serializers import (
+    InNomenclaturePhotoSerializer,
+    TenantWriteSerializer,
+    NomenclatureTenantResponseSerializer,
+)
 from rest_framework.decorators import api_view
 from users.permissions import SuperuserCUDAuthRetrieve
 
@@ -170,12 +175,23 @@ def grouped_tenants_global(request):
     if paginated_queryset is None:
         paginated_queryset = []
 
+    brand_ids = [
+        item["brand_id"]
+        for item in paginated_queryset
+        if item["brand_id"]
+    ]
+    brand_logotypes = {
+        brand.id: brand.logotype.url if brand.logotype else None
+        for brand in Brand.all_objects.filter(id__in=brand_ids).only("id", "logotype")
+    }
+
     result = [
         {
-            "tenant_id": item["tenant_id"],
-            "tenant_code1c": item["tenant__code1c"],
-            "brand_id": item["brand_id"],
-            "brand_name": item["brand__name"] or "Без бренда",
+            "tenantId": item["tenant_id"],
+            "tenantCode1c": item["tenant__code1c"],
+            "brandId": item["brand_id"],
+            "brandName": item["brand__name"] or "Без бренда",
+            "brandLogotype": brand_logotypes.get(item["brand_id"]),
             "count": item["count"],
         }
         for item in paginated_queryset
@@ -201,7 +217,14 @@ def tenant_detail(request, tenant_pk: str):
         NomenclatureTenant.objects
         .filter(**{tenant_filter: tenant_pk})
         .select_related("tenant", "brand", "nomenclature", "nomenclature__typeOfPlace")
-        .prefetch_related("tenant__brands")
+        .prefetch_related(
+            "tenant__brands",
+            Prefetch(
+                "nomenclature__images",
+                queryset=NomenclatureImage.objects.filter(type="exterior"),
+                to_attr="prefetched_exterior",
+            ),
+        )
         .order_by("nomenclature__name")
     )
 
@@ -216,25 +239,34 @@ def tenant_detail(request, tenant_pk: str):
 
     places = [
         {
-            "nomenclature_id": str(entry.nomenclature.id),
-            "nomenclature_code1c": entry.nomenclature.code1c,
-            "nomenclature_name": entry.nomenclature.name,
-            "type_of_place": entry.nomenclature.type_of_place_display,
+            "nomenclatureId": str(entry.nomenclature.id),
+            "nomenclatureCode1c": entry.nomenclature.code1c,
+            "nomenclatureName": entry.nomenclature.name,
+            "typeOfPlace": entry.nomenclature.type_of_place_display,
             "floor": entry.floor or None,
             "atm": entry.atm,
-            "brand_id": str(entry.brand.id) if entry.brand else None,
-            "brand_name": entry.brand.name if entry.brand else None,
+            "brandId": str(entry.brand.id) if entry.brand else None,
+            "brandName": entry.brand.name if entry.brand else None,
+            "brandLogotype": (
+                entry.brand.logotype.url
+                if entry.brand and entry.brand.logotype
+                else None
+            ),
+            "exterior": InNomenclaturePhotoSerializer(
+                getattr(entry.nomenclature, "prefetched_exterior", []),
+                many=True,
+            ).data,
         }
         for entry in qs
     ]
 
     return Response({
-        "tenant_id": str(tenant.id),
-        "tenant_code1c": tenant.code1c,
-        "tenant_name": tenant.name,       # property, не __str__, чтобы не дёргать brands M2M
+        "tenantId": str(tenant.id),
+        "tenantCode1c": tenant.code1c,
+        "tenantName": tenant.name,       # property, не __str__, чтобы не дёргать brands M2M
         "opf": tenant.opf,
         "inn": tenant.inn,
         "keyword": tenant.keyword,
-        "total_places": len(places),
+        "totalPlaces": len(places),
         "places": places,
     })
