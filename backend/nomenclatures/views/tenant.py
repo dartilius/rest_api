@@ -147,6 +147,8 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             for floor in floors
         ])
 
+
+@extend_schema(tags=["Номенклатура - Арендаторы"])
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def grouped_tenants_global(request):
@@ -181,6 +183,7 @@ def grouped_tenants_global(request):
 
     return paginator.get_paginated_response(result)
 
+@extend_schema(tags=["Номенклатура - Арендаторы"])
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def tenant_detail(request, tenant_pk: str):
