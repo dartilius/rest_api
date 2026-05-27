@@ -123,9 +123,9 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.delete()
         payload = {
-                "nomenclatureCode": instance.nomenclature.code1c,
-                "caCode": instance.tenant.code1c,
-                "brandCode": instance.brand.code1c if instance.brand else None,
+            "nomenclatureCode": instance.nomenclature.code1c,
+            "caCode": instance.tenant.code1c,
+            "brandCode": instance.brand.code1c if instance.brand else None,
         }
         print("payload:", payload)
         # try:
@@ -208,6 +208,7 @@ def grouped_tenants_global(request):
 
     return paginator.get_paginated_response(result)
 
+
 @extend_schema(tags=["Номенклатура - Арендаторы"])
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -227,7 +228,11 @@ def tenant_detail(request, tenant_pk: str):
         .filter(**{tenant_filter: tenant_pk})
         .select_related("tenant", "brand", "nomenclature", "nomenclature__typeOfPlace")
         .prefetch_related(
-            "tenant__brands",
+            Prefetch(
+                "tenant__brands",
+                queryset=Brand.objects.only("id", "name", "logotype"),
+                to_attr="prefetched_brands",
+            ),
             Prefetch(
                 "nomenclature__images",
                 queryset=NomenclatureImage.objects.filter(type="exterior").order_by("created"),
@@ -258,7 +263,6 @@ def tenant_detail(request, tenant_pk: str):
 
         return image.source.url if hasattr(image.source, "url") else str(image.source)
 
-
     places = [
         {
             "nomenclatureId": str(entry.nomenclature.id),
@@ -279,10 +283,31 @@ def tenant_detail(request, tenant_pk: str):
         for entry in qs
     ]
 
+    prefetched_brands = getattr(tenant, "prefetched_brands", [])
+    primary_brand = prefetched_brands[0] if prefetched_brands else None
+
+    if primary_brand:
+        brand = {
+            "id": str(primary_brand.id),
+            "name": primary_brand.name,
+            "logotype": (
+                primary_brand.logotype.url
+                if primary_brand.logotype
+                else None
+            ),
+        }
+    else:
+        brand = {
+            "id": None,
+            "name": None,
+            "logotype": None,
+        }
+
     return Response({
         "tenantId": str(tenant.id),
         "tenantCode1c": tenant.code1c,
-        "tenantName": tenant.name,       # property, не __str__, чтобы не дёргать brands M2M
+        "tenantName": tenant.name,  # property, не __str__, чтобы не дёргать brands M2M
+        "brand": brand,
         "opf": tenant.opf,
         "inn": tenant.inn,
         "keyword": tenant.keyword,
