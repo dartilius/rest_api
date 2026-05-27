@@ -98,11 +98,19 @@ class PhotoSerializer(serializers.ModelSerializer):
 
 class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
     """Схема для добавления фотографий к номенклатурам."""
+    exterior = serializers.SerializerMethodField()
 
     class Meta:
         model = NomenclatureImage
-        fields = ("source", "id",)
-        read_only_fields = ("source", "id",)
+        fields = ("exterior", "id",)
+        read_only_fields = ("exterior", "id",)
+
+    def get_exterior(self, obj):
+        if not obj.source:
+            return None
+        if hasattr(obj.source, "url"):
+            return obj.source.url
+        return str(obj.source)
 
 
 class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):

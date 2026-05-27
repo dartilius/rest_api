@@ -221,7 +221,7 @@ def tenant_detail(request, tenant_pk: str):
             "tenant__brands",
             Prefetch(
                 "nomenclature__images",
-                queryset=NomenclatureImage.objects.filter(type="exterior"),
+                queryset=NomenclatureImage.objects.filter(type="exterior").order_by("created"),
                 to_attr="prefetched_exterior",
             ),
         )
@@ -236,6 +236,12 @@ def tenant_detail(request, tenant_pk: str):
         raise NotFound("Арендатор не найден.")
 
     tenant = first.tenant
+
+    def get_first_exterior(nomenclature):
+        exterior = getattr(nomenclature, "prefetched_exterior", [])
+        if not exterior:
+            return None
+        return InNomenclaturePhotoSerializer(exterior[0]).data
 
     places = [
         {
@@ -252,10 +258,7 @@ def tenant_detail(request, tenant_pk: str):
                 if entry.brand and entry.brand.logotype
                 else None
             ),
-            "exterior": InNomenclaturePhotoSerializer(
-                getattr(entry.nomenclature, "prefetched_exterior", []),
-                many=True,
-            ).data,
+            "exterior": get_first_exterior(entry.nomenclature),
         }
         for entry in qs
     ]
