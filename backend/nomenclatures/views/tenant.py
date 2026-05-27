@@ -166,7 +166,7 @@ def grouped_tenants_global(request):
         .select_related("tenant", "brand")
         .values("tenant_id", "tenant__code1c", "brand_id", "brand__name")
         .annotate(count=Count("id"))
-        .order_by("-count")
+        .order_by("-count", "tenant_id")
     )
 
     paginator = CustomLimitOffsetPagination()
