@@ -273,6 +273,7 @@ def tenant_detail(request, tenant_pk: str):
             "floor": entry.floor or None,
             "atm": entry.atm,
             "exterior": get_first_exterior(entry.nomenclature),
+            "pricePerMonth": entry.nomenclature.pricePerMonth
         }
         for entry in qs
     ]
