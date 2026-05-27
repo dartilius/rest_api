@@ -241,7 +241,14 @@ def tenant_detail(request, tenant_pk: str):
         exterior = getattr(nomenclature, "prefetched_exterior", [])
         if not exterior:
             return None
-        return InNomenclaturePhotoSerializer(exterior[0]).data
+
+        image = exterior[0]
+
+        if not image.source:
+            return None
+
+        return image.source.url if hasattr(image.source, "url") else str(image.source)
+
 
     places = [
         {
