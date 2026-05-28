@@ -266,14 +266,6 @@ def tenant_detail(request, tenant_pk: str):
     places = [
         {
             "nomenclatureId": str(entry.nomenclature.id),
-            "nomenclatureCode1c": entry.nomenclature.code1c,
-            "formattedAddress": entry.nomenclature.formatted_address,
-            "brandName": entry.nomenclature.brand.name if entry.brand else None,
-            "typeOfPlace": entry.nomenclature.type_of_place_display,
-            "floor": entry.floor or None,
-            "atm": entry.atm,
-            "exterior": get_first_exterior(entry.nomenclature),
-            "pricePerMonth": entry.nomenclature.pricePerMonth
         }
         for entry in qs
     ]
