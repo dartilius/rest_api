@@ -9,6 +9,7 @@ from ch_statistic.models import (
 )
 from nomenclatures.models import Nomenclature
 from django.core.cache import cache
+from django.template.response import TemplateResponse
 
 DISPLAY_LIST = (
     'client',
@@ -23,7 +24,6 @@ FILTER_LIST = ('client', 'file')
 
 NOMENCLATURE_CACHE_KEY = 'admin_nomenclature_map'
 NOMENCLATURE_CACHE_TTL = 60 * 5  # 5 минут
-
 
 def get_nomenclature_map(uuids: list[str]) -> dict[str, dict]:
     """
@@ -68,17 +68,32 @@ class MusicStatAdmin(admin.ModelAdmin):
     search_fields = ('client', 'file')
     list_filter = FILTER_LIST
     show_full_result_count = False
+    list_per_page = 25
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context)
+        try:
+            # cl — это ChangeList, уже содержит paginated queryset
+            cl = response.context_data['cl']
+            page_qs = cl.result_list  # только записи текущей страницы
+            uuids = list({str(obj.client) for obj in page_qs})
+            get_nomenclature_map(uuids)
+        except (AttributeError, KeyError):
+            pass
+        return response
+
+    def get_queryset(self, request):
+        # убираем distinct по всей таблице — больше не нужен
+        return super().get_queryset(request)
 
     def get_search_results(self, request, queryset, search_term):
         if not search_term:
             return queryset, False
 
-        # если вбили UUID — ищем напрямую
         direct_qs = queryset.filter(client=search_term)
         if direct_qs.exists():
             return direct_qs, False
 
-        # ищем в PostgreSQL по названию и коду
         matched_uuids = list(
             Nomenclature.objects
             .filter(
@@ -93,12 +108,6 @@ class MusicStatAdmin(admin.ModelAdmin):
             get_nomenclature_map(matched_uuids_str)
 
         return queryset.filter(client__in=matched_uuids_str), False
-
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        uuids = list(qs.values_list('client', flat=True).distinct())
-        get_nomenclature_map(uuids)
-        return qs
 
     def _get_nom(self, obj) -> dict:
         nmap = cache.get(NOMENCLATURE_CACHE_KEY, {})
@@ -125,7 +134,6 @@ class MusicStatAdmin(admin.ModelAdmin):
     def duration(self, obj):
         seconds = int(obj.length or 0)
         return f'{seconds // 60:02d}:{seconds % 60:02d}'
-
 @admin.register(VideoStat)
 class VideoStatAdmin(admin.ModelAdmin):
     """Статистики видео."""
