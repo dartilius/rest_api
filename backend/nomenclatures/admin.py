@@ -5,7 +5,10 @@ from django.db.models import prefetch_related_objects
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils.html import format_html
-
+from django.http import JsonResponse
+from django.utils.dateparse import parse_date
+from django.contrib.admin.views.decorators import staff_member_required
+from ch_statistic.models import MusicStat
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
@@ -25,6 +28,53 @@ class DiscountRuleInline(admin.TabularInline):
 @admin.register(Nomenclature)
 class NomenclatureAdmin(admin.ModelAdmin):
     """Номенклатура — полностью оптимизированная версия с сохранением подсчета"""
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom = [
+            path(
+                '<uuid:object_id>/music-stat/',
+                self.admin_site.admin_view(self.music_stat_view),
+                name='nomenclature_music_stat',
+            ),
+        ]
+        return custom + urls
+
+    def music_stat_view(self, request, object_id):
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+
+        if not date_from or not date_to:
+            return JsonResponse({'error': 'Укажите date_from и date_to'}, status=400)
+
+        parsed_from = parse_date(date_from)
+        parsed_to = parse_date(date_to)
+
+        if not parsed_from or not parsed_to:
+            return JsonResponse({'error': 'Неверный формат даты'}, status=400)
+
+        qs = (
+            MusicStat.objects
+            .filter(
+                client=str(object_id),
+                played__date__gte=parsed_from,
+                played__date__lte=parsed_to,
+            )
+            .order_by('-played')
+            .values('file', 'played', 'length')[:200]  # лимит 200 записей
+        )
+
+        results = [
+            {
+                'file': row['file'],
+                'played': row['played'].strftime('%Y-%m-%d %H:%M:%S'),
+                'length': row['length'],
+            }
+            for row in qs
+        ]
+
+        return JsonResponse({'count': len(results), 'results': results})
 
     # ========== ОСНОВНЫЕ НАСТРОЙКИ ==========
     list_display = (
