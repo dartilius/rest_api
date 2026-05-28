@@ -1,0 +1,175 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+{% if not add %}
+<div class="module" id="music-stat-section" style="margin-top: 20px;">
+  <h2 style="padding: 8px 12px; background: #417690; color: white; margin: 0;">
+    🎵 Статистика музыки
+  </h2>
+  <div style="padding: 12px;">
+
+    <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px;">
+      <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px;">
+        От
+        <input type="date" id="stat-date-from"
+          style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px;">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px;">
+        До
+        <input type="date" id="stat-date-to"
+          style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px;">
+      </label>
+      <button type="button" id="stat-load-btn"
+        style="padding: 6px 16px; background: #417690; color: white; border: none; cursor: pointer; border-radius: 3px; font-size: 13px; height: 28px;">
+        Показать
+      </button>
+      <button type="button" id="stat-today-btn"
+        style="padding: 6px 16px; background: #5b8c5a; color: white; border: none; cursor: pointer; border-radius: 3px; font-size: 13px; height: 28px;">
+        Сегодня
+      </button>
+      <span id="stat-loading" style="display:none; color: gray; font-size: 13px;">⏳ Загрузка...</span>
+    </div>
+
+    <div id="stat-error" style="color: red; display: none; margin-bottom: 8px; font-size: 13px;"></div>
+    <div id="stat-summary" style="margin-bottom: 8px; color: #555; font-size: 13px;"></div>
+
+    <div style="overflow-x: auto;">
+      <table id="stat-table" style="width: 100%; border-collapse: collapse; display: none; font-size: 13px;">
+        <thead>
+          <tr style="background: #f0f0f0;">
+            <th style="padding: 7px 10px; border: 1px solid #ddd; text-align: left;">Файл</th>
+            <th style="padding: 7px 10px; border: 1px solid #ddd; text-align: left;">Проиграно</th>
+            <th style="padding: 7px 10px; border: 1px solid #ddd; text-align: left;">Длительность</th>
+          </tr>
+        </thead>
+        <tbody id="stat-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="stat-empty" style="display:none; color: gray; font-size: 13px;">
+      Нет данных за выбранный период.
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  const apiUrl = "/admin/nomenclatures/nomenclature/{{ object_id }}/music-stat/";
+
+  function today() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  // по умолчанию — сегодня
+  document.getElementById("stat-date-from").value = today();
+  document.getElementById("stat-date-to").value = today();
+
+  // кнопка "Сегодня" — сбрасывает оба поля на сегодня и сразу загружает
+  document.getElementById("stat-today-btn").addEventListener("click", function () {
+    document.getElementById("stat-date-from").value = today();
+    document.getElementById("stat-date-to").value = today();
+    loadStat();
+  });
+
+  document.getElementById("stat-load-btn").addEventListener("click", loadStat);
+
+  function loadStat() {
+    const dateFrom = document.getElementById("stat-date-from").value;
+    const dateTo = document.getElementById("stat-date-to").value;
+
+    if (!dateFrom || !dateTo) {
+      showError("Укажите обе даты.");
+      return;
+    }
+    if (dateFrom > dateTo) {
+      showError("Дата «От» не может быть позже даты «До».");
+      return;
+    }
+
+    hideError();
+    setLoading(true);
+
+    fetch(`${apiUrl}?date_from=${dateFrom}&date_to=${dateTo}`, {
+      headers: { "X-CSRFToken": getCookie("csrftoken") }
+    })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        setLoading(false);
+        renderTable(data);
+      })
+      .catch(err => {
+        setLoading(false);
+        showError("Ошибка при загрузке данных: " + err.message);
+      });
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById("stat-tbody");
+    const table = document.getElementById("stat-table");
+    const empty = document.getElementById("stat-empty");
+    const summary = document.getElementById("stat-summary");
+
+    tbody.innerHTML = "";
+
+    if (!data.results || data.results.length === 0) {
+      table.style.display = "none";
+      empty.style.display = "block";
+      summary.textContent = "";
+      return;
+    }
+
+    empty.style.display = "none";
+    table.style.display = "table";
+
+    const limitNote = data.count >= 200 ? " (показаны первые 200)" : "";
+    summary.textContent = `Найдено записей: ${data.count}${limitNote}`;
+
+    data.results.forEach(function(row) {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td style="padding: 5px 10px; border: 1px solid #eee; font-family: monospace;">' +
+          row.file.slice(0, 8) + "…" +
+        "</td>" +
+        '<td style="padding: 5px 10px; border: 1px solid #eee;">' + row.played + "</td>" +
+        '<td style="padding: 5px 10px; border: 1px solid #eee;">' + fmtDuration(row.length) + "</td>";
+      tbody.appendChild(tr);
+    });
+  }
+
+  function fmtDuration(seconds) {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return m + ":" + s;
+  }
+
+  function setLoading(state) {
+    document.getElementById("stat-loading").style.display = state ? "inline" : "none";
+    document.getElementById("stat-load-btn").disabled = state;
+    document.getElementById("stat-today-btn").disabled = state;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("stat-error");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+
+  function hideError() {
+    document.getElementById("stat-error").style.display = "none";
+  }
+
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+    return match ? match[2] : "";
+  }
+})();
+</script>
+{% endif %}
+
+{% endblock %}
