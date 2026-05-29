@@ -64,7 +64,7 @@ class AdStatAdmin(admin.ModelAdmin):
 class MusicStatAdmin(admin.ModelAdmin):
     """Статистики музыки."""
 
-    list_display = ('client_name', 'brand_name', 'short_file', 'played', 'created', 'duration')
+    list_display = ('client_name', 'brand_name', 'short_file', 'played_krasnoyarsk', 'created', 'duration')
     search_fields = ('client', 'file')
     list_filter = FILTER_LIST
     show_full_result_count = False

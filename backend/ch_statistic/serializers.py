@@ -83,12 +83,12 @@ class NomenclatureAdStatSerializer(
 class NomenclatureMusicStatSerializer(
     BaseNomenclatureSerializer, serializers.ModelSerializer
 ):
-    """Сериализация статистики музыки из номенклатуры."""
+    played_krasnoyarsk = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
 
     class Meta:
         model = MusicStat
-        fields = BaseNomenclatureSerializer.Meta.fields
-        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields
+        fields = BaseNomenclatureSerializer.Meta.fields + ('played_krasnoyarsk',)
+        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields + ('played_krasnoyarsk',)
 
 
 class NomenclatureVideoStatSerializer(

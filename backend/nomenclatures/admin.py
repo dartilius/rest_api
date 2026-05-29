@@ -69,9 +69,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
             {
                 'file': row['file'],
                 'played': row['played'].strftime('%Y-%m-%d %H:%M:%S'),
+                'played_krasnoyarsk': row['played_krasnoyarsk'].strftime('%Y-%m-%d %H:%M:%S') if row[
+                    'played_krasnoyarsk'] else '—',
                 'length': row['length'],
             }
-            for row in qs
+            for row in qs.values('file', 'played', 'played_krasnoyarsk', 'length')
         ]
 
         return JsonResponse({'count': len(results), 'results': results})
