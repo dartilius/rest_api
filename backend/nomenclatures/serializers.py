@@ -1214,22 +1214,22 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
 
 
+from django.utils import timezone as dj_timezone
 
 class StatusHistorySerializer(serializers.ModelSerializer):
     """Сериализация истории доступности."""
 
-    timezone = serializers.CharField(read_only=True)
-
     class Meta:
-        fields = ("change_time", "timezone", "status")
+        fields = ("change_time", "status")
         read_only_fields = fields
         model = StatusHistory
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_["change_time"] = format_local_datetime(value.change_time)
-        repr_["timezone"] = timezone.get_current_timezone_name()
+        repr_["timezone"] = dj_timezone.get_current_timezone_name()
         return repr_
+
 
 class NomenclatureCardSerializer(serializers.ModelSerializer):
     """Минимальный сериализатор для карточек каталога и корзины."""
