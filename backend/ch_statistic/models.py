@@ -11,6 +11,11 @@ class Stat(models.ClickhouseModel):
     played = models.DateTimeField(
         verbose_name='Когда было проиграно'
     )
+    played_krasnoyarsk = models.DateTimeField(
+        verbose_name='Когда было проиграно (Красноярск)',
+        null=True,
+        blank=True,
+    )
     file = models.StringField(
         max_length=36,
         verbose_name='Идентификатор файла'

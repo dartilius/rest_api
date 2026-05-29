@@ -10,20 +10,37 @@ from ch_statistic.models import (
     TickerStat,
     BackupImageStat
 )
+import pytz
 
+KRASNOYARSK_TZ = pytz.timezone('Asia/Krasnoyarsk')
+def to_utc(played) -> datetime:
+    if isinstance(played, str):
+        played = datetime.fromisoformat(played)
+    if played.tzinfo is None:
+        played = KRASNOYARSK_TZ.localize(played)
+    return played.astimezone(pytz.utc)
+
+
+def to_krasnoyarsk(played) -> datetime:
+    if isinstance(played, str):
+        played = datetime.fromisoformat(played)
+    if played.tzinfo is None:
+        played = KRASNOYARSK_TZ.localize(played)
+    return played.astimezone(KRASNOYARSK_TZ)
 
 @shared_task
 def create_statistic(stat_type, nomenclature_id, stat_list):
-    """Внесение статистики в базу."""
     stat_objects = []
     match stat_type:
         case 'ad':
             model = ADStat
             for stat_element in stat_list:
+                played_utc = to_utc(stat_element['played'])
                 stat_objects += [model(
                     client=nomenclature_id,
                     file=stat_element['file'],
-                    played=stat_element['played'],
+                    played=played_utc,
+                    played_krasnoyarsk=to_krasnoyarsk(stat_element['played']),
                     length=stat_element['length'],
                     ad_block=stat_element['ad_block']
                 )]
@@ -41,10 +58,12 @@ def create_statistic(stat_type, nomenclature_id, stat_list):
     if model:
         if stat_type != 'ad':
             for stat_element in stat_list:
+                played_utc = to_utc(stat_element['played'])
                 stat_objects += [model(
                     client=nomenclature_id,
                     file=stat_element['file'],
-                    played=stat_element['played'],
+                    played=played_utc,
+                    played_krasnoyarsk=to_krasnoyarsk(stat_element['played']),
                     length=stat_element['length']
                 )]
         model.objects.bulk_create(stat_objects)
