@@ -219,7 +219,7 @@ class Nomenclature(APIBaseObjectModel):
     """Рабочая станция."""
 
     for_web = models.BooleanField(
-        default=True,
+        default=False,
         verbose_name="Отображать в веб"
     )
 

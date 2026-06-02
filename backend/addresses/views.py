@@ -40,7 +40,7 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema
-
+from django.shortcuts import get_object_or_404
 from api.pagination import CustomLimitOffsetPagination
 from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
@@ -373,6 +373,13 @@ class CityViewSet(viewsets.ModelViewSet):
         # queryset = City.list(request, *args, **kwargs)
         page = paginator.paginate_queryset(self.queryset, request)
         return paginator.get_paginated_response(CitySerializer(page, many=True).data)
+
+    @action(detail=False, methods=['get'], url_path=r'(?P<slug>[^/.]+)')
+    def get_city_name_by_slug(self, request, slug=None):
+        """Получить название города по slug."""
+        city = get_object_or_404(City, slug=slug)
+        return Response({'name': city.name})
+
 
 
 @extend_schema(
