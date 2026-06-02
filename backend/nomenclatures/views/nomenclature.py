@@ -296,21 +296,21 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         paginator = self.paginator
         page = paginator.paginate_queryset(queryset, request)
 
-        # Сериализуем
         if page is not None:
             serializer = CityNomenclaturesSerializer(page, many=True, context={"city_name": city.name})
-            return paginator.get_paginated_response({
-                "city": city.name,
-                "minPrice": float(min_price),
-                "nomenclatures": serializer.data,
-                "count": paginator.count,
-            })
+            # ✅ ВАЖНО: передаём список в results, а мета-данные — в kwargs
+            return paginator.get_paginated_response(
+                serializer.data,
+                city=city.name,
+                minPrice=min_price,
+                count=queryset.count()
+            )
 
         # Если нет пагинации (например, limit=0)
         serializer = CityNomenclaturesSerializer(queryset, many=True, context={"city_name": city.name})
         return Response({
             "city": city.name,
-            "minPrice": float(min_price),
+            "minPrice": min_price,
             "nomenclatures": serializer.data,
             "count": queryset.count(),
         })
