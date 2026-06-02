@@ -354,7 +354,6 @@ class LocalityTypeViewSet(viewsets.ModelViewSet):
     • GET /api/addresses/cities/?page=2&limit=50 → пагинация
     """
 )
-@per
 class CityViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ГОРОДАМИ."""
     queryset = City.objects.all().select_related(
