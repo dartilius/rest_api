@@ -257,6 +257,48 @@ class TypeOfPlaceSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ("id",)
 
+# nomenclatures/serializers.py
+
+class CityNomenclaturesSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для номенклатуры в ответе по городу.
+    Скрывает детали, оставляет только фронтенд-дружелюбные поля.
+    """
+    nameForFront = serializers.SerializerMethodField()
+    formattedAddress = serializers.SerializerMethodField()
+    pricePerMonth = serializers.DecimalField(max_digits=12, decimal_places=2, coerce_to_string=False)
+
+    class Meta:
+        model = Nomenclature
+        fields = [
+            "id",
+            "nameForFront",
+            "formattedAddress",
+            "pricePerMonth"
+        ]
+
+    def get_nameForFront(self, obj):
+        type_abbr = getattr(obj.typeOfPlace, "abbreviation", "")
+        brand_name = getattr(obj.brand, "name", "")
+        parts = [part for part in [type_abbr, brand_name] if part]
+        return " ".join(parts) if parts else obj.name
+
+    def get_formattedAddress(self, obj):
+        address_obj = getattr(obj.address, "address", None)
+        if not address_obj:
+            return {"name": "", "coordinates": {"latitude": None, "longitude": None}}
+
+        latitude = getattr(address_obj, "latitude", None)
+        longitude = getattr(address_obj, "longitude", None)
+
+        return {
+            "name": getattr(address_obj, "formatted_name", ""),
+            "coordinates": {
+                "latitude": latitude,
+                "longitude": longitude
+            }
+        }
+
 class NomenclatureSerializer(serializers.ModelSerializer):
     """Сериализация одной номенклатуры."""
     typeOfPlace = serializers.CharField(
@@ -1026,7 +1068,9 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj) -> str:
         try:
+            # TODO: ответ приходит на -7 часов от крск (по UTC) - исправить
             return f"{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}"
+
         except AttributeError:
             return "Не выходила в сеть"
 

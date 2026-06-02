@@ -16,10 +16,11 @@ from rest_framework.status import (
     HTTP_200_OK,
 )
 
+from addresses.models import City
 from api.constants import VersionsSerializer
 from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
-from nomenclatures.services.opensearch_search import NomenclatureOpenSearchService
+from django.db import models
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
@@ -27,11 +28,12 @@ from ..models import Nomenclature, TypeOfPlace
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
-    ShortBrandNomenclatureSerializer, PhotoSerializer, NomenclatureCardSerializer,
+    ShortBrandNomenclatureSerializer, PhotoSerializer, NomenclatureCardSerializer, CityNomenclaturesSerializer,
 )
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 @extend_schema_view(
     grouped=extend_schema(
@@ -244,6 +246,75 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             )
         )
 
+    @extend_schema(summary="Номенклатуры по городу (по city_slug)")
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="by-city/(?P<city_slug>[^/.]+)",
+        permission_classes=[AllowAny],
+    )
+    def by_city(self, request, city_slug=None):
+        """
+        Возвращает агрегированные данные по номенклатуре для указанного города.
+
+        Параметры:
+          - city_slug: slug города (например, "novosibirsk")
+
+        Возвращает:
+          - city: название города
+          - minPrice: минимальная цена аренды по городу
+          - count: общее количество номенклатур
+          - nomenclatures: список номенклатур с минимальными полями
+        """
+        # Получаем город по slug
+        city = City.objects.filter(slug=city_slug).first()
+        if not city:
+            return Response(
+                {"error": f"Город с slug '{city_slug}' не найден"},
+                status=404,
+            )
+
+        # Фильтруем номенклатуры по городу
+        queryset = (
+            Nomenclature.web
+            .filter(
+                address__address__city=city
+            )
+            .select_related(
+                'typeOfPlace',
+                'brand',
+                'address__address',
+            )
+            .defer('description', 'settings', 'hw_info')
+        )
+
+        # Агрегация minPrice
+        min_price_result = queryset.aggregate(min_price=models.Min("pricePerMonth"))
+        min_price = min_price_result["min_price"] or 0.0
+
+        # Пагинация только для nomenclatures
+        paginator = self.paginator
+        page = paginator.paginate_queryset(queryset, request)
+
+        # Сериализуем
+        if page is not None:
+            serializer = CityNomenclaturesSerializer(page, many=True, context={"city_name": city.name})
+            return paginator.get_paginated_response({
+                "city": city.name,
+                "minPrice": float(min_price),
+                "nomenclatures": serializer.data,
+                "count": paginator.count,
+            })
+
+        # Если нет пагинации (например, limit=0)
+        serializer = CityNomenclaturesSerializer(queryset, many=True, context={"city_name": city.name})
+        return Response({
+            "city": city.name,
+            "minPrice": float(min_price),
+            "nomenclatures": serializer.data,
+            "count": queryset.count(),
+        })
+
     def list(self, request, *args, **kwargs):
         search_term = request.query_params.get('search')
 
@@ -346,70 +417,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 'previous': None,
                 'results': serializer.data
             })
-
-    # def list(self, request, *args, **kwargs):
-    #     search_term = request.query_params.get('search')
-    #
-    #     if search_term is not None and len(search_term.strip()) < 3:
-    #         return Response(
-    #             {"detail": "Поисковый запрос должен содержать не менее 3 символов."},
-    #             status=status.HTTP_400_BAD_REQUEST
-    #         )
-    #
-    #     if not search_term:
-    #         return super().list(request, *args, **kwargs)
-    #
-    #     cache_page = request.query_params.get('page', 1)
-    #     cache_limit = request.query_params.get('limit', self.paginator.page_size)
-    #     cache_key = f"nomenclature_search_os_v2_{hash(search_term)}_{cache_page}_{cache_limit}"
-    #
-    #     cached_result = cache.get(cache_key)
-    #     if cached_result:
-    #         return Response(cached_result)
-    #
-    #     try:
-    #         os_results = NomenclatureOpenSearchService.search(search_term, limit=5000)
-    #         ids = [hit.meta.id for hit in os_results]
-    #
-    #         if not ids:
-    #             result = {'count': 0, 'next': None, 'previous': None, 'results': []}
-    #             cache.set(cache_key, result, self.CACHE_TIMEOUT)
-    #             return Response(result)
-    #
-    #         queryset = (
-    #             Nomenclature.web.filter(id__in=ids)
-    #             .order_by(Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ids)]))
-    #             .select_related('brand', 'typeOfPlace', 'legalEntity', 'responsible_ad')
-    #             .prefetch_related(
-    #                 'images',
-    #                 Prefetch(
-    #                     'tenants',
-    #                     queryset=Counterparty.objects.only(
-    #                         'id', 'first_name', 'last_name',
-    #                         'middle_name', 'additional_name', 'keyword'
-    #                     ).prefetch_related('brands')
-    #                 )
-    #             )
-    #             .defer('description', 'settings', 'hw_info')
-    #         )
-    #
-    #         page = self.paginate_queryset(queryset)
-    #         if page is not None:
-    #             serializer = self.get_serializer(page, many=True)
-    #             result = self.get_paginated_response(serializer.data).data
-    #         else:
-    #             serializer = self.get_serializer(queryset, many=True)
-    #             result = {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data}
-    #
-    #         cache.set(cache_key, result, self.CACHE_TIMEOUT)
-    #         return Response(result)
-    #
-    #     except Exception:
-    #         queryset = self.get_queryset().filter(name__icontains=search_term)[:50]
-    #         serializer = self.get_serializer(queryset, many=True)
-    #         return Response(
-    #             {'count': len(serializer.data), 'next': None, 'previous': None, 'results': serializer.data})
-
 
     @action(detail=True, methods=["get"], url_path="tabs")
     def tabs(self, request, pk):
@@ -1161,7 +1168,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             id_rasb=request.data["id_rasb"]
         )
         return Response({"id": nomenclature.pk})
-
 
     @extend_schema(
         summary="Получить номенклатуры по списку ID",
