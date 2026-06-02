@@ -267,7 +267,8 @@ class CitySerializer(serializers.ModelSerializer):
         model = City
         fields = [
             'id', 'name', 'region',
-            'locality_type', 'timezone'
+            'locality_type', 'timezone',
+            'slug'
         ]
         read_only_fields = ['id']
 
