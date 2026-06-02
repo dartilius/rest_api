@@ -264,65 +264,102 @@ class CityNomenclaturesSerializer(serializers.ModelSerializer):
     Сериализатор для номенклатуры в ответе по городу.
     Скрывает детали, оставляет только фронтенд-дружелюбные поля.
     """
-    nameForFront = serializers.SerializerMethodField()
+    nameForFront = serializers.CharField(
+        source="name_for_front",
+        read_only=True
+    )
     formattedAddress = serializers.SerializerMethodField()
-    pricePerMonth = serializers.DecimalField(max_digits=12, decimal_places=2, coerce_to_string=False)
-
+    exterior = serializers.SerializerMethodField()
+    brand = BrandListSerializer(read_only=True)
     class Meta:
         model = Nomenclature
         fields = [
             "id",
             "nameForFront",
             "formattedAddress",
-            "pricePerMonth"
+            "pricePerMonth",
+            "exterior",
+            "brand",
         ]
+    def get_exterior(self, obj):
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="exterior"), many=True
+        ).data
 
-    def get_nameForFront(self, obj):
-        type_abbr = getattr(obj.typeOfPlace, "abbreviation", "")
-        brand_name = getattr(obj.brand, "name", "")
-        parts = [p for p in [type_abbr, brand_name] if p]
-        return " ".join(parts) or obj.name
-
-    # ✅ ВОТ ОНА — та же логика, что и в NomenclatureSerializer
     def get_formattedAddress(self, obj):
-        nomenclature_address = getattr(obj, 'address', None)
-        if not nomenclature_address:
-            return {"name": "", "coordinates": {"latitude": None, "longitude": None}}
+        """Возвращает объект с отформатированным адресом и координатами"""
+        try:
+            # Пытаемся получить связанный объект NomenclatureAddress
+            nomenclature_address = obj.address
+        except ObjectDoesNotExist:
+            # Если связи нет, возвращаем пустой адрес
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
 
-        address_book = nomenclature_address.address
-        if not address_book:
-            return {"name": "", "coordinates": {"latitude": None, "longitude": None}}
+        # Если связь есть, но нет самого адреса
+        if not nomenclature_address or not nomenclature_address.address:
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
 
-        # 🔧 ИЗВЛЕКАЕМ name у Street, если street — это ForeignKey
-        street = getattr(address_book, "street", None)
-        house = getattr(address_book, "house", "")
-        building = getattr(address_book, "building", "")
+        address = nomenclature_address.address
 
-        # Если street — модель (ForeignKey), берем str(street) или street.name
-        street_name = (
-            getattr(street, "name", None) or
-            str(street) if street else ""
-        )
+        if not address:
+            return {
+                "name": "",
+                "coordinates": {
+                    "latitude": None,
+                    "longitude": None
+                }
+            }
 
-        parts = [
-            field for field in [street_name, house, building] if field
-        ]
-        name = ", ".join(parts) if parts else ""
+        # Формируем строку адреса
+        address_parts = []
 
-        # Координаты
-        latitude = (
-                getattr(address_book, "latitude", None) or
-                getattr(address_book, "lat", None) or
-                getattr(getattr(address_book, "city", None), "latitude", None)
-        )
-        longitude = (
-                getattr(address_book, "longitude", None) or
-                getattr(address_book, "lon", None) or
-                getattr(getattr(address_book, "city", None), "longitude", None)
-        )
+        # Город
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
 
+        # Улица
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        # Номер дома/строения
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+
+        if house_number:
+            address_parts.append(house_number)
+
+        # 🔥 ИСПРАВЛЕНО: проверяем наличие coordinates и его атрибутов
+        latitude = None
+        longitude = None
+
+        if hasattr(address, 'coordinates') and address.coordinates:
+            try:
+                if hasattr(address.coordinates, 'latitude'):
+                    latitude = str(address.coordinates.latitude) if address.coordinates.latitude else None
+                if hasattr(address.coordinates, 'longitude'):
+                    longitude = str(address.coordinates.longitude) if address.coordinates.longitude else None
+            except (AttributeError, TypeError):
+                # Если что-то пошло не так, оставляем None
+                pass
+
+        # Формируем объект с адресом и координатами
         return {
-            "name": name,
+            "name": ', '.join(address_parts),
             "coordinates": {
                 "latitude": latitude,
                 "longitude": longitude
