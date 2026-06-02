@@ -664,7 +664,6 @@ class City(models.Model):
         "Тип АТД",
         max_length=255,
         blank=True,
-        null=True,
         help_text="Тип административно-территориального деления"
     )
 
