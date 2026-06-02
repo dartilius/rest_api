@@ -413,7 +413,7 @@ class LocalityTypeAdmin(admin.ModelAdmin):
 class CityAdmin(admin.ModelAdmin):
     """ОПТИМИЗИРОВАННЫЙ: используем методы вместо прямых ForeignKey полей"""
     
-    list_display = ('get_display_name', 'get_locality_type_name', 'get_region_name', 'get_timezone_name')
+    list_display = ('get_display_name', 'get_locality_type_name', 'get_region_name', 'get_timezone_name', 'slug')
     search_fields = ('name',)
     list_filter = (OptimizedCountryFilter, OptimizedRegionFilter, OptimizedCityFilter, 'timezone')
     autocomplete_fields = ('region', 'locality_type', 'timezone')
