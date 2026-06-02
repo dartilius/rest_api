@@ -280,19 +280,43 @@ class CityNomenclaturesSerializer(serializers.ModelSerializer):
     def get_nameForFront(self, obj):
         type_abbr = getattr(obj.typeOfPlace, "abbreviation", "")
         brand_name = getattr(obj.brand, "name", "")
-        parts = [part for part in [type_abbr, brand_name] if part]
-        return " ".join(parts) if parts else obj.name
+        parts = [p for p in [type_abbr, brand_name] if p]
+        return " ".join(parts) or obj.name
 
+    # ✅ ВОТ ОНА — та же логика, что и в NomenclatureSerializer
     def get_formattedAddress(self, obj):
-        address_obj = getattr(obj.address, "address", None)
-        if not address_obj:
+        nomenclature_address = getattr(obj, 'address', None)
+        if not nomenclature_address:
             return {"name": "", "coordinates": {"latitude": None, "longitude": None}}
 
-        latitude = getattr(address_obj, "latitude", None)
-        longitude = getattr(address_obj, "longitude", None)
+        address_book = nomenclature_address.address
+        if not address_book:
+            return {"name": "", "coordinates": {"latitude": None, "longitude": None}}
+
+        # Собираем name: street + house + building
+        parts = [
+            field for field in [
+                getattr(address_book, "street", ""),
+                getattr(address_book, "house", ""),
+                getattr(address_book, "building", "")
+            ] if field
+        ]
+        name = ", ".join(parts) if parts else ""
+
+        # Координаты
+        latitude = (
+                getattr(address_book, "latitude", None) or
+                getattr(address_book, "lat", None) or
+                getattr(getattr(address_book, "city", None), "latitude", None)
+        )
+        longitude = (
+                getattr(address_book, "longitude", None) or
+                getattr(address_book, "lon", None) or
+                getattr(getattr(address_book, "city", None), "longitude", None)
+        )
 
         return {
-            "name": getattr(address_obj, "formatted_name", ""),
+            "name": name,
             "coordinates": {
                 "latitude": latitude,
                 "longitude": longitude

@@ -277,15 +277,15 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         # Фильтруем номенклатуры по городу
         queryset = (
             Nomenclature.web
-            .filter(
-                address__address__city=city
-            )
+            .filter(address__address__city=city)
             .select_related(
                 'typeOfPlace',
                 'brand',
-                'address__address',
+                'address__address__city',
             )
-            .defer('description', 'settings', 'hw_info')
+            .prefetch_related(
+                Prefetch('address', queryset=NomenclatureAddress.objects.select_related('address'))
+            )
         )
 
         # Агрегация minPrice
