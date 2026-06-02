@@ -38,7 +38,8 @@ from django.contrib.postgres.indexes import GinIndex, BTreeIndex
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from django.core.exceptions import ValidationError
-
+from transliterate import translit
+import re
 
 # ====================================================================================
 # МОДУЛЬ 1: БАЗОВЫЕ МОДЕЛИ - СТРАНЫ И АДМИНИСТРАТИВНЫЕ ЕДИНИЦЫ
@@ -619,6 +620,12 @@ class City(models.Model):
         help_text="Название населенного пункта"
     )
 
+    slug = models.SlugField(
+        "Наименование города - транслит",
+        max_length=255,
+        help_text="Название населенного пункта (АВТО)"
+    )
+
     region = models.ForeignKey(
         "Region",
         on_delete=models.PROTECT,
@@ -681,6 +688,25 @@ class City(models.Model):
                 opclasses=['gin_trgm_ops']
             ),
         ]
+
+    def save(self, *args, **kwargs):
+        self.slug = self._generate_slug()
+        super().save(*args, **kwargs)
+
+    def _generate_slug(self):
+        try:
+            name_latin = translit(self.name, 'ru', reversed=True)
+        except Exception:
+            name_latin = self.name
+
+        base = re.sub(r'[^\w\s-]', '', name_latin.lower()).strip()
+        base = re.sub(r'[\s_-]+', '-', base) or str(self.id)[:8]
+        slug = base[:90]
+
+        if City.objects.filter(slug=slug).exclude(id=self.id).exists():
+            slug = f"{slug[:85]}-{str(self.id)[:8]}"
+
+        return slug
 
     def __str__(self):
         """
