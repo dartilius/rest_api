@@ -256,17 +256,8 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     def by_city(self, request, city_slug=None):
         """
         Возвращает агрегированные данные по номенклатуре для указанного города.
-
-        Параметры:
-          - city_slug: slug города (например, "novosibirsk")
-
-        Возвращает:
-          - city: название города
-          - minPrice: минимальная цена аренды по городу
-          - count: общее количество номенклатур
-          - nomenclatures: список номенклатур с минимальными полями
         """
-        # Получаем город по slug
+
         city = City.objects.filter(slug=city_slug).first()
         if not city:
             return Response(
@@ -274,7 +265,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 status=404,
             )
 
-        # Фильтруем номенклатуры по городу
         queryset = (
             Nomenclature.web
             .filter(address__address__city=city)
@@ -284,30 +274,23 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 'address__address__city',
             )
             .prefetch_related(
-                Prefetch('address', queryset=NomenclatureAddress.objects.select_related('address'))
+                Prefetch(
+                    'address',
+                    queryset=NomenclatureAddress.objects.select_related('address')
+                )
             )
         )
 
-        # Агрегация minPrice
-        min_price_result = queryset.aggregate(min_price=models.Min("pricePerMonth"))
-        min_price = min_price_result["min_price"] or 0.0
+        min_price = queryset.aggregate(
+            min_price=models.Min("pricePerMonth")
+        )["min_price"] or 0.0
 
-        # Пагинация только для nomenclatures
-        paginator = self.paginator
-        page = paginator.paginate_queryset(queryset, request)
+        serializer = CityNomenclaturesSerializer(
+            queryset,
+            many=True,
+            context={"city_name": city.name}
+        )
 
-        if page is not None:
-            serializer = CityNomenclaturesSerializer(page, many=True, context={"city_name": city.name})
-            # ✅ ВАЖНО: передаём список в results, а мета-данные — в kwargs
-            return paginator.get_paginated_response(
-                serializer.data,
-                city=city.name,
-                minPrice=min_price,
-                count=queryset.count()
-            )
-
-        # Если нет пагинации (например, limit=0)
-        serializer = CityNomenclaturesSerializer(queryset, many=True, context={"city_name": city.name})
         return Response({
             "city": city.name,
             "minPrice": min_price,
