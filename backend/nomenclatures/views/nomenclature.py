@@ -24,7 +24,7 @@ from django.db import models
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
-from ..models import Nomenclature, TypeOfPlace
+from ..models import Nomenclature, TypeOfPlace, NomenclatureAddress
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
