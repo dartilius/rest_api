@@ -293,13 +293,19 @@ class CityNomenclaturesSerializer(serializers.ModelSerializer):
         if not address_book:
             return {"name": "", "coordinates": {"latitude": None, "longitude": None}}
 
-        # Собираем name: street + house + building
+        # 🔧 ИЗВЛЕКАЕМ name у Street, если street — это ForeignKey
+        street = getattr(address_book, "street", None)
+        house = getattr(address_book, "house", "")
+        building = getattr(address_book, "building", "")
+
+        # Если street — модель (ForeignKey), берем str(street) или street.name
+        street_name = (
+            getattr(street, "name", None) or
+            str(street) if street else ""
+        )
+
         parts = [
-            field for field in [
-                getattr(address_book, "street", ""),
-                getattr(address_book, "house", ""),
-                getattr(address_book, "building", "")
-            ] if field
+            field for field in [street_name, house, building] if field
         ]
         name = ", ".join(parts) if parts else ""
 
