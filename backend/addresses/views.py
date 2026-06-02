@@ -35,8 +35,8 @@
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema
@@ -354,12 +354,13 @@ class LocalityTypeViewSet(viewsets.ModelViewSet):
     • GET /api/addresses/cities/?page=2&limit=50 → пагинация
     """
 )
+@per
 class CityViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ГОРОДАМИ."""
     queryset = City.objects.all().select_related(
         'region', 'locality_type', 'timezone'
     ).order_by('region__name', 'name')
-
+    permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = CitySerializer
     pagination_class = OptionalPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -367,7 +368,6 @@ class CityViewSet(viewsets.ModelViewSet):
     ordering = ['region__name', 'name']
 
     @city_list_schema()
-    @permission_classes([AllowAny])
     def list(self, request, *args, **kwargs):
         """Список городов."""
         paginator = CustomLimitOffsetPagination()
