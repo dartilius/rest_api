@@ -4,7 +4,6 @@ from django_filters import (
     AllValuesMultipleFilter, CharFilter, FilterSet, UUIDFilter,
     BaseInFilter, OrderingFilter
 )
-import uuid
 from nomenclatures.models import Nomenclature, NomenclatureTenant
 
 logger = logging.getLogger(__name__)
@@ -73,6 +72,10 @@ class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
         return super().filter(qs, value)
 
 
+
+class CharInFilter(BaseInFilter, CharFilter):
+    pass
+
 class NomenclatureFilter(FilterSet):
     """
     Фильтрация номенклатур БЕЗ специфичных адресных фильтров.
@@ -113,6 +116,19 @@ class NomenclatureFilter(FilterSet):
         field_name='typeOfPlace__name',
         lookup_expr='icontains',
         label='Тип места размещения'
+    )
+
+    city_slug = CharFilter(
+        field_name='address__address__city__slug',
+        lookup_expr='iexact',
+        label='Slug города'
+    )
+
+    # мультивыбор: ?city_slug=krasnoярск,novosibirsk
+    city_slugs = CharInFilter(
+        field_name='address__address__city__slug',
+        lookup_expr='in',
+        label='Slug городов (через запятую)'
     )
 
     nomenclature = CharFilter(method='filter_nomenclature_ignore', required=False)
@@ -156,7 +172,7 @@ class NomenclatureFilter(FilterSet):
             # Существующие поля
             'search', 'name', 'id', 'timezone', 'versions', 'status',
             'brand_id', 'code1c', 'legal_entity_name', 'brand_name',
-            'type_of_place'
+            'type_of_place', 'city_slug', 'city_slugs',
         )
 
     # ==========================================================================
@@ -196,6 +212,7 @@ class NomenclatureFilter(FilterSet):
 
                 # Связи для адресов (для has_address и поиска)
                 'address__address',
+                'address__address__city',
             ).prefetch_related(
                 'tenants'
             )
