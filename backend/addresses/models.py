@@ -623,7 +623,6 @@ class City(models.Model):
     slug = models.SlugField(
         "Наименование города - транслит",
         max_length=255,
-        null=True,  # временно
         blank=True,
         help_text="Название населенного пункта (АВТО)"
     )
@@ -664,6 +663,7 @@ class City(models.Model):
         "Тип АТД",
         max_length=255,
         blank=True,
+        null=True,
         help_text="Тип административно-территориального деления"
     )
 
