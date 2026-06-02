@@ -623,6 +623,8 @@ class City(models.Model):
     slug = models.SlugField(
         "Наименование города - транслит",
         max_length=255,
+        null=True,  # временно
+        blank=True,
         help_text="Название населенного пункта (АВТО)"
     )
 
