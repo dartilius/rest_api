@@ -35,7 +35,8 @@
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema
@@ -366,6 +367,7 @@ class CityViewSet(viewsets.ModelViewSet):
     ordering = ['region__name', 'name']
 
     @city_list_schema()
+    @permission_classes([AllowAny])
     def list(self, request, *args, **kwargs):
         """Список городов."""
         paginator = CustomLimitOffsetPagination()
