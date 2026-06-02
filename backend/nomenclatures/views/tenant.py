@@ -293,7 +293,6 @@ def tenant_detail(request, tenant_pk: str):
     return Response({
         "tenantId": str(tenant.id),
         "tenantCode1c": tenant.code1c,
-        "tenantName": tenant.name,  # property, не __str__, чтобы не дёргать brands M2M
         "brand": brand,
         "opf": tenant.opf,
         "inn": tenant.inn,
