@@ -40,6 +40,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema
 
+from api.pagination import CustomLimitOffsetPagination
 from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
     LocalityType, City, AdministrativeTerritory,
@@ -367,7 +368,10 @@ class CityViewSet(viewsets.ModelViewSet):
     @city_list_schema()
     def list(self, request, *args, **kwargs):
         """Список городов."""
-        return super().list(request, *args, **kwargs)
+        paginator = CustomLimitOffsetPagination()
+        # queryset = City.list(request, *args, **kwargs)
+        page = paginator.paginate_queryset(self.queryset, request)
+        return paginator.get_paginated_response(CitySerializer(page, many=True).data)
 
 
 @extend_schema(
