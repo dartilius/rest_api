@@ -262,13 +262,13 @@ class CitySerializer(serializers.ModelSerializer):
     region = serializers.PrimaryKeyRelatedField(read_only=True)
     locality_type = serializers.PrimaryKeyRelatedField(read_only=True)
     timezone = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
-
+    nomenclature_count = serializers.IntegerField(read_only=True, default=0)
     class Meta:
         model = City
         fields = [
             'id', 'name', 'region',
             'locality_type', 'timezone',
-            'slug'
+            'slug', 'nomenclature_count'
         ]
         read_only_fields = ['id']
 

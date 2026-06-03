@@ -41,7 +41,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
-from api.pagination import CustomLimitOffsetPagination
+from django.db.models import Count, Q
 from nomenclatures.models import Nomenclature
 from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
@@ -369,48 +369,42 @@ class CityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Возвращает только города с номенклатурами для веба.
+        Возвращает города с номенклатурами и их количеством.
         """
-        # Отладка: проверяем количество номенклатур для веба
-        web_nomenclatures = Nomenclature.objects.filter(for_web=True)
-        print(f"DEBUG: Total web nomenclatures: {web_nomenclatures.count()}")
-
-        # Отладка: проверяем номенклатуры с адресами
-        with_address = web_nomenclatures.exclude(address__isnull=True)
-        print(f"DEBUG: Web nomenclatures with NomenclatureAddress: {with_address.count()}")
-
-        # Отладка: проверяем номенклатуры с AddressBook
-        with_addressbook = with_address.exclude(address__address__isnull=True)
-        print(f"DEBUG: Web nomenclatures with AddressBook: {with_addressbook.count()}")
-
-        # Отладка: проверяем номенклатуры с городами
-        with_city = with_addressbook.exclude(address__address__city__isnull=True)
-        print(f"DEBUG: Web nomenclatures with City: {with_city.count()}")
-
-        # Получаем ID городов
-        city_ids = with_city.values_list(
+        # Получаем ID городов с номенклатурами для веба
+        city_ids = Nomenclature.objects.filter(
+            for_web=True,
+        ).exclude(
+            address__isnull=True
+        ).exclude(
+            address__address__isnull=True
+        ).exclude(
+            address__address__city__isnull=True
+        ).values_list(
             'address__address__city_id',
             flat=True
         ).distinct()
 
-        print(f"DEBUG: Unique city IDs: {len(city_ids)}")
-        print(f"DEBUG: City IDs: {list(city_ids[:10])}")  # Первые 10
-
-        queryset = City.objects.filter(
+        return City.objects.filter(
             id__in=city_ids
         ).select_related(
             'region',
             'locality_type',
             'timezone'
-        ).order_by('region__name', 'name')
-
-        print(f"DEBUG: Cities found: {queryset.count()}")
-
-        return queryset
+        ).annotate(
+            # Подсчитываем количество номенклатур в городе
+            nomenclature_count=Count(
+                'address__nomenclatureaddress__nomenclature',
+                filter=Q(
+                    address__nomenclatureaddress__nomenclature__for_web=True
+                ),
+                distinct=True
+            )
+        ).order_by('name')
 
     @city_list_schema()
     def list(self, request, *args, **kwargs):
-        """Список городов с номенклатурами."""
+        """Список городов с количеством номенклатур."""
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -418,8 +412,12 @@ class CityViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path=r'(?P<slug>[^/.]+)')
     def get_city_name_by_slug(self, request, slug=None):
         """Получить название города по slug."""
-        city = get_object_or_404(City, slug=slug)
-        return Response({'name': city.name})
+        city = get_object_or_404(
+            self.get_queryset(),
+            slug=slug
+        )
+        serializer = self.get_serializer(city)
+        return Response(serializer.data)
 
 
 
