@@ -363,16 +363,26 @@ class CityViewSet(viewsets.ModelViewSet):
     serializer_class = CitySerializer
     pagination_class = OptionalPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_class = CityFilter  # ← С регионами и федеральными округами
+    filterset_class = CityFilter
     ordering = ['region__name', 'name']
 
     @city_list_schema()
     def list(self, request, *args, **kwargs):
         """Список городов."""
+        # Применяем фильтры
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Используем кастомную пагинацию
         paginator = CustomLimitOffsetPagination()
-        # queryset = City.list(request, *args, **kwargs)
-        page = paginator.paginate_queryset(self.queryset, request)
-        return paginator.get_paginated_response(CitySerializer(page, many=True).data)
+        page = paginator.paginate_queryset(queryset, request)
+
+        if page is not None:
+            serializer = CitySerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        # Если пагинация не нужна, возвращаем все результаты
+        serializer = CitySerializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path=r'(?P<slug>[^/.]+)')
     def get_city_name_by_slug(self, request, slug=None):
