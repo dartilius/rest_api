@@ -231,7 +231,7 @@ services:
     volumes:
       - /file/maps:/data
     expose:
-      - 8080
+      - 7777
     mem_limit: 4G
     mem_reservation: 2G
     cpus: '2'
