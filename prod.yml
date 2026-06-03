@@ -223,6 +223,18 @@ services:
     mem_reservation: 512M
     cpus: '1'
 
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    container_name: tileserver
+    restart: unless-stopped
+    volumes:
+      - /file/maps:/data
+    expose:
+      - 8080
+    mem_limit: 4G
+    mem_reservation: 2G
+    cpus: '2'
+
   gateway:
     build: ./nginx
     container_name: gateway
@@ -235,6 +247,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      tileserver:
+        condition: service_started
     mem_limit: 4G
     mem_reservation: 2G
     cpus: '4'
