@@ -368,20 +368,12 @@ class CityViewSet(viewsets.ModelViewSet):
 
     @city_list_schema()
     def list(self, request, *args, **kwargs):
-        """Список городов."""
+        """Список городов без пагинации."""
         # Применяем фильтры
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Используем кастомную пагинацию
-        paginator = CustomLimitOffsetPagination()
-        page = paginator.paginate_queryset(queryset, request)
-
-        if page is not None:
-            serializer = CitySerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
-
-        # Если пагинация не нужна, возвращаем все результаты
-        serializer = CitySerializer(queryset, many=True)
+        # Сериализуем все результаты
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path=r'(?P<slug>[^/.]+)')
