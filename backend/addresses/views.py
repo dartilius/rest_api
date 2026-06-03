@@ -365,7 +365,7 @@ class CityViewSet(viewsets.ModelViewSet):
     pagination_class = OptionalPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = CityFilter
-    ordering = ['region__name', 'name']
+    ordering = ['name']
 
     def get_queryset(self):
         """
