@@ -239,7 +239,7 @@ services:
     volumes:
       - /file/maps:/data
     ports:
-      - "7777:7777"
+      - 7777:7777
     mem_limit: 4G
     mem_reservation: 2G
     cpus: '2'
