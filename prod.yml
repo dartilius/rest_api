@@ -230,8 +230,8 @@ services:
     command: [ "--file", "/data/siberian-fed-district.mbtiles", "--port", "7777" ]
     volumes:
       - /file/maps:/data
-    expose:
-      - 7777
+    ports:
+      - 7777:7777
     mem_limit: 4G
     mem_reservation: 2G
     cpus: '2'
