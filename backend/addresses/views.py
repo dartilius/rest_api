@@ -368,29 +368,49 @@ class CityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Возвращает только города, которые привязаны к номенклатурам
-        через адреса (NomenclatureAddress -> AddressBook -> City).
+        Возвращает только города с номенклатурами для веба.
         """
-        return City.objects.filter(
-            # Города, у которых есть адреса
-            addresses__isnull=False,
-            # Адреса привязаны к номенклатурам
-            addresses__nomenclatureaddress__isnull=False,
-            # Только номенклатуры для веба
-            addresses__nomenclatureaddress__nomenclature__for_web=True,
+        # Отладка: проверяем количество номенклатур для веба
+        web_nomenclatures = Nomenclature.objects.filter(for_web=True)
+        print(f"DEBUG: Total web nomenclatures: {web_nomenclatures.count()}")
+
+        # Отладка: проверяем номенклатуры с адресами
+        with_address = web_nomenclatures.exclude(address__isnull=True)
+        print(f"DEBUG: Web nomenclatures with NomenclatureAddress: {with_address.count()}")
+
+        # Отладка: проверяем номенклатуры с AddressBook
+        with_addressbook = with_address.exclude(address__address__isnull=True)
+        print(f"DEBUG: Web nomenclatures with AddressBook: {with_addressbook.count()}")
+
+        # Отладка: проверяем номенклатуры с городами
+        with_city = with_addressbook.exclude(address__address__city__isnull=True)
+        print(f"DEBUG: Web nomenclatures with City: {with_city.count()}")
+
+        # Получаем ID городов
+        city_ids = with_city.values_list(
+            'address__address__city_id',
+            flat=True
+        ).distinct()
+
+        print(f"DEBUG: Unique city IDs: {len(city_ids)}")
+        print(f"DEBUG: City IDs: {list(city_ids[:10])}")  # Первые 10
+
+        queryset = City.objects.filter(
+            id__in=city_ids
         ).select_related(
             'region',
             'locality_type',
             'timezone'
-        ).distinct().order_by('region__name', 'name')
+        ).order_by('region__name', 'name')
+
+        print(f"DEBUG: Cities found: {queryset.count()}")
+
+        return queryset
 
     @city_list_schema()
     def list(self, request, *args, **kwargs):
-        """Список городов без пагинации."""
-        # Применяем фильтры
+        """Список городов с номенклатурами."""
         queryset = self.filter_queryset(self.get_queryset())
-
-        # Сериализуем все результаты
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
