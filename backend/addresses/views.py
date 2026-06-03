@@ -42,6 +42,7 @@ from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
 from api.pagination import CustomLimitOffsetPagination
+from nomenclatures.models import Nomenclature
 from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
     LocalityType, City, AdministrativeTerritory,
