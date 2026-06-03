@@ -366,6 +366,24 @@ class CityViewSet(viewsets.ModelViewSet):
     filterset_class = CityFilter
     ordering = ['region__name', 'name']
 
+    def get_queryset(self):
+        """
+        Возвращает только города, которые привязаны к номенклатурам
+        через адреса (NomenclatureAddress -> AddressBook -> City).
+        """
+        return City.objects.filter(
+            # Города, у которых есть адреса
+            addresses__isnull=False,
+            # Адреса привязаны к номенклатурам
+            addresses__nomenclatureaddress__isnull=False,
+            # Только номенклатуры для веба
+            addresses__nomenclatureaddress__nomenclature__for_web=True,
+        ).select_related(
+            'region',
+            'locality_type',
+            'timezone'
+        ).distinct().order_by('region__name', 'name')
+
     @city_list_schema()
     def list(self, request, *args, **kwargs):
         """Список городов без пагинации."""
