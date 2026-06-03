@@ -227,11 +227,19 @@ services:
     image: maptiler/tileserver-gl:latest
     container_name: tileserver
     restart: unless-stopped
-    command: [ "--file", "/data/siberian-fed-district.mbtiles", "--port", "7777" ]
+    command:
+      [
+        "--file",
+        "/data/siberian-fed-district.mbtiles",
+        "--port",
+        "7777",
+        "--public_url",
+        "https://api1.krasrm.com/maps/"
+      ]
     volumes:
       - /file/maps:/data
-    expose:
-      - 7777
+    ports:
+      - "7777:7777"
     mem_limit: 4G
     mem_reservation: 2G
     cpus: '2'
