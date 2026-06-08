@@ -542,9 +542,23 @@ class Nomenclature(APIBaseObjectModel):
                 text = translit(text, 'ru', reversed=True)
             except Exception:
                 pass
-            # Оставляем буквы, цифры, пробелы, дефисы, подчёркивания
+
+            # Замены для соответствия старым URL
+            replacements = {
+                'krasnojarskij': 'krasnoyarskiy',
+                'krasnojarsk': 'krasnoyarsk',
+                'krasnojarskogo': 'krasnoyarskogo',
+                'ij': 'iy',   # общее правило: окончание "ий" -> "iy"
+                'zh': 'zh',   # уже корректно, оставляем
+                'sh': 'sh',
+                'ch': 'ch',
+                'shh': 'shh',
+                # при необходимости добавьте другие
+            }
+            for bad, good in replacements.items():
+                text = text.replace(bad, good)
+
             text = re.sub(r'[^\w\s-]', '', text.lower()).strip()
-            # Пробелы и дефисы заменяем на подчёркивания
             return re.sub(r'[\s-]+', '_', text)
 
         parts = []
