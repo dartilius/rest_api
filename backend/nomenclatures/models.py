@@ -546,12 +546,62 @@ class Nomenclature(APIBaseObjectModel):
 
             # Замены для соответствия старым URL (особенности ручной транслитерации)
             replacements = {
+                # Области (окончание "ская" → "skaya")
+                'irkutskaja': 'irkutskaya',
+                'kemerovskaja': 'kemerovskaya',
+                'novosibirskaja': 'novosibirskaya',
+                'kirovskaja': 'kirovskaya',
+                'penzenskaja': 'penzenskaya',
+                'tyumenskaja': 'tyumenskaya',
+                'kurganskaja': 'kurganskaya',
+                'kostromskaja': 'kostromskaya',
+                'orenburgskaja': 'orenburgskaya',
+                'samarskaja': 'samarskaya',
+                'sverdlovskaja': 'sverdlovskaya',
+                'tomskaja': 'tomskaya',
+                'bryanskaja': 'bryanskaya',
+                'pskovskaja': 'pskovskaya',
+                'sakhalinskaja': 'sakhalinskaya',
+                'smolenskaja': 'smolenskaya',
+                'tambovskaja': 'tambovskaya',
+                'tulskaja': 'tulskaya',
+                'vologodskaja': 'vologodskaya',
+                'tverskaja': 'tverskaya',
+                'vladimirskaja': 'vladimirskaya',
+                'volgogradskaja': 'volgogradskaya',
+                'yaroslavskaja': 'yaroslavskaya',
+                'rostovskaja': 'rostovskaya',
+                'evrejskaja': 'evreyskaya',           # Еврейская АО
+
+                # Края (окончание "ий" → "ий" с y)
                 'krasnojarskij': 'krasnoyarskiy',
+                'krasnodarskij': 'krasnodarskiy',
+                'zabajkalskij': 'zabaykalskiy',
+                'permskij': 'permskiy',
+                'primorskij': 'primorskiy',
+                'khabarovskij': 'khabarovskiy',
+
+                # Автономные округа
+                'khanty_mansiyskij': 'khanty_mansiyskiy',
+
+                # Республики (названия-прилагательные и существительные)
+                'chechenskaja': 'chechenskaya',
+                'udmurtija': 'udmurtiya',
+                'burjatija': 'buryatiya',
+                'mordovija': 'mordoviya',
+                'chuvashija': 'chuvashiya',
+                'kalmykija': 'kalmykiya',
+                'jakutija': 'yakutiya',
+                'khakasija': 'khakasiya',
+
+                # Города и прочие значимые слова
                 'krasnojarsk': 'krasnoyarsk',
-                'krasnojarskogo': 'krasnoyarskogo',
-                'ij': 'iy',          # общее правило: окончание "ий" -> "iy"
-                'ts': 'c',           # "ц" -> "c" (например, "торгового центра" -> "torgovogo centra"? но мы не используем tariff_single)
-                # при необходимости можно добавить другие пары
+                'leninsk_kuzneckij': 'leninsk_kuznetskiy',
+                'kuzneckij': 'kuznetskiy',
+                'moskovskij': 'moskovskiy',
+                'sibirskij': 'sibirskiy',
+                'promyshlennovskoje': 'promyshlennovskoe',
+                'sankt-peterburg': 'sankt_peterburg',   # дефис → подчёркивание
             }
             for bad, good in replacements.items():
                 text = text.replace(bad, good)
