@@ -427,6 +427,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     formattedAddress = serializers.SerializerMethodField()
     worktime_start = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
     worktime_end = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
+    oldCatalogSlug = serializers.CharField(source="old_catalog_slug", read_only=True)
 
     class Meta:
         fields = "__all__"

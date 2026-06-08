@@ -942,9 +942,16 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             except Nomenclature.DoesNotExist:
                 raise NotFound("Номенклатура не найдена.")
 
-        # Если не UUID — ищем по code1c
+        # Если не UUID — пробуем найти по code1c
         try:
             nomenclature = Nomenclature.objects.get(code1c=identifier)
+            return nomenclature
+        except Nomenclature.DoesNotExist:
+            pass
+
+        # Если не code1c — ищем по old_catalog_slug
+        try:
+            nomenclature = Nomenclature.objects.get(old_catalog_slug=identifier)
             return nomenclature
         except Nomenclature.DoesNotExist:
             raise NotFound("Номенклатура не найдена.")

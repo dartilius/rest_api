@@ -1,4 +1,5 @@
 import hashlib
+import re
 from uuid import uuid4
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
@@ -260,6 +261,8 @@ class Nomenclature(APIBaseObjectModel):
         default=""
     )
 
+
+
     worktime_start = models.TimeField(
         auto_now_add=False,
         auto_now=False,
@@ -426,6 +429,15 @@ class Nomenclature(APIBaseObjectModel):
         default=0.0,
     )
 
+    old_catalog_slug = models.SlugField(
+        max_length=512,
+        blank=True,
+        default='',
+        verbose_name="Старый URL slug (каталог)",
+        help_text="Slug из старой версии каталога для редиректов",
+        db_index=True,
+    )
+
     search_vector = models.TextField(
         blank=True,
         default='',
@@ -515,6 +527,92 @@ class Nomenclature(APIBaseObjectModel):
         # Используем update вместо save, чтобы избежать рекурсии
         Nomenclature.objects.filter(pk=self.pk).update(search_vector=new_vector)
 
+    def generate_old_catalog_slug(self):
+        """
+        Генерирует slug в формате старого каталога.
+        Формат: <place>_<brand>_<region>_<city>_<street>_<house>
+        Пример: roshcha_tts_krasnoyarskiy_kr_g_krasnoyarsk_ul_telmana_30g
+        """
+        from transliterate import translit
+
+        def to_slug(text):
+            if not text:
+                return ''
+            try:
+                text = translit(text, 'ru', reversed=True)
+            except Exception:
+                pass
+            text = re.sub(r'[^\w\s-]', '', text.lower()).strip()
+            return re.sub(r'[\s_-]+', '_', text)
+
+        parts = []
+
+        # 1) Тип места (tariff_single > abbreviation > name)
+        if self.typeOfPlace:
+            place = (
+                self.typeOfPlace.tariff_single
+                or self.typeOfPlace.abbreviation
+                or self.typeOfPlace.name
+                or ''
+            )
+            if place:
+                parts.append(to_slug(place))
+
+        # 2) Бренд
+        if self.brand and self.brand.name:
+            parts.append(to_slug(self.brand.name))
+
+        # 3) Адресные компоненты через NomenclatureAddress
+        try:
+            nom_addr = self.address
+            addr = nom_addr.address if nom_addr else None
+        except Exception:
+            addr = None
+
+        if addr:
+            # Регион
+            if addr.region:
+                region_name = getattr(addr.region, 'name', '') or ''
+                region_type = ''
+                if hasattr(addr.region, 'type_region') and addr.region.type_region:
+                    region_type = (
+                        addr.region.type_region.abbreviation
+                        or addr.region.type_region.name
+                        or ''
+                    )
+                if region_type:
+                    parts.append(to_slug(region_type))
+                if region_name:
+                    parts.append(to_slug(region_name))
+
+            # Город
+            if addr.city and addr.city.name:
+                city_slug = to_slug(addr.city.name)
+                if city_slug:
+                    parts.append(f'g_{city_slug}')
+
+            # Улица
+            if addr.street and addr.street.name:
+                street_type = ''
+                if hasattr(addr.street, 'street_type') and addr.street.street_type:
+                    street_type = (
+                        addr.street.street_type.abbreviation
+                        or addr.street.street_type.name
+                        or ''
+                    )
+                street_name = to_slug(addr.street.name)
+                if street_type:
+                    parts.append(f'{to_slug(street_type)}_{street_name}')
+                elif street_name:
+                    parts.append(f'ul_{street_name}')
+
+            # Дом
+            if addr.house and addr.house.number:
+                parts.append(addr.house.number)
+
+        slug = '_'.join(filter(None, parts))
+        return slug[:512]
+
     @property
     def brand_logo(self):
         return self.brand.logotype
@@ -581,6 +679,14 @@ class Nomenclature(APIBaseObjectModel):
         return (
             f'{place_name} "{self.brand.name}"\n '
         )
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.old_catalog_slug:
+            self.old_catalog_slug = self.generate_old_catalog_slug()
+            type(self).objects.filter(pk=self.pk).update(
+                old_catalog_slug=self.old_catalog_slug
+            )
 
     def __str__(self):
         return self.name
