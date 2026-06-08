@@ -530,8 +530,8 @@ class Nomenclature(APIBaseObjectModel):
     def generate_old_catalog_slug(self):
         """
         Генерирует slug в формате старого каталога.
-        Формат: <place>_<brand>_<region>_<city>_<street>_<house>
-        Пример: roshcha_tts_krasnoyarskiy_kr_g_krasnoyarsk_ul_telmana_30g
+        Формат: <brand>_<place>_<region_name>_<region_type>_g_<city>_<street_type>_<street_name>_<house>
+        Пример: lazurnyy_tts_irkutskaya_obl_g_irkutsk_ul_baykalskaya_202_6
         """
         from transliterate import translit
 
@@ -542,12 +542,18 @@ class Nomenclature(APIBaseObjectModel):
                 text = translit(text, 'ru', reversed=True)
             except Exception:
                 pass
+            # Оставляем буквы, цифры, пробелы, дефисы, подчёркивания
             text = re.sub(r'[^\w\s-]', '', text.lower()).strip()
-            return re.sub(r'[\s_-]+', '_', text)
+            # Пробелы и дефисы заменяем на подчёркивания
+            return re.sub(r'[\s-]+', '_', text)
 
         parts = []
 
-        # 1) Тип места (tariff_single > abbreviation > name)
+        # 1) Бренд
+        if self.brand and self.brand.name:
+            parts.append(to_slug(self.brand.name))
+
+        # 2) Тип места (tariff_single > abbreviation > name)
         if self.typeOfPlace:
             place = (
                 self.typeOfPlace.tariff_single
@@ -558,10 +564,6 @@ class Nomenclature(APIBaseObjectModel):
             if place:
                 parts.append(to_slug(place))
 
-        # 2) Бренд
-        if self.brand and self.brand.name:
-            parts.append(to_slug(self.brand.name))
-
         # 3) Адресные компоненты через NomenclatureAddress
         try:
             nom_addr = self.address
@@ -570,9 +572,9 @@ class Nomenclature(APIBaseObjectModel):
             addr = None
 
         if addr:
-            # Регион
+            # Регион: <название>_<тип>  (без дополнительных подчёркиваний)
             if addr.region:
-                region_name = getattr(addr.region, 'name', '') or ''
+                region_name = to_slug(getattr(addr.region, 'name', '') or '')
                 region_type = ''
                 if hasattr(addr.region, 'type_region') and addr.region.type_region:
                     region_type = (
@@ -580,18 +582,17 @@ class Nomenclature(APIBaseObjectModel):
                         or addr.region.type_region.name
                         or ''
                     )
-                if region_type:
-                    parts.append(to_slug(region_type))
-                if region_name:
-                    parts.append(to_slug(region_name))
+                region_type = to_slug(region_type)
+                if region_name and region_type:
+                    parts.append(f"{region_name}_{region_type}")
+                elif region_name:
+                    parts.append(region_name)
 
             # Город
             if addr.city and addr.city.name:
-                city_slug = to_slug(addr.city.name)
-                if city_slug:
-                    parts.append(f'g_{city_slug}')
+                parts.append(f"g_{to_slug(addr.city.name)}")
 
-            # Улица
+            # Улица (тип + название)
             if addr.street and addr.street.name:
                 street_type = ''
                 if hasattr(addr.street, 'street_type') and addr.street.street_type:
@@ -600,17 +601,25 @@ class Nomenclature(APIBaseObjectModel):
                         or addr.street.street_type.name
                         or ''
                     )
+                street_type = to_slug(street_type)
                 street_name = to_slug(addr.street.name)
-                if street_type:
-                    parts.append(f'{to_slug(street_type)}_{street_name}')
+                if street_type and street_name:
+                    parts.append(f"{street_type}_{street_name}")
                 elif street_name:
-                    parts.append(f'ul_{street_name}')
+                    # Если тип не задан, используем стандартное 'ul'
+                    parts.append(f"ul_{street_name}")
 
             # Дом
             if addr.house and addr.house.number:
-                parts.append(addr.house.number)
+                # Заменяем все небуквенно-цифровые символы (кроме подчёркивания) на подчёркивания
+                house = re.sub(r'[^a-zA-Z0-9_]+', '_', addr.house.number.strip())
+                # Убираем множественные подчёркивания подряд
+                house = re.sub(r'_+', '_', house)
+                if house:
+                    parts.append(house)
 
         slug = '_'.join(filter(None, parts))
+        # Обрезаем до максимальной длины поля (512 символов)
         return slug[:512]
 
     @property
