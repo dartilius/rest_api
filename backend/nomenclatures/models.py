@@ -576,7 +576,7 @@ class Nomenclature(APIBaseObjectModel):
                 region_type = ''
                 if hasattr(addr.region, 'type_region') and addr.region.type_region:
                     region_type = (
-                        addr.region.type_region.abbreviation
+                        addr.region.type_region.abbreviated_name
                         or addr.region.type_region.name
                         or ''
                     )
@@ -596,7 +596,7 @@ class Nomenclature(APIBaseObjectModel):
                 street_type = ''
                 if hasattr(addr.street, 'street_type') and addr.street.street_type:
                     street_type = (
-                        addr.street.street_type.abbreviation
+                        addr.street.street_type.abbreviated_name
                         or addr.street.street_type.name
                         or ''
                     )
