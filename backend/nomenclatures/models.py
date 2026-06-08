@@ -544,6 +544,9 @@ class Nomenclature(APIBaseObjectModel):
             except Exception:
                 pass
 
+            text = text.lower()
+
+
             # Замены для соответствия старым URL (особенности ручной транслитерации)
             replacements = {
                 # Области (окончание "ская" → "skaya")
