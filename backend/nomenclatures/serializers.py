@@ -1285,6 +1285,8 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    oldCatalogSlug = serializers.CharField(source="old_catalog_slug", read_only=True)
+
     class Meta:
 
         fields = (
@@ -1301,7 +1303,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "typeOfPlace",
             "pricePerMonth",
             "code1c",
-            # "abbreviation",
+            "oldCatalogSlug",
         )
         extra_fields = ("nameForFront", "formattedAddress")
         read_only_fields = fields
