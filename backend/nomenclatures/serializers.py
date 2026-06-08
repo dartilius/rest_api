@@ -1305,7 +1305,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
             "code1c",
             "oldCatalogSlug",
         )
-        extra_fields = ("nameForFront", "formattedAddress")
+        extra_fields = ("nameForFront", "formattedAddress", "oldCatalogSlug")
         read_only_fields = fields
         model = Nomenclature
 
