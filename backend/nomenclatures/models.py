@@ -534,6 +534,7 @@ class Nomenclature(APIBaseObjectModel):
         Пример: lazurnyy_tts_irkutskaya_obl_g_irkutsk_ul_baykalskaya_202_6
         """
         from transliterate import translit
+        import re
 
         def to_slug(text):
             if not text:
@@ -543,22 +544,21 @@ class Nomenclature(APIBaseObjectModel):
             except Exception:
                 pass
 
-            # Замены для соответствия старым URL
+            # Замены для соответствия старым URL (особенности ручной транслитерации)
             replacements = {
                 'krasnojarskij': 'krasnoyarskiy',
                 'krasnojarsk': 'krasnoyarsk',
                 'krasnojarskogo': 'krasnoyarskogo',
-                'ij': 'iy',   # общее правило: окончание "ий" -> "iy"
-                'zh': 'zh',   # уже корректно, оставляем
-                'sh': 'sh',
-                'ch': 'ch',
-                'shh': 'shh',
-                # при необходимости добавьте другие
+                'ij': 'iy',          # общее правило: окончание "ий" -> "iy"
+                'ts': 'c',           # "ц" -> "c" (например, "торгового центра" -> "torgovogo centra"? но мы не используем tariff_single)
+                # при необходимости можно добавить другие пары
             }
             for bad, good in replacements.items():
                 text = text.replace(bad, good)
 
+            # Оставляем только буквы, цифры, пробелы, дефисы, подчёркивания
             text = re.sub(r'[^\w\s-]', '', text.lower()).strip()
+            # Пробелы и дефисы заменяем на подчёркивания
             return re.sub(r'[\s-]+', '_', text)
 
         parts = []
@@ -567,11 +567,11 @@ class Nomenclature(APIBaseObjectModel):
         if self.brand and self.brand.name:
             parts.append(to_slug(self.brand.name))
 
-        # 2) Тип места (tariff_single > abbreviation > name)
+        # 2) Тип места (abbreviation > tariff_single > name)
         if self.typeOfPlace:
             place = (
-                self.typeOfPlace.tariff_single
-                or self.typeOfPlace.abbreviation
+                self.typeOfPlace.abbreviation          # сначала аббревиатура (ТЦ -> tts)
+                or self.typeOfPlace.tariff_single
                 or self.typeOfPlace.name
                 or ''
             )
@@ -586,7 +586,7 @@ class Nomenclature(APIBaseObjectModel):
             addr = None
 
         if addr:
-            # Регион: <название>_<тип>  (без дополнительных подчёркиваний)
+            # Регион: <название>_<тип>  (например "irkutskaya_obl")
             if addr.region:
                 region_name = to_slug(getattr(addr.region, 'name', '') or '')
                 region_type = ''
@@ -602,11 +602,11 @@ class Nomenclature(APIBaseObjectModel):
                 elif region_name:
                     parts.append(region_name)
 
-            # Город
+            # Город: префикс "g_"
             if addr.city and addr.city.name:
                 parts.append(f"g_{to_slug(addr.city.name)}")
 
-            # Улица (тип + название)
+            # Улица: тип + название
             if addr.street and addr.street.name:
                 street_type = ''
                 if hasattr(addr.street, 'street_type') and addr.street.street_type:
@@ -620,15 +620,13 @@ class Nomenclature(APIBaseObjectModel):
                 if street_type and street_name:
                     parts.append(f"{street_type}_{street_name}")
                 elif street_name:
-                    # Если тип не задан, используем стандартное 'ul'
+                    # Если тип не задан, используем стандартное 'ul' (улица)
                     parts.append(f"ul_{street_name}")
 
-            # Дом
+            # Дом: номер с заменой разделителей на подчёркивания
             if addr.house and addr.house.number:
-                # Заменяем все небуквенно-цифровые символы (кроме подчёркивания) на подчёркивания
                 house = re.sub(r'[^a-zA-Z0-9_]+', '_', addr.house.number.strip())
-                # Убираем множественные подчёркивания подряд
-                house = re.sub(r'_+', '_', house)
+                house = re.sub(r'_+', '_', house)  # убираем дублирование подчёркиваний
                 if house:
                     parts.append(house)
 
