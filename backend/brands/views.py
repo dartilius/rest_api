@@ -23,7 +23,7 @@ from brands.serializers import BrandCreateSerializer, BrandShortSerializer, Bran
 from nomenclatures.models import Nomenclature
 from nomenclatures.serializers import NomenclatureShortSerializer
 from services.api_1c_client import api_1c, logger
-
+from django.db.models import Min
 OPENSEARCH_MAX_RESULTS = 1000
 
 @extend_schema_view(
@@ -187,17 +187,20 @@ class BrandViewSet(viewsets.ModelViewSet):
             return BrandCreateSerializer
         return BrandListSerializer
 
+    def get_brand_min_price_qs(qs):
+        return qs.annotate(
+            min_price=Min("nomenclatures__pricePerMonth")
+        )
+
     # ------------------------------------------------------------------ #
     #  LIST с OpenSearch                                                   #
     # ------------------------------------------------------------------ #
     def list(self, request, *args, **kwargs):
         search_query = request.query_params.get("search", "").strip()
 
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # только бренды, у которых есть номенклатуры
-        queryset = queryset.filter(
-            id__in=Nomenclature.web.values("brand_id").distinct()
+        queryset = self.filter_queryset(
+            self.get_queryset()
+            .filter(id__in=Nomenclature.web.values("brand_id").distinct())
         )
 
         if search_query:
@@ -205,9 +208,15 @@ class BrandViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(id__in=matched_ids)
 
         paginator = CustomLimitOffsetPagination()
+        queryset = get_brand_min_price_qs(queryset)
         page = paginator.paginate_queryset(queryset, request)
         serializer = BrandListSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+
+        response = paginator.get_paginated_response(serializer.data)
+        response.data["min_price"] = queryset.aggregate(
+            min_price=Min("nomenclatures__pricePerMonth")
+        )["min_price"]
+        return response
 
     def _opensearch_brand_ids(self, query: str) -> list:
         """
@@ -287,6 +296,8 @@ class BrandViewSet(viewsets.ModelViewSet):
 
     def get_object(self):
         identifier = self.kwargs.get(self.lookup_field)
+        qs = Brand.all_objects
+        qs = self.get_brand_min_price_qs(qs)
         if not identifier:
             raise NotFound("Не указан идентификатор бренда.")
 

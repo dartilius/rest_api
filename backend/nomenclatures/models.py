@@ -751,7 +751,10 @@ class Nomenclature(APIBaseObjectModel):
             place_name = ""
 
         return (
+            f'Размещение ролика на радио '
             f'{place_name} "{self.brand.name}"\n '
+            f'{address_str}'
+
         )
 
     def save(self, *args, **kwargs):
