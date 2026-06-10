@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 import logging
+from django.db.models import Min
 
 from files.serializers import Base64FileField
 from brands.models import Brand
@@ -20,14 +21,24 @@ class BrandCreateSerializer(serializers.ModelSerializer):
 
 class BrandListSerializer(serializers.ModelSerializer):
     logotype = Base64FileField(required=False)
-
+    min_price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+    )
     class Meta:
         model = Brand
-        fields = ("id", "name", "logotype", "slug")
+        fields = ("id", "name", "logotype", "slug", "min_price")
         read_only_fields = ("id", "slug")
 
 class BrandDetailSerializer(serializers.ModelSerializer):
     logotype = Base64FileField(required=False)
+    min_price = serializers.SerializerMethodField()
+
+    def get_min_price(self, obj):
+        return obj.nomenclatures.aggregate(
+            min_price=Min("pricePerMonth")
+        )["min_price"]
     class Meta:
         model = Brand
         fields= "__all__"
