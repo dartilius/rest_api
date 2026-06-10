@@ -26,6 +26,12 @@ from services.api_1c_client import api_1c, logger
 from django.db.models import Min
 OPENSEARCH_MAX_RESULTS = 1000
 
+
+def get_brand_min_price_qs(qs):
+    return qs.annotate(
+        min_price=Min("nomenclatures__pricePerMonth")
+    )
+
 @extend_schema_view(
     list=extend_schema(
         summary="Получить пагинированный список брендов",
@@ -169,12 +175,6 @@ OPENSEARCH_MAX_RESULTS = 1000
                  ] + DEFAULT_SCHEMA_EXAMPLES,
     ),
 )
-
-def get_brand_min_price_qs(qs):
-    return qs.annotate(
-        min_price=Min("nomenclatures__pricePerMonth")
-    )
-
 @extend_schema(tags=["Бренды"])
 class BrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
