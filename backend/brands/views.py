@@ -169,6 +169,12 @@ OPENSEARCH_MAX_RESULTS = 1000
                  ] + DEFAULT_SCHEMA_EXAMPLES,
     ),
 )
+
+def get_brand_min_price_qs(qs):
+    return qs.annotate(
+        min_price=Min("nomenclatures__pricePerMonth")
+    )
+
 @extend_schema(tags=["Бренды"])
 class BrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -186,11 +192,6 @@ class BrandViewSet(viewsets.ModelViewSet):
         elif self.action in ("partial_update", "update"):
             return BrandCreateSerializer
         return BrandListSerializer
-
-    def get_brand_min_price_qs(qs):
-        return qs.annotate(
-            min_price=Min("nomenclatures__pricePerMonth")
-        )
 
     # ------------------------------------------------------------------ #
     #  LIST с OpenSearch                                                   #
@@ -297,7 +298,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     def get_object(self):
         identifier = self.kwargs.get(self.lookup_field)
         qs = Brand.all_objects
-        qs = self.get_brand_min_price_qs(qs)
+        qs = get_brand_min_price_qs(qs)
         if not identifier:
             raise NotFound("Не указан идентификатор бренда.")
 
