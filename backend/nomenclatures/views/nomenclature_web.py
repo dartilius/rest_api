@@ -29,14 +29,14 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
         # Если UUID — ищем по id
         if is_uuid:
             try:
-                nomenclature = Nomenclature.objects.get(id=identifier)
+                nomenclature = Nomenclature.web.get(id=identifier)
                 return nomenclature
             except Nomenclature.web.DoesNotExist:
                 raise NotFound("Номенклатура не найдена.")
 
         # Если не UUID — ищем по old_catalog_slug
         try:
-            nomenclature = Nomenclature.objects.get(old_catalog_slug=identifier)
+            nomenclature = Nomenclature.web.get(old_catalog_slug=identifier)
             return nomenclature
         except Nomenclature.web.DoesNotExist:
             raise NotFound("Номенклатура не найдена.")

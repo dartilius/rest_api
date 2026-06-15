@@ -107,7 +107,7 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
 
 
 class NomenclatureWebSerializer(serializers.ModelSerializer):
-    brand = BrandCardSerializer(read_only=True, many=True)
+    brand = BrandCardSerializer(read_only=True)
     typeOfPlace = serializers.CharField(
         source='typeOfPlace.name',
         read_only=True
