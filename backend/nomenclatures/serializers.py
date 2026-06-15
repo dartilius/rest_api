@@ -1167,11 +1167,17 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj) -> str:
         try:
-            # TODO: ответ приходит на -7 часов от крск (по UTC) - исправить
-            return f"{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}"
-
+            return format_local_datetime(obj.availability.last_answer_date)
         except AttributeError:
             return "Не выходила в сеть"
+
+    # def get_last_answer(self, obj) -> str:
+    #     try:
+    #         # TODO: ответ приходит на -7 часов от крск (по UTC) - исправить
+    #         return f"{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}"
+
+    #     except AttributeError:
+    #         return "Не выходила в сеть"
 
     def get_interior(self, obj):
         return InNomenclaturePhotoSerializer(
@@ -1353,9 +1359,15 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
 
     def get_last_answer(self, obj):
         try:
-            return f"{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}"
+            return format_local_datetime(obj.availability.last_answer_date)
         except AttributeError:
             return "Не выходила в сеть"
+
+    # def get_last_answer(self, obj):
+    #     try:
+    #         return f"{obj.availability.last_answer_date:%Y-%m-%d %H:%M:%S}"
+    #     except AttributeError:
+    #         return "Не выходила в сеть"
 
 
 
