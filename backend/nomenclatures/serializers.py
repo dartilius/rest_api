@@ -1,13 +1,12 @@
 import hashlib
 from datetime import time
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 from brands.models import Brand
 from brands.serializers import BrandListSerializer, BrandCardSerializer
 from counterparties.models import Counterparty
-from counterparties.serializers import CounterpartiesShortSerializer, TenantsShortSerializer, FullTenantsSerializer
+from counterparties.serializers import CounterpartiesShortSerializer
 from files.serializers import Base64FileField
 from nomenclatures.models import (
     Nomenclature,
@@ -30,6 +29,7 @@ serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.Inte
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
 
 ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
+
 
 
 def format_local_datetime(value):
@@ -104,6 +104,37 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
 
         fields = ("source", "id",)
         read_only_fields = ("source", "id",)
+
+
+class NomenclatureWebSerializer(serializers.ModelSerializer):
+    brand = BrandCardSerializer(read_only=True, many=True)
+    typeOfPlace = serializers.CharField(
+        source='typeOfPlace.name',
+        read_only=True
+    )
+    legalEntity = CounterpartiesShortSerializer(read_only=True)
+    exterior = serializers.SerializerMethodField()
+    interior = serializers.SerializerMethodField()
+    contentType = serializers.ChoiceField(
+        choices=list(AVAILABLE_CONTENT_TYPES.keys()),
+        required=False,
+    )
+    worktime_start = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
+    worktime_end = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
+    oldCatalogSlug = serializers.CharField(source="old_catalog_slug", read_only=True)
+    address = AddressReadSerializer(source="address.address", read_only=True)
+    class Meta:
+        model = Nomenclature
+        fields = (
+            "id",
+            "address",
+            "oldCatalogSlug",
+            "typeOfPlace",
+            "address"
+        )
+        read_only_fields = fields
+
+    model = Nomenclature
 
 
 class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):

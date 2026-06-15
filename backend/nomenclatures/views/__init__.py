@@ -6,6 +6,7 @@ from .task import NomenclatureTaskViewSet
 from .photo import NomenclaturePhotoViewSet
 from .tenant import NomenclatureTenantViewSet
 from .discount import DiscountRuleViewSet
+from .nomenclature_web import NomenclatureWebViewSet
 
 __all__ = [
     'NomenclatureViewSet',
@@ -15,5 +16,6 @@ __all__ = [
     'NomenclaturePhotoViewSet',
     'TypeOfPlaceViewSet',
     'NomenclatureTenantViewSet',
-    'DiscountRuleViewSet'
+    'DiscountRuleViewSet',
+    'NomenclatureWebViewSet'
 ]
