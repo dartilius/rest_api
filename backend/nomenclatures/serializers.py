@@ -144,6 +144,15 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     model = Nomenclature
+    def get_interior(self, obj):
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="interior"), many=True
+        ).data
+
+    def get_exterior(self, obj):
+        return InNomenclaturePhotoSerializer(
+            obj.images.filter(type="exterior"), many=True
+        ).data
 
 
 class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
