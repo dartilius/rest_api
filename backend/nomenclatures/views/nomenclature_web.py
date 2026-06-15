@@ -7,7 +7,7 @@ from rest_framework.exceptions import NotFound
 
 @extend_schema(tags=["Номенклатуры WEB"])
 class NomenclatureWebViewSet(viewsets.ModelViewSet):
-    queryset = Nomenclature.web.objects.all()
+    queryset = Nomenclature.web.all()
     serializer_class = NomenclatureWebSerializer
 
     def get_object(self):
