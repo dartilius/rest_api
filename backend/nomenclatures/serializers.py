@@ -130,7 +130,15 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
             "address",
             "oldCatalogSlug",
             "typeOfPlace",
-            "address"
+            "address",
+            "worktime_start",
+            "worktime_end",
+            "oldCatalogSlug",
+            "address",
+            "legalEntity",
+            "exterior",
+            "interior",
+            "contentType"
         )
         read_only_fields = fields
 
