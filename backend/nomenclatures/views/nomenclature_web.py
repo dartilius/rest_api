@@ -4,11 +4,14 @@ from nomenclatures.serializers import NomenclatureWebSerializer
 from rest_framework import viewsets
 from uuid import UUID
 from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
+
 
 @extend_schema(tags=["Номенклатуры WEB"])
 class NomenclatureWebViewSet(viewsets.ModelViewSet):
     queryset = Nomenclature.web.all()
     serializer_class = NomenclatureWebSerializer
+    permission_classes = [AllowAny]
 
     def get_object(self):
         identifier = self.kwargs.get('pk')
