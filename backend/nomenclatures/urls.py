@@ -13,6 +13,7 @@ router.register('statistics', NomenclatureStatisticViewSet, basename='statistic'
 router.register('tasks', NomenclatureTaskViewSet, basename='task')
 router.register('photos', NomenclaturePhotoViewSet, basename='photo')
 router.register('place', TypeOfPlaceViewSet, basename='place')
+router.register('web', NomenclatureTenantViewSet, basename='web')
 
 nomenclature_router = routers.NestedDefaultRouter(router, 'nomenclatures', lookup='nomenclature')
 nomenclature_router.register('tenant', NomenclatureTenantViewSet, basename='nomenclature-tenant')
