@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework_nested import routers
 from nomenclatures.views import (
     NomenclatureViewSet, NomenclatureOrderViewSet, NomenclatureStatisticViewSet,
-    NomenclatureTaskViewSet, NomenclaturePhotoViewSet, TypeOfPlaceViewSet, NomenclatureTenantViewSet
+    NomenclatureTaskViewSet, NomenclaturePhotoViewSet, TypeOfPlaceViewSet, NomenclatureTenantViewSet,
+    NomenclatureWebViewSet
 )
 from nomenclatures.views.discount import DiscountRuleViewSet  # добавить
 from nomenclatures.views.tenant import grouped_tenants_global, tenant_detail
@@ -13,7 +14,7 @@ router.register('statistics', NomenclatureStatisticViewSet, basename='statistic'
 router.register('tasks', NomenclatureTaskViewSet, basename='task')
 router.register('photos', NomenclaturePhotoViewSet, basename='photo')
 router.register('place', TypeOfPlaceViewSet, basename='place')
-router.register('web', NomenclatureTenantViewSet, basename='web')
+router.register('web', NomenclatureWebViewSet, basename='web')
 
 nomenclature_router = routers.NestedDefaultRouter(router, 'nomenclatures', lookup='nomenclature')
 nomenclature_router.register('tenant', NomenclatureTenantViewSet, basename='nomenclature-tenant')
