@@ -138,7 +138,8 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
             "legalEntity",
             "exterior",
             "interior",
-            "contentType"
+            "contentType",
+            "brand"
         )
         read_only_fields = fields
 
