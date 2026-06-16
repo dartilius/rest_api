@@ -1485,19 +1485,20 @@ class AddressReadSerializer(serializers.ModelSerializer):
 
 
 class AddressWebResultSerializer(serializers.ModelSerializer):
-    city = serializers.CharField(source="city.name", read_only=True)
     localityType = serializers.CharField(
         source="city.locality_type.abbreviated_name",
         read_only=True
     )
 
-    street = serializers.CharField(
-        source="street.name",
-        read_only=True
-    )
+    city = serializers.CharField(source="city.name", read_only=True)
 
     streetType = serializers.CharField(
         source="street.street_type.abbreviated_name",
+        read_only=True
+    )
+
+    street = serializers.CharField(
+        source="street.name",
         read_only=True
     )
 

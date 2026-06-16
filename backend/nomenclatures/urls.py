@@ -1,4 +1,5 @@
 from django.urls import path, include
+from rest_framework.routers import SimpleRouter
 from rest_framework_nested import routers
 from nomenclatures.views import (
     NomenclatureViewSet, NomenclatureOrderViewSet, NomenclatureStatisticViewSet,
@@ -14,7 +15,8 @@ router.register('statistics', NomenclatureStatisticViewSet, basename='statistic'
 router.register('tasks', NomenclatureTaskViewSet, basename='task')
 router.register('photos', NomenclaturePhotoViewSet, basename='photo')
 router.register('place', TypeOfPlaceViewSet, basename='place')
-router.register('web', NomenclatureWebViewSet, basename='web')
+web_router = SimpleRouter()
+web_router.register('', NomenclatureWebViewSet, basename='web')
 
 nomenclature_router = routers.NestedDefaultRouter(router, 'nomenclatures', lookup='nomenclature')
 nomenclature_router.register('tenant', NomenclatureTenantViewSet, basename='nomenclature-tenant')
@@ -22,6 +24,7 @@ nomenclature_router.register('discounts', DiscountRuleViewSet, basename='nomencl
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('nomenclatures/web/', include(web_router.urls)),
     path('tenants/grouped/', grouped_tenants_global, name='grouped-tenants-global'),
     path('tenants/<str:tenant_pk>/', tenant_detail, name='tenant-detail'),
     path('', include(nomenclature_router.urls)),
