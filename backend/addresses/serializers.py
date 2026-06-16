@@ -1485,10 +1485,6 @@ class AddressReadSerializer(serializers.ModelSerializer):
 
 
 class AddressWebResultSerializer(serializers.ModelSerializer):
-    country = serializers.CharField(source="country.name", read_only=True)
-
-    region = serializers.SerializerMethodField()
-
     city = serializers.CharField(source="city.name", read_only=True)
     localityType = serializers.CharField(
         source="city.locality_type.abbreviated_name",
@@ -1510,33 +1506,19 @@ class AddressWebResultSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
-    building = serializers.CharField(
-        source="building.number",
-        read_only=True
-    )
-
-    fullAddress = serializers.CharField(
-        source="full_address",
-        read_only=True
-    )
+    coordinates = CoordinatesSerializers(read_only=True)
 
     class Meta:
         model = Address
         fields = (
             "id",
-            "country",
-            "region",
             "city",
             "localityType",
             "street",
             "streetType",
             "house",
             "building",
-            "microdistrict",
-            "index",
-            "latitude",
-            "longitude",
-            "fullAddress",
+            "coordinates"
         )
         read_only_fields = fields
 
