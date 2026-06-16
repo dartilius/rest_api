@@ -19,7 +19,7 @@ from nomenclatures.models import (
     NomenclatureTenant, DiscountRule,
 )
 from addresses.models import Address as AddressBook
-from addresses.serializers import AddressCreateSerializer, AddressReadSerializer
+from addresses.serializers import AddressCreateSerializer, AddressReadSerializer, AddressWebResultSerializer
 from api.base_objects import Article
 
 serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.IntegerField
@@ -122,7 +122,7 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
     worktime_start = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
     worktime_end = serializers.TimeField(format='%H:%M', required=False, allow_null=True)
     oldCatalogSlug = serializers.CharField(source="old_catalog_slug", read_only=True)
-    address = AddressReadSerializer(source="address.address", read_only=True)
+    address = AddressWebResultSerializer(source="address.address", read_only=True)
     class Meta:
         model = Nomenclature
         fields = (
@@ -153,6 +153,14 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
         return InNomenclaturePhotoSerializer(
             obj.images.filter(type="exterior"), many=True
         ).data
+
+    def to_representation(self, instance):
+        repr_ = super().to_representation(instance)
+        if "contentType" in repr_:
+            key = repr_["contentType"]
+            repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
+
+        return repr_
 
 
 class ShortBrandNomenclatureSerializer(serializers.ModelSerializer):
