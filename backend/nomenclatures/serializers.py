@@ -139,7 +139,8 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
             "exterior",
             "interior",
             "contentType",
-            "brand"
+            "brand",
+            "description"
         )
         read_only_fields = fields
 
