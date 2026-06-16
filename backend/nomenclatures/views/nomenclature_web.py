@@ -19,6 +19,7 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
         "address__street__street_type",
         "address__house",
         "address__building",
+        "responsible_ad"
     ).all()
     serializer_class = NomenclatureWebSerializer
     permission_classes = [AllowAny]

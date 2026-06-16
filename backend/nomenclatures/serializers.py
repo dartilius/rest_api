@@ -145,7 +145,14 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
             "interior",
             "contentType",
             "brand",
-            "description"
+            "description",
+            "possibility",
+            "pricePerMonth",
+            "external_video_media",
+            "external_audio_media",
+            "internal_video_media",
+            "internal_audio_media",
+            "responsible_ad"
         )
         read_only_fields = fields
 
@@ -159,11 +166,44 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
             obj.images.filter(type="exterior"), many=True
         ).data
 
+    def _user_id_name(self, user):
+        if not user:
+            return None
+
+        # Берём ВСЕ basic телефоны
+        basic_phones = list(
+            user.contacts_cp
+            .filter(type="phone", basic=True)
+            .values_list("meaning", flat=True)
+        )
+
+        # fallback — если basic нет, но есть phone_number в CustomUser
+        if not basic_phones and user.phone_number:
+            basic_phones = [str(user.phone_number)]
+
+        # гарантируем строки
+        phones = [str(p) for p in basic_phones if p]
+
+        return {
+            "id": str(user.id),
+            "full_name": user.first_name,
+            "phone_number": phones,
+        }
+
     def to_representation(self, instance):
         repr_ = super().to_representation(instance)
         if "contentType" in repr_:
             key = repr_["contentType"]
             repr_["contentType"] = AVAILABLE_CONTENT_TYPES.get(key, key)
+        repr_["responsible"] = {
+            "ad": self._user_id_name(instance.responsible_ad),
+        }
+
+        fields_to_remove = [
+            "responsible_ad",
+        ]
+        for field in fields_to_remove:
+            repr_.pop(field, None)
 
         return repr_
 
