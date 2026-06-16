@@ -116,10 +116,7 @@ class TypeOfPlaceWebSerializer(serializers.ModelSerializer):
 
 class NomenclatureWebSerializer(serializers.ModelSerializer):
     brand = BrandCardSerializer(read_only=True)
-    typeOfPlace = serializers.CharField(
-        source='typeOfPlace.name',
-        read_only=True
-    )
+    typeOfPlace = TypeOfPlaceWebSerializer(read_only=True)
     legalEntity = CounterpartiesShortSerializer(read_only=True)
     exterior = serializers.SerializerMethodField()
     interior = serializers.SerializerMethodField()
