@@ -1490,10 +1490,9 @@ class AddressWebResultSerializer(serializers.ModelSerializer):
     street = serializers.CharField(read_only=True, source="adress.street.name")
     streetType = serializers.CharField(read_only=True, source="adress.street.street_type.name")
     class Meta:
+        model = Address
         fields = ("id", "city", "localityType", "street", "streetType")
         read_only_fields = fields
-
-    model = Address
 
 # ====================================================================================
 # МОДУЛЬ 4: ДОПОЛНИТЕЛЬНЫЕ СЕРИАЛИЗАТОРЫ ДЛЯ ПОИСКА И ФИЛЬТРАЦИИ
