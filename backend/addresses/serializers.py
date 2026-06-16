@@ -1485,14 +1485,63 @@ class AddressReadSerializer(serializers.ModelSerializer):
 
 
 class AddressWebResultSerializer(serializers.ModelSerializer):
-    city = serializers.CharField(read_only=True, source="adress.city.name")
-    localityType = serializers.CharField(read_only=True, source="adress.city.locality_type.name")
-    street = serializers.CharField(read_only=True, source="adress.street.name")
-    streetType = serializers.CharField(read_only=True, source="adress.street.street_type.name")
+    country = serializers.CharField(source="country.name", read_only=True)
+
+    region = serializers.SerializerMethodField()
+
+    city = serializers.CharField(source="city.name", read_only=True)
+    localityType = serializers.CharField(
+        source="city.locality_type.abbreviated_name",
+        read_only=True
+    )
+
+    street = serializers.CharField(
+        source="street.name",
+        read_only=True
+    )
+
+    streetType = serializers.CharField(
+        source="street.street_type.abbreviated_name",
+        read_only=True
+    )
+
+    house = serializers.CharField(
+        source="house.number",
+        read_only=True
+    )
+
+    building = serializers.CharField(
+        source="building.number",
+        read_only=True
+    )
+
+    fullAddress = serializers.CharField(
+        source="full_address",
+        read_only=True
+    )
+
     class Meta:
         model = Address
-        fields = ("id", "city", "localityType", "street", "streetType")
+        fields = (
+            "id",
+            "country",
+            "region",
+            "city",
+            "localityType",
+            "street",
+            "streetType",
+            "house",
+            "building",
+            "microdistrict",
+            "index",
+            "latitude",
+            "longitude",
+            "fullAddress",
+        )
         read_only_fields = fields
+
+    def get_region(self, obj):
+        return str(obj.region) if obj.region else None
 
 # ====================================================================================
 # МОДУЛЬ 4: ДОПОЛНИТЕЛЬНЫЕ СЕРИАЛИЗАТОРЫ ДЛЯ ПОИСКА И ФИЛЬТРАЦИИ

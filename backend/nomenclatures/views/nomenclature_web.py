@@ -9,7 +9,17 @@ from rest_framework.permissions import AllowAny
 
 @extend_schema(tags=["Номенклатуры WEB"])
 class NomenclatureWebViewSet(viewsets.ModelViewSet):
-    queryset = Nomenclature.web.all()
+    queryset = Nomenclature.web.select_related(
+        "address",
+        "address__country",
+        "address__region",
+        "address__city",
+        "address__city__locality_type",
+        "address__street",
+        "address__street__street_type",
+        "address__house",
+        "address__building",
+    ).all()
     serializer_class = NomenclatureWebSerializer
     permission_classes = [AllowAny]
 
