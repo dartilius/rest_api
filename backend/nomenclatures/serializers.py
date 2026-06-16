@@ -105,6 +105,14 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
         fields = ("source", "id",)
         read_only_fields = ("source", "id",)
 
+class TypeOfPlaceWebSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TypeOfPlace
+        fields = (
+            "name",
+            "abbreviation"
+        )
+        read_only_fields = fields
 
 class NomenclatureWebSerializer(serializers.ModelSerializer):
     brand = BrandCardSerializer(read_only=True)
