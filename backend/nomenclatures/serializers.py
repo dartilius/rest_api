@@ -152,7 +152,8 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
             "external_audio_media",
             "internal_video_media",
             "internal_audio_media",
-            "responsible_ad"
+            "responsible_ad",
+            "nomenclature_tenants"
         )
         read_only_fields = fields
 
@@ -198,9 +199,11 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
         repr_["responsible"] = {
             "ad": self._user_id_name(instance.responsible_ad),
         }
+        repr_["tenants_length"] = instance.tenants.count()
 
         fields_to_remove = [
             "responsible_ad",
+            "nomenclature_tenants"
         ]
         for field in fields_to_remove:
             repr_.pop(field, None)
