@@ -344,7 +344,7 @@ class BrandViewSet(viewsets.ModelViewSet):
 
     @action(methods=["GET"], detail=False, url_path="assigned", url_name="assigned")
     def assigned(self, request, *args, **kwargs):
-        active_ids = Nomenclature.web.values("brand_id").distinct()
+        active_ids = Nomenclature.web.values_list("brand_id", flat=True).distinct()
         queryset = Brand.objects.filter(id__in=active_ids)
 
         search_query = request.query_params.get("search", "").strip()
@@ -352,14 +352,11 @@ class BrandViewSet(viewsets.ModelViewSet):
             matched_ids = self._opensearch_brand_ids(search_query)
             queryset = queryset.filter(id__in=matched_ids)
 
-        paginator = CustomLimitOffsetPagination()
-        page = paginator.paginate_queryset(queryset, request)
-        return paginator.get_paginated_response(BrandListSerializer(page, many=True).data)
+        return Response(BrandListSerializer(queryset, many=True).data)
 
     @action(methods=["GET"], detail=True, url_path="nomenclatures", url_name="nomenclatures")
     def nomenclatures(self, request, *args, **kwargs):
         brand = self.get_object()
         queryset = Nomenclature.web.filter(brand=brand)
-        paginator = CustomLimitOffsetPagination()
-        page = paginator.paginate_queryset(queryset, request)
-        return paginator.get_paginated_response(NomenclatureShortSerializer(page, many=True).data)
+
+        return Response(NomenclatureShortSerializer(queryset, many=True).data)
