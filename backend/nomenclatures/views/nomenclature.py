@@ -276,7 +276,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
             .prefetch_related(
                 Prefetch(
                     'address',
-                    queryset=NomenclatureAddress.nomenclature.web.select_related('address')
+                    queryset=NomenclatureAddress.nomenclature.select_related('address')
                 )
             )
         )
