@@ -373,6 +373,10 @@ class CityNomenclaturesSerializer(serializers.ModelSerializer):
         source="name_for_front",
         read_only=True
     )
+    typeOfPlace = serializers.CharField(
+        source='typeOfPlace.name',
+        read_only=True
+    )
     formattedAddress = serializers.SerializerMethodField()
     exterior = serializers.SerializerMethodField()
     brand = BrandListSerializer(read_only=True)
@@ -385,6 +389,7 @@ class CityNomenclaturesSerializer(serializers.ModelSerializer):
             "pricePerMonth",
             "exterior",
             "brand",
+            "typeOfPlace"
         ]
     def get_exterior(self, obj):
         return InNomenclaturePhotoSerializer(
