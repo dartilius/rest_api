@@ -365,7 +365,8 @@ class CityViewSet(viewsets.ModelViewSet):
     pagination_class = OptionalPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = CityFilter
-    ordering = ['name']
+    ordering_fields = ['name', 'nomenclature_count']
+    ordering = ['-nomenclature_count']
 
     def get_queryset(self):
         """
@@ -385,22 +386,19 @@ class CityViewSet(viewsets.ModelViewSet):
             flat=True
         ).distinct()
 
-        return City.objects.filter(
-            id__in=city_ids
-        ).select_related(
-            'region',
-            'locality_type',
-            'timezone'
-        ).annotate(
-            # Подсчитываем количество номенклатур в городе
-            nomenclature_count=Count(
-                'address__nomenclatureaddress__nomenclature',
-                filter=Q(
-                    address__nomenclatureaddress__nomenclature__for_web=True
-                ),
-                distinct=True
+        return (
+            City.objects.filter(id__in=city_ids)
+            .select_related('region', 'locality_type', 'timezone')
+            .annotate(
+                nomenclature_count=Count(
+                    'address__nomenclatureaddress__nomenclature',
+                    filter=Q(
+                        address__nomenclatureaddress__nomenclature__for_web=True
+                    ),
+                    distinct=True
+                )
             )
-        ).order_by('-nomenclature_count', 'name')
+        )
 
     @city_list_schema()
     def list(self, request, *args, **kwargs):
