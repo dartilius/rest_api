@@ -316,9 +316,9 @@ def tenant_detail(request, tenant_pk: str):
 
     try:
         UUID(hex=tenant_pk)
-        tenant_filter = "tenants__id"
+        tenant_filter = "tenant__id"
     except (ValueError, AttributeError):
-        tenant_filter = "tenants__code1c"
+        tenant_filter = "tenant__code1c"
 
     qs = (
         Nomenclature.objects
