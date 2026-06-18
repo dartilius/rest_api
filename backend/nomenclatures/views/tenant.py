@@ -316,10 +316,9 @@ def tenant_detail(request, tenant_pk: str):
 
     try:
         UUID(hex=tenant_pk)
-        tenant_filter = "nomenclaturetenant__tenant__id"
+        tenant_filter = "tenants__id"
     except (ValueError, AttributeError):
-        tenant_filter = "nomenclaturetenant__tenant__code1c"
-
+        tenant_filter = "tenants__code1c"
 
     qs = (
         Nomenclature.objects
@@ -338,7 +337,7 @@ def tenant_detail(request, tenant_pk: str):
         )
         .annotate(
             tenants_count=Count(
-                "nomenclaturetenant",
+                "tenants",
                 distinct=True
             )
         )
