@@ -400,7 +400,7 @@ class CityViewSet(viewsets.ModelViewSet):
                 ),
                 distinct=True
             )
-        ).order_by('name')
+        ).order_by('-nomenclature_count', 'name')
 
     @city_list_schema()
     def list(self, request, *args, **kwargs):
