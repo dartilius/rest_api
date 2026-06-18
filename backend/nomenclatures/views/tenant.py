@@ -21,7 +21,10 @@ from nomenclatures.serializers import (
 from rest_framework.decorators import api_view
 from users.permissions import SuperuserCUDAuthRetrieve
 
-
+from nomenclatures.models import (
+    Nomenclature,
+    NomenclatureImage,
+)
 @extend_schema(tags=["Номенклатура - Арендаторы"])
 class NomenclatureTenantViewSet(viewsets.ModelViewSet):
     """
@@ -209,7 +212,100 @@ def grouped_tenants_global(request):
     return paginator.get_paginated_response(result)
 
 
-@extend_schema(tags=["Номенклатура - Арендаторы"])
+# @extend_schema(tags=["Номенклатура - Арендаторы"])
+# @api_view(['GET'])
+# @permission_classes([AllowAny])
+# def tenant_detail(request, tenant_pk: str):
+#     """
+#     GET /api/tenants/<uuid>/
+#     GET /api/tenants/<code1c>/
+#     """
+#     try:
+#         UUID(hex=tenant_pk)
+#         tenant_filter = "tenant__id"
+#     except (ValueError, AttributeError):
+#         tenant_filter = "tenant__code1c"
+#
+#     qs = (
+#         NomenclatureTenant.objects
+#         .filter(**{tenant_filter: tenant_pk})
+#         .select_related("tenant", "brand", "nomenclature", "nomenclature__typeOfPlace")
+#         .prefetch_related(
+#             Prefetch(
+#                 "tenant__brands",
+#                 queryset=Brand.objects.only("id", "name", "logotype"),
+#                 to_attr="prefetched_brands",
+#             ),
+#             Prefetch(
+#                 "nomenclature__images",
+#                 queryset=NomenclatureImage.objects.filter(type="exterior").order_by("created"),
+#                 to_attr="prefetched_exterior",
+#             ),
+#         )
+#
+#         .order_by("nomenclature__name")
+#     )
+#
+#     if not qs.exists():
+#         raise NotFound("Арендатор не найден.")
+#
+#     first = qs.first()
+#     if first is None:
+#         raise NotFound("Арендатор не найден.")
+#
+#     tenant = first.tenant
+#
+#     def get_first_exterior(nomenclature):
+#         exterior = getattr(nomenclature, "prefetched_exterior", [])
+#         if not exterior:
+#             return None
+#
+#         image = exterior[0]
+#
+#         if not image.source:
+#             return None
+#
+#         return image.source.url if hasattr(image.source, "url") else str(image.source)
+#
+#     places = [
+#         {
+#             "nomenclatureId": str(entry.nomenclature.id),
+#         }
+#         for entry in qs
+#     ]
+#
+#     prefetched_brands = getattr(tenant, "prefetched_brands", [])
+#     primary_brand = prefetched_brands[0] if prefetched_brands else None
+#
+#     if primary_brand:
+#         brand = {
+#             "id": str(primary_brand.id),
+#             "name": primary_brand.name,
+#             "logotype": (
+#                 primary_brand.logotype.url
+#                 if primary_brand.logotype
+#                 else None
+#             ),
+#         }
+#     else:
+#         brand = {
+#             "id": None,
+#             "name": None,
+#             "logotype": None,
+#         }
+#
+#     return Response({
+#         "tenantId": str(tenant.id),
+#         "tenantCode1c": tenant.code1c,
+#         "brand": brand,
+#         "opf": tenant.opf,
+#         "inn": tenant.inn,
+#         "keyword": tenant.keyword,
+#         "totalPlaces": len(places),
+#         "places": places,
+#     })
+
+@extend_schema(tags=["???????????? - ??????????"])
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def tenant_detail(request, tenant_pk: str):
@@ -217,42 +313,68 @@ def tenant_detail(request, tenant_pk: str):
     GET /api/tenants/<uuid>/
     GET /api/tenants/<code1c>/
     """
+
     try:
         UUID(hex=tenant_pk)
-        tenant_filter = "tenant__id"
+        tenant_filter = "nomenclaturetenant__tenant__id"
     except (ValueError, AttributeError):
-        tenant_filter = "tenant__code1c"
+        tenant_filter = "nomenclaturetenant__tenant__code1c"
+
 
     qs = (
-        NomenclatureTenant.objects
+        Nomenclature.objects
         .filter(**{tenant_filter: tenant_pk})
-        .select_related("tenant", "brand", "nomenclature", "nomenclature__typeOfPlace")
+        .select_related(
+            "typeOfPlace",
+        )
         .prefetch_related(
             Prefetch(
-                "tenant__brands",
-                queryset=Brand.objects.only("id", "name", "logotype"),
-                to_attr="prefetched_brands",
-            ),
-            Prefetch(
-                "nomenclature__images",
-                queryset=NomenclatureImage.objects.filter(type="exterior").order_by("created"),
+                "images",
+                queryset=NomenclatureImage.objects
+                .filter(type="exterior")
+                .order_by("created"),
                 to_attr="prefetched_exterior",
             ),
         )
-        .order_by("nomenclature__name")
+        .annotate(
+            tenants_count=Count(
+                "nomenclaturetenant",
+                distinct=True
+            )
+        )
+        .order_by(
+            "-tenants_count",
+            "name"
+        )
     )
 
+
     if not qs.exists():
-        raise NotFound("Арендатор не найден.")
+        raise NotFound("????????? ?? ??????.")
+
 
     first = qs.first()
-    if first is None:
-        raise NotFound("Арендатор не найден.")
 
-    tenant = first.tenant
+    if first is None:
+        raise NotFound("????????? ?? ??????.")
+
+
+    tenant = (
+        first
+        .nomenclaturetenant_set
+        .select_related("tenant")
+        .first()
+        .tenant
+    )
+
 
     def get_first_exterior(nomenclature):
-        exterior = getattr(nomenclature, "prefetched_exterior", [])
+        exterior = getattr(
+            nomenclature,
+            "prefetched_exterior",
+            []
+        )
+
         if not exterior:
             return None
 
@@ -261,17 +383,31 @@ def tenant_detail(request, tenant_pk: str):
         if not image.source:
             return None
 
-        return image.source.url if hasattr(image.source, "url") else str(image.source)
+        return (
+            image.source.url
+            if hasattr(image.source, "url")
+            else str(image.source)
+        )
+
 
     places = [
         {
-            "nomenclatureId": str(entry.nomenclature.id),
+            "nomenclatureId": str(item.id),
+            "name": item.name,
+            "tenantsCount": item.tenants_count,
+            "image": get_first_exterior(item),
         }
-        for entry in qs
+        for item in qs
     ]
 
-    prefetched_brands = getattr(tenant, "prefetched_brands", [])
-    primary_brand = prefetched_brands[0] if prefetched_brands else None
+
+    prefetched_brands = (
+        tenant.brands
+        .only("id", "name", "logotype")
+    )
+
+    primary_brand = prefetched_brands.first()
+
 
     if primary_brand:
         brand = {
@@ -290,6 +426,7 @@ def tenant_detail(request, tenant_pk: str):
             "logotype": None,
         }
 
+
     return Response({
         "tenantId": str(tenant.id),
         "tenantCode1c": tenant.code1c,
@@ -297,6 +434,6 @@ def tenant_detail(request, tenant_pk: str):
         "opf": tenant.opf,
         "inn": tenant.inn,
         "keyword": tenant.keyword,
-        "totalPlaces": len(places),
+        "totalPlaces": qs.count(),
         "places": places,
     })
