@@ -6,7 +6,8 @@ from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenc
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
-from datetime import timedelta
+from datetime import datetime, timedelta
+
 from django.utils import timezone
 
 
@@ -70,7 +71,7 @@ def update_nomenclature_status():
         new_status = ONLINE
         current_status = status.status
         last_answer = status.last_answer_date
-
+        
         if current_status == ONLINE:
             if now_time - last_answer > timedelta(hours=1):
                 new_status = OFFLINE_1_HOUR
@@ -123,33 +124,23 @@ def update_nomenclature_status():
 def resend_orders_task(nomenclature_id: int):
     """
     Переотправка заказов.
-
-    Аргументы:
-        nomenclature_id (int): ID номенклатуры для переотправки заказов
-
-    Returns:
-        str: Сообщение с количеством переотправленных заказов
     """
     task_list = []
     AD = 4
-
+    
     orders = chain(
         AdOrder.objects.filter(client=nomenclature_id, status__in=[0, 1]),
         BgOrder.objects.filter(client=nomenclature_id, status__in=[0, 1])
     )
-
+    
     for order in orders:
-        # Использование методов модели для получения локального времени
-        if hasattr(order, 'get_broadcast_start_local'):
-            broadcast_start = order.get_broadcast_start_local()
-        else:
-            broadcast_start = None
-
-        if hasattr(order, 'get_broadcast_end_local'):
-            broadcast_end = order.get_broadcast_end_local()
-        else:
-            broadcast_end = None
-
+        # Форматируем время без часового пояса
+        broadcast_start = order.broadcast_interval.lower.strftime('%Y-%m-%d %H:%M:%S')
+        
+        broadcast_end = None
+        if order.broadcast_interval and order.broadcast_interval.upper:
+            broadcast_end = order.broadcast_interval.upper.strftime('%Y-%m-%d %H:%M:%S')
+        
         parameters = {
             'order_id': str(order.id),
             'responsible': order.owner.full_name,
@@ -165,7 +156,7 @@ def resend_orders_task(nomenclature_id: int):
                 ]
             }
         }
-
+        
         if isinstance(order, AdOrder):
             parameters.update({
                 'order_parameters': order.parameters,
@@ -181,7 +172,7 @@ def resend_orders_task(nomenclature_id: int):
                 'is_permanent': order.is_permanent,
             })
             task_type = order.order_type
-
+            
         task_list.append(
             Task(
                 owner=order.owner,
@@ -190,7 +181,7 @@ def resend_orders_task(nomenclature_id: int):
                 parameters=parameters
             )
         )
-
+    
     Task.objects.bulk_create(task_list)
     return f'Переотправленно заказов: {len(task_list)}.'
 
@@ -229,15 +220,15 @@ def update_task(nomenclature_id: str, owner_id: str):
 def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
     nomenclature = get_nomenclature(nomenclature_id)
     owner = get_owner(owner_id)
-
+    
     import json
     try:
         params_dict = json.loads(parameters) if isinstance(parameters, str) else parameters
     except:
         params_dict = {'command': parameters}
-
+    
     params_dict['responsible'] = owner.full_name
-
+    
     Task.objects.create(
         owner=owner,
         client=nomenclature,
