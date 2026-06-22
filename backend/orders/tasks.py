@@ -1,14 +1,4 @@
-"""
-Задачи Celery для управления заказами и репликациями.
-
-Этот модуль содержит все фоновые задачи для работы с заказами:
-- Создание репликаций для новых заказов
-- Обновление существующих заказов
-- Отмена заказов
-- Добавление/удаление файлов из заказов
-- Автоматическое обновление статусов заказов
-"""
-
+from datetime import datetime as dt
 from django.utils import timezone
 
 from celery import shared_task
@@ -26,31 +16,24 @@ bg_logger = setup_logger('bg_orders', 'logs/bg_orders.log')
 @shared_task(base=Singleton)
 def update_order_status():
     """
-    Автоматическое обновление статусов заказов.
-
-    Задача выполняется периодически и проверяет все активные заказы,
-    обновляя их статусы в зависимости от текущего времени.
-
-    Returns:
-        str: Сообщение с количеством обновлённых заказов
+    Обновление статусов доступности номенклатур
+    и запись истории их изменения.
     """
     waiting_adorders = AdOrder.active.filter(status=0)
     waiting_bgorders = BgOrder.active.filter(status=0)
     ending_adorders = AdOrder.active.filter(status=1)
     ending_bgorders = BgOrder.active.filter(status=1)
-
     adorders_started = []
     bgorders_started = []
     adorders_ended = []
     bgorders_ended = []
-
     count = 0
     ON_AIR = 1
     COMPLETED = 2
 
     for order in waiting_adorders:
         order_start = order.broadcast_interval.lower
-        if order_start <= timezone.now():
+        if order_start <= dt.now():
             order.status = ON_AIR
             adorders_started.append(order)
     count += len(adorders_started)
@@ -58,7 +41,7 @@ def update_order_status():
 
     for order in ending_adorders:
         order_end = order.broadcast_interval.upper
-        if order_end <= timezone.now():
+        if order_end <= dt.now():
             order.status = COMPLETED
             order.is_active = False
             adorders_ended.append(order)
@@ -67,7 +50,7 @@ def update_order_status():
 
     for order in waiting_bgorders:
         order_start = order.broadcast_interval.lower
-        if order_start <= timezone.now():
+        if order_start <= dt.now():
             order.status = ON_AIR
             bgorders_started.append(order)
     count += len(bgorders_started)
@@ -75,7 +58,7 @@ def update_order_status():
 
     for order in ending_bgorders:
         order_end = order.broadcast_interval.upper
-        if order_end <= timezone.now():
+        if order_end <= dt.now():
             order.status = COMPLETED
             order.is_active = False
             bgorders_ended.append(order)
@@ -88,22 +71,17 @@ def update_order_status():
 @shared_task
 def create_ad_order_task(orders_ids: list):
     """
-    Создание репликаций для рекламных заказов.
-
-    Аргументы:
-        orders_ids (list): Список UUID заказов для создания репликаций
-
-    Returns:
-        str: Сообщение с количеством созданных репликаций
+    Отправка рекламного заказа.
     """
     task_list = []
     AD = 4
     orders = AdOrder.active.filter(pk__in=orders_ids)
-
+    
     for order in orders:
-        broadcast_start = order.get_broadcast_start_local()
-        broadcast_end = order.get_broadcast_end_local()
-
+        # Форматируем время без часового пояса
+        broadcast_start = order.broadcast_interval.lower.strftime('%Y-%m-%d %H:%M:%S')
+        broadcast_end = order.broadcast_interval.upper.strftime('%Y-%m-%d %H:%M:%S')
+        
         task_list.append(
             Task(
                 owner=order.owner,
@@ -129,7 +107,7 @@ def create_ad_order_task(orders_ids: list):
                 }
             )
         )
-
+    
     Task.objects.bulk_create(task_list)
     return f'Создано заказов: {len(task_list)}.'
 
@@ -141,20 +119,12 @@ def add_or_remove_files_ad_order_task(
     action_type
 ):
     """
-    Добавление или удаление файлов из активного рекламного заказа.
-
-    Аргументы:
-        order_list (list[str]): Список UUID заказов для обновления
-        files (list): Список файлов для добавления/удаления
-        action_type (str): Тип операции ('add' или 'remove')
-
-    Returns:
-        str: Сообщение с количеством обновлённых заказов
+    Добавление/удаление файлов из активного заказа.
     """
     orders = AdOrder.active.filter(id__in=order_list)
     UPDATE_AD = 14
     task_list = []
-
+    
     for order in orders:
         task_list.append(
             Task(
@@ -169,7 +139,7 @@ def add_or_remove_files_ad_order_task(
                 }
             )
         )
-
+    
     Task.objects.bulk_create(task_list)
     return f'Обновлено заказов: {len(task_list)}'
 
@@ -177,17 +147,11 @@ def add_or_remove_files_ad_order_task(
 @shared_task
 def update_ad_order_task(order_id: str):
     """
-    Полное обновление плейлиста активного рекламного заказа.
-
-    Аргументы:
-        order_id (str): UUID заказа для обновления
-
-    Returns:
-        str: Сообщение с ID обновлённого заказа
+    Обновление плейлиста активного рекламного заказа.
     """
     order = AdOrder.active.get(id=order_id)
     UPDATE_AD = 14
-
+    
     Task.objects.create(
         owner=order.owner,
         client=order.client,
@@ -215,17 +179,11 @@ def update_ad_order_task(order_id: str):
 def cancel_ad_order_task(order_id: str):
     """
     Отмена рекламного заказа.
-
-    Аргументы:
-        order_id (str): UUID заказа для отмены
-
-    Returns:
-        str: Сообщение с ID отменённого заказа
     """
     CANCEL = 3
     CANCEL_AD = 9
     order = AdOrder.active.get(id=order_id)
-
+    
     Task.objects.create(
         owner=order.owner,
         client=order.client,
@@ -235,7 +193,7 @@ def cancel_ad_order_task(order_id: str):
             'responsible': order.owner.full_name
         }
     )
-
+    
     order.status = CANCEL
     order.is_active = False
     order.save(update_fields=['status', 'is_active'])
@@ -245,21 +203,20 @@ def cancel_ad_order_task(order_id: str):
 @shared_task
 def create_bg_order_task(orders_ids: list):
     """
-    Создание репликаций для фоновых заказов.
-
-    Аргументы:
-        orders_ids (list): Список UUID заказов для создания репликаций
-
-    Returns:
-        str: Сообщение с количеством созданных репликаций
+    Отправка фонового заказа.
     """
     orders = BgOrder.active.filter(pk__in=orders_ids)
     task_list = []
-
+    
     for order in orders:
-        broadcast_start = order.get_broadcast_start_local()
-        broadcast_end = order.get_broadcast_end_local()
-
+        # Форматируем время без часового пояса
+        broadcast_start = order.broadcast_interval.lower.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Для бессрочных заказов broadcast_end может быть None
+        broadcast_end = None
+        if order.broadcast_interval and order.broadcast_interval.upper:
+            broadcast_end = order.broadcast_interval.upper.strftime('%Y-%m-%d %H:%M:%S')
+        
         task_list.append(
             Task(
                 owner=order.owner,
@@ -284,7 +241,7 @@ def create_bg_order_task(orders_ids: list):
                 }
             )
         )
-
+    
     Task.objects.bulk_create(task_list)
     return f'Создано заказов: {len(task_list)}.'
 
@@ -296,20 +253,12 @@ def add_or_remove_files_bg_order_task(
     action_type
 ):
     """
-    Добавление или удаление файлов из активного фонового заказа.
-
-    Аргументы:
-        order_list (list[str]): Список UUID заказов для обновления
-        files (list): Список файлов для добавления/удаления
-        action_type (str): Тип операции ('add' или 'remove')
-
-    Returns:
-        str: Сообщение с количеством обновлённых заказов
+    Добавление/удаление файлов из активного заказа.
     """
     orders = BgOrder.active.filter(id__in=order_list)
     task_type = get_bg_task_type(orders[0].order_type, action='update')
     task_list = []
-
+    
     for order in orders:
         task_list.append(
             Task(
@@ -324,7 +273,7 @@ def add_or_remove_files_bg_order_task(
                 }
             )
         )
-
+    
     Task.objects.bulk_create(task_list)
     return f'Обновлено заказов: {len(task_list)}'
 
@@ -332,17 +281,11 @@ def add_or_remove_files_bg_order_task(
 @shared_task
 def update_bg_order_task(order_id: str):
     """
-    Полное обновление плейлиста активного фонового заказа.
-
-    Аргументы:
-        order_id (str): UUID заказа для обновления
-
-    Returns:
-        str: Сообщение с ID обновлённого заказа
+    Обновление плейлиста активного фонового заказа.
     """
     order = BgOrder.active.get(id=order_id)
     task_type = get_bg_task_type(order.order_type, action='update')
-
+    
     Task.objects.create(
         owner=order.owner,
         client=order.client,
@@ -369,17 +312,11 @@ def update_bg_order_task(order_id: str):
 def cancel_bg_order_task(order_id: str):
     """
     Отмена фонового заказа.
-
-    Аргументы:
-        order_id (str): UUID заказа для отмены
-
-    Returns:
-        str: Сообщение с ID отменённого заказа
     """
     CANCEL = 3
     order = BgOrder.active.get(id=order_id)
     task_type = get_bg_task_type(order.order_type, action='cancel')
-
+    
     Task.objects.create(
         owner=order.owner,
         client=order.client,
@@ -389,7 +326,7 @@ def cancel_bg_order_task(order_id: str):
             'responsible': order.owner.full_name
         }
     )
-
+    
     order.status = CANCEL
     order.is_active = False
     order.save(update_fields=['status', 'is_active'])
