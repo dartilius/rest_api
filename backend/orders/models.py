@@ -76,7 +76,7 @@ class BaseOrder(APIBaseObjectModel):
     )
     broadcast_interval = DateTimeRangeField(
         verbose_name='Интервал работы заказа',
-        null=True,
+        null=False,
         blank=True
     )
     status = models.PositiveSmallIntegerField(
