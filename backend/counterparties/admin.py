@@ -119,7 +119,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
                     "id", "first_name", "middle_name", "last_name",
                     "keyword", "opf", "code1c", "is_active",
                     "description", "broadcast", "additional_name",
-                    "address__id", "address__name",
+                    "address__id",  # ✅ Убрал address__name
                 )
             )
             cache.set(cache_key, queryset, 300)
@@ -160,7 +160,6 @@ class CounterpartiesAdmin(admin.ModelAdmin):
         if not obj or not obj.pk:
             return "—"
 
-        # Используем предзагруженные бренды
         brands = obj.brands.all()[:20]
         if not brands:
             return "—"
