@@ -398,10 +398,12 @@ class NomenclatureAdmin(admin.ModelAdmin):
         """
         if obj.is_active:
             return format_html(
-                '<span style="color: green; font-weight: bold;">✓ Активна</span>'
+                '<span style="color: green; font-weight: bold;">{}</span>',
+                "✓ Активна"
             )
         return format_html(
-            '<span style="color: red; font-weight: bold;">✗ Неактивна</span>'
+            '<span style="color: red; font-weight: bold;">{}</span>',
+            "✗ Неактивна"
         )
 
     @admin.display(description="Статус", ordering="availability__status")
@@ -480,7 +482,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
         count = getattr(obj, 'tenants_count', 0)
         if count > 0:
             url = f"/admin/nomenclatures/nomenclature/{obj.id}/change/"
-            return format_html('<a href="{}">{}</a>', url, f"{count} шт.")
+            return format_html(
+                '<a href="{}">{}</a>',
+                url,
+                f"{count} шт."
+            )
         return "0"
 
     # =========================================================================
