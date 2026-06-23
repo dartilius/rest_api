@@ -1015,7 +1015,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return Response({"versions": versions}, status=HTTP_200_OK)
 
     @extend_schema(
-    summary="Получить UUID по id_rasb",
+        summary="Получить UUID по id_rasb",
         description="""
         Возвращает UUID номенклатуры по полю id_rasb.
 
@@ -1031,7 +1031,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         Пример POST запроса:
             POST /api/nomenclatures/get_uuid_by_id/
-            {"id_rasb": "12345"}
+            "id_rasb": "12345"}
         """,
         tags=["Номенклатуры"],
         request=None,
@@ -1048,63 +1048,59 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     )
     @action(
         detail=False,
-        methods=["GET", "POST"],  # Поддерживаем оба метода
+        methods=["GET", "POST"],
         url_path="get_uuid_by_id",
         permission_classes=[AllowAny],
     )
-        def get_id(self, request):
-            """
-            Получить UUID номенклатуры по id_rasb.
+    def get_id(self, request):  # ← ✅ БЕЗ лишнего отступа!
+        """
+        Получить UUID номенклатуры по id_rasb.
 
-            Поддерживает GET и POST для обратной совместимости.
-            Поддерживает передачу id_rasb в:
-            - URL параметре (?id_rasb=value)
-            - Теле запроса ({"id_rasb": "value"})
-            - Теле запроса ({"id_rasb": value}) - без кавычек
+        Поддерживает GET и POST для обратной совместимости.
+        Поддерживает передачу id_rasb в:
+        - URL параметре (?id_rasb=value)
+        - Теле запроса ({"id_rasb": "value"})
+        - Теле запроса ({"id_rasb": value}) - без кавычек
 
-            Аргументы:
-                request (HttpRequest): HTTP запрос
+        Аргументы:
+            request (HttpRequest): HTTP запрос
 
-            Returns:
-                Response: {"id": "uuid"} или ошибка
-            """
-            # Пробуем получить id_rasb из разных источников
-            id_rasb = (
-                request.query_params.get("id_rasb") or          # GET параметр в URL
-                request.data.get("id_rasb") if hasattr(request, 'data') else None  # Тело запроса
+        Returns:
+            Response: {"id": "uuid"} или ошибка
+        """
+        # Пробуем получить id_rasb из разных источников
+        id_rasb = (
+            request.query_params.get("id_rasb") or
+            request.data.get("id_rasb") if hasattr(request, 'data') else None
+        )
+
+        # Если request.data недоступен (для GET без тела), пробуем другие способы
+        if not id_rasb and request.method == "GET":
+            try:
+                import json
+                body = request.body.decode('utf-8')
+                if body:
+                    data = json.loads(body)
+                    id_rasb = data.get("id_rasb")
+            except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+                pass
+
+        if not id_rasb:
+            return Response(
+                {"detail": "Параметр id_rasb обязателен."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-            # Если request.data недоступен (для GET без тела), пробуем другие способы
-            if not id_rasb and request.method == "GET":
-                # Пробуем получить из тела GET запроса (нестандартно, но клиент так делает)
-                try:
-                    import json
-                    body = request.body.decode('utf-8')
-                    if body:
-                        data = json.loads(body)
-                        id_rasb = data.get("id_rasb")
-                except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
-                    pass
+        id_rasb = str(id_rasb)
+        nomenclature = Nomenclature.objects.filter(id_rasb=id_rasb).first()
 
-            if not id_rasb:
-                return Response(
-                    {"detail": "Параметр id_rasb обязателен."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        if not nomenclature:
+            return Response(
+                {"detail": f"Номенклатура с id_rasb='{id_rasb}' не найдена."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-            # Приводим к строке
-            id_rasb = str(id_rasb)
-
-            # Ищем номенклатуру
-            nomenclature = Nomenclature.objects.filter(id_rasb=id_rasb).first()
-
-            if not nomenclature:
-                return Response(
-                    {"detail": f"Номенклатура с id_rasb='{id_rasb}' не найдена."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-            return Response({"id": str(nomenclature.pk)})
+        return Response({"id": str(nomenclature.pk)})
 
     @extend_schema(
         summary="Получить номенклатуры по списку ID",
