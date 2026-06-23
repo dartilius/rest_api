@@ -1,19 +1,47 @@
+"""
+Задачи Celery для приложения nomenclatures.
+
+ОПТИМИЗАЦИЯ:
+───────────────────────────────────────────────────────────────────────────────
+1. Использование Prefetch для точного контроля загрузки данных
+2. Использование only() для выборки только необходимых полей
+3. Batch-обработка для массового обновления OpenSearch
+4. Предзагрузка всех связей для минимизации запросов к БД
+5. Обработка ошибок с логированием
+"""
+
 from itertools import chain
 
 from celery import shared_task
 from celery_singleton import Singleton
-from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature
+from django.db.models import Prefetch
+from nomenclatures.models import (
+    NomenclatureAvailability,
+    StatusHistory,
+    Nomenclature,
+    NomenclatureTenant
+)
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
-from datetime import datetime, timedelta
-
+from datetime import timedelta
 from django.utils import timezone
 
 
 @shared_task(base=Singleton)
 def update_opensearch_for_instance(instance_id):
-    """Обновление документа в OpenSearch для конкретной номенклатуры."""
+    """
+    Обновление документа в OpenSearch для конкретной номенклатуры.
+
+    Оптимизация:
+    - Использование Prefetch для точного контроля загрузки данных
+    - Использование only() для выборки только необходимых полей
+    - Предзагрузка всех связей
+    - Обработка ошибок с логированием
+
+    Аргументы:
+        instance_id (UUID): ID номенклатуры для обновления
+    """
     try:
         from nomenclatures.documents import NomenclatureDocument
         from nomenclatures.models import Nomenclature
@@ -24,15 +52,20 @@ def update_opensearch_for_instance(instance_id):
                 'brand',
                 'legalEntity',
                 'typeOfPlace',
-                'responsible_radio',
-                'responsible_ad',
-                'responsible_technic',
-                'responsible_technic_on_address',
-                'responsible_placement_marketing',
             )
             .prefetch_related(
-                'nomenclature_tenants__tenant',
-                'nomenclature_tenants__brand',
+                Prefetch(
+                    'nomenclature_tenants',
+                    queryset=NomenclatureTenant.objects.select_related('tenant', 'brand')
+                )
+            )
+            .only(
+                'id', 'name', 'code1c', 'description',
+                'for_web', 'is_active', 'pricePerMonth',
+                'brand__name', 'brand__code1c',
+                'legalEntity__keyword', 'legalEntity__first_name',
+                'legalEntity__last_name',
+                'typeOfPlace__name', 'typeOfPlace__abbreviation',
             )
             .get(id=instance_id)
         )
@@ -45,20 +78,71 @@ def update_opensearch_for_instance(instance_id):
         print(f"Ошибка OpenSearch для {instance_id}: {e}")
 
 
+@shared_task
+def bulk_update_opensearch(instance_ids: list):
+    """
+    Массовое обновление OpenSearch.
+
+    Аргументы:
+        instance_ids (list): Список ID номенклатур для обновления
+
+    Returns:
+        str: Сообщение о результате
+    """
+    from nomenclatures.documents import NomenclatureDocument
+    from nomenclatures.models import Nomenclature
+
+    if not instance_ids:
+        return "Нет ID для обновления"
+
+    try:
+        nomenclatures = (
+            Nomenclature.objects
+            .filter(id__in=instance_ids)
+            .select_related('brand', 'legalEntity', 'typeOfPlace')
+            .prefetch_related(
+                Prefetch(
+                    'nomenclature_tenants',
+                    queryset=NomenclatureTenant.objects.select_related('tenant', 'brand')
+                )
+            )
+            .only(
+                'id', 'name', 'code1c', 'description',
+                'for_web', 'is_active', 'pricePerMonth',
+                'brand__name', 'brand__code1c',
+                'legalEntity__keyword', 'legalEntity__first_name',
+                'legalEntity__last_name',
+                'typeOfPlace__name', 'typeOfPlace__abbreviation',
+            )
+        )
+
+        doc = NomenclatureDocument()
+        updated_count = 0
+
+        for nomenclature in nomenclatures.iterator(chunk_size=100):
+            doc.index(nomenclature)
+            updated_count += 1
+
+        print(f"Обновлено OpenSearch: {updated_count} записей")
+        return f"Обновлено OpenSearch: {updated_count} записей"
+    except Exception as e:
+        print(f"Ошибка массового обновления OpenSearch: {e}")
+        return f"Ошибка: {e}"
+
+
 def get_owner(owner_id):
+    """Получает пользователя по ID."""
     return CustomUser.objects.get(pk=owner_id)
 
 
 def get_nomenclature(nomenclature_id):
+    """Получает номенклатуру по ID."""
     return Nomenclature.objects.get(pk=nomenclature_id)
 
 
 @shared_task(base=Singleton)
 def update_nomenclature_status():
-    """
-    Обновление статусов доступности номенклатур
-    и запись истории их изменения.
-    """
+    """Обновление статусов доступности номенклатур."""
     statuses = NomenclatureAvailability.objects.all()
     statuses_to_update = []
     status_histories_to_create = []
@@ -71,7 +155,7 @@ def update_nomenclature_status():
         new_status = ONLINE
         current_status = status.status
         last_answer = status.last_answer_date
-        
+
         if current_status == ONLINE:
             if now_time - last_answer > timedelta(hours=1):
                 new_status = OFFLINE_1_HOUR
@@ -122,25 +206,22 @@ def update_nomenclature_status():
 
 @shared_task
 def resend_orders_task(nomenclature_id: int):
-    """
-    Переотправка заказов.
-    """
+    """Переотправка заказов для номенклатуры."""
     task_list = []
     AD = 4
-    
+
     orders = chain(
         AdOrder.objects.filter(client=nomenclature_id, status__in=[0, 1]),
         BgOrder.objects.filter(client=nomenclature_id, status__in=[0, 1])
     )
-    
+
     for order in orders:
-        # Форматируем время без часового пояса
         broadcast_start = order.broadcast_interval.lower.strftime('%Y-%m-%d %H:%M:%S')
-        
+
         broadcast_end = None
         if order.broadcast_interval and order.broadcast_interval.upper:
             broadcast_end = order.broadcast_interval.upper.strftime('%Y-%m-%d %H:%M:%S')
-        
+
         parameters = {
             'order_id': str(order.id),
             'responsible': order.owner.full_name,
@@ -156,7 +237,7 @@ def resend_orders_task(nomenclature_id: int):
                 ]
             }
         }
-        
+
         if isinstance(order, AdOrder):
             parameters.update({
                 'order_parameters': order.parameters,
@@ -172,7 +253,7 @@ def resend_orders_task(nomenclature_id: int):
                 'is_permanent': order.is_permanent,
             })
             task_type = order.order_type
-            
+
         task_list.append(
             Task(
                 owner=order.owner,
@@ -181,54 +262,54 @@ def resend_orders_task(nomenclature_id: int):
                 parameters=parameters
             )
         )
-    
+
     Task.objects.bulk_create(task_list)
     return f'Переотправленно заказов: {len(task_list)}.'
 
 
 @shared_task
 def reboot_task(nomenclature_id: str, owner_id: str):
+    """Отправка команды перезагрузки на устройство."""
     nomenclature = get_nomenclature(nomenclature_id)
     owner = get_owner(owner_id)
     Task.objects.create(
         owner=owner,
         client=nomenclature,
         type=15,
-        parameters={
-            'responsible': owner.full_name
-        }
+        parameters={'responsible': owner.full_name}
     )
     return f'Перезагрузка отправлена на {nomenclature.name}'
 
 
 @shared_task
 def update_task(nomenclature_id: str, owner_id: str):
+    """Отправка команды обновления ПО на устройство."""
     nomenclature = get_nomenclature(nomenclature_id)
     owner = get_owner(owner_id)
     Task.objects.create(
         owner=owner,
         client=nomenclature,
         type=16,
-        parameters={
-            'responsible': owner.full_name
-        }
+        parameters={'responsible': owner.full_name}
     )
     return f'Обновление отправлено на {nomenclature.name}'
 
 
 @shared_task
 def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
+    """Отправка пользовательской команды на устройство."""
+    import json
+
     nomenclature = get_nomenclature(nomenclature_id)
     owner = get_owner(owner_id)
-    
-    import json
+
     try:
         params_dict = json.loads(parameters) if isinstance(parameters, str) else parameters
-    except:
+    except Exception:
         params_dict = {'command': parameters}
-    
+
     params_dict['responsible'] = owner.full_name
-    
+
     Task.objects.create(
         owner=owner,
         client=nomenclature,
@@ -240,6 +321,7 @@ def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
 
 @shared_task
 def settings_task(nomenclature_id: str, owner_id: str):
+    """Отправка настроек вещания на устройство."""
     nomenclature = get_nomenclature(nomenclature_id)
     owner = get_owner(owner_id)
     Task.objects.create(
@@ -252,6 +334,262 @@ def settings_task(nomenclature_id: str, owner_id: str):
         }
     )
     return f'Настройки вещания отправлены на {nomenclature.name}'
+
+
+# from itertools import chain
+
+# from celery import shared_task
+# from celery_singleton import Singleton
+# from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature
+# from orders.models import AdOrder, BgOrder
+# from tasks.models import Task
+# from users.models import CustomUser
+# from datetime import datetime, timedelta
+
+# from django.utils import timezone
+
+
+# @shared_task(base=Singleton)
+# def update_opensearch_for_instance(instance_id):
+#     """Обновление документа в OpenSearch для конкретной номенклатуры."""
+#     try:
+#         from nomenclatures.documents import NomenclatureDocument
+#         from nomenclatures.models import Nomenclature
+
+#         nomenclature = (
+#             Nomenclature.objects
+#             .select_related(
+#                 'brand',
+#                 'legalEntity',
+#                 'typeOfPlace',
+#                 'responsible_radio',
+#                 'responsible_ad',
+#                 'responsible_technic',
+#                 'responsible_technic_on_address',
+#                 'responsible_placement_marketing',
+#             )
+#             .prefetch_related(
+#                 'nomenclature_tenants__tenant',
+#                 'nomenclature_tenants__brand',
+#             )
+#             .get(id=instance_id)
+#         )
+
+#         NomenclatureDocument().index(nomenclature)
+#         print(f"OpenSearch обновлён для номенклатуры {instance_id}")
+#     except Nomenclature.DoesNotExist:
+#         print(f"Номенклатура {instance_id} не найдена")
+#     except Exception as e:
+#         print(f"Ошибка OpenSearch для {instance_id}: {e}")
+
+
+# def get_owner(owner_id):
+#     return CustomUser.objects.get(pk=owner_id)
+
+
+# def get_nomenclature(nomenclature_id):
+#     return Nomenclature.objects.get(pk=nomenclature_id)
+
+
+# @shared_task(base=Singleton)
+# def update_nomenclature_status():
+#     """
+#     Обновление статусов доступности номенклатур
+#     и запись истории их изменения.
+#     """
+#     statuses = NomenclatureAvailability.objects.all()
+#     statuses_to_update = []
+#     status_histories_to_create = []
+#     ONLINE = 0
+#     OFFLINE_5_MIN = 1
+#     OFFLINE_1_HOUR = 2
+
+#     for status in statuses:
+#         now_time = timezone.now()
+#         new_status = ONLINE
+#         current_status = status.status
+#         last_answer = status.last_answer_date
+        
+#         if current_status == ONLINE:
+#             if now_time - last_answer > timedelta(hours=1):
+#                 new_status = OFFLINE_1_HOUR
+#             elif now_time - last_answer > timedelta(minutes=5):
+#                 new_status = OFFLINE_5_MIN
+#             if new_status != current_status:
+#                 status.status = new_status
+#                 statuses_to_update.append(status)
+#                 status_histories_to_create.append(
+#                     StatusHistory(
+#                         status=new_status,
+#                         client=status.client
+#                     )
+#                 )
+
+#         if current_status == OFFLINE_5_MIN:
+#             new_status = OFFLINE_5_MIN
+#             if now_time - last_answer > timedelta(hours=1):
+#                 new_status = OFFLINE_1_HOUR
+#             elif now_time - last_answer < timedelta(minutes=5):
+#                 new_status = ONLINE
+#             if new_status != current_status:
+#                 status.status = new_status
+#                 statuses_to_update.append(status)
+#                 status_histories_to_create.append(
+#                     StatusHistory(
+#                         status=new_status,
+#                         client=status.client
+#                     )
+#                 )
+
+#         if current_status == OFFLINE_1_HOUR:
+#             if now_time - last_answer < timedelta(minutes=5):
+#                 status.status = ONLINE
+#                 statuses_to_update.append(status)
+#                 status_histories_to_create.append(
+#                     StatusHistory(
+#                         status=new_status,
+#                         client=status.client
+#                     )
+#                 )
+
+#     NomenclatureAvailability.objects.bulk_update(statuses_to_update, ['status'])
+#     StatusHistory.objects.bulk_create(status_histories_to_create)
+
+#     return f'Обновлено {len(statuses_to_update)} статусов доступности.'
+
+
+# @shared_task
+# def resend_orders_task(nomenclature_id: int):
+#     """
+#     Переотправка заказов.
+#     """
+#     task_list = []
+#     AD = 4
+    
+#     orders = chain(
+#         AdOrder.objects.filter(client=nomenclature_id, status__in=[0, 1]),
+#         BgOrder.objects.filter(client=nomenclature_id, status__in=[0, 1])
+#     )
+    
+#     for order in orders:
+#         # Форматируем время без часового пояса
+#         broadcast_start = order.broadcast_interval.lower.strftime('%Y-%m-%d %H:%M:%S')
+        
+#         broadcast_end = None
+#         if order.broadcast_interval and order.broadcast_interval.upper:
+#             broadcast_end = order.broadcast_interval.upper.strftime('%Y-%m-%d %H:%M:%S')
+        
+#         parameters = {
+#             'order_id': str(order.id),
+#             'responsible': order.owner.full_name,
+#             'broadcast_start': broadcast_start,
+#             'broadcast_end': broadcast_end,
+#             'playlist': {
+#                 'id': str(order.playlist.id),
+#                 'files': [
+#                     {
+#                         'id': str(file.id),
+#                         'hash': file.hash
+#                     } for file in order.playlist.files.all()
+#                 ]
+#             }
+#         }
+        
+#         if isinstance(order, AdOrder):
+#             parameters.update({
+#                 'order_parameters': order.parameters,
+#                 'broadcast_type': order.broadcast_type,
+#             })
+#             parameters['playlist']['slides'] = (
+#                 order.slides if order.slides else None
+#             )
+#             task_type = AD
+#         else:
+#             parameters.update({
+#                 'order_type': order.order_type,
+#                 'is_permanent': order.is_permanent,
+#             })
+#             task_type = order.order_type
+            
+#         task_list.append(
+#             Task(
+#                 owner=order.owner,
+#                 client=order.client,
+#                 type=task_type,
+#                 parameters=parameters
+#             )
+#         )
+    
+#     Task.objects.bulk_create(task_list)
+#     return f'Переотправленно заказов: {len(task_list)}.'
+
+
+# @shared_task
+# def reboot_task(nomenclature_id: str, owner_id: str):
+#     nomenclature = get_nomenclature(nomenclature_id)
+#     owner = get_owner(owner_id)
+#     Task.objects.create(
+#         owner=owner,
+#         client=nomenclature,
+#         type=15,
+#         parameters={
+#             'responsible': owner.full_name
+#         }
+#     )
+#     return f'Перезагрузка отправлена на {nomenclature.name}'
+
+
+# @shared_task
+# def update_task(nomenclature_id: str, owner_id: str):
+#     nomenclature = get_nomenclature(nomenclature_id)
+#     owner = get_owner(owner_id)
+#     Task.objects.create(
+#         owner=owner,
+#         client=nomenclature,
+#         type=16,
+#         parameters={
+#             'responsible': owner.full_name
+#         }
+#     )
+#     return f'Обновление отправлено на {nomenclature.name}'
+
+
+# @shared_task
+# def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
+#     nomenclature = get_nomenclature(nomenclature_id)
+#     owner = get_owner(owner_id)
+    
+#     import json
+#     try:
+#         params_dict = json.loads(parameters) if isinstance(parameters, str) else parameters
+#     except:
+#         params_dict = {'command': parameters}
+    
+#     params_dict['responsible'] = owner.full_name
+    
+#     Task.objects.create(
+#         owner=owner,
+#         client=nomenclature,
+#         type=17,
+#         parameters=params_dict
+#     )
+#     return f'SH команда отправлена на {nomenclature.name}'
+
+
+# @shared_task
+# def settings_task(nomenclature_id: str, owner_id: str):
+#     nomenclature = get_nomenclature(nomenclature_id)
+#     owner = get_owner(owner_id)
+#     Task.objects.create(
+#         owner=owner,
+#         client=nomenclature,
+#         type=18,
+#         parameters={
+#             'settings': nomenclature.settings,
+#             'responsible': owner.full_name
+#         }
+#     )
+#     return f'Настройки вещания отправлены на {nomenclature.name}'
 
 # from itertools import chain
 
