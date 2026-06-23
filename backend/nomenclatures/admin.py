@@ -1,24 +1,14 @@
 """
 Административный интерфейс для модели Nomenclature.
 
-Данный модуль предоставляет оптимизированный административный интерфейс для
-управления номенклатурами в системе. Реализована глубокая оптимизация запросов
-к базе данных для устранения проблемы N+1 запросов и значительного ускорения
-работы административной панели.
-
 ОПТИМИЗАЦИЯ ПРОИЗВОДИТЕЛЬНОСТИ:
 ───────────────────────────────────────────────────────────────────────────────
 1. Использование select_related для всех FK связей (1 запрос вместо N)
 2. Использование prefetch_related для всех M2M связей (1 запрос вместо N)
-3. Использование only() для выборки только необходимых полей
-4. Кеширование результатов запросов на 5 минут
-5. Оптимизация list_display для исключения отдельных запросов к БД
-
-ПРОИЗВОДИТЕЛЬНОСТЬ:
-───────────────────────────────────────────────────────────────────────────────
-- До оптимизации: ~200 запросов на страницу, 2-3 секунды загрузки
-- После оптимизации: ~3-5 запросов на страницу, 0.1-0.2 секунды загрузки
-- Ускорение: ~20-40 раз
+3. Кеширование ID результатов для уменьшения размера кеша
+4. Оптимизация list_display для исключения отдельных запросов к БД
+5. Поиск без search_vector для ускорения админки
+6. Устранение дублирующихся запросов в get_form и render_change_form
 """
 
 from django.contrib import admin
@@ -48,9 +38,6 @@ from nomenclatures.models import (
 class DiscountRuleInline(admin.TabularInline):
     """
     Inline-форма для правил скидок в административной панели.
-
-    Позволяет редактировать правила скидок непосредственно на странице
-    редактирования номенклатуры. Правила сортируются по полю days_from.
     """
     model = DiscountRule
     extra = 1
@@ -62,26 +49,9 @@ class DiscountRuleInline(admin.TabularInline):
 class NomenclatureAdmin(admin.ModelAdmin):
     """
     Административный интерфейс для модели Nomenclature.
-
-    Реализована полная оптимизация запросов к базе данных:
-    1. get_queryset - оптимизированный запрос с select_related и prefetch_related
-    2. get_object - кеширование полного объекта с предзагрузкой связей
-    3. list_display - все поля используют только предзагруженные данные
-    4. Кеширование результатов на 5 минут
-    5. only() - выборка только необходимых полей
     """
 
-    # =========================================================================
-    # КАСТОМНЫЙ VIEW ДЛЯ СТАТИСТИКИ МУЗЫКИ
-    # =========================================================================
-
     def get_urls(self):
-        """
-        Добавляет кастомные URL для административной панели.
-
-        Returns:
-            list: Список URL patterns с добавленным кастомным маршрутом
-        """
         from django.urls import path
         urls = super().get_urls()
         custom = [
@@ -94,16 +64,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
         return custom + urls
 
     def music_stat_view(self, request, object_id):
-        """
-        Возвращает статистику музыки для номенклатуры в формате JSON.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос с параметрами date_from и date_to
-            object_id (UUID): ID номенклатуры
-
-        Returns:
-            JsonResponse: Статистика музыки с полями file, played, length
-        """
         date_from = request.GET.get('date_from')
         date_to = request.GET.get('date_to')
 
@@ -167,7 +127,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "code1c",
         "article",
         "id_rasb",
-        "search_vector",
         "brand__name",
     )
 
@@ -179,39 +138,27 @@ class NomenclatureAdmin(admin.ModelAdmin):
     raw_id_fields = ('owner', 'brand', 'legalEntity')
 
     # =========================================================================
-    # ОПТИМИЗИРОВАННЫЙ QUERYSET
+    # ОПТИМИЗИРОВАННЫЙ QUERYSET С КЕШИРОВАНИЕМ ID
     # =========================================================================
 
     def get_queryset(self, request):
         """
-        Оптимизированный запрос для списка номенклатур.
+        Оптимизированный запрос для списка номенклатур с кешированием ID.
 
-        Выполняет предзагрузку всех необходимых связей одним запросом с JOIN.
-        Результат кешируется для каждого пользователя на 5 минут.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-
-        Returns:
-            QuerySet: Оптимизированный QuerySet с предзагруженными данными
+        Кеширование ID вместо всего queryset для экономии памяти.
         """
         cache_key = f"nomenclature_admin_qs_{request.user.id}"
-        queryset = cache.get(cache_key)
+        cached_ids = cache.get(cache_key)
 
-        if queryset is None:
-            queryset = (
+        if cached_ids is not None:
+            return (
                 Nomenclature.objects
+                .filter(id__in=cached_ids)
                 .select_related(
-                    "owner",
-                    "availability",
-                    "brand",
-                    "legalEntity",
-                    "responsible_radio",
-                    "responsible_ad",
-                    "responsible_technic",
-                    "responsible_technic_on_address",
-                    "responsible_placement_marketing",
-                    "typeOfPlace",
+                    "owner", "availability", "brand", "legalEntity",
+                    "responsible_radio", "responsible_ad",
+                    "responsible_technic", "responsible_technic_on_address",
+                    "responsible_placement_marketing", "typeOfPlace",
                 )
                 .prefetch_related(
                     "tenants",
@@ -229,52 +176,83 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 .annotate(
                     tenants_count=Count("tenants", distinct=True),
                 )
-                .only(
-                    'id', 'name', 'timezone', 'is_active', 'code1c', 'article',
-                    'id_rasb', 'for_web',
-                    'owner__email', 'owner__first_name', 'owner__last_name',
-                    'availability__status', 'availability__last_answer_date',
-                    'brand__name', 'brand__id',
-                    'legalEntity__first_name', 'legalEntity__middle_name',
-                    'legalEntity__last_name', 'legalEntity__keyword',
-                    'responsible_radio__email', 'responsible_radio__first_name',
-                    'responsible_radio__last_name',
-                    'responsible_ad__email', 'responsible_ad__first_name',
-                    'responsible_ad__last_name',
-                    'responsible_technic__email', 'responsible_technic__first_name',
-                    'responsible_technic__last_name',
-                    'responsible_technic_on_address__email',
-                    'responsible_technic_on_address__first_name',
-                    'responsible_technic_on_address__last_name',
-                    'responsible_placement_marketing__email',
-                    'responsible_placement_marketing__first_name',
-                    'responsible_placement_marketing__last_name',
-                    'typeOfPlace__name', 'typeOfPlace__abbreviation',
-                )
             )
-            cache.set(cache_key, queryset, 300)
+
+        queryset = (
+            Nomenclature.objects
+            .select_related(
+                "owner", "availability", "brand", "legalEntity",
+                "responsible_radio", "responsible_ad",
+                "responsible_technic", "responsible_technic_on_address",
+                "responsible_placement_marketing", "typeOfPlace",
+            )
+            .prefetch_related(
+                "tenants",
+                Prefetch(
+                    "images",
+                    queryset=NomenclatureImage.objects.filter(type="exterior")[:1],
+                    to_attr="prefetched_exterior"
+                ),
+                Prefetch(
+                    "discount_rules",
+                    queryset=DiscountRule.objects.all(),
+                    to_attr="prefetched_discount_rules"
+                ),
+            )
+            .annotate(
+                tenants_count=Count("tenants", distinct=True),
+            )
+            .only(
+                'id', 'name', 'timezone', 'is_active', 'code1c', 'article',
+                'id_rasb', 'for_web',
+                'owner__email', 'owner__first_name', 'owner__last_name',
+                'availability__status', 'availability__last_answer_date',
+                'brand__name', 'brand__id',
+                'legalEntity__first_name', 'legalEntity__middle_name',
+                'legalEntity__last_name', 'legalEntity__keyword',
+                'responsible_radio__email', 'responsible_radio__first_name',
+                'responsible_radio__last_name',
+                'responsible_ad__email', 'responsible_ad__first_name',
+                'responsible_ad__last_name',
+                'responsible_technic__email', 'responsible_technic__first_name',
+                'responsible_technic__last_name',
+                'responsible_technic_on_address__email',
+                'responsible_technic_on_address__first_name',
+                'responsible_technic_on_address__last_name',
+                'responsible_placement_marketing__email',
+                'responsible_placement_marketing__first_name',
+                'responsible_placement_marketing__last_name',
+                'typeOfPlace__name', 'typeOfPlace__abbreviation',
+            )
+        )
+
+        ids = list(queryset.values_list('id', flat=True))
+        cache.set(cache_key, ids, 300)
 
         return queryset
+
+    def get_search_results(self, request, queryset, search_term):
+        """
+        Оптимизированный поиск для админки без search_vector.
+        """
+        if not search_term:
+            return queryset, False
+
+        queryset = queryset.filter(
+            Q(name__icontains=search_term) |
+            Q(code1c__icontains=search_term) |
+            Q(article__icontains=search_term) |
+            Q(id_rasb__icontains=search_term) |
+            Q(brand__name__icontains=search_term)
+        ).distinct()
+
+        return queryset, False
 
     # =========================================================================
     # ОПТИМИЗИРОВАННОЕ ПОЛУЧЕНИЕ ОБЪЕКТА
     # =========================================================================
 
     def get_object(self, request, object_id, from_field=None):
-        """
-        Оптимизированное получение объекта с предзагрузкой всех связей.
-
-        Выполняет предзагрузку всех связанных объектов одним запросом.
-        Результат кешируется для предотвращения повторных запросов.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-            object_id (str): ID объекта
-            from_field (str, optional): Поле для поиска
-
-        Returns:
-            Nomenclature: Объект с предзагруженными связями
-        """
         obj = super().get_object(request, object_id, from_field)
 
         if obj:
@@ -284,16 +262,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
             if not cached:
                 prefetch_related_objects(
                     [obj],
-                    'owner',
-                    'brand',
-                    'legalEntity',
-                    'responsible_radio',
-                    'responsible_ad',
-                    'responsible_technic',
-                    'responsible_technic_on_address',
+                    'owner', 'brand', 'legalEntity',
+                    'responsible_radio', 'responsible_ad',
+                    'responsible_technic', 'responsible_technic_on_address',
                     'responsible_placement_marketing',
-                    'availability',
-                    'tenants',
+                    'availability', 'tenants',
                     'nomenclature_tenants',
                     'nomenclature_tenants__tenant',
                     'nomenclature_tenants__brand',
@@ -313,36 +286,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
         return obj
 
     def get_form(self, request, obj=None, **kwargs):
-        """
-        Получение формы с предзагруженными данными.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-            obj (Nomenclature, optional): Объект для редактирования
-
-        Returns:
-            Form: Форма для редактирования
-        """
-        form = super().get_form(request, obj, **kwargs)
         if obj and not hasattr(obj, '_prefetched_objects_cache'):
             obj = self.get_object(request, obj.pk)
-        return form
+        return super().get_form(request, obj, **kwargs)
 
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
-        """
-        Рендеринг формы изменения с отображением кешированных полей.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-            context (dict): Контекст для шаблона
-            add (bool): Режим создания
-            change (bool): Режим изменения
-            form_url (str): URL формы
-            obj (Nomenclature, optional): Объект для редактирования
-
-        Returns:
-            HttpResponse: HTML форма
-        """
         if obj and hasattr(obj, '_prefetched_objects_cache'):
             context['cached_fields'] = list(obj._prefetched_objects_cache.keys())
         return super().render_change_form(request, context, add, change, form_url, obj)
@@ -353,30 +301,10 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     @admin.display(description="ID", ordering="id")
     def id_short(self, obj):
-        """
-        Возвращает сокращенный ID для отображения в списке.
-
-        Аргументы:
-            obj (Nomenclature): Объект номенклатуры
-
-        Returns:
-            str: Строка с первыми 8 символами UUID и многоточием
-        """
         return str(obj.id)[:8] + "..."
 
     @admin.display(description="Владелец", ordering="owner__email")
     def owner_name(self, obj):
-        """
-        Возвращает полное имя владельца номенклатуры.
-
-        Данные предзагружены через select_related('owner').
-
-        Аргументы:
-            obj (Nomenclature): Объект номенклатуры
-
-        Returns:
-            str: Полное имя владельца или email, если имя не задано
-        """
         if not obj.owner:
             return "-"
         if hasattr(obj.owner, 'full_name') and obj.owner.full_name:
@@ -387,15 +315,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     @admin.display(description="Активность", ordering="is_active")
     def active_status_display(self, obj):
-        """
-        Отображает статус активности с цветовой индикацией.
-
-        Аргументы:
-            obj (Nomenclature): Объект номенклатуры
-
-        Returns:
-            str: HTML с цветной меткой статуса
-        """
         if obj.is_active:
             return format_html(
                 '<span style="color: green; font-weight: bold;">{}</span>',
@@ -408,17 +327,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     @admin.display(description="Статус", ordering="availability__status")
     def status_display(self, obj):
-        """
-        Отображает статус доступности с цветовой индикацией.
-
-        Данные предзагружены через select_related('availability').
-
-        Аргументы:
-            obj (Nomenclature): Объект номенклатуры
-
-        Returns:
-            str: HTML с цветной меткой статуса или 'Нет данных'
-        """
         try:
             status_code = obj.availability.status
             status_text = STATUSES.get(status_code, "Неизвестно")
@@ -434,32 +342,10 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     @admin.display(description="Бренд", ordering="brand__name")
     def brand_name(self, obj):
-        """
-        Возвращает название бренда номенклатуры.
-
-        Данные предзагружены через select_related('brand').
-
-        Аргументы:
-            obj (Nomenclature): Объект номенклатуры
-
-        Returns:
-            str: Название бренда или '-'
-        """
         return obj.brand.name if obj.brand else "-"
 
     @admin.display(description="Юр.лицо", ordering="legalEntity__name")
     def legal_entity_name(self, obj):
-        """
-        Возвращает название юридического лица.
-
-        Данные предзагружены через select_related('legalEntity').
-
-        Аргументы:
-            obj (Nomenclature): Объект номенклатуры
-
-        Returns:
-            str: Название юр. лица или '-'
-        """
         if not obj.legalEntity:
             return "-"
         if hasattr(obj.legalEntity, 'name'):
@@ -468,17 +354,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     @admin.display(description="Арендаторы", ordering="tenants_count")
     def tenants_count_display(self, obj):
-        """
-        Отображает количество арендаторов со ссылкой на редактирование.
-
-        Данные предзагружены через annotate(tenants_count=Count(...)).
-
-        Аргументы:
-            obj (Nomenclature): Объект номенклатуры
-
-        Returns:
-            str: Количество арендаторов со ссылкой или '0'
-        """
         count = getattr(obj, 'tenants_count', 0)
         if count > 0:
             url = f"/admin/nomenclatures/nomenclature/{obj.id}/change/"
@@ -496,13 +371,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
     actions = ['activate', 'deactivate', 'clear_cache']
 
     def activate(self, request, queryset):
-        """
-        Активирует выбранные номенклатуры.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-            queryset (QuerySet): Выбранные объекты для активации
-        """
         updated = queryset.update(is_active=True)
         self.message_user(request, f'Активировано {updated} номенклатур')
         cache.delete_pattern("nomenclature_admin_qs_*")
@@ -510,13 +378,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
     activate.short_description = "Активировать выбранные"
 
     def deactivate(self, request, queryset):
-        """
-        Деактивирует выбранные номенклатуры.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-            queryset (QuerySet): Выбранные объекты для деактивации
-        """
         updated = queryset.update(is_active=False)
         self.message_user(request, f'Деактивировано {updated} номенклатур')
         cache.delete_pattern("nomenclature_admin_qs_*")
@@ -524,31 +385,14 @@ class NomenclatureAdmin(admin.ModelAdmin):
     deactivate.short_description = "Деактивировать выбранные"
 
     def clear_cache(self, request, queryset):
-        """
-        Очищает кеш номенклатур.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-            queryset (QuerySet): Выбранные объекты (не используется)
-        """
         cache.delete_pattern("nomenclature_admin_qs_*")
         self.message_user(request, 'Кэш очищен')
 
     clear_cache.short_description = "Очистить кэш"
 
 
-# =============================================================================
-# АДМИНИСТРАТИВНЫЕ КЛАССЫ ДЛЯ СВЯЗАННЫХ МОДЕЛЕЙ
-# =============================================================================
-
-
 @admin.register(NomenclatureTenant)
 class NomenclatureTenantAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для модели NomenclatureTenant.
-
-    Предоставляет управление связями между номенклатурами и арендаторами.
-    """
     list_display = ("nomenclature_name", "tenant", "brand", "floor", "atm")
     search_fields = ("floor",)
     list_filter = ("atm", "brand", "floor")
@@ -557,57 +401,26 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
     list_per_page = 50
 
     def get_queryset(self, request):
-        """
-        Оптимизированный запрос с предзагрузкой связанных объектов.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-
-        Returns:
-            QuerySet: Оптимизированный QuerySet
-        """
         return super().get_queryset(request).select_related(
-            "nomenclature",
-            "tenant",
-            "brand",
+            "nomenclature", "tenant", "brand",
         )
 
     @admin.display(description="Номенклатура", ordering="nomenclature__name")
     def nomenclature_name(self, obj):
-        """
-        Возвращает название номенклатуры.
-
-        Аргументы:
-            obj (NomenclatureTenant): Объект связи
-
-        Returns:
-            str: Название номенклатуры или '-'
-        """
         return obj.nomenclature.name if obj.nomenclature else "-"
 
     def get_search_results(self, request, queryset, search_term):
-        """
-        Оптимизированный поиск с использованием Q объектов.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-            queryset (QuerySet): Базовый QuerySet
-            search_term (str): Поисковый запрос
-
-        Returns:
-            tuple: (QuerySet, bool) - отфильтрованный QuerySet и флаг distinct
-        """
         if not search_term:
             return queryset, False
 
         queryset = queryset.filter(
-            Q(nomenclature__brand__name__icontains=search_term)
-            | Q(floor__icontains=search_term)
-            | Q(nomenclature__name__icontains=search_term)
-            | Q(nomenclature__code1c__icontains=search_term)
-            | Q(nomenclature__article__icontains=search_term)
-            | Q(nomenclature__id_rasb__icontains=search_term)
-            | Q(brand__name__icontains=search_term)
+            Q(nomenclature__brand__name__icontains=search_term) |
+            Q(floor__icontains=search_term) |
+            Q(nomenclature__name__icontains=search_term) |
+            Q(nomenclature__code1c__icontains=search_term) |
+            Q(nomenclature__article__icontains=search_term) |
+            Q(nomenclature__id_rasb__icontains=search_term) |
+            Q(brand__name__icontains=search_term)
         ).distinct()
 
         return queryset, False
@@ -615,36 +428,17 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
 
 @admin.register(TypeOfPlace)
 class TypeOfPlaceAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для модели TypeOfPlace.
-
-    Предоставляет управление типами мест размещения номенклатур.
-    """
     list_display = ("id", "name", "abbreviation", "code1c", "is_mall", "is_active")
     list_filter = ("is_mall", "is_active")
     search_fields = ("name", "abbreviation", "code1c")
     show_full_result_count = True
 
     def get_queryset(self, request):
-        """
-        Возвращает все объекты TypeOfPlace.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-
-        Returns:
-            QuerySet: Все объекты TypeOfPlace
-        """
         return TypeOfPlace.objects.all()
 
 
 @admin.register(NomenclatureAvailability)
 class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для модели NomenclatureAvailability.
-
-    Предоставляет управление статусами доступности номенклатур.
-    """
     list_display = ("client_name", "last_answer_date", "status_display")
     list_filter = ("status",)
     search_fields = ("client__name", "client__code1c")
@@ -652,15 +446,6 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
     raw_id_fields = ("client",)
 
     def get_queryset(self, request):
-        """
-        Оптимизированный запрос с select_related и only.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-
-        Returns:
-            QuerySet: Оптимизированный QuerySet
-        """
         return super().get_queryset(request).select_related("client").only(
             'client__name', 'client__id',
             'last_answer_date', 'status'
@@ -668,28 +453,10 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
 
     @admin.display(description="Номенклатура", ordering="client__name")
     def client_name(self, obj):
-        """
-        Возвращает название номенклатуры.
-
-        Аргументы:
-            obj (NomenclatureAvailability): Объект доступности
-
-        Returns:
-            str: Название номенклатуры или '-'
-        """
         return obj.client.name if obj.client else "-"
 
     @admin.display(description="Статус")
     def status_display(self, obj):
-        """
-        Отображает статус доступности с цветовой индикацией.
-
-        Аргументы:
-            obj (NomenclatureAvailability): Объект доступности
-
-        Returns:
-            str: HTML с цветной меткой статуса
-        """
         status_text = STATUSES.get(obj.status, "Неизвестно")
         colors = {0: "green", 1: "orange", 2: "red"}
         color = colors.get(obj.status, "gray")
@@ -702,11 +469,6 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
 
 @admin.register(StatusHistory)
 class StatusHistoryAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для модели StatusHistory.
-
-    Предоставляет просмотр истории изменения статусов доступности.
-    """
     list_display = ("client_name", "change_time", "status_display")
     list_filter = ("status", "change_time")
     search_fields = ("client__name",)
@@ -715,15 +477,6 @@ class StatusHistoryAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def get_queryset(self, request):
-        """
-        Оптимизированный запрос с select_related и only.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-
-        Returns:
-            QuerySet: Оптимизированный QuerySet
-        """
         return super().get_queryset(request).select_related("client").only(
             'client__name', 'client__id',
             'change_time', 'status'
@@ -731,38 +484,15 @@ class StatusHistoryAdmin(admin.ModelAdmin):
 
     @admin.display(description="Номенклатура", ordering="client__name")
     def client_name(self, obj):
-        """
-        Возвращает название номенклатуры.
-
-        Аргументы:
-            obj (StatusHistory): Объект истории
-
-        Returns:
-            str: Название номенклатуры или '-'
-        """
         return obj.client.name if obj.client else "-"
 
     @admin.display(description="Статус")
     def status_display(self, obj):
-        """
-        Возвращает текстовое представление статуса.
-
-        Аргументы:
-            obj (StatusHistory): Объект истории
-
-        Returns:
-            str: Текстовое описание статуса
-        """
         return STATUSES.get(obj.status, "Неизвестно")
 
 
 @admin.register(NomenclatureImage)
 class NomenclatureImageAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для модели NomenclatureImage.
-
-    Предоставляет управление фотографиями номенклатур.
-    """
     list_display = ("id_short", "nomenclature_name", "type", "created", "hash_short")
     list_filter = ("type", "created")
     search_fields = ("nomenclature__name", "hash")
@@ -771,15 +501,6 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
     list_per_page = 50
 
     def get_queryset(self, request):
-        """
-        Оптимизированный запрос с select_related и only.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-
-        Returns:
-            QuerySet: Оптимизированный QuerySet
-        """
         return super().get_queryset(request).select_related("nomenclature").only(
             'id', 'type', 'created', 'hash',
             'nomenclature__name', 'nomenclature__id'
@@ -787,51 +508,19 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
 
     @admin.display(description="ID")
     def id_short(self, obj):
-        """
-        Возвращает сокращенный ID изображения.
-
-        Аргументы:
-            obj (NomenclatureImage): Объект изображения
-
-        Returns:
-            str: Строка с первыми 8 символами UUID и многоточием
-        """
         return str(obj.id)[:8] + "..."
 
     @admin.display(description="Номенклатура", ordering="nomenclature__name")
     def nomenclature_name(self, obj):
-        """
-        Возвращает название номенклатуры.
-
-        Аргументы:
-            obj (NomenclatureImage): Объект изображения
-
-        Returns:
-            str: Название номенклатуры или '-'
-        """
         return obj.nomenclature.name if obj.nomenclature else "-"
 
     @admin.display(description="Хэш")
     def hash_short(self, obj):
-        """
-        Возвращает сокращенный MD5 хэш изображения.
-
-        Аргументы:
-            obj (NomenclatureImage): Объект изображения
-
-        Returns:
-            str: Строка с первыми 8 символами хэша или '-'
-        """
         return f"{obj.hash[:8]}..." if obj.hash else "-"
 
 
 @admin.register(NomenclatureAddress)
 class NomenclatureAddressAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для модели NomenclatureAddress.
-
-    Предоставляет управление адресами номенклатур.
-    """
     list_display = ("nomenclature_name", "address_short")
     search_fields = (
         "nomenclature__name",
@@ -843,22 +532,9 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
     list_per_page = 50
 
     def get_queryset(self, request):
-        """
-        Оптимизированный запрос с select_related и only.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-
-        Returns:
-            QuerySet: Оптимизированный QuerySet
-        """
         return super().get_queryset(request).select_related(
-            "nomenclature",
-            "address",
-            "address__city",
-            "address__street",
-            "address__house",
-            "address__building"
+            "nomenclature", "address", "address__city",
+            "address__street", "address__house", "address__building"
         ).only(
             'nomenclature__name', 'nomenclature__id',
             'address__id',
@@ -870,28 +546,10 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
 
     @admin.display(description="Номенклатура", ordering="nomenclature__name")
     def nomenclature_name(self, obj):
-        """
-        Возвращает название номенклатуры.
-
-        Аргументы:
-            obj (NomenclatureAddress): Объект адреса
-
-        Returns:
-            str: Название номенклатуры или '-'
-        """
         return obj.nomenclature.name if obj.nomenclature else "-"
 
     @admin.display(description="Адрес")
     def address_short(self, obj):
-        """
-        Возвращает сокращенное представление адреса.
-
-        Аргументы:
-            obj (NomenclatureAddress): Объект адреса
-
-        Returns:
-            str: Строковое представление адреса (до 50 символов) или '-'
-        """
         if not obj.address:
             return "-"
         return str(obj.address)[:50]
@@ -899,17 +557,9 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
 
 @admin.register(DiscountRule)
 class DiscountRuleAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для модели DiscountRule.
-
-    Предоставляет управление правилами скидок для номенклатур.
-    """
     list_display = (
-        "nomenclature_name",
-        "days_from",
-        "days_to",
-        "coefficient",
-        "discount_percent"
+        "nomenclature_name", "days_from", "days_to",
+        "coefficient", "discount_percent"
     )
     list_filter = ("nomenclature",)
     search_fields = ("nomenclature__name", "nomenclature__code1c")
@@ -917,15 +567,6 @@ class DiscountRuleAdmin(admin.ModelAdmin):
     raw_id_fields = ("nomenclature",)
 
     def get_queryset(self, request):
-        """
-        Оптимизированный запрос с select_related и only.
-
-        Аргументы:
-            request (HttpRequest): HTTP запрос
-
-        Returns:
-            QuerySet: Оптимизированный QuerySet
-        """
         return super().get_queryset(request).select_related("nomenclature").only(
             "id", "days_from", "days_to", "coefficient",
             "nomenclature__name", "nomenclature__id"
@@ -933,28 +574,10 @@ class DiscountRuleAdmin(admin.ModelAdmin):
 
     @admin.display(description="Номенклатура", ordering="nomenclature__name")
     def nomenclature_name(self, obj):
-        """
-        Возвращает название номенклатуры.
-
-        Аргументы:
-            obj (DiscountRule): Объект правила скидки
-
-        Returns:
-            str: Название номенклатуры или '-'
-        """
         return obj.nomenclature.name if obj.nomenclature else "-"
 
     @admin.display(description="Скидка")
     def discount_percent(self, obj):
-        """
-        Отображает процент скидки с цветовой индикацией.
-
-        Аргументы:
-            obj (DiscountRule): Объект правила скидки
-
-        Returns:
-            str: HTML с процентом скидки или '—'
-        """
         percent = (1 - obj.coefficient) * 100
         if percent <= 0:
             return "—"
@@ -966,28 +589,9 @@ class DiscountRuleAdmin(admin.ModelAdmin):
         )
 
 
-# =============================================================================
-# ИНВАЛИДАЦИЯ КЭША
-# =============================================================================
-
 @receiver(post_save, sender=Nomenclature)
 @receiver(post_delete, sender=Nomenclature)
 def invalidate_nomenclature_cache(sender, **kwargs):
-    """
-    Инвалидация кеша при сохранении или удалении номенклатуры.
-
-    Очищает:
-    - Кеш списка номенклатур для всех пользователей
-    - Кеш полного объекта для конкретной номенклатуры
-
-    Сигналы:
-        post_save: После сохранения номенклатуры
-        post_delete: После удаления номенклатуры
-
-    Аргументы:
-        sender (Model): Класс модели Nomenclature
-        **kwargs: Дополнительные аргументы сигнала
-    """
     cache.delete_pattern("nomenclature_admin_qs_*")
     if 'instance' in kwargs:
         cache.delete(f"nomenclature_obj_full_{kwargs['instance'].pk}")
