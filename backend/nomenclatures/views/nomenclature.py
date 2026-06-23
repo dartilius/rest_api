@@ -18,9 +18,8 @@ ViewSet для управления номенклатурами.
 ───────────────────────────────────────────────────────────────────────────────
 1. Замена defer() на only() для избежания ошибки:
    "Field cannot be both deferred and traversed using select_related"
-2. Исправление get_id() для корректной работы с GET-запросами:
-   request.data → request.query_params
-3. Добавление обработки MultipleObjectsReturned через filter().first()
+2. Добавление всех полей из select_related в only()
+3. Исправление get_id() для корректной работы с GET-запросами
 4. Универсальная поддержка GET и POST для обратной совместимости
 
 ПРОИЗВОДИТЕЛЬНОСТЬ:
@@ -1060,7 +1059,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     )
     @action(
         detail=False,
-        methods=["GET", "POST"],  # Поддерживаем оба метода для обратной совместимости
+        methods=["GET", "POST"],
         url_path="get_uuid_by_id",
         permission_classes=[AllowAny],
     )
@@ -1078,7 +1077,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         Returns:
             Response: {"id": "uuid"} или ошибка
         """
-        # Пробуем взять из query_params (GET) или из data (POST)
         id_rasb = request.query_params.get("id_rasb") or request.data.get("id_rasb")
 
         if not id_rasb:
