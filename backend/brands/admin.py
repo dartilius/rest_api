@@ -20,6 +20,7 @@ from django.contrib import admin
 from django.core.cache import cache
 from django.db.models import Count, Prefetch
 from django.utils.html import format_html, format_html_join
+from nomenclatures.models import Nomenclature
 
 from brands.models import Brand
 
