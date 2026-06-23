@@ -224,15 +224,12 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         Оптимизирует queryset в зависимости от типа запроса.
 
         Для поиска используется only() для загрузки только необходимых полей.
-        Это позволяет избежать ошибки:
-        "Field cannot be both deferred and traversed using select_related"
-
-        Returns:
-            QuerySet: Оптимизированный QuerySet
+        Для обычного списка only() НЕ используется (как в исходном коде),
+        чтобы избежать конфликта с select_related('availability').
         """
         base_qs = super().get_queryset()
 
-        # Для поиска - используем only() для загрузки только нужных полей
+        # Для поиска - используем only() (здесь нет availability)
         if self.action == "list" and self.request.query_params.get('search'):
             return (
                 base_qs
@@ -261,7 +258,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 )
             )
 
-        # Для обычного списка - полный queryset с сортировкой
+        # Для обычного списка - НЕТ only() (как в исходном коде)
         tc = TypeOfPlace.objects.filter(name="Торговый центр").first()
 
         if tc:
@@ -296,19 +293,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 )
             )
             .annotate(tenants_count=Count("tenants", distinct=True))
-            .only(
-                'id', 'name', 'code1c',
-                'brand__name', 'brand__id',
-                'legalEntity__first_name', 'legalEntity__last_name',
-                'responsible_ad__first_name', 'responsible_ad__last_name',
-                'typeOfPlace__name', 'typeOfPlace__id',
-                'responsible_radio__first_name', 'responsible_radio__last_name',
-                'responsible_technic__first_name', 'responsible_technic__last_name',
-                'responsible_technic_on_address__first_name',
-                'responsible_technic_on_address__last_name',
-                'responsible_placement_marketing__first_name',
-                'responsible_placement_marketing__last_name',
-            )
             .order_by(
                 ordering_case,
                 "-tenants_count",
