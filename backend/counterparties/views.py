@@ -5,7 +5,7 @@ ViewSet для управления контрагентами.
 ───────────────────────────────────────────────────────────────────────────────
 1. Использование Prefetch с only() для минимизации данных
 2. Использование select_related для FK связей
-3. Использование only() для выборки только необходимых полей
+3. Добавление атрибута _prefetched_brands для оптимизации сериализаторов
 """
 
 from uuid import UUID
@@ -14,9 +14,11 @@ from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResp
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK
 from django.db.models import Prefetch
 
+from brands.models import Brand
+from users.models import CustomUser
 from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
 from counterparties.serializers import (
     CounterpartiesSerializer,
@@ -78,7 +80,7 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
     ────────────────────────────────────────────────────────────────────────────
     1. Предзагрузка связей через select_related и prefetch_related
     2. Использование Prefetch с only() для минимизации данных
-    3. Ограничение выборки полей через only()
+    3. Добавление атрибута _prefetched_brands для оптимизации сериализаторов
     """
 
     http_method_names = ['get', 'post', 'patch', 'delete']
@@ -86,6 +88,9 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Оптимизированный запрос с предзагрузкой связей.
+
+        Добавляет атрибут _prefetched_brands для каждого объекта,
+        чтобы сериализаторы могли использовать предзагруженные данные.
         """
         queryset = (
             Counterparty.objects
@@ -96,11 +101,13 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
             .prefetch_related(
                 Prefetch(
                     'brands',
-                    queryset=Brand.objects.only('id', 'name', 'logotype')
+                    queryset=Brand.objects.only('id', 'name', 'logotype'),
+                    to_attr='_prefetched_brands'
                 ),
                 Prefetch(
                     'contact_persons',
-                    queryset=CustomUser.objects.only('id', 'first_name', 'last_name', 'email')
+                    queryset=CustomUser.objects.only('id', 'first_name', 'last_name', 'email'),
+                    to_attr='_prefetched_contact_persons'
                 ),
                 Prefetch(
                     'contacts',
