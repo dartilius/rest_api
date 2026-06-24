@@ -17,7 +17,7 @@ from uuid import UUID
 from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action, permission_classes
 from rest_framework.filters import SearchFilter
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.db.models import Count, Prefetch
 from django.core.cache import cache
@@ -33,11 +33,6 @@ from nomenclatures.serializers import (
 )
 from rest_framework.decorators import api_view
 from users.permissions import SuperuserCUDAuthRetrieve
-
-from nomenclatures.models import (
-    Nomenclature,
-    NomenclatureImage,
-)
 
 
 @extend_schema(tags=["Номенклатура - Арендаторы"])
@@ -201,11 +196,6 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         return Response(result)
 
 
-# =============================================================================
-# ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ API
-# =============================================================================
-
-
 @extend_schema(tags=["Номенклатура - Арендаторы"])
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -221,10 +211,10 @@ def grouped_tenants_global(request):
     - Кеширование на 5 минут
     """
     cache_key = f"grouped_tenants_{hash(request.GET)}"
-    cached_result = cache.get(cache_key)
+    cached_response = cache.get(cache_key)
 
-    if cached_result is not None:
-        return cached_result
+    if cached_response is not None:
+        return cached_response
 
     base_qs = (
         NomenclatureTenant.objects
@@ -301,7 +291,7 @@ def tenant_detail(request, tenant_pk: str):
     cached_result = cache.get(cache_key)
 
     if cached_result is not None:
-        return cached_result
+        return Response(cached_result)
 
     try:
         UUID(hex=tenant_pk)
