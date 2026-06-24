@@ -182,6 +182,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Nomenclature.web.select_related(
+        "owner",
         "legalEntity",
         "brand",
         "responsible_ad",
