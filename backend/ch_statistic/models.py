@@ -1,3 +1,12 @@
+"""
+Модели для статистики в ClickHouse.
+
+ОПТИМИЗАЦИЯ:
+───────────────────────────────────────────────────────────────────────────────
+1. Убрано дублирующее поле played_krasnoyarsk
+2. Время хранится в UTC, конвертация в локальное время происходит при выводе
+"""
+
 from clickhouse_backend import models
 
 
@@ -10,11 +19,6 @@ class Stat(models.ClickhouseModel):
     )
     played = models.DateTimeField(
         verbose_name='Когда было проиграно'
-    )
-    played_krasnoyarsk = models.DateTimeField(
-        verbose_name='Когда было проиграно (Красноярск)',
-        null=True,
-        blank=True,
     )
     file = models.StringField(
         max_length=36,
