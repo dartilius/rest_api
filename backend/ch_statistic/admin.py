@@ -9,7 +9,6 @@ from ch_statistic.models import (
 )
 from nomenclatures.models import Nomenclature
 from django.core.cache import cache
-from django.template.response import TemplateResponse
 
 DISPLAY_LIST = (
     'client',
@@ -24,6 +23,7 @@ FILTER_LIST = ('client', 'file')
 
 NOMENCLATURE_CACHE_KEY = 'admin_nomenclature_map'
 NOMENCLATURE_CACHE_TTL = 60 * 5  # 5 минут
+
 
 def get_nomenclature_map(uuids: list[str]) -> dict[str, dict]:
     """
@@ -50,6 +50,7 @@ def get_nomenclature_map(uuids: list[str]) -> dict[str, dict]:
 
     return cached
 
+
 @admin.register(ADStat)
 class AdStatAdmin(admin.ModelAdmin):
     """Статистики рекламы."""
@@ -64,7 +65,7 @@ class AdStatAdmin(admin.ModelAdmin):
 class MusicStatAdmin(admin.ModelAdmin):
     """Статистики музыки."""
 
-    list_display = ('client_name', 'brand_name', 'short_file', 'played_krasnoyarsk', 'created', 'duration')
+    list_display = ('client_name', 'brand_name', 'short_file', 'played', 'created', 'duration')
     search_fields = ('client', 'file')
     list_filter = FILTER_LIST
     show_full_result_count = False
@@ -73,9 +74,8 @@ class MusicStatAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context)
         try:
-            # cl — это ChangeList, уже содержит paginated queryset
             cl = response.context_data['cl']
-            page_qs = cl.result_list  # только записи текущей страницы
+            page_qs = cl.result_list
             uuids = list({str(obj.client) for obj in page_qs})
             get_nomenclature_map(uuids)
         except (AttributeError, KeyError):
@@ -83,7 +83,6 @@ class MusicStatAdmin(admin.ModelAdmin):
         return response
 
     def get_queryset(self, request):
-        # убираем distinct по всей таблице — больше не нужен
         return super().get_queryset(request)
 
     def get_search_results(self, request, queryset, search_term):
@@ -134,6 +133,8 @@ class MusicStatAdmin(admin.ModelAdmin):
     def duration(self, obj):
         seconds = int(obj.length or 0)
         return f'{seconds // 60:02d}:{seconds % 60:02d}'
+
+
 @admin.register(VideoStat)
 class VideoStatAdmin(admin.ModelAdmin):
     """Статистики видео."""
