@@ -286,6 +286,7 @@ def tenant_detail(request, tenant_pk: str):
     - Использует only() для выборки только необходимых полей
     - Предзагрузка брендов и изображений
     - Кеширование на 5 минут
+    - Использует brand из NomenclatureTenant, а не первый бренд контрагента
     """
     cache_key = f"tenant_detail_{tenant_pk}"
     cached_result = cache.get(cache_key)
@@ -304,16 +305,11 @@ def tenant_detail(request, tenant_pk: str):
         .filter(**{tenant_filter: tenant_pk})
         .select_related(
             "tenant",
-            "brand",
+            "brand",  # ← Загружаем brand из NomenclatureTenant
             "nomenclature",
             "nomenclature__typeOfPlace",
         )
         .prefetch_related(
-            Prefetch(
-                "tenant__brands",
-                queryset=Brand.objects.only("id", "name", "logotype"),
-                to_attr="prefetched_brands",
-            ),
             Prefetch(
                 "nomenclature__images",
                 queryset=NomenclatureImage.objects.filter(type="exterior").order_by("created"),
@@ -323,7 +319,7 @@ def tenant_detail(request, tenant_pk: str):
         .only(
             "tenant__id", "tenant__code1c", "tenant__opf",
             "tenant__inn", "tenant__keyword",
-            "brand__id", "brand__name",
+            "brand__id", "brand__name", "brand__logotype",
             "nomenclature__id", "nomenclature__name",
             "nomenclature__typeOfPlace__name",
         )
@@ -338,6 +334,8 @@ def tenant_detail(request, tenant_pk: str):
         raise NotFound("Арендатор не найден.")
 
     tenant = first.tenant
+    # Берем бренд из связи NomenclatureTenant, а не из контрагента
+    brand_obj = first.brand
 
     def get_first_exterior(nomenclature):
         exterior = getattr(nomenclature, "prefetched_exterior", [])
@@ -351,20 +349,21 @@ def tenant_detail(request, tenant_pk: str):
         return image.source.url if hasattr(image.source, "url") else str(image.source)
 
     places = [
-        {"nomenclatureId": str(entry.nomenclature.id)}
+        {
+            "nomenclatureId": str(entry.nomenclature.id),
+            "exterior": get_first_exterior(entry.nomenclature),
+        }
         for entry in qs
     ]
 
-    prefetched_brands = getattr(tenant, "prefetched_brands", [])
-    primary_brand = prefetched_brands[0] if prefetched_brands else None
-
-    if primary_brand:
+    # Формируем бренд из NomenclatureTenant
+    if brand_obj:
         brand = {
-            "id": str(primary_brand.id),
-            "name": primary_brand.name,
+            "id": str(brand_obj.id),
+            "name": brand_obj.name,
             "logotype": (
-                primary_brand.logotype.url
-                if primary_brand.logotype
+                brand_obj.logotype.url
+                if hasattr(brand_obj, 'logotype') and brand_obj.logotype
                 else None
             ),
         }
