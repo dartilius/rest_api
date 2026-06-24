@@ -1,3 +1,13 @@
+"""
+Сериализаторы для статистики.
+
+ОПТИМИЗАЦИЯ:
+───────────────────────────────────────────────────────────────────────────────
+1. Убран дублирующийся вывод played_krasnoyarsk из NomenclatureMusicStatSerializer
+2. Поле played_krasnoyarsk используется только для внутренних нужд (ClickHouse)
+3. Для отображения используется поле played с конвертацией в локальное время
+"""
+
 from datetime import datetime as dt, timedelta as td
 
 from rest_framework import serializers
@@ -72,7 +82,6 @@ class NomenclatureAdStatSerializer(
 
     def to_representation(self, value):
         representation = super().to_representation(value)
-#        representation.pop("played")
         ad_block = f"{td(seconds=value.ad_block)}"
         representation["ad_block"] = (
             f'{dt.strptime(ad_block, "%H:%M:%S").time()}'
@@ -83,12 +92,12 @@ class NomenclatureAdStatSerializer(
 class NomenclatureMusicStatSerializer(
     BaseNomenclatureSerializer, serializers.ModelSerializer
 ):
-    played_krasnoyarsk = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
+    """Сериализация статистики музыки из номенклатуры."""
 
     class Meta:
         model = MusicStat
-        fields = BaseNomenclatureSerializer.Meta.fields + ('played_krasnoyarsk',)
-        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields + ('played_krasnoyarsk',)
+        fields = BaseNomenclatureSerializer.Meta.fields
+        read_only_fields = BaseNomenclatureSerializer.Meta.read_only_fields
 
 
 class NomenclatureVideoStatSerializer(
