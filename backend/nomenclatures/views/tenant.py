@@ -9,7 +9,8 @@ ViewSet для управления арендаторами номенклат�
 4. Добавлено кеширование для частых запросов
 5. Исправлена ошибка возврата dict вместо Response
 6. Исправлен ключ кеша для grouped_tenants_global (urlencode вместо hash)
-7. Бренд берется из NomenclatureTenant, а не из контрагента
+7. Исправлено кеширование Response (кешируются данные, а не Response)
+8. Бренд берется из NomenclatureTenant, а не из контрагента
 """
 
 from django.shortcuts import get_object_or_404
@@ -214,10 +215,11 @@ def grouped_tenants_global(request):
     - Кеширование на 5 минут
     """
     cache_key = f"grouped_tenants_{request.GET.urlencode()}"
-    cached_response = cache.get(cache_key)
+    cached_data = cache.get(cache_key)
 
-    if cached_response is not None:
-        return cached_response
+    if cached_data is not None:
+        paginator = CustomLimitOffsetPagination()
+        return paginator.get_paginated_response(cached_data)
 
     base_qs = (
         NomenclatureTenant.objects
@@ -270,9 +272,8 @@ def grouped_tenants_global(request):
         for item in paginated_queryset
     ]
 
-    response = paginator.get_paginated_response(result)
-    cache.set(cache_key, response, 300)
-    return response
+    cache.set(cache_key, result, 300)
+    return paginator.get_paginated_response(result)
 
 
 @extend_schema(tags=["Номенклатура - Арендаторы"])
