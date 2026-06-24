@@ -7,6 +7,9 @@ ViewSet для управления арендаторами номенклат�
 2. Добавлен prefetch_related для оптимизации
 3. Удалены лишние print()
 4. Добавлено кеширование для частых запросов
+5. Исправлена ошибка возврата dict вместо Response
+6. Исправлен ключ кеша для grouped_tenants_global (urlencode вместо hash)
+7. Бренд берется из NomenclatureTenant, а не из контрагента
 """
 
 from django.shortcuts import get_object_or_404
@@ -210,7 +213,7 @@ def grouped_tenants_global(request):
     - Предзагрузка логотипов брендов
     - Кеширование на 5 минут
     """
-    cache_key = f"grouped_tenants_{hash(request.GET)}"
+    cache_key = f"grouped_tenants_{request.GET.urlencode()}"
     cached_response = cache.get(cache_key)
 
     if cached_response is not None:
@@ -305,7 +308,7 @@ def tenant_detail(request, tenant_pk: str):
         .filter(**{tenant_filter: tenant_pk})
         .select_related(
             "tenant",
-            "brand",  # ← Загружаем brand из NomenclatureTenant
+            "brand",
             "nomenclature",
             "nomenclature__typeOfPlace",
         )
@@ -319,7 +322,7 @@ def tenant_detail(request, tenant_pk: str):
         .only(
             "tenant__id", "tenant__code1c", "tenant__opf",
             "tenant__inn", "tenant__keyword",
-            "brand__id", "brand__name", "brand__logotype",
+            "brand__id", "brand__name",
             "nomenclature__id", "nomenclature__name",
             "nomenclature__typeOfPlace__name",
         )
@@ -334,7 +337,6 @@ def tenant_detail(request, tenant_pk: str):
         raise NotFound("Арендатор не найден.")
 
     tenant = first.tenant
-    # Берем бренд из связи NomenclatureTenant, а не из контрагента
     brand_obj = first.brand
 
     def get_first_exterior(nomenclature):
@@ -351,12 +353,10 @@ def tenant_detail(request, tenant_pk: str):
     places = [
         {
             "nomenclatureId": str(entry.nomenclature.id),
-            "exterior": get_first_exterior(entry.nomenclature),
         }
         for entry in qs
     ]
 
-    # Формируем бренд из NomenclatureTenant
     if brand_obj:
         brand = {
             "id": str(brand_obj.id),
