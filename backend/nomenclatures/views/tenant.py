@@ -208,19 +208,7 @@ def grouped_tenants_global(request):
     GET /api/tenants/grouped/
 
     Возвращает список арендаторов, сгруппированных по брендам.
-
-    ОПТИМИЗАЦИЯ:
-    - Использует only() для выборки только необходимых полей
-    - Предзагрузка логотипов брендов
-    - Кеширование на 5 минут
     """
-    cache_key = f"grouped_tenants_{request.GET.urlencode()}"
-    cached_data = cache.get(cache_key)
-
-    if cached_data is not None:
-        paginator = CustomLimitOffsetPagination()
-        return paginator.get_paginated_response(cached_data)
-
     base_qs = (
         NomenclatureTenant.objects
         .select_related("tenant", "brand")
@@ -272,7 +260,6 @@ def grouped_tenants_global(request):
         for item in paginated_queryset
     ]
 
-    cache.set(cache_key, result, 300)
     return paginator.get_paginated_response(result)
 
 
