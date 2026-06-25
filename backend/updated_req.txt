@@ -36,6 +36,7 @@ djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 djoser==2.3.3
 drf-spectacular==0.29.0
+drf_spectacular_sidecar
 flake8==7.3.0
 flake8-commas==4.0.0
 flake8-docstrings==1.7.0
