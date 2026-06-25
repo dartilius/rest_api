@@ -6,24 +6,6 @@
 Данный файл содержит все настройки для Django проекта RMC REST API.
 Включает конфигурацию баз данных, кеширования, хранения файлов,
 очередей задач, аутентификации, документации API и многое другое.
-
-СТРУКТУРА:
-───────────────────────────────────────────────────────────────────────────────
-1. Базовые настройки Django
-2. Подключенные приложения (INSTALLED_APPS)
-3. Настройки электронной почты
-4. Настройки промежуточного ПО (MIDDLEWARE)
-5. Шаблоны и URL
-6. Настройки баз данных (PostgreSQL, ClickHouse)
-7. Аутентификация и пароли
-8. REST Framework и документация API
-9. Кеширование (Redis)
-10. Хранение файлов (MinIO)
-11. Очереди задач (Celery)
-12. Безопасность (CORS, JWT)
-13. Отладка (Debug Toolbar)
-14. Полнотекстовый поиск (OpenSearch)
-15. Логирование
 """
 
 import os
@@ -48,7 +30,6 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1, localhost').split(',
 # =============================================================================
 
 INSTALLED_APPS = [
-    # Базовые приложения Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -56,8 +37,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
-
-    # Сторонние приложения
     'django_opensearch_dsl',
     'corsheaders',
     'colorfield',
@@ -69,14 +48,12 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'debug_toolbar',
     'drf_spectacular',
-    'drf_spectacular_sidecar',  # Для локальной загрузки Swagger UI
+    'drf_spectacular_sidecar',
     'djoser',
     'phonenumber_field',
     'dal',
     'dal_select2',
     'docs',
-
-    # Приложения проекта
     'brands',
     'addresses',
     'users',
@@ -102,21 +79,17 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 
-# Настройки TLS/SSL
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
 
-# Выбор бэкенда
 if DEBUG or os.environ.get('DISABLE_EMAIL_SSL_VERIFY', 'true').lower() == 'true':
     EMAIL_BACKEND = 'feedback.email_backend.CustomEmailBackend'
     print("⚠️  Using email backend without SSL verification")
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-# Таймаут для SMTP
-EMAIL_TIMEOUT = 10  # секунд
+EMAIL_TIMEOUT = 10
 
-# Дополнительные настройки безопасности
 if not DEBUG:
     EMAIL_SSL_CERTFILE = None
     EMAIL_SSL_KEYFILE = None
@@ -136,16 +109,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Добавляем Debug Toolbar и IntegrityMiddleware только в DEBUG режиме
 if DEBUG:
     MIDDLEWARE += [
         'api.middleware.IntegrityMiddleware',
         'debug_toolbar.middleware.DebugToolbarMiddleware',
     ]
-
-# =============================================================================
-# 5. ШАБЛОНЫ И URL
-# =============================================================================
 
 ROOT_URLCONF = 'rmc_rest_api.urls'
 
@@ -168,10 +136,9 @@ TEMPLATES = [
 WSGI_APPLICATION = 'rmc_rest_api.wsgi.application'
 
 # =============================================================================
-# 6. НАСТРОЙКИ БАЗ ДАННЫХ
+# 5. НАСТРОЙКИ БАЗ ДАННЫХ
 # =============================================================================
 
-# PostgreSQL (основная БД)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -184,7 +151,6 @@ DATABASES = {
     }
 }
 
-# ClickHouse (статистика)
 CLICKHOUSE_HOST = os.environ.get('CLICKHOUSE_HOST')
 if CLICKHOUSE_HOST:
     DATABASES['clickhouse'] = {
@@ -199,7 +165,7 @@ if CLICKHOUSE_HOST:
 DATABASE_ROUTERS = ['rmc_rest_api.dbrouters.ClickHouseRouter']
 
 # =============================================================================
-# 7. АУТЕНТИФИКАЦИЯ И ПАРОЛИ
+# 6. АУТЕНТИФИКАЦИЯ
 # =============================================================================
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -216,7 +182,7 @@ PASSWORD_HASHERS = [
 ]
 
 # =============================================================================
-# 8. REST FRAMEWORK И ДОКУМЕНТАЦИЯ API
+# 7. REST FRAMEWORK И ДОКУМЕНТАЦИЯ API
 # =============================================================================
 
 REST_FRAMEWORK = {
@@ -231,13 +197,11 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
 }
 
-# Убираем Browsable API в production
 if not DEBUG:
     REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
         'rest_framework.renderers.JSONRenderer',
     )
 
-# Настройки документации (drf-spectacular)
 SPECTACULAR_SETTINGS = {
     'TITLE': 'RMC REST API',
     'DESCRIPTION': """
@@ -253,12 +217,11 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 
-    # Использование drf-spectacular-sidecar для локальной загрузки UI
+    # Использование drf-spectacular-sidecar
     'SWAGGER_UI_DIST': 'SIDECAR',
     'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
     'REDOC_DIST': 'SIDECAR',
 
-    # Настройки Swagger UI
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,
         'persistAuthorization': True,
@@ -270,7 +233,6 @@ SPECTACULAR_SETTINGS = {
         'defaultModelExpandDepth': 2,
     },
 
-    # Настройки Redoc
     'REDOC_SETTINGS': {
         'expandResponses': 'all',
         'disableSearch': False,
@@ -281,17 +243,14 @@ SPECTACULAR_SETTINGS = {
         },
     },
 
-    # Сортировка эндпоинтов
     'SORT_OPERATIONS': False,
     'SORT_PARAMETERS': False,
-
-    # Компоненты для всех ответов
     'COMPONENT_SPLIT_REQUEST': True,
     'COMPONENT_SPLIT_RESPONSE': True,
 }
 
 # =============================================================================
-# 9. КЕШИРОВАНИЕ (Redis)
+# 8. КЕШИРОВАНИЕ (Redis)
 # =============================================================================
 
 CACHES = {
@@ -309,11 +268,10 @@ CACHES = {
     }
 }
 
-# Время жизни кэша по умолчанию (в секундах)
-CACHE_TTL = 60 * 5  # 5 минут
+CACHE_TTL = 60 * 5
 
 # =============================================================================
-# 10. ХРАНЕНИЕ ФАЙЛОВ (MinIO)
+# 9. ХРАНЕНИЕ ФАЙЛОВ (MinIO)
 # =============================================================================
 
 from datetime import timedelta
@@ -364,6 +322,17 @@ STORAGES = {
 }
 
 # =============================================================================
+# 10. ЯЗЫК И ВРЕМЯ
+# =============================================================================
+
+LANGUAGE_CODE = 'ru'
+TIME_ZONE = 'Asia/Krasnoyarsk'
+USE_I18N = True
+USE_TZ = False
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# =============================================================================
 # 11. ОЧЕРЕДИ ЗАДАЧ (Celery)
 # =============================================================================
 
@@ -378,7 +347,6 @@ if CELERY_BROKER_URL and CELERY_RESULT_BACKEND:
 # 12. БЕЗОПАСНОСТЬ (CORS, JWT)
 # =============================================================================
 
-# CORS
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
@@ -392,7 +360,6 @@ CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN', '').split(', ')
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
 
-# JWT
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': td(days=30),
     'REFRESH_TOKEN_LIFETIME': td(days=60),
@@ -412,8 +379,7 @@ if DEBUG:
 
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': show_toolbar,
-        # Отображение количества SQL запросов
-        'SQL_QUERY_TIME_THRESHOLD': 0.1,  # подсвечивать медленные запросы > 100ms
+        'SQL_QUERY_TIME_THRESHOLD': 0.1,
         'ENABLE_STACKTRACES': True,
         'RESULTS_CACHE_SIZE': 25,
         'RENDER_PANELS': True,
@@ -431,9 +397,8 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
 
-    # Лимиты для загрузки
-    DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
-    FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+    DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
 
 # =============================================================================
 # 15. ПОЛНОТЕКСТОВЫЙ ПОИСК (OpenSearch)
@@ -442,14 +407,9 @@ if not DEBUG:
 OPENSEARCH_DSL = {
     'default': {
         'hosts': 'opensearch:9200',
-        # Для продакшена с авторизацией:
-        # 'hosts': [{"scheme": "https", "host": "opensearch.host", "port": 9200}],
-        # 'http_auth': ('admin', 'password'),
-        # 'timeout': 30,
     }
 }
 
-# Отключаем автосинк — индексация через Celery вручную
 OPENSEARCH_DSL_AUTOSYNC = False
 
 # =============================================================================
@@ -547,7 +507,6 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        # Добавлен логгер для отладки медленных запросов
         'django.db.backends': {
             'handlers': ['debug_file', 'console'],
             'level': 'DEBUG' if DEBUG else 'ERROR',
@@ -555,17 +514,6 @@ LOGGING = {
         },
     },
 }
-
-# =============================================================================
-# 17. ЯЗЫК И ВРЕМЯ
-# =============================================================================
-
-LANGUAGE_CODE = 'ru'
-TIME_ZONE = 'Asia/Krasnoyarsk'
-USE_I18N = True
-USE_TZ = False  # Отключено для совместимости со старым кодом
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # import os
 # from datetime import timedelta as td
