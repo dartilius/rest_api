@@ -158,10 +158,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
                     "owner", "availability", "brand", "legalEntity",
                     "responsible_radio", "responsible_ad",
                     "responsible_technic", "responsible_technic_on_address",
-                    "responsible_placement_marketing", "typeOfPlace", "radio_nomenclature",
-                    "ad_nomenclature", "technic_nomenclature", "technic_on_address_nomenclature",
-                    "placement_marketing_nomenclature", "nomenclatures", "owned_nomenclatures",
-                    "rented_nomenclatures", "type_nomenclature", "history",
+                    "responsible_placement_marketing", "typeOfPlace", "users.CustomUser",
                 )
                 .prefetch_related(
                     "tenants",
@@ -187,10 +184,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 "owner", "availability", "brand", "legalEntity",
                 "responsible_radio", "responsible_ad",
                 "responsible_technic", "responsible_technic_on_address",
-                "responsible_placement_marketing", "typeOfPlace", "radio_nomenclature",
-                "ad_nomenclature", "technic_nomenclature", "technic_on_address_nomenclature",
-                "placement_marketing_nomenclature", "nomenclatures", "owned_nomenclatures",
-                "rented_nomenclatures", "type_nomenclature", "history",
+                "responsible_placement_marketing", "typeOfPlace", "users.CustomUser",
             )
             .prefetch_related(
                 "tenants",
