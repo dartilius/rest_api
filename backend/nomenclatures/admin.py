@@ -158,7 +158,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
                     "owner", "availability", "brand", "legalEntity",
                     "responsible_radio", "responsible_ad",
                     "responsible_technic", "responsible_technic_on_address",
-                    "responsible_placement_marketing", "typeOfPlace",
+                    "responsible_placement_marketing", "typeOfPlace", "radio_nomenclature",
                 )
                 .prefetch_related(
                     "tenants",
