@@ -285,7 +285,7 @@ MINIO_EXTERNAL_ENDPOINT_USE_HTTPS = os.environ.get('MINIO_EXTERNAL_HTTPS', 'true
 MINIO_REGION = os.environ.get('MINIO_REGION', 'us-east-1')
 
 MINIO_PUBLIC_BUCKETS = ['local-static']
-MINIO_PRIVATE_BUCKETS = ['local-media']
+MINIO_PRIVATE_BUCKETS = ['local-media', 'builds']
 
 STORAGES = {
     'default': {
