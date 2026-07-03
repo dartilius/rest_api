@@ -286,12 +286,26 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                 if not nomenclature.tasks.filter(status=0, type=16).exists():
                     from datetime import timedelta
                     from api.constants import get_minio_client
-                    client = get_minio_client(external=True)
-                    version_url = client.get_presigned_url(
+
+                    client = get_minio_client()
+                    objects = client.list_objects('builds', prefix='RMCContentPlayer-', recursive=False)
+
+                    versions = []
+                    for item in objects:
+                        name = item.object_name
+                        if name.startswith('RMCContentPlayer-') and name.endswith('.exe') and name != 'RMCContentPlayer-latest.exe':
+                            version = name.replace('RMCContentPlayer-', '').replace('.exe', '')
+                            versions.append(version)
+
+                    versions.sort()
+                    latest_version = versions[-1] if versions else 'latest'
+
+                    external_client = get_minio_client(external=True)
+                    version_url = external_client.get_presigned_url(
                         'GET',
                         'builds',
-                        'RMCContentPlayer-latest.exe',
-                    expires=timedelta(hours=24)
+                        f'RMCContentPlayer-{latest_version}.exe',
+                        expires=timedelta(hours=24)
                     )
                     update_task.delay(pk, owner, version_url)
             case "custom":
