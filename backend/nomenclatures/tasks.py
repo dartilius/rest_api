@@ -282,7 +282,7 @@ def reboot_task(nomenclature_id: str, owner_id: str):
 
 
 @shared_task
-def update_task(nomenclature_id: str, owner_id: str):
+def update_task(nomenclature_id: str, owner_id: str, version_url: str = ""):
     """Отправка команды обновления ПО на устройство."""
     nomenclature = get_nomenclature(nomenclature_id)
     owner = get_owner(owner_id)
@@ -290,7 +290,10 @@ def update_task(nomenclature_id: str, owner_id: str):
         owner=owner,
         client=nomenclature,
         type=16,
-        parameters={'responsible': owner.full_name}
+        parameters={
+            'responsible': owner.full_name,
+            'url': version_url
+        }
     )
     return f'Обновление отправлено на {nomenclature.name}'
 
