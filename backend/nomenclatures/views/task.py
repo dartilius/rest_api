@@ -284,11 +284,15 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                     reboot_task.delay(pk, owner)
             case "update":
                 if not nomenclature.tasks.filter(status=0, type=16).exists():
-                    import os
-                    minio_external = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
-                    use_https = os.environ.get('MINIO_EXTERNAL_HTTPS', 'true').lower() == 'true'
-                    scheme = 'https' if use_https else 'http'
-                    version_url = f"{scheme}://{minio_external}/builds/RMCContentPlayer-latest.exe"
+                    from datetime import timedelta
+                    from api.constants import get_minio_client
+                    client = get_minio_client(external=True)
+                    version_url = client.get_presigned_url(
+                        'GET',
+                        'builds',
+                        'RMCContentPlayer-latest.exe',
+                    expires=timedelta(hours=24)
+                    )
                     update_task.delay(pk, owner, version_url)
             case "custom":
                 parameters = request.data.get("parameters")
