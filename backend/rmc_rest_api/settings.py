@@ -507,11 +507,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'django.db.backends': {
-            'handlers': ['debug_file', 'console'],
-            'level': 'DEBUG' if DEBUG else 'ERROR',
-            'propagate': False,
-        },
+        # 'django.db.backends': {
+        #     'handlers': ['debug_file', 'console'],
+        #     'level': 'DEBUG' if DEBUG else 'ERROR',
+        #     'propagate': False,
+        # },
     },
 }
 
