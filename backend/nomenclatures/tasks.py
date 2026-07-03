@@ -282,17 +282,20 @@ def reboot_task(nomenclature_id: str, owner_id: str):
 
 
 @shared_task
-case "update":
-    if not nomenclature.tasks.filter(status=0, type=16).exists():
-        from api.constants import get_minio_client
-        client = get_minio_client(external=True)
-        version_url = client.get_presigned_url(
-            'GET',
-            'builds',
-            'RMCContentPlayer-latest.exe',
-            expires=timedelta(hours=24)
-        )
-        update_task.delay(pk, owner, version_url)
+def update_task(nomenclature_id: str, owner_id: str, version_url: str = ""):
+    """Отправка команды обновления ПО на устройство."""
+    nomenclature = get_nomenclature(nomenclature_id)
+    owner = get_owner(owner_id)
+    Task.objects.create(
+        owner=owner,
+        client=nomenclature,
+        type=16,
+        parameters={
+            'responsible': owner.full_name,
+            'url': version_url
+        }
+    )
+    return f'Обновление отправлено на {nomenclature.name}'
 
 
 @shared_task
