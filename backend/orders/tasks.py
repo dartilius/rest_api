@@ -9,6 +9,8 @@
 - Автоматическое обновление статусов заказов
 """
 
+from datetime import datetime as dt
+
 from celery import shared_task
 from celery_singleton import Singleton
 
@@ -25,11 +27,12 @@ def update_order_status():
     Проверяет все активные заказы и обновляет их статусы
     в зависимости от текущего времени.
 
+    Для бессрочных заказов (broadcast_interval.upper is None)
+    проверка окончания не выполняется.
+
     Returns:
         str: Сообщение с количеством обновлённых заказов
     """
-    from datetime import datetime as dt
-
     waiting_adorders = AdOrder.active.filter(status=0)
     waiting_bgorders = BgOrder.active.filter(status=0)
     ending_adorders = AdOrder.active.filter(status=1)
@@ -43,9 +46,10 @@ def update_order_status():
     count = 0
     ON_AIR = 1
     COMPLETED = 2
+    now = dt.now()
 
     for order in waiting_adorders:
-        if order.broadcast_interval.lower <= dt.now():
+        if order.broadcast_interval.lower and order.broadcast_interval.lower <= now:
             order.status = ON_AIR
             adorders_started.append(order)
     count += len(adorders_started)
@@ -53,7 +57,7 @@ def update_order_status():
         AdOrder.active.bulk_update(adorders_started, fields=['status'])
 
     for order in ending_adorders:
-        if order.broadcast_interval.upper <= dt.now():
+        if order.broadcast_interval.upper and order.broadcast_interval.upper <= now:
             order.status = COMPLETED
             order.is_active = False
             adorders_ended.append(order)
@@ -62,7 +66,7 @@ def update_order_status():
         AdOrder.active.bulk_update(adorders_ended, fields=['status', 'is_active'])
 
     for order in waiting_bgorders:
-        if order.broadcast_interval.lower <= dt.now():
+        if order.broadcast_interval.lower and order.broadcast_interval.lower <= now:
             order.status = ON_AIR
             bgorders_started.append(order)
     count += len(bgorders_started)
@@ -70,7 +74,7 @@ def update_order_status():
         BgOrder.active.bulk_update(bgorders_started, fields=['status'])
 
     for order in ending_bgorders:
-        if order.broadcast_interval.upper <= dt.now():
+        if order.broadcast_interval.upper and order.broadcast_interval.upper <= now:
             order.status = COMPLETED
             order.is_active = False
             bgorders_ended.append(order)
