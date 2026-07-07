@@ -328,7 +328,7 @@ STORAGES = {
 LANGUAGE_CODE = 'ru'
 TIME_ZONE = 'Asia/Krasnoyarsk'
 USE_I18N = True
-USE_TZ = False
+USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
