@@ -22,7 +22,6 @@
 
 from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
-from django.utils import timezone
 
 from api import APIBaseObjectModel
 from nomenclatures.models import Nomenclature
@@ -66,7 +65,6 @@ class BaseOrder(APIBaseObjectModel):
         client (ForeignKey): Рабочая станция (номенклатура)
         playlist (ForeignKey): Плейлист с файлами для воспроизведения
         parameters (JSON): Дополнительные параметры заказа
-        is_permanent (bool): Флаг бессрочного заказа
     """
 
     description = models.TextField(
@@ -131,16 +129,10 @@ class AdOrder(BaseOrder):
         Возвращает начало вещания в локальном времени без часового пояса.
 
         Returns:
-            str: Строка в формате 'YYYY-MM-DD HH:MM:SS' в локальном времени
-                 или None, если интервал не задан или начало отсутствует.
-
-        Пример:
-            Для значения в БД '2026-06-19 02:00:00+00:00' (UTC)
-            при TIME_ZONE = 'Asia/Krasnoyarsk' вернёт '2026-06-19 09:00:00'
+            str: Строка в формате 'YYYY-MM-DD HH:MM:SS' или None
         """
         if self.broadcast_interval and self.broadcast_interval.lower:
-            local_time = timezone.localtime(self.broadcast_interval.lower)
-            return local_time.strftime('%Y-%m-%d %H:%M:%S')
+            return self.broadcast_interval.lower.strftime('%Y-%m-%d %H:%M:%S')
         return None
 
     def get_broadcast_end_local(self):
@@ -148,26 +140,20 @@ class AdOrder(BaseOrder):
         Возвращает окончание вещания в локальном времени без часового пояса.
 
         Returns:
-            str: Строка в формате 'YYYY-MM-DD HH:MM:SS' в локальном времени
-                 или None, если интервал не задан или окончание отсутствует.
-
-        Пример:
-            Для значения в БД '2026-07-20 11:00:00+00:00' (UTC)
-            при TIME_ZONE = 'Asia/Krasnoyarsk' вернёт '2026-07-20 18:00:00'
+            str: Строка в формате 'YYYY-MM-DD HH:MM:SS' или None
         """
         if self.broadcast_interval and self.broadcast_interval.upper:
-            local_time = timezone.localtime(self.broadcast_interval.upper)
-            return local_time.strftime('%Y-%m-%d %H:%M:%S')
+            return self.broadcast_interval.upper.strftime('%Y-%m-%d %H:%M:%S')
         return None
 
     @property
     def broadcast_start_local(self):
-        """Свойство для доступа к началу вещания в локальном времени."""
+        """Свойство для доступа к началу вещания."""
         return self.get_broadcast_start_local()
 
     @property
     def broadcast_end_local(self):
-        """Свойство для доступа к окончанию вещания в локальном времени."""
+        """Свойство для доступа к окончанию вещания."""
         return self.get_broadcast_end_local()
 
     class Meta:
@@ -209,12 +195,10 @@ class BgOrder(BaseOrder):
         Возвращает начало вещания в локальном времени без часового пояса.
 
         Returns:
-            str: Строка в формате 'YYYY-MM-DD HH:MM:SS' в локальном времени
-                 или None, если интервал не задан или начало отсутствует.
+            str: Строка в формате 'YYYY-MM-DD HH:MM:SS' или None
         """
         if self.broadcast_interval and self.broadcast_interval.lower:
-            local_time = timezone.localtime(self.broadcast_interval.lower)
-            return local_time.strftime('%Y-%m-%d %H:%M:%S')
+            return self.broadcast_interval.lower.strftime('%Y-%m-%d %H:%M:%S')
         return None
 
     def get_broadcast_end_local(self):
@@ -222,22 +206,20 @@ class BgOrder(BaseOrder):
         Возвращает окончание вещания в локальном времени без часового пояса.
 
         Returns:
-            str: Строка в формате 'YYYY-MM-DD HH:MM:SS' в локальном времени
-                 или None, если интервал не задан или окончание отсутствует.
+            str: Строка в формате 'YYYY-MM-DD HH:MM:SS' или None
         """
         if self.broadcast_interval and self.broadcast_interval.upper:
-            local_time = timezone.localtime(self.broadcast_interval.upper)
-            return local_time.strftime('%Y-%m-%d %H:%M:%S')
+            return self.broadcast_interval.upper.strftime('%Y-%m-%d %H:%M:%S')
         return None
 
     @property
     def broadcast_start_local(self):
-        """Свойство для доступа к началу вещания в локальном времени."""
+        """Свойство для доступа к началу вещания."""
         return self.get_broadcast_start_local()
 
     @property
     def broadcast_end_local(self):
-        """Свойство для доступа к окончанию вещания в локальном времени."""
+        """Свойство для доступа к окончанию вещания."""
         return self.get_broadcast_end_local()
 
     class Meta:
