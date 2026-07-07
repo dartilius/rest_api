@@ -288,17 +288,29 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                     from api.constants import get_minio_client
 
                     client = get_minio_client()
-                    objects = client.list_objects('builds', prefix='RMCContentPlayer-', recursive=False)
+                    objects = client.list_objects(
+                        'builds',
+                        prefix='RMCContentPlayer-',
+                        recursive=False
+                    )
 
                     versions = []
                     for item in objects:
                         name = item.object_name
-                        if name.startswith('RMCContentPlayer-') and name.endswith('.exe') and name != 'RMCContentPlayer-latest.exe':
+                        if (name.startswith('RMCContentPlayer-')
+                                and name.endswith('.exe')
+                                and not name.endswith('latest.exe')):
                             version = name.replace('RMCContentPlayer-', '').replace('.exe', '')
                             versions.append(version)
 
-                    versions.sort()
-                    latest_version = versions[-1] if versions else 'latest'
+                    if not versions:
+                        return Response(
+                            {"detail": "Нет доступных версий для обновления."},
+                            status=HTTP_400_BAD_REQUEST,
+                        )
+
+                    versions.sort(key=lambda v: tuple(map(int, v.split('.'))))
+                    latest_version = versions[-1]
 
                     external_client = get_minio_client(external=True)
                     version_url = external_client.get_presigned_url(
