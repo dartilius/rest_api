@@ -222,7 +222,7 @@ class BgOrderAdmin(admin.ModelAdmin):
     # 🔥 Группировка полей с учётом бессрочных заказов
     fieldsets = (
         ('Основная информация', {
-            'fields': ('name', 'description', 'order_type', 'status')
+            'fields': ('name', 'description', 'order_type', 'status', 'owner')
         }),
         ('♾️ Тип заказа', {
             'fields': ('is_permanent',),
