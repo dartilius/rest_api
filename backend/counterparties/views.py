@@ -131,7 +131,7 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
                 'keyword', 'opf', 'code1c', 'is_active',
                 'description', 'broadcast', 'additional_name',
                 'owner__id', 'owner__first_name', 'owner__last_name',
-                'address__id', 'address__name',
+                'address__id', 'address__full_address',
             )
         )
 
