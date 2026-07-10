@@ -1361,13 +1361,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 Nomenclature.active
                 .select_related("owner", "availability", "brand", "address")
                 .prefetch_related("images")
-                .filter(legalEntity__broadcast=True)
+                .filter(legalEntity__broadcast=True, is_active=True, legalEntity__broadcast=True)
             )
         elif is_broadcast:
             user_counterparties = user.counterparties.all()
             qs = (
                 self.get_queryset()
-                .filter(legalEntity__in=user_counterparties)
+                .filter(legalEntity__in=user_counterparties, is_active=True, legalEntity__broadcast=True)
             )
         else:
             return Response(
