@@ -495,7 +495,7 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
     class Meta:
         model = Nomenclature
         fields = (
-            "id", "address", "oldCatalogSlug", "typeOfPlace", "address",
+            "id", "address", "typeOfPlace", "address",
             "worktime_start", "worktime_end", "oldCatalogSlug", "address",
             "legalEntity", "exterior", "interior", "contentType", "brand",
             "description", "possibility", "pricePerMonth",

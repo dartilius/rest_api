@@ -104,6 +104,7 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
 
         Поддерживает поиск по:
         - UUID (id)
+        - code1c (код из 1С)
         - old_catalog_slug (старый slug)
 
         Returns:
@@ -123,22 +124,24 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
         except ValueError:
             is_uuid = False
 
+        if is_uuid:
+            try:
+                nomenclature = Nomenclature.objects.get(id=identifier)
+                return nomenclature
+            except Nomenclature.DoesNotExist:
+                raise NotFound("Номенклатура не найдена.")
+
         try:
-            if is_uuid:
-                # Используем Nomenclature.DoesNotExist вместо Nomenclature.web.DoesNotExist
-                try:
-                    return Nomenclature.web.get(id=identifier)
-                except Nomenclature.DoesNotExist:
-                    pass
-            else:
-                try:
-                    return Nomenclature.web.get(old_catalog_slug=identifier)
-                except Nomenclature.DoesNotExist:
-                    pass
+            nomenclature = Nomenclature.objects.get(code1c=identifier)
+            return nomenclature
+        except Nomenclature.DoesNotExist:
+            pass
+
+        try:
+            nomenclature = Nomenclature.objects.get(old_catalog_slug=identifier)
+            return nomenclature
         except Nomenclature.DoesNotExist:
             raise NotFound("Номенклатура не найдена.")
-
-        raise NotFound("Номенклатура не найдена.")
 
     # =========================================================================
     # ДЕЙСТВИЯ
