@@ -18,6 +18,7 @@ from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK
 from django.db.models import Prefetch
 
 from brands.models import Brand
+from nomenclatures.models import Nomenclature
 from users.models import CustomUser
 from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
 from counterparties.serializers import (
