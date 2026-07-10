@@ -1639,7 +1639,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         # 6. Обработка простых полей
         simple_fields = {
-            'name', 'description', 'is_active', 'timezone', 'settings',
+            'name', 'description', 'is_active', 'article', 'timezone', 'settings',
             'code1c', 'contentType', 'pricePerMonth',
             'responsible_radio', 'responsible_ad',
             'responsible_technic', 'responsible_technic_on_address',
