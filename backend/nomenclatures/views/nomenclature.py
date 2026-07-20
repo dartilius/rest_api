@@ -1358,10 +1358,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
         if self._is_admin(request.user):
             qs = (
-                Nomenclature
-                .select_related("owner", "availability", "brand", "address")
-                .prefetch_related("images")
-                .filter(legalEntity__broadcast=True)
+                Nomenclature.select_related("owner", "availability", "brand", "address").prefetch_related("images").filter(legalEntity__broadcast=True)
             )
         elif is_broadcast:
             user_counterparties = user.counterparties.all()
