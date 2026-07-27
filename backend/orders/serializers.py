@@ -210,8 +210,8 @@ class AdOrderSerializer(serializers.ModelSerializer):
             weight_val = parameters.get('weight', 50)
             event_val = parameters.get('event')
             ad_action = parameters.get('active_ad')
-            start_time = parameters.get('start_time')      # ✅ ИСПРАВЛЕНО
-            end_time = parameters.get('end_time')          # ✅ ИСПРАВЛЕНО
+            start_time = parameters.get('start_time')
+            end_time = parameters.get('end_time')
             timedelta_val = parameters.get('timedelta')
             
             if not times_in_hour:
@@ -232,7 +232,6 @@ class AdOrderSerializer(serializers.ModelSerializer):
                     v_parameters.update(_validate_timedelta(timedelta_val))
                     
                 case 3 | 4 | 5:
-                    # ✅ ДОБАВЛЕНЫ ПРОВЕРКИ
                     if brc_type in (3, 5) and not start_time:
                         raise serializers.ValidationError(
                             f'Для типа вещания {brc_type} необходимо указать start_time'
@@ -306,7 +305,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
             return repr_
 
         if isinstance(value, list):
-            return [_serialize_order(order) for order in value]
+            return [_serialize_order(item) for item in value]
         else:
             return _serialize_order(value)
 
@@ -424,7 +423,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
             return repr_
 
         if isinstance(value, list):
-            return [_serialize_order(order) for order in value]
+            return [_serialize_order(item) for item in value]
         else:
             return _serialize_order(value)
 
