@@ -398,7 +398,7 @@ if not DEBUG:
     X_FRAME_OPTIONS = 'DENY'
 
     DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
-    FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 268435456
 
 # =============================================================================
 # 15. ПОЛНОТЕКСТОВЫЙ ПОИСК (OpenSearch)
