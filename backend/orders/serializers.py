@@ -57,12 +57,12 @@ class DateTimeTZRangeField(serializers.DictField):
         """Преобразует значение для вывода."""
         lower = None
         upper = None
-        
+
         if value and value.lower:
             lower = f'{value.lower:%Y-%m-%d %H:%M:%S}'
         if value and value.upper:
             upper = f'{value.upper:%Y-%m-%d %H:%M:%S}'
-        
+
         return {
             'lower': self.child.to_representation(lower) if lower else None,
             'upper': self.child.to_representation(upper) if upper else None
@@ -171,12 +171,12 @@ class AdOrderSerializer(serializers.ModelSerializer):
             """Валидация триггеров рекламы."""
             possible_events = ['click', 'door_open', 'blablabla']
             possible_active_ad_actions = ['skip', 'stop', 'wait_until_end']
-            
+
             if not event:
                 raise serializers.ValidationError('Необходимо указать триггер запуска')
             if not active_ad:
                 raise serializers.ValidationError('Необходимо указать поведение текущей рекламы')
-                
+
             if event not in possible_events:
                 raise serializers.ValidationError(
                     f'Триггера нет в списке допустимых'
@@ -194,16 +194,16 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 playlist_id = str(self.instance.playlist.id)
             else:
                 playlist_id = self.initial_data[0].get('playlist')
-            
+
             playlist_obj = Playlist.objects.get(id=playlist_id)
             playlist_file_ids = list(map(str, playlist_obj.files.values_list('id', flat=True)))
             slide_files = list(slides.keys())
             bad_files = []
-            
+
             for file in slide_files:
                 if file not in playlist_file_ids:
                     bad_files.append(File.objects.get(id=file).name)
-                    
+
             if bad_files not in empty_values:
                 raise serializers.ValidationError(
                     f'В слайдах указаны ролики, которых нет среди файлов плейлиста: {bad_files}'
@@ -212,7 +212,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
         def validate_parameters(parameters: dict, brc_type: int) -> dict:
             """Валидация параметров в зависимости от типа вещания."""
             v_parameters = dict()
-            
+
             times_in_hour = parameters.get('times_in_hour')
             weight_val = parameters.get('weight', 50)
             event_val = parameters.get('event')
@@ -220,15 +220,15 @@ class AdOrderSerializer(serializers.ModelSerializer):
             start_time = parameters.get('start_time')
             end_time = parameters.get('end_time')
             timedelta_val = parameters.get('timedelta')
-            
+
             if not times_in_hour:
                 raise serializers.ValidationError(
                     'Не указан обязательный параметр: кол-во выходов в час'
                 )
-            
+
             v_parameters.update(_validate_times_in_hour(int(times_in_hour)))
             v_parameters.update(_validate_weight(int(weight_val)))
-            
+
             match brc_type:
                 case 1 | 2:
                     if not timedelta_val:
@@ -237,7 +237,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
                         )
                     timedelta_val = _time_string_to_tuple(timedelta_val, brc_type)
                     v_parameters.update(_validate_timedelta(timedelta_val))
-                    
+
                 case 3 | 4 | 5:
                     if brc_type in (3, 5) and not start_time:
                         raise serializers.ValidationError(
@@ -247,31 +247,31 @@ class AdOrderSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError(
                             f'Для типа вещания {brc_type} необходимо указать end_time'
                         )
-                    
+
                     start_tuple = _time_string_to_tuple(start_time, brc_type) if start_time else (0, 0, 1)
                     end_tuple = _time_string_to_tuple(end_time, brc_type) if end_time else (23, 59, 58)
                     v_parameters.update(_validate_daily_times(start_tuple, end_tuple))
-                    
+
                 case 6:
                     if not event_val or not ad_action:
                         raise serializers.ValidationError(
                             'Для типа вещания 6 необходимо указать event и active_ad'
                         )
                     v_parameters.update(_validate_trigger(event_val, ad_action))
-                    
+
             return {'parameters': v_parameters}
 
         # Основная логика
         brc_type: int = data.get('broadcast_type')
         validated_data = dict()
-        
+
         if 'parameters' in data or not self.instance:
             try:
                 params: dict = data.pop('parameters')
                 validated_data.update(validate_parameters(params, brc_type))
             except KeyError:
                 raise serializers.ValidationError('Не переданы параметры заказа.')
-        
+
         if 'slides' in self.initial_data:
             slides_json: dict = self.initial_data.get('slides')
             if not isinstance(slides_json, dict):
@@ -279,7 +279,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
                     f'Слайды переданы неправильным форматом: {type(slides_json)}. Ожидался json-словарь.'
                 )
             validate_slides(slides_json, bool(self.instance))
-        
+
         validated_data.update({**data})
         return validated_data
 
@@ -307,14 +307,14 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 'name': obj.playlist.name,
                 'files_count': obj.playlist.files.count()
             }
-            
+
             # Преобразуем slides в читаемый вид
             repr_['slides'] = obj.slides if obj.slides else None
-            
+
             # Преобразуем parameters в читаемый вид
             params = obj.parameters if obj.parameters else {}
             formatted_params = {}
-            
+
             if 'times_in_hour' in params:
                 formatted_params['times_in_hour'] = params['times_in_hour']
             if 'weight' in params:
@@ -341,7 +341,7 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 formatted_params['event'] = params['event']
             if 'active_ad' in params:
                 formatted_params['active_ad'] = params['active_ad']
-            
+
             repr_['parameters'] = formatted_params
             repr_['created'] = f'{obj.created:%Y-%m-%d %H:%M:%S}'
             return repr_
@@ -381,7 +381,8 @@ class BgOrderSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'description', 'owner', 'clients',
             'order_type', 'playlist', 'broadcast_interval',
-            'parameters', 'status', 'created'
+            'parameters', 'status', 'created',
+            'is_permanent'
         )
         read_only_fields = ('id', 'owner', 'created')
         model = BgOrder
@@ -398,7 +399,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
             files = playlist_obj.files.all()
             if files in empty_values:
                 raise serializers.ValidationError('Плейлист не содержит файлов')
-            
+
             for file in files:
                 if file.type != order_type:
                     raise serializers.ValidationError(
@@ -461,11 +462,11 @@ class BgOrderSerializer(serializers.ModelSerializer):
                 'name': obj.playlist.name,
                 'files_count': obj.playlist.files.count()
             }
-            
+
             # Преобразуем parameters в читаемый вид
             params = obj.parameters if obj.parameters else {}
             formatted_params = {}
-            
+
             if 'times_in_hour' in params:
                 formatted_params['times_in_hour'] = params['times_in_hour']
             if 'weight' in params:
@@ -488,7 +489,7 @@ class BgOrderSerializer(serializers.ModelSerializer):
                     formatted_params['end_time'] = f"{end[0]:02d}:{end[1]:02d}:{end[2]:02d}"
                 else:
                     formatted_params['end_time'] = end
-            
+
             repr_['parameters'] = formatted_params
             repr_['created'] = f'{obj.created:%Y-%m-%d %H:%M:%S}'
             return repr_
@@ -505,7 +506,7 @@ class BgOrderListSerializer(serializers.ModelSerializer):
     broadcast_interval = DateTimeTZRangeField()
 
     class Meta:
-        fields = ('id', 'name', 'client', 'order_type', 'status', 'broadcast_interval')
+        fields = ('id', 'name', 'client', 'order_type', 'status', 'broadcast_interval', 'is_permanent')
         read_only_fields = fields
         model = BgOrder
 
