@@ -1505,6 +1505,64 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         return None
 
     @extend_schema(
+        summary="Полностью удалить номенклатуру",
+        description="""
+        Выполняет полное (физическое) удаление номенклатуры из БД.
+
+        ## Внимание
+        1. Удаляет запись из базы данных без возможности восстановления
+        2. Вместе с записью удаляются все связанные объекты с CASCADE-связями
+           (изображения, адреса и т.д. — согласно правилам on_delete в моделях)
+        3. В отличие от DELETE /api/nomenclatures/{id}/ (мягкое удаление,
+           деактивация), данный метод необратим
+
+        ## Когда использовать
+        - Для окончательной очистки ошибочно созданных записей
+        - Для удаления тестовых/технических номенклатур
+        - НЕ используйте для обычной деактивации — для этого есть
+          стандартный DELETE (soft delete)
+        """,
+        tags=["Номенклатуры"]
+    )
+    @action(detail=True, methods=["DELETE"], url_path="hard-delete")
+    def hard_delete(self, request, *args, **kwargs):
+        """
+        Выполнить полное физическое удаление номенклатуры из БД.
+
+        В отличие от стандартного destroy() (soft delete через is_active),
+        данный метод безвозвратно удаляет запись из базы данных.
+
+        Аргументы:
+            request (HttpRequest): HTTP DELETE запрос
+            *args: Позиционные аргументы
+            **kwargs: Именованные аргументы
+
+        Returns:
+            Response: 204 No Content при успешном удалении
+        """
+        instance = self.get_object()
+        nomenclature_id = instance.pk
+        nomenclature_name = getattr(instance, "name", None)
+
+        try:
+            instance.delete()
+        except Exception as exc:
+            logger.error(
+                "Ошибка при полном удалении номенклатуры %s: %s",
+                nomenclature_id, exc, exc_info=True,
+            )
+            return Response(
+                {"detail": "Не удалось выполнить полное удаление номенклатуры."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        logger.info(
+            "Номенклатура %s (%s) полностью удалена из БД пользователем %s",
+            nomenclature_id, nomenclature_name, getattr(request.user, "id", None),
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
         summary="Список версий ПО",
         description="""
         Возвращает список всех уникальных версий ПО, установленных на номенклатурах.
