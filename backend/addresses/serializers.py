@@ -28,6 +28,7 @@
 • Поддержка как создания новых объектов, так и использования существующих
 """
 
+from django.db import IntegrityError
 from rest_framework import serializers
 from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
@@ -784,16 +785,35 @@ class NestedCitySerializer(serializers.ModelSerializer):
                 'name': 'Название города обязательно'
             })
 
-        # Ищем город в рамках региона
-        city, created = City.objects.get_or_create(
-            region=region,
-            name=name,
-            defaults={
+        # Сначала пробуем найти уже существующий город - для него locality_type
+        # уже проставлен раньше, повторно требовать его не нужно.
+        existing_city = City.objects.filter(region=region, name=name).first()
+        if existing_city:
+            return existing_city
+
+        # А для СОЗДАНИЯ нового города locality_type обязателен в БД
+        # (locality_type_id NOT NULL) - лучше явно попросить его у клиента,
+        # чем уронить запрос IntegrityError-ом из БД.
+        if not locality_type:
+            raise serializers.ValidationError({
+                'locality_type': (
+                    f"Для создания нового населенного пункта '{name}' "
+                    "необходимо указать тип населенного пункта (locality_type)."
+                )
+            })
+
+        try:
+            city = City.objects.create(
                 **validated_data,
-                'region': region,
-                'locality_type': locality_type
-            }
-        )
+                region=region,
+                locality_type=locality_type,
+            )
+        except IntegrityError:
+            # Гонка: другой запрос успел создать такой же город между
+            # проверкой выше и этим create() - просто берём его.
+            city = City.objects.filter(region=region, name=name).first()
+            if not city:
+                raise
 
         return city
 
