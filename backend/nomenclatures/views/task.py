@@ -1,3 +1,5 @@
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -17,11 +19,16 @@ from ch_statistic.tasks import create_statistic
 
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
-from api.constants import get_instance_or_404
+from api.constants import get_bg_task_type, get_instance_or_404
 from nomenclatures.models import Nomenclature, NomenclatureAvailability
+from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
 from users.permissions import StaffCUDallRead
+
+
+CANCEL_TASK_TYPES = {5, 6, 7, 8, 9}
+ACTIVE_ORDER_STATUSES = {0, 1}
 
 
 @extend_schema(tags=["Номенклатуры - Задачи"])
@@ -39,6 +46,7 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
         POST /api/tasks/{nomenclature_id}/pending_tasks/ - Получить ожидающие задачи
 
     Task Types:
+        - cancel order (5-9): Отмена заказа и создание репликации
         - reboot (15): Перезагрузка устройства
         - update (16): Обновление ПО
         - custom: Пользовательская команда
@@ -49,6 +57,85 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
         - pending_tasks: AllowAny (для клиентов устройств)
     """
     permission_classes = [StaffCUDallRead]
+
+    @staticmethod
+    def _cancel_order(request, nomenclature):
+        """Создать репликацию отмены и отметить заказ отменённым."""
+        task_type = request.data.get("type")
+        parameters = request.data.get("parameters")
+
+        if (
+            not isinstance(task_type, int)
+            or isinstance(task_type, bool)
+            or task_type not in CANCEL_TASK_TYPES
+        ):
+            return Response(
+                {"detail": "Недопустимый тип отмены заказа."},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        if not isinstance(parameters, dict) or not parameters.get("order_id"):
+            return Response(
+                {"detail": "В parameters необходимо указать order_id."},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        order_id = parameters["order_id"]
+        order_model = AdOrder if task_type == 9 else BgOrder
+
+        try:
+            with transaction.atomic():
+                order = order_model.objects.select_for_update().get(
+                    id=order_id,
+                    client=nomenclature,
+                )
+
+                expected_task_type = (
+                    9
+                    if isinstance(order, AdOrder)
+                    else get_bg_task_type(order.order_type, action="cancel")
+                )
+
+                if task_type != expected_task_type:
+                    return Response(
+                        {
+                            "detail": (
+                                "Тип действия не соответствует типу заказа."
+                            )
+                        },
+                        status=HTTP_400_BAD_REQUEST,
+                    )
+
+                if (
+                    order.status not in ACTIVE_ORDER_STATUSES
+                    or not order.is_active
+                ):
+                    return Response(
+                        {"detail": "Заказ уже завершён или отменён."},
+                        status=HTTP_400_BAD_REQUEST,
+                    )
+
+                Task.objects.create(
+                    owner=request.user,
+                    client=nomenclature,
+                    type=task_type,
+                    parameters=parameters,
+                )
+
+                order.status = 3
+                order.is_active = False
+                order.save(update_fields=["status", "is_active"])
+        except (AdOrder.DoesNotExist, BgOrder.DoesNotExist, ValidationError):
+            return Response(
+                {
+                    "detail": (
+                        "Заказ не найден для указанной номенклатуры."
+                    )
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({"detail": "Репликация отмены создана."})
 
     @extend_schema(summary="Получить список репликаций номенклатуры")
     @action(detail=True, methods=["GET"], url_path="tasks")
@@ -186,6 +273,12 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                 'parameters': '...'  // только для 'custom'
             }
 
+            Для отмены заказа:
+            {
+                'type': 5|6|7|8|9,
+                'parameters': {'order_id': 'uuid'}
+            }
+
         Returns:
             Response: JSON с сообщением о результате.
                      При успехе: {
@@ -275,6 +368,10 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
             - pending_tasks() для получения задач на клиентской стороне
         """
         nomenclature = get_instance_or_404(Nomenclature, pk)
+
+        if "type" in request.data:
+            return self._cancel_order(request, nomenclature)
+
         task = request.data.get("task")
         owner = str(request.user.id)
 

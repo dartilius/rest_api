@@ -866,6 +866,7 @@ class TestNomenclatureActions:
     status_history_url = '/api/nomenclatures/{nomenclature_id}/status_history/'
     pending_tasks_url = '/api/nomenclatures/{nomenclature_id}/pending_tasks/'
     send_tasks_url = '/api/nomenclatures/{nomenclature_id}/actions/'
+    cancel_order_url = '/api/tasks/{nomenclature_id}/actions/'
     get_tasks_url = '/api/nomenclatures/{nomenclature_id}/tasks/'
 
     @staticmethod
@@ -1457,6 +1458,80 @@ class TestNomenclatureActions:
                 f'Код статуса в ответе != 200.'
                 f'\nДанные: {data}.\nОтвет: {response_data}'
             )
+
+    def test_cancel_bg_order_action(
+        self,
+        admin_client,
+        nomenclature,
+        bgorder
+    ):
+        url = self.cancel_order_url.format(
+            nomenclature_id=str(nomenclature.id)
+        )
+        data = {
+            'type': 5,
+            'parameters': {'order_id': str(bgorder.id)}
+        }
+
+        response = admin_client.post(url, data=data, format='json')
+
+        assert response.status_code == HTTPStatus.OK, response.json()
+        task = self.Task.objects.get(type=5, client=nomenclature)
+        assert task.parameters == data['parameters']
+
+        bgorder.refresh_from_db()
+        assert bgorder.status == 3
+        assert bgorder.is_active is False
+
+    def test_cancel_ad_order_action(
+        self,
+        admin_client,
+        nomenclature,
+        adorder
+    ):
+        url = self.cancel_order_url.format(
+            nomenclature_id=str(nomenclature.id)
+        )
+        data = {
+            'type': 9,
+            'parameters': {'order_id': str(adorder.id)}
+        }
+
+        response = admin_client.post(url, data=data, format='json')
+
+        assert response.status_code == HTTPStatus.OK, response.json()
+        task = self.Task.objects.get(type=9, client=nomenclature)
+        assert task.parameters == data['parameters']
+
+        adorder.refresh_from_db()
+        assert adorder.status == 3
+        assert adorder.is_active is False
+
+    def test_cancel_order_rejects_wrong_task_type(
+        self,
+        admin_client,
+        nomenclature,
+        bgorder
+    ):
+        url = self.cancel_order_url.format(
+            nomenclature_id=str(nomenclature.id)
+        )
+        data = {
+            'type': 6,
+            'parameters': {'order_id': str(bgorder.id)}
+        }
+
+        response = admin_client.post(url, data=data, format='json')
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert not self.Task.objects.filter(
+            type=6,
+            client=nomenclature
+        ).exists()
+
+        bgorder.refresh_from_db()
+        assert bgorder.status == 0
+        assert bgorder.is_active is True
 
     def test_invalid_send_tasks(self, admin_client, nomenclature):
         nomenclature_id = str(nomenclature.id)
