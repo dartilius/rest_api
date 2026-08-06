@@ -358,12 +358,16 @@ class AdOrderListSerializer(serializers.ModelSerializer):
     broadcast_interval = DateTimeTZRangeField()
 
     class Meta:
-        fields = ('id', 'name', 'client', 'status', 'broadcast_interval', 'broadcast_type')
+        fields = (
+            'id', 'name', 'owner', 'client', 'status',
+            'broadcast_interval', 'broadcast_type'
+        )
         read_only_fields = fields
         model = AdOrder
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
+        repr_['owner'] = value.owner.full_name if value.owner else None
         repr_['client'] = {
             'id': value.client.id,
             'name': value.client.name
@@ -506,12 +510,16 @@ class BgOrderListSerializer(serializers.ModelSerializer):
     broadcast_interval = DateTimeTZRangeField()
 
     class Meta:
-        fields = ('id', 'name', 'client', 'order_type', 'status', 'broadcast_interval', 'is_permanent')
+        fields = (
+            'id', 'name', 'owner', 'client', 'order_type', 'status',
+            'broadcast_interval', 'is_permanent'
+        )
         read_only_fields = fields
         model = BgOrder
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
+        repr_['owner'] = value.owner.full_name if value.owner else None
         repr_['client'] = {
             'id': value.client.id,
             'name': value.client.name

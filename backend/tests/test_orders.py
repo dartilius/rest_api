@@ -386,6 +386,7 @@ class TestOrders:
         adorder_data = {
             'id': str(adorder.id),
             'name': adorder.name,
+            'owner': adorder.owner.full_name,
             'client': {'id': str(adorder.client.id),
                        'name': adorder.client.name},
             'status': adorder.status,
@@ -396,6 +397,7 @@ class TestOrders:
         bgorder_data = {
             'id': str(bgorder.id),
             'name': bgorder.name,
+            'owner': bgorder.owner.full_name,
             'client': {'id': str(bgorder.client.id),
                        'name': bgorder.client.name},
             'order_type': bgorder.order_type,
