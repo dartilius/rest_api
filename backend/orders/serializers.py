@@ -2,7 +2,6 @@
 
 from datetime import time, datetime as dt
 
-from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from api.constants import Constants
@@ -12,39 +11,22 @@ from orders.models import AdOrder, BgOrder
 
 
 def serialize_nomenclature(client):
-    """Return the fields needed to identify a nomenclature in order lists."""
-    try:
-        address_link = client.address
-    except ObjectDoesNotExist:
-        address_link = None
+    """Return a frontend-ready nomenclature name."""
+    place = getattr(client, 'typeOfPlace', None)
+    place_name = ''
+    if place:
+        place_name = place.abbreviation or place.tariff_single or place.name
 
-    address = address_link.address if address_link else None
-    city = address.city if address else None
-    street = address.street if address else None
-    locality_type = city.locality_type if city else None
-    street_type = street.street_type if street else None
+    brand_name = client.brand.name if client.brand else client.name
+    nomenclature_name = ' '.join(
+        part for part in (place_name, f'"{brand_name}"') if part
+    )
 
-    return {
-        'id': str(client.id),
-        'name': client.name,
-        'brand': client.brand.name if client.brand else None,
-        'address': {
-            'locality': {
-                'name': city.name if city else None,
-                'type': locality_type.name if locality_type else None,
-                'type_abbreviation': (
-                    locality_type.abbreviated_name if locality_type else None
-                ),
-            },
-            'street': {
-                'name': street.name if street else None,
-                'type': street_type.name if street_type else None,
-                'type_abbreviation': (
-                    street_type.abbreviated_name if street_type else None
-                ),
-            },
-        },
-    }
+    address = client.formatted_address
+    if address:
+        nomenclature_name = f'{nomenclature_name} {address}'
+
+    return nomenclature_name
 
 
 class DateTimeTZRangeField(serializers.DictField):
