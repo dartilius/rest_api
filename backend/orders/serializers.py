@@ -15,7 +15,7 @@ def serialize_nomenclature(client):
     place = getattr(client, 'typeOfPlace', None)
     place_name = ''
     if place:
-        place_name = place.abbreviation or place.tariff_single or place.name
+        place_name = place.name
 
     brand_name = client.brand.name if client.brand else client.name
     nomenclature_name = ' '.join(
