@@ -795,7 +795,12 @@ class AdOrderViewSet(NoDeleteViewSet):
     """
 
     queryset = AdOrder.objects.all().select_related(
-        'owner', 'client', 'playlist'
+        'owner',
+        'client',
+        'client__brand',
+        'client__address__address__city__locality_type',
+        'client__address__address__street__street_type',
+        'playlist',
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdOrderFilter
@@ -1189,7 +1194,12 @@ class BgOrderViewSet(NoDeleteViewSet):
     """
 
     queryset = BgOrder.objects.all().select_related(
-        'owner', 'client', 'playlist'
+        'owner',
+        'client',
+        'client__brand',
+        'client__address__address__city__locality_type',
+        'client__address__address__street__street_type',
+        'playlist',
     )
     filter_backends = [DjangoFilterBackend]
     filterset_class = BgOrderFilter

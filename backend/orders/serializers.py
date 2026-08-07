@@ -2,12 +2,49 @@
 
 from datetime import time, datetime as dt
 
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from api.constants import Constants
 from files.models import File, Playlist, TYPES
 from nomenclatures.models import Nomenclature
 from orders.models import AdOrder, BgOrder
+
+
+def serialize_nomenclature(client):
+    """Return the fields needed to identify a nomenclature in order lists."""
+    try:
+        address_link = client.address
+    except ObjectDoesNotExist:
+        address_link = None
+
+    address = address_link.address if address_link else None
+    city = address.city if address else None
+    street = address.street if address else None
+    locality_type = city.locality_type if city else None
+    street_type = street.street_type if street else None
+
+    return {
+        'id': str(client.id),
+        'name': client.name,
+        'brand': client.brand.name if client.brand else None,
+        'address': {
+            'locality': {
+                'name': city.name if city else None,
+                'type': locality_type.name if locality_type else None,
+                'type_abbreviation': (
+                    locality_type.abbreviated_name if locality_type else None
+                ),
+            },
+            'street': {
+                'name': street.name if street else None,
+                'type': street_type.name if street_type else None,
+                'type_abbreviation': (
+                    street_type.abbreviated_name if street_type else None
+                ),
+            },
+        },
+    }
 
 
 class DateTimeTZRangeField(serializers.DictField):
@@ -356,11 +393,12 @@ class AdOrderListSerializer(serializers.ModelSerializer):
     """Сериализация списка рекламных заказов."""
 
     broadcast_interval = DateTimeTZRangeField()
+    nomenclature = serializers.SerializerMethodField()
 
     class Meta:
         fields = (
             'id', 'name', 'owner', 'client', 'status',
-            'broadcast_interval', 'broadcast_type'
+            'broadcast_interval', 'broadcast_type', 'nomenclature'
         )
         read_only_fields = fields
         model = AdOrder
@@ -373,6 +411,9 @@ class AdOrderListSerializer(serializers.ModelSerializer):
             'name': value.client.name
         }
         return repr_
+
+    def get_nomenclature(self, obj):
+        return serialize_nomenclature(obj.client)
 
 
 class BgOrderSerializer(serializers.ModelSerializer):
@@ -508,11 +549,12 @@ class BgOrderListSerializer(serializers.ModelSerializer):
     """Сериализация списка фоновых заказов."""
 
     broadcast_interval = DateTimeTZRangeField()
+    nomenclature = serializers.SerializerMethodField()
 
     class Meta:
         fields = (
             'id', 'name', 'owner', 'client', 'order_type', 'status',
-            'broadcast_interval', 'is_permanent'
+            'broadcast_interval', 'is_permanent', 'nomenclature'
         )
         read_only_fields = fields
         model = BgOrder
@@ -525,3 +567,6 @@ class BgOrderListSerializer(serializers.ModelSerializer):
             'name': value.client.name
         }
         return repr_
+
+    def get_nomenclature(self, obj):
+        return serialize_nomenclature(obj.client)
