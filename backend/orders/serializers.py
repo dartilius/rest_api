@@ -12,14 +12,10 @@ from orders.models import AdOrder, BgOrder
 
 def serialize_nomenclature(client):
     """Return a frontend-ready nomenclature name."""
-    place = getattr(client, 'typeOfPlace', None)
-    place_name = ''
-    if place:
-        place_name = place.name
 
     brand_name = client.brand.name if client.brand else client.name
     nomenclature_name = ' '.join(
-        part for part in (place_name, f'"{brand_name}"') if part
+        part for part in (f'"{brand_name}"') if part
     )
 
     address = client.formatted_address
