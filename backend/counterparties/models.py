@@ -16,6 +16,7 @@
 
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
+from uuid import uuid4
 from api import ContactInformation
 from api.base_objects import UUIDPKField
 from api import APIBaseObjectModel
@@ -40,6 +41,23 @@ TYPE_ORG = {
 
 TYPE_OPF_DICT = {**TYPE_FL, **TYPE_ORG}
 TYPE_OPF = [(key, value) for key, value in TYPE_OPF_DICT.items()]
+
+
+class TenantCategory(models.Model):
+    """Справочник категорий, по которым сегментируются арендаторы."""
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    name = models.CharField(max_length=64, unique=True, verbose_name="Название")
+    is_active = models.BooleanField(default=True, verbose_name="Активна")
+
+    class Meta:
+        db_table = "tenant_categories"
+        verbose_name = "Категория арендатора"
+        verbose_name_plural = "Категории арендаторов"
+        ordering = ("name",)
+
+    def __str__(self):
+        return self.name
 
 
 class CounterpartyContactInfo(ContactInformation):
@@ -174,6 +192,15 @@ class Counterparty(APIBaseObjectModel):
         related_name="counterparties"
     )
 
+    categories = models.ManyToManyField(
+        TenantCategory,
+        blank=True,
+        related_name="counterparties",
+        through="TenantCategoryAssignment",
+        through_fields=("counterparty", "category"),
+        verbose_name="Категории арендатора",
+    )
+
     address = models.ForeignKey(
         'addresses.Address',
         related_name='counterparties',
@@ -274,6 +301,39 @@ class Counterparty(APIBaseObjectModel):
     def __str__(self):
         """Строковое представление контрагента."""
         return self.name
+
+
+class TenantCategoryAssignment(models.Model):
+    """Назначение категории конкретному арендатору."""
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    counterparty = models.ForeignKey(
+        Counterparty,
+        on_delete=models.CASCADE,
+        related_name="category_assignments",
+        verbose_name="Арендатор",
+    )
+    category = models.ForeignKey(
+        TenantCategory,
+        on_delete=models.CASCADE,
+        related_name="counterparty_assignments",
+        verbose_name="Категория",
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата назначения")
+
+    class Meta:
+        db_table = "tenant_category_assignments"
+        verbose_name = "Назначение категории арендатору"
+        verbose_name_plural = "Назначения категорий арендаторам"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("counterparty", "category"),
+                name="unique_tenant_category_assignment",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.counterparty} — {self.category}"
 
 # from django.contrib.postgres.indexes import GinIndex
 # from django.db import models

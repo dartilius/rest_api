@@ -401,7 +401,6 @@ class NomenclatureSearchSerializer(serializers.ModelSerializer):
 class CityNomenclaturesSerializer(serializers.ModelSerializer):
     """Сериализатор для номенклатур по городу (веб-интерфейс)."""
 
-    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     typeOfPlace = serializers.CharField(source='typeOfPlace.name', read_only=True)
     formattedAddress = serializers.SerializerMethodField()
     exterior = serializers.SerializerMethodField()
@@ -410,7 +409,7 @@ class CityNomenclaturesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Nomenclature
         fields = [
-            "id", "nameForFront", "formattedAddress",
+            "id", "formattedAddress",
             "pricePerMonth", "exterior", "brand", "typeOfPlace"
         ]
 
@@ -560,17 +559,16 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     legalEntity = CounterpartiesShortSerializer()
     exterior = serializers.SerializerMethodField()
     formattedAddress = serializers.CharField(source="formatted_address", read_only=True)
-    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     oldCatalogSlug = serializers.CharField(source="old_catalog_slug", read_only=True)
 
     class Meta:
         model = Nomenclature
         fields = (
-            "id", "name", "nameForFront", "legalEntity", "brand",
+            "id", "name", "legalEntity", "brand",
             "exterior", "formattedAddress", "typeOfPlace",
             "pricePerMonth", "code1c", "oldCatalogSlug",
         )
-        extra_fields = ("nameForFront", "formattedAddress", "oldCatalogSlug")
+        extra_fields = ("formattedAddress", "oldCatalogSlug")
         read_only_fields = fields
 
     def get_exterior(self, obj):
@@ -617,14 +615,13 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
     exterior = serializers.SerializerMethodField()
     formattedAddress = serializers.SerializerMethodField()
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
-    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     slotsPerHour = serializers.CharField(source="slots_per_hour", read_only=True)
     oldCatalogSlug = serializers.CharField(source="old_catalog_slug", read_only=True)
 
     class Meta:
         model = Nomenclature
         fields = (
-            "id", "nameForFront", "brand", "exterior",
+            "id", "brand", "exterior",
             "formattedAddress", "typeOfPlace", "pricePerMonth",
             "slotsPerHour", "oldCatalogSlug"
         )
@@ -669,7 +666,6 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
 class NomenclatureShortSerializer(serializers.ModelSerializer):
     """Упрощенный сериализатор для номенклатур."""
 
-    nameForFront = serializers.SerializerMethodField()
     formattedAddress = serializers.SerializerMethodField()
     exterior = serializers.SerializerMethodField()
     typeOfPlace = serializers.CharField(source="type_of_place_display", read_only=True)
@@ -677,29 +673,9 @@ class NomenclatureShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Nomenclature
         fields = [
-            "id", "nameForFront", "formattedAddress",
+            "id", "formattedAddress",
             "exterior", "typeOfPlace", "pricePerMonth"
         ]
-
-    def get_nameForFront(self, obj):
-        """Формирует название для фронтенда."""
-        parts = []
-        if obj.typeOfPlace:
-            parts.append(obj.typeOfPlace.name)
-        if obj.brand:
-            parts.append(obj.brand.name)
-        if obj.address and obj.address.address:
-            addr = obj.address.address
-            address_parts = []
-            if addr.city:
-                address_parts.append(f"г. {addr.city.name}")
-            if addr.street:
-                address_parts.append(f"ул. {addr.street.name}")
-            if addr.house:
-                address_parts.append(addr.house.number)
-            if address_parts:
-                parts.append(", ".join(address_parts))
-        return " | ".join(filter(None, parts)) or None
 
     def get_formattedAddress(self, obj):
         """Возвращает отформатированный адрес."""
@@ -749,7 +725,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     ───────────────────────────────────────────────────────────────────────────────
     read_only (только для чтения):
         - typeOfPlace: Название типа места
-        - nameForFront: Сгенерированное название для фронтенда
         - status: Статус доступности
         - last_answer: Время последнего ответа
         - legalEntity: Информация о юридическом лице
@@ -819,7 +794,6 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     # ─── READ_ONLY ПОЛЯ ────────────────────────────────────────────────────────
 
     typeOfPlace = serializers.CharField(source='typeOfPlace.name', read_only=True)
-    nameForFront = serializers.CharField(source="name_for_front", read_only=True)
     status = serializers.SerializerMethodField()
     last_answer = serializers.SerializerMethodField()
     legalEntity = CounterpartiesShortSerializer(read_only=True)
@@ -885,11 +859,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = Nomenclature
         fields = "__all__"
-        extra_fields = ("nameForFront",)
         read_only_fields = (
             "id", "owner", "hw_info", "version", "created",
             "status", "last_answer", "interior", "exterior",
-            "nameForFront", "typeOfPlace", "formattedAddress",
+            "typeOfPlace", "formattedAddress",
         )
 
     # ═════════════════════════════════════════════════════════════════════════

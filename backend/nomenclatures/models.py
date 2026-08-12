@@ -792,34 +792,6 @@ class Nomenclature(APIBaseObjectModel):
 
         return ", ".join(address_parts)
 
-    @property
-    def name_for_front(self):
-        """Возвращает название для фронтенда."""
-        if not self.brand:
-            return None
-
-        address_str = self.formatted_address
-
-        if not address_str:
-            return None
-
-        place = self.typeOfPlace
-
-        if place:
-            place_name = (
-                place.abbreviation
-                or place.tariff_single
-                or place.name
-            )
-        else:
-            place_name = ""
-
-        return (
-            f'Размещение ролика на радио '
-            f'{place_name} "{self.brand.name}"\n '
-            f'{address_str}'
-        )
-
     def save(self, *args, **kwargs):
         """Сохраняет номенклатуру и генерирует old_catalog_slug при необходимости."""
         super().save(*args, **kwargs)

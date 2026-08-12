@@ -15,7 +15,13 @@ from rest_framework import serializers
 from addresses.models import Address
 from brands.models import Brand
 from brands.serializers import BrandShortSerializer, BrandListSerializer
-from counterparties.models import Counterparty, TYPE_FL, TYPE_ORG, CounterpartyContactInfo
+from counterparties.models import (
+    Counterparty,
+    TYPE_FL,
+    TYPE_ORG,
+    CounterpartyContactInfo,
+    TenantCategory,
+)
 from users.models import CustomUser
 from users.serializers import CustomUserShortSerializer
 
@@ -56,6 +62,11 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
         required=False,
         write_only=True,
     )
+    categories = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=TenantCategory.objects.filter(is_active=True),
+        required=False,
+    )
     address = serializers.PrimaryKeyRelatedField(
         queryset=Address.objects.all(),
         required=False,
@@ -78,6 +89,7 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         contacts_data = validated_data.pop('contacts', None)
         brands_data = validated_data.pop('brands', None)
+        categories_data = validated_data.pop('categories', None)
         contact_persons_data = validated_data.pop('contact_persons', None)
 
         # Обновляем простые поля
@@ -101,6 +113,8 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
         # Обновляем ManyToMany связи
         if brands_data is not None:
             instance.brands.set(brands_data)
+        if categories_data is not None:
+            instance.categories.set(categories_data)
         if contact_persons_data is not None:
             instance.contact_persons.set(contact_persons_data)
 

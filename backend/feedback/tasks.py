@@ -21,7 +21,7 @@ _PATHNAME_LABELS = {
 
 def _nomenclature_display_name(nom) -> str:
     """
-    Аналог name_for_front, но без префикса 'Размещение ролика на радио '.
+    Формирует название площадки для служебного письма.
     Результат: {place_name} "{brand.name}" {address_str}
     """
     if not nom.brand:

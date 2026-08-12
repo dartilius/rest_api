@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 class GroupedTenantFilter(FilterSet):
 
     search = CharFilter(method="filter_search")
+    category = CharFilter(method="filter_category")
+    city = CharFilter(method="filter_city")
 
     class Meta:
         model = NomenclatureTenant
@@ -20,8 +22,41 @@ class GroupedTenantFilter(FilterSet):
 
     def filter_search(self, queryset, name, value):
         from django.db.models import Q
+
+        value = value.strip()
+        if not value:
+            return queryset
+
         return queryset.filter(
             Q(brand__name__icontains=value)
+            | Q(tenant__code1c__iexact=value)
+            | Q(tenant__keyword__icontains=value)
+            | Q(tenant__additional_name__icontains=value)
+            | Q(tenant__first_name__icontains=value)
+            | Q(tenant__last_name__icontains=value)
+            | Q(
+                tenant__categories__name__icontains=value,
+                tenant__categories__is_active=True,
+            )
+        )
+
+    def filter_category(self, queryset, name, value):
+        value = value.strip()
+        if not value:
+            return queryset
+
+        return queryset.filter(
+            tenant__categories__name__iexact=value,
+            tenant__categories__is_active=True,
+        )
+
+    def filter_city(self, queryset, name, value):
+        value = value.strip()
+        if not value:
+            return queryset
+
+        return queryset.filter(
+            nomenclature__address__address__city__name__iexact=value
         )
 
 def full_text_search(queryset, value):

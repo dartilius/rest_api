@@ -28,6 +28,7 @@ from django.core.cache import cache
 
 from api.pagination import CustomLimitOffsetPagination
 from brands.models import Brand
+from counterparties.models import TenantCategory
 from nomenclatures.filters import NomenclatureTenantFilter, GroupedTenantFilter
 from nomenclatures.models import NomenclatureTenant, NomenclatureImage
 from nomenclatures.serializers import (
@@ -224,12 +225,22 @@ def grouped_tenants_global(request):
         queryset=base_qs
     ).qs
 
+    sort = request.query_params.get("sort", "count_desc")
+
     queryset = (
         base_qs
         .values("tenant_id", "tenant__code1c", "brand_id", "brand__name")
-        .annotate(count=Count("id"))
-        .order_by("-count", "tenant_id")
+        .annotate(count=Count("nomenclature_id", distinct=True))
     )
+
+    ordering = {
+        "name_asc": ("brand__name", "tenant_id"),
+        # Пока отдельная метрика популярности не определена, используем охват:
+        # число уникальных рекламных мест, где представлен арендатор.
+        "popular": ("-count", "tenant_id"),
+        "count_desc": ("-count", "tenant_id"),
+    }
+    queryset = queryset.order_by(*ordering.get(sort, ordering["count_desc"]))
 
     paginator = CustomLimitOffsetPagination()
     paginated_queryset = paginator.paginate_queryset(queryset, request)
@@ -248,6 +259,20 @@ def grouped_tenants_global(request):
         for brand in Brand.all_objects.filter(id__in=brand_ids).only("id", "logotype")
     }
 
+    tenant_ids = [item["tenant_id"] for item in paginated_queryset]
+    categories_by_tenant = {tenant_id: [] for tenant_id in tenant_ids}
+    for category in (
+        TenantCategory.objects.filter(
+            counterparties__id__in=tenant_ids,
+            is_active=True,
+        )
+        .values("name", "counterparties__id")
+        .order_by("name")
+    ):
+        categories_by_tenant[category["counterparties__id"]].append(
+            category["name"]
+        )
+
     result = [
         {
             "tenantId": item["tenant_id"],
@@ -256,6 +281,7 @@ def grouped_tenants_global(request):
             "brandName": item["brand__name"] or "Без бренда",
             "brandLogotype": brand_logotypes.get(item["brand_id"]),
             "count": item["count"],
+            "categories": categories_by_tenant.get(item["tenant_id"], []),
         }
         for item in paginated_queryset
     ]
