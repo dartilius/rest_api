@@ -56,7 +56,7 @@ class Migration(migrations.Migration):
                     models.Index(
                         django.db.models.functions.text.Upper('name'),
                         condition=models.Q(('is_active', True)),
-                        name='counterparty_category_name_ci_idx',
+                        name='cp_category_name_ci_idx',
                     ),
                 ],
             },
@@ -106,7 +106,7 @@ class Migration(migrations.Migration):
                 'indexes': [
                     models.Index(
                         fields=('category', 'counterparty'),
-                        name='counterparty_category_lookup_idx',
+                        name='cp_category_lookup_idx',
                     ),
                 ],
             },
