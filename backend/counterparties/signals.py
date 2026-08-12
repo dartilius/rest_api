@@ -30,5 +30,13 @@ def update_user_role_on_link(sender, instance, action, pk_set, **kwargs):
 @receiver(post_save, sender=Counterparty)
 def update_contact_person_roles_on_counterparty_save(sender, instance, **kwargs):
     """Resync linked users when a counterparty, including `broadcast`, changes."""
-    for user_id in instance.contact_persons.values_list("pk", flat=True):
+    user_ids = instance.contact_persons.values_list("pk", flat=True)
+
+    if instance.broadcast:
+        CustomUser.objects.filter(pk__in=user_ids).exclude(
+            role="broadcast"
+        ).update(role="broadcast")
+        return
+
+    for user_id in user_ids:
         sync_user_role(user_id)
