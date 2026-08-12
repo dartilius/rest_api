@@ -143,7 +143,7 @@ class Counterparty(APIBaseObjectModel):
     )
 
     first_name = models.CharField(
-        max_length=64, blank=False, null=False, verbose_name="Имя",
+        max_length=64, blank=True, null=False, verbose_name="Имя",
         default=''
     )
 
@@ -153,7 +153,7 @@ class Counterparty(APIBaseObjectModel):
     )
 
     last_name = models.CharField(
-        max_length=64, blank=False, null=False, verbose_name="Фамилия",
+        max_length=64, blank=True, null=False, verbose_name="Фамилия",
         default=''
     )
 

@@ -1,16 +1,6 @@
-"""
-Административный интерфейс для модели CustomUser.
-
-ОПТИМИЗАЦИЯ:
-───────────────────────────────────────────────────────────────────────────────
-1. get_queryset() с select_related и prefetch_related
-2. only() для выборки только необходимых полей
-3. Кеширование на 5 минут
-"""
+"""Django admin configuration for the custom user model."""
 
 from django.contrib import admin
-from django.core.cache import cache
-from django.db.models import Prefetch
 
 from users.models import CustomUser, ContactInfo
 
@@ -77,58 +67,15 @@ class CustomUserAdmin(admin.ModelAdmin):
     # =========================================================================
 
     def get_queryset(self, request):
-        """
-        Оптимизированный запрос с предзагрузкой связей.
-
-        Использует:
-        - select_related для FK связей
-        - prefetch_related для M2M связей
-        - only() для выборки только необходимых полей
-        - Кеширование на 5 минут
-        """
-        cache_key = f"user_admin_qs_{request.user.id}"
-        queryset = cache.get(cache_key)
-
-        if queryset is None:
-            queryset = (
-                CustomUser.objects
-                .select_related()  # FK связей нет
-                .prefetch_related(
-                    Prefetch(
-                        'contacts_cp',
-                        queryset=ContactInfo.objects.only(
-                            'id', 'user_id', 'type', 'meaning',
-                            'vidtel', 'vidmail', 'basic', 'comment', 'ext'
-                        )
-                    )
-                )
-                .only(
-                    'id', 'last_name', 'first_name', 'middle_name',
-                    'role', 'email', 'phone_number', 'is_active',
-                    'created', 'code1c',
-                )
-            )
-            cache.set(cache_key, queryset, 300)
-
-        return queryset
+        """Return only the fields used by the changelist."""
+        return super().get_queryset(request).only(
+            'id', 'last_name', 'first_name', 'middle_name',
+            'role', 'email', 'phone_number', 'is_active', 'created',
+        )
 
     @admin.display(description='ФИО')
     def full_name_display(self, obj):
         return obj.full_name
-
-    # =========================================================================
-    # ДЕЙСТВИЯ
-    # =========================================================================
-
-    actions = ['clear_cache']
-
-    def clear_cache(self, request, queryset):
-        """Очищает кеш пользователей."""
-        cache.delete_pattern("user_admin_qs_*")
-        self.message_user(request, 'Кэш очищен')
-
-    clear_cache.short_description = "Очистить кэш"
-
 
 @admin.register(ContactInfo)
 class ContactInfoAdmin(admin.ModelAdmin):
