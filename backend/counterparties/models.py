@@ -16,6 +16,7 @@
 
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
+from django.db.models.functions import Upper
 from uuid import uuid4
 from api import ContactInformation
 from api.base_objects import UUIDPKField
@@ -43,18 +44,25 @@ TYPE_OPF_DICT = {**TYPE_FL, **TYPE_ORG}
 TYPE_OPF = [(key, value) for key, value in TYPE_OPF_DICT.items()]
 
 
-class TenantCategory(models.Model):
-    """Справочник категорий, по которым сегментируются арендаторы."""
+class CounterpartyCategory(models.Model):
+    """Справочник категорий контрагентов."""
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=64, unique=True, verbose_name="Название")
     is_active = models.BooleanField(default=True, verbose_name="Активна")
 
     class Meta:
-        db_table = "tenant_categories"
-        verbose_name = "Категория арендатора"
-        verbose_name_plural = "Категории арендаторов"
+        db_table = "counterparty_categories"
+        verbose_name = "Категория контрагента"
+        verbose_name_plural = "Категории контрагентов"
         ordering = ("name",)
+        indexes = [
+            models.Index(
+                Upper("name"),
+                name="counterparty_category_name_ci_idx",
+                condition=models.Q(is_active=True),
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -193,12 +201,12 @@ class Counterparty(APIBaseObjectModel):
     )
 
     categories = models.ManyToManyField(
-        TenantCategory,
+        CounterpartyCategory,
         blank=True,
         related_name="counterparties",
-        through="TenantCategoryAssignment",
+        through="CounterpartyCategoryAssignment",
         through_fields=("counterparty", "category"),
-        verbose_name="Категории арендатора",
+        verbose_name="Категории контрагента",
     )
 
     address = models.ForeignKey(
@@ -303,18 +311,18 @@ class Counterparty(APIBaseObjectModel):
         return self.name
 
 
-class TenantCategoryAssignment(models.Model):
-    """Назначение категории конкретному арендатору."""
+class CounterpartyCategoryAssignment(models.Model):
+    """Назначение категории конкретному контрагенту."""
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     counterparty = models.ForeignKey(
         Counterparty,
         on_delete=models.CASCADE,
         related_name="category_assignments",
-        verbose_name="Арендатор",
+        verbose_name="Контрагент",
     )
     category = models.ForeignKey(
-        TenantCategory,
+        CounterpartyCategory,
         on_delete=models.CASCADE,
         related_name="counterparty_assignments",
         verbose_name="Категория",
@@ -322,13 +330,19 @@ class TenantCategoryAssignment(models.Model):
     assigned_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата назначения")
 
     class Meta:
-        db_table = "tenant_category_assignments"
-        verbose_name = "Назначение категории арендатору"
-        verbose_name_plural = "Назначения категорий арендаторам"
+        db_table = "counterparty_category_assignments"
+        verbose_name = "Назначение категории контрагенту"
+        verbose_name_plural = "Назначения категорий контрагентам"
         constraints = [
             models.UniqueConstraint(
                 fields=("counterparty", "category"),
-                name="unique_tenant_category_assignment",
+                name="unique_counterparty_category_assignment",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=("category", "counterparty"),
+                name="counterparty_category_lookup_idx",
             ),
         ]
 

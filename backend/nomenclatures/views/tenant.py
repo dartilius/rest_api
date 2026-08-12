@@ -28,7 +28,7 @@ from django.core.cache import cache
 
 from api.pagination import CustomLimitOffsetPagination
 from brands.models import Brand
-from counterparties.models import TenantCategory
+from counterparties.models import CounterpartyCategory
 from nomenclatures.filters import NomenclatureTenantFilter, GroupedTenantFilter
 from nomenclatures.models import NomenclatureTenant, NomenclatureImage
 from nomenclatures.serializers import (
@@ -262,7 +262,7 @@ def grouped_tenants_global(request):
     tenant_ids = [item["tenant_id"] for item in paginated_queryset]
     categories_by_tenant = {tenant_id: [] for tenant_id in tenant_ids}
     for category in (
-        TenantCategory.objects.filter(
+        CounterpartyCategory.objects.filter(
             counterparties__id__in=tenant_ids,
             is_active=True,
         )

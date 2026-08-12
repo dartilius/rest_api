@@ -20,7 +20,7 @@ from counterparties.models import (
     TYPE_FL,
     TYPE_ORG,
     CounterpartyContactInfo,
-    TenantCategory,
+    CounterpartyCategory,
 )
 from users.models import CustomUser
 from users.serializers import CustomUserShortSerializer
@@ -64,7 +64,7 @@ class CreateCounterpartySerializer(serializers.ModelSerializer):
     )
     categories = serializers.PrimaryKeyRelatedField(
         many=True,
-        queryset=TenantCategory.objects.filter(is_active=True),
+        queryset=CounterpartyCategory.objects.filter(is_active=True),
         required=False,
     )
     address = serializers.PrimaryKeyRelatedField(

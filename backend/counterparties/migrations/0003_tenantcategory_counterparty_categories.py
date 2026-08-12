@@ -3,10 +3,11 @@
 import uuid
 
 from django.db import migrations, models
+import django.db.models.functions.text
 
 
-def create_default_tenant_categories(apps, schema_editor):
-    TenantCategory = apps.get_model('counterparties', 'TenantCategory')
+def create_default_counterparty_categories(apps, schema_editor):
+    CounterpartyCategory = apps.get_model('counterparties', 'CounterpartyCategory')
     for name in (
         'Детские товары',
         'Электроника',
@@ -14,7 +15,7 @@ def create_default_tenant_categories(apps, schema_editor):
         'Одежда и обувь',
         'Косметика',
     ):
-        TenantCategory.objects.get_or_create(name=name)
+        CounterpartyCategory.objects.get_or_create(name=name)
 
 
 class Migration(migrations.Migration):
@@ -25,7 +26,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='TenantCategory',
+            name='CounterpartyCategory',
             fields=[
                 (
                     'id',
@@ -47,14 +48,21 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True, verbose_name='Активна')),
             ],
             options={
-                'verbose_name': 'Категория арендатора',
-                'verbose_name_plural': 'Категории арендаторов',
-                'db_table': 'tenant_categories',
+                'verbose_name': 'Категория контрагента',
+                'verbose_name_plural': 'Категории контрагентов',
+                'db_table': 'counterparty_categories',
                 'ordering': ('name',),
+                'indexes': [
+                    models.Index(
+                        django.db.models.functions.text.Upper('name'),
+                        condition=models.Q(('is_active', True)),
+                        name='counterparty_category_name_ci_idx',
+                    ),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='TenantCategoryAssignment',
+            name='CounterpartyCategoryAssignment',
             fields=[
                 (
                     'id',
@@ -71,7 +79,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=models.deletion.CASCADE,
                         related_name='counterparty_assignments',
-                        to='counterparties.tenantcategory',
+                        to='counterparties.counterpartycategory',
                         verbose_name='Категория',
                     ),
                 ),
@@ -81,18 +89,24 @@ class Migration(migrations.Migration):
                         on_delete=models.deletion.CASCADE,
                         related_name='category_assignments',
                         to='counterparties.counterparty',
-                        verbose_name='Арендатор',
+                        verbose_name='Контрагент',
                     ),
                 ),
             ],
             options={
-                'verbose_name': 'Назначение категории арендатору',
-                'verbose_name_plural': 'Назначения категорий арендаторам',
-                'db_table': 'tenant_category_assignments',
+                'verbose_name': 'Назначение категории контрагенту',
+                'verbose_name_plural': 'Назначения категорий контрагентам',
+                'db_table': 'counterparty_category_assignments',
                 'constraints': [
                     models.UniqueConstraint(
                         fields=('counterparty', 'category'),
-                        name='unique_tenant_category_assignment',
+                        name='unique_counterparty_category_assignment',
+                    ),
+                ],
+                'indexes': [
+                    models.Index(
+                        fields=('category', 'counterparty'),
+                        name='counterparty_category_lookup_idx',
                     ),
                 ],
             },
@@ -103,14 +117,14 @@ class Migration(migrations.Migration):
             field=models.ManyToManyField(
                 blank=True,
                 related_name='counterparties',
-                through='counterparties.TenantCategoryAssignment',
+                through='counterparties.CounterpartyCategoryAssignment',
                 through_fields=('counterparty', 'category'),
-                to='counterparties.tenantcategory',
-                verbose_name='Категории арендатора',
+                to='counterparties.counterpartycategory',
+                verbose_name='Категории контрагента',
             ),
         ),
         migrations.RunPython(
-            create_default_tenant_categories,
+            create_default_counterparty_categories,
             migrations.RunPython.noop,
         ),
     ]

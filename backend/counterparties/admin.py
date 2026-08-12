@@ -18,13 +18,13 @@ from django.utils.html import format_html, format_html_join
 from counterparties.models import (
     Counterparty,
     CounterpartyContactInfo,
-    TenantCategory,
-    TenantCategoryAssignment,
+    CounterpartyCategory,
+    CounterpartyCategoryAssignment,
 )
 
 
-@admin.register(TenantCategory)
-class TenantCategoryAdmin(admin.ModelAdmin):
+@admin.register(CounterpartyCategory)
+class CounterpartyCategoryAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active")
     list_filter = ("is_active",)
     search_fields = ("name",)
@@ -38,11 +38,14 @@ class ContactInfoInline(admin.TabularInline):
     fields = ("type", "meaning", "vidtel", "vidmail", "basic", "comment")
 
 
-class TenantCategoryAssignmentInline(admin.TabularInline):
-    model = TenantCategoryAssignment
-    extra = 0
+class CounterpartyCategoryAssignmentInline(admin.TabularInline):
+    model = CounterpartyCategoryAssignment
+    extra = 1
     autocomplete_fields = ("category",)
     readonly_fields = ("assigned_at",)
+    fields = ("category", "assigned_at")
+    verbose_name = "Категория контрагента"
+    verbose_name_plural = "Категории контрагента"
 
 
 @admin.register(Counterparty)
@@ -78,7 +81,7 @@ class CounterpartiesAdmin(admin.ModelAdmin):
     search_fields = ("first_name", "middle_name", "last_name", "keyword")
     filter_horizontal = ("brands", "contact_persons")
     readonly_fields = ("show_owned", "show_rented", "code1c", "display_brands", "brands_count")
-    inlines = [ContactInfoInline, TenantCategoryAssignmentInline]
+    inlines = [CounterpartyCategoryAssignmentInline, ContactInfoInline]
     list_per_page = 50
     show_full_result_count = True
 
