@@ -117,14 +117,16 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         except (ValueError, CustomUser.DoesNotExist):
             pass
 
-        # пробуем code1c
-        try:
-            customUser = CustomUser.objects.get(code1c=identifier)
-            if customUser.is_active is False:
-                raise NotFound("Пользователь не найден.")
-            return customUser
-        except CustomUser.DoesNotExist:
+        # пробуем code1c; code1c не уникален, поэтому берём последнюю активную запись
+        customUser = (
+            CustomUser.objects
+            .filter(code1c=identifier, is_active=True)
+            .order_by("-created", "id")
+            .first()
+        )
+        if customUser is None:
             raise NotFound("Пользователь не найден.")
+        return customUser
 
     def perform_destroy(self, instance):
         if instance.is_active is True:

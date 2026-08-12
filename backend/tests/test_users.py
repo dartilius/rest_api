@@ -46,6 +46,20 @@ class TestUsers:
             'Неавторизованный пользователь имеет доступ к странице.'
         )
 
+    def test_retrieve_duplicate_code1c_returns_latest_active_user(
+        self, user, another_user, superuser_client
+    ):
+        code1c = 'duplicate-code1c'
+        CustomUser.objects.filter(pk__in=[user.pk, another_user.pk]).update(
+            code1c=code1c
+        )
+        CustomUser.objects.filter(pk=another_user.pk).update(is_active=False)
+
+        response = superuser_client.get(f'{self.url}{code1c}/')
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.json()['id'] == str(user.id)
+
     def test_create_valid_user(self, superuser_client):
         user_count = CustomUser.objects.count()
         valid_data = [
