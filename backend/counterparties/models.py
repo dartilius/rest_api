@@ -59,7 +59,7 @@ class CounterpartyCategory(models.Model):
         indexes = [
             models.Index(
                 Upper("name"),
-                name="counterparty_category_name_ci_idx",
+                name="cp_category_name_ci_idx",
                 condition=models.Q(is_active=True),
             ),
         ]
@@ -342,7 +342,7 @@ class CounterpartyCategoryAssignment(models.Model):
         indexes = [
             models.Index(
                 fields=("category", "counterparty"),
-                name="counterparty_category_lookup_idx",
+                name="cp_category_lookup_idx",
             ),
         ]
 
