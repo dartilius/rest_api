@@ -128,6 +128,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "article",
         "id_rasb",
         "brand__name",
+        "id"
     )
 
     list_filter = ("is_active", "timezone", "brand", "contentType")
