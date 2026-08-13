@@ -373,31 +373,28 @@ class CityViewSet(viewsets.ModelViewSet):
         Возвращает города с номенклатурами и их количеством.
         """
         # Получаем ID городов с номенклатурами для веба
-        city_ids = Nomenclature.objects.filter(
-            for_web=True,
-        ).exclude(
-            address__isnull=True
-        ).exclude(
-            address__address__isnull=True
-        ).exclude(
-            address__address__city__isnull=True
-        ).values_list(
-            'address__address__city_id',
-            flat=True
-        ).distinct()
+        nomenclature_filter = Q(
+            address__nomenclatureaddress__nomenclature__for_web=True,
+            address__nomenclatureaddress__nomenclature__is_active=True,
+        )
+
+        type_of_place = self.request.query_params.get('type_of_place', '').strip()
+        if type_of_place:
+            nomenclature_filter &= Q(
+                address__nomenclatureaddress__nomenclature__typeOfPlace__name__icontains=type_of_place
+            )
 
         return (
-            City.objects.filter(id__in=city_ids)
+            City.objects.all()
             .select_related('region', 'locality_type', 'timezone')
             .annotate(
                 nomenclature_count=Count(
                     'address__nomenclatureaddress__nomenclature',
-                    filter=Q(
-                        address__nomenclatureaddress__nomenclature__for_web=True
-                    ),
+                    filter=nomenclature_filter,
                     distinct=True
                 )
             )
+            .filter(nomenclature_count__gt=0)
         )
 
     @city_list_schema()
