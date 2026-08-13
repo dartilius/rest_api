@@ -1511,6 +1511,7 @@ class AddressWebResultSerializer(serializers.ModelSerializer):
     )
 
     city = serializers.CharField(source="city.name", read_only=True)
+    citySlug = serializers.CharField(source="city.slug", read_only=True)
 
     streetType = serializers.CharField(
         source="street.street_type.abbreviated_name",
@@ -1534,6 +1535,7 @@ class AddressWebResultSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "city",
+            "citySlug",
             "localityType",
             "street",
             "streetType",

@@ -75,6 +75,7 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
                 "owner__id", "owner__first_name", "owner__last_name",
                 "address__address__id", "address__address__country__name",
                 "address__address__region__name", "address__address__city__name",
+                "address__address__city__slug",
                 "address__address__city__locality_type__name",
                 "address__address__street__name",
                 "address__address__street__street_type__name",
