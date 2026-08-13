@@ -124,24 +124,29 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
         except ValueError:
             is_uuid = False
 
+        queryset = self.get_queryset()
+
         if is_uuid:
-            try:
-                nomenclature = Nomenclature.objects.get(id=identifier)
+            nomenclature = queryset.filter(id=identifier).first()
+            if nomenclature:
                 return nomenclature
-            except Nomenclature.DoesNotExist:
-                raise NotFound("Номенклатура не найдена.")
-
-        try:
-            nomenclature = Nomenclature.objects.get(code1c=identifier)
-            return nomenclature
-        except Nomenclature.DoesNotExist:
-            pass
-
-        try:
-            nomenclature = Nomenclature.objects.get(old_catalog_slug=identifier)
-            return nomenclature
-        except Nomenclature.DoesNotExist:
             raise NotFound("Номенклатура не найдена.")
+
+        nomenclature = queryset.filter(code1c=identifier).first()
+        if nomenclature:
+            return nomenclature
+
+        # old_catalog_slug is a legacy value and existing data can contain
+        # duplicates.  A stable ordering prevents a legacy URL from causing 500.
+        nomenclature = (
+            queryset.filter(old_catalog_slug=identifier)
+            .order_by("-created", "id")
+            .first()
+        )
+        if nomenclature:
+            return nomenclature
+
+        raise NotFound("Номенклатура не найдена.")
 
     # =========================================================================
     # ДЕЙСТВИЯ

@@ -1432,24 +1432,33 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         except ValueError:
             is_uuid = False
 
+        # Detail requests on this ViewSet are also used by the authenticated
+        # management API, so retain its existing ability to retrieve records
+        # that are not published on the web.
+        queryset = Nomenclature.objects.all()
+
         if is_uuid:
-            try:
-                nomenclature = Nomenclature.objects.get(id=identifier)
+            nomenclature = queryset.filter(id=identifier).first()
+            if nomenclature:
                 return nomenclature
-            except Nomenclature.DoesNotExist:
-                raise NotFound("Номенклатура не найдена.")
-
-        try:
-            nomenclature = Nomenclature.objects.get(code1c=identifier)
-            return nomenclature
-        except Nomenclature.DoesNotExist:
-            pass
-
-        try:
-            nomenclature = Nomenclature.objects.get(old_catalog_slug=identifier)
-            return nomenclature
-        except Nomenclature.DoesNotExist:
             raise NotFound("Номенклатура не найдена.")
+
+        nomenclature = queryset.filter(code1c=identifier).first()
+        if nomenclature:
+            return nomenclature
+
+        # Legacy catalogue slugs were not constrained as unique, so some old
+        # URLs point to several nomenclatures.  Keep those URLs working by
+        # choosing one deterministically instead of raising MultipleObjectsReturned.
+        nomenclature = (
+            queryset.filter(old_catalog_slug=identifier)
+            .order_by("-created", "id")
+            .first()
+        )
+        if nomenclature:
+            return nomenclature
+
+        raise NotFound("Номенклатура не найдена.")
 
     @extend_schema(
         summary="Деактивировать номенклатуру",
