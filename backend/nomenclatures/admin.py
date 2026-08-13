@@ -244,7 +244,8 @@ class NomenclatureAdmin(admin.ModelAdmin):
             Q(code1c__icontains=search_term) |
             Q(article__icontains=search_term) |
             Q(id_rasb__icontains=search_term) |
-            Q(brand__name__icontains=search_term)
+            Q(brand__name__icontains=search_term) |
+            Q(id__icontains=search_term)
         ).distinct()
 
         return queryset, False
