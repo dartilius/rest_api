@@ -72,7 +72,7 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
                 "pricePerMonth", "contentType", "for_web", "worktime_start",
                 "worktime_end", "possibility", "square", "external_video_media",
                 "external_audio_media", "internal_video_media", "internal_audio_media",
-                "owner__id", "owner__first_name", "owner__last_name", "address__id",
+                "owner__id", "owner__first_name", "owner__last_name",
                 "address__address__id", "address__address__country__name",
                 "address__address__region__name", "address__address__city__name",
                 "address__address__city__locality_type__name",

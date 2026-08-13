@@ -747,6 +747,21 @@ class Nomenclature(APIBaseObjectModel):
         slug = '_'.join(filter(None, parts))
         return slug[:512]
 
+    def make_old_catalog_slug_unique(self, slug):
+        """Возвращает свободный slug, добавляя суффикс ``_2``, ``_3`` и т.д."""
+        max_length = self._meta.get_field("old_catalog_slug").max_length
+        suffix_number = 2
+        candidate = slug[:max_length]
+
+        while type(self).objects.exclude(pk=self.pk).filter(
+            old_catalog_slug=candidate
+        ).exists():
+            suffix = f"_{suffix_number}"
+            candidate = f"{slug[:max_length - len(suffix)]}{suffix}"
+            suffix_number += 1
+
+        return candidate
+
     @property
     def brand_logo(self):
         """Возвращает логотип бренда."""
@@ -794,9 +809,18 @@ class Nomenclature(APIBaseObjectModel):
 
     def save(self, *args, **kwargs):
         """Сохраняет номенклатуру и генерирует old_catalog_slug при необходимости."""
+        if self.old_catalog_slug:
+            self.old_catalog_slug = self.make_old_catalog_slug_unique(
+                self.old_catalog_slug
+            )
+
         super().save(*args, **kwargs)
         if not self.old_catalog_slug:
-            self.old_catalog_slug = self.generate_old_catalog_slug()
+            slug = self.generate_old_catalog_slug()
+            if not slug:
+                return
+
+            self.old_catalog_slug = self.make_old_catalog_slug_unique(slug)
             type(self).objects.filter(pk=self.pk).update(
                 old_catalog_slug=self.old_catalog_slug
             )
