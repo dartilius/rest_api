@@ -7,7 +7,6 @@ ViewSet для веб-интерфейса номенклатур.
 2. Добавлен only() для выборки только необходимых полей
 3. Добавлен prefetch_related для изображений
 4. Исправлена ошибка с Nomenclature.web.DoesNotExist
-5. Кеширование на 5 минут
 """
 
 from drf_spectacular.utils import extend_schema
@@ -17,7 +16,6 @@ from rest_framework import viewsets
 from uuid import UUID
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
-from django.core.cache import cache
 from django.db.models import Prefetch
 
 
@@ -30,12 +28,10 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
     ────────────────────────────────────────────────────────────────────────────
     1. Предзагрузка всех связей через select_related и prefetch_related
     2. only() для выборки только необходимых полей
-    3. Кеширование на 5 минут
     """
 
     serializer_class = NomenclatureWebSerializer
     permission_classes = [AllowAny]
-    CACHE_TIMEOUT = 300
 
     def get_queryset(self):
         """
@@ -45,58 +41,48 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
         - select_related для всех FK связей
         - prefetch_related для M2M связей
         - only() для выборки только необходимых полей
-        - Кеширование на 5 минут
         """
-        cache_key = "nomenclature_web_qs"
-        queryset = cache.get(cache_key)
-
-        if queryset is None:
-            queryset = (
-                Nomenclature.web
-                .select_related(
-                    "owner",  # для исправления N+1 запросов
-                    "address",
-                    "address__country",
-                    "address__region",
-                    "address__city",
-                    "address__city__locality_type",
-                    "address__street",
-                    "address__street__street_type",
-                    "address__house",
-                    "address__building",
-                    "responsible_ad",
-                )
-                .prefetch_related(
-                    Prefetch(
-                        "images",
-                        queryset=NomenclatureImage.objects.order_by("-created")[:5],
-                        to_attr="prefetched_images"
-                    )
-                )
-                .only(
-                    "id", "name", "code1c", "description",
-                    "pricePerMonth", "contentType", "for_web",
-                    "worktime_start", "worktime_end",
-                    "possibility", "square",
-                    "external_video_media", "external_audio_media",
-                    "internal_video_media", "internal_audio_media",
-                    "owner__id", "owner__first_name", "owner__last_name",
-                    "address__id",
-                    "address__country__name",
-                    "address__region__name",
-                    "address__city__name",
-                    "address__city__locality_type__name",
-                    "address__street__name",
-                    "address__street__street_type__name",
-                    "address__house__number",
-                    "address__building__number",
-                    "responsible_ad__id", "responsible_ad__first_name",
-                    "responsible_ad__last_name",
+        # Do not cache a QuerySet: Redis pickles it, which evaluates the whole
+        # catalogue before the detail lookup is applied. Cache the response data
+        # instead if needed.
+        return (
+            Nomenclature.web
+            .select_related(
+                "owner",
+                "address",
+                "address__address__country",
+                "address__address__region",
+                "address__address__city",
+                "address__address__city__locality_type",
+                "address__address__street",
+                "address__address__street__street_type",
+                "address__address__house",
+                "address__address__building",
+                "responsible_ad",
+            )
+            .prefetch_related(
+                Prefetch(
+                    "images",
+                    queryset=NomenclatureImage.objects.order_by("-created")[:5],
+                    to_attr="prefetched_images",
                 )
             )
-            cache.set(cache_key, queryset, self.CACHE_TIMEOUT)
-
-        return queryset
+            .only(
+                "id", "name", "code1c", "description", "old_catalog_slug",
+                "pricePerMonth", "contentType", "for_web", "worktime_start",
+                "worktime_end", "possibility", "square", "external_video_media",
+                "external_audio_media", "internal_video_media", "internal_audio_media",
+                "owner__id", "owner__first_name", "owner__last_name", "address__id",
+                "address__address__id", "address__address__country__name",
+                "address__address__region__name", "address__address__city__name",
+                "address__address__city__locality_type__name",
+                "address__address__street__name",
+                "address__address__street__street_type__name",
+                "address__address__house__number", "address__address__building__number",
+                "responsible_ad__id", "responsible_ad__first_name",
+                "responsible_ad__last_name",
+            )
+        )
 
     def get_object(self):
         """
@@ -147,15 +133,6 @@ class NomenclatureWebViewSet(viewsets.ModelViewSet):
             return nomenclature
 
         raise NotFound("Номенклатура не найдена.")
-
-    # =========================================================================
-    # ДЕЙСТВИЯ
-    # =========================================================================
-
-    def clear_cache(self, request):
-        """Очищает кеш номенклатур для веб-интерфейса."""
-        cache.delete("nomenclature_web_qs")
-        return {"detail": "Кэш очищен"}
 
 # from drf_spectacular.utils import extend_schema
 # from nomenclatures.models import Nomenclature
