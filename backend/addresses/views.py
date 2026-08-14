@@ -41,7 +41,10 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 from django.db.models import Count, Q
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from nomenclatures.models import Nomenclature
 from .models import (
     Country, FederalDistrict, TypeRegion, Timezone, Region,
@@ -357,9 +360,7 @@ class LocalityTypeViewSet(viewsets.ModelViewSet):
 )
 class CityViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ ГОРОДАМИ."""
-    queryset = City.objects.all().select_related(
-        'region', 'locality_type', 'timezone'
-    ).order_by('region__name', 'name')
+    queryset = City.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = CitySerializer
     pagination_class = OptionalPagination
@@ -386,7 +387,6 @@ class CityViewSet(viewsets.ModelViewSet):
 
         return (
             City.objects.all()
-            .select_related('region', 'locality_type', 'timezone')
             .annotate(
                 nomenclature_count=Count(
                     'address__nomenclatureaddress__nomenclature',
@@ -397,6 +397,7 @@ class CityViewSet(viewsets.ModelViewSet):
             .filter(nomenclature_count__gt=0)
         )
 
+    @method_decorator(cache_page(settings.CACHE_TTL))
     @city_list_schema()
     def list(self, request, *args, **kwargs):
         """Список городов с количеством номенклатур."""
