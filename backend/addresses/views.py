@@ -405,6 +405,24 @@ class CityViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        tags=["Города"],
+        description="Десять городов с наибольшим количеством активных номенклатур для веба.",
+        responses=CitySerializer(many=True),
+    )
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='popular',
+        url_name='popular',
+    )
+    @method_decorator(cache_page(settings.CACHE_TTL))
+    def cities_popular(self, request):
+        """Десять городов с наибольшим количеством номенклатур."""
+        queryset = self.get_queryset().order_by('-nomenclature_count', 'name')[:10]
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
     @action(detail=False, methods=['get'], url_path=r'(?P<slug>[^/.]+)')
     def get_city_name_by_slug(self, request, slug=None):
         """Получить название города по slug."""
