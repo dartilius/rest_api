@@ -572,7 +572,7 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         """
         base_qs = super().get_queryset()
 
-        # Для поиска - используем only() (здесь нет availability)
+        # Для поиска предзагружаем адрес и координаты для карточек и карты.
         if self.action == "list" and self.request.query_params.get('search'):
             return (
                 base_qs
@@ -581,6 +581,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     'typeOfPlace',
                     'legalEntity',
                     'responsible_ad',
+                    'address',
+                    'address__address',
+                    'address__address__city',
+                    'address__address__street',
+                    'address__address__house',
+                    'address__address__building',
+                    'address__address__coordinates',
                 )
                 .prefetch_related(
                     "images",
@@ -591,13 +598,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                             'middle_name', 'additional_name', 'keyword'
                         ).prefetch_related('brands')
                     )
-                )
-                .only(
-                    'id', 'name', 'code1c',
-                    'brand__name', 'brand__id',
-                    'typeOfPlace__name', 'typeOfPlace__id',
-                    'legalEntity__first_name', 'legalEntity__last_name',
-                    'responsible_ad__first_name', 'responsible_ad__last_name',
                 )
             )
 
@@ -624,6 +624,13 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                 "responsible_technic",
                 "responsible_technic_on_address",
                 "responsible_placement_marketing",
+                "address",
+                "address__address",
+                "address__address__city",
+                "address__address__street",
+                "address__address__house",
+                "address__address__building",
+                "address__address__coordinates",
             )
             .prefetch_related(
                 "images",

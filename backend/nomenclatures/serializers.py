@@ -635,14 +635,19 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
         return InNomenclaturePhotoSerializer([image], many=True).data
 
     def get_formattedAddress(self, obj):
-        """Возвращает отформатированный адрес."""
+        """Возвращает адрес в формате, который использует карта каталога."""
+        empty_address = {
+            "name": "",
+            "coordinates": {"latitude": None, "longitude": None},
+        }
+
         try:
             nomenclature_address = obj.address
         except ObjectDoesNotExist:
-            return ""
+            return empty_address
 
         if not nomenclature_address or not nomenclature_address.address:
-            return ""
+            return empty_address
 
         address = nomenclature_address.address
         address_parts = []
@@ -660,7 +665,22 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
         if house_number:
             address_parts.append(house_number)
 
-        return ', '.join(address_parts)
+        coordinates = address.coordinates
+        return {
+            "name": ', '.join(address_parts),
+            "coordinates": {
+                "latitude": (
+                    str(coordinates.latitude)
+                    if coordinates and coordinates.latitude
+                    else None
+                ),
+                "longitude": (
+                    str(coordinates.longitude)
+                    if coordinates and coordinates.longitude
+                    else None
+                ),
+            },
+        }
 
 
 class NomenclatureShortSerializer(serializers.ModelSerializer):
