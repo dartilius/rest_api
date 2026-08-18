@@ -136,21 +136,31 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 )
 
         def _validate_daily_times(start: tuple, end: tuple) -> dict:
-            """Валидация интервала времени ежедневного вещания."""
+            """
+            Проверяет ежедневный интервал и сохраняет время строками HH:MM:SS.
+
+            Кортежи используются только для проверки через datetime.time,
+            но в JSONField записываются уже строки.
+            """
             try:
                 start_time = time(*start)
                 end_time = time(*end)
-            except ValueError as e:
+            except (TypeError, ValueError) as e:
                 _translate_error(e)
+
             if not time(0, 0, 0) <= start_time < end_time <= time(23, 59, 59):
                 raise serializers.ValidationError(
                     'Неправильно задан интервал времени ежедневного вещания'
                 )
-            validated_times = dict()
+
+            validated_times = {}
+
             if start != (0, 0, 1):
-                validated_times.update({'start_time': start})
+                validated_times['start_time'] = start_time.strftime('%H:%M:%S')
+
             if end != (23, 59, 58):
-                validated_times.update({'end_time': end})
+                validated_times['end_time'] = end_time.strftime('%H:%M:%S')
+
             return validated_times
 
         def _validate_times_in_hour(count: int) -> dict:
@@ -170,17 +180,23 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 )
             return {'weight': weight}
 
-        def _validate_timedelta(timedelta: tuple) -> dict:
-            """Валидация промежутка времени."""
+        def _validate_timedelta(timedelta_value: tuple) -> dict:
+            """
+            Проверяет смещение и сохраняет его строкой HH:MM:SS.
+            """
             try:
-                timedelta_time = time(*timedelta)
-            except ValueError as e:
+                timedelta_time = time(*timedelta_value)
+            except (TypeError, ValueError) as e:
                 _translate_error(e)
-            if not time(0, 0, 59) < timedelta_time:
+
+            if timedelta_time < time(0, 1, 0):
                 raise serializers.ValidationError(
                     'Смещение по времени не может быть меньше 1 минуты'
                 )
-            return {'timedelta': timedelta}
+
+            return {
+                'timedelta': timedelta_time.strftime('%H:%M:%S')
+            }
 
         def _validate_trigger(event: str, active_ad: str) -> dict:
             """Валидация триггеров рекламы."""
