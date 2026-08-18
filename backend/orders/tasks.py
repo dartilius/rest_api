@@ -1,14 +1,91 @@
 # orders/tasks.py
 
-from datetime import datetime as dt
+from datetime import datetime as dt, time
 
 from celery import shared_task
 from celery_singleton import Singleton
+from django.utils import timezone
 
 from api.constants import get_bg_task_type
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 
+
+def _format_clock(value):
+    """
+    Приводит время к строке HH:MM:SS.
+
+    Поддерживает:
+    - "16:00:00"
+    - [16, 0, 0]
+    - (16, 0, 0)
+    - datetime.time(16, 0)
+    """
+    if value is None:
+        return None
+
+    try:
+        if isinstance(value, time):
+            parsed = value
+
+        elif isinstance(value, (list, tuple)):
+            parts = [int(part) for part in value]
+
+            if len(parts) == 2:
+                parts.append(0)
+
+            if len(parts) != 3:
+                raise ValueError(f'Неверное количество частей времени: {value}')
+
+            parsed = time(*parts)
+
+        elif isinstance(value, str):
+            parsed = time.fromisoformat(value.strip())
+
+        else:
+            raise ValueError(
+                f'Неподдерживаемый тип времени: {type(value).__name__}'
+            )
+
+        return parsed.replace(microsecond=0).strftime('%H:%M:%S')
+
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f'Некорректное значение времени: {value!r}') from exc
+
+
+def _normalize_order_parameters(parameters):
+    """
+    Нормализует временные параметры рекламного заказа.
+
+    Также исправляет старые заказы, в которых время уже сохранено
+    массивами [16, 0, 0].
+    """
+    normalized = dict(parameters or {})
+
+    for field_name in ('start_time', 'end_time', 'timedelta'):
+        if field_name in normalized:
+            normalized[field_name] = _format_clock(
+                normalized[field_name]
+            )
+
+    return normalized
+
+
+def _format_local_datetime(value):
+    """
+    Форматирует дату и время для клиентского ПО.
+
+    Результат: YYYY-MM-DD HH:MM:SS.
+    Если datetime содержит timezone, он переводится в локальную
+    временную зону Django.
+    """
+    if value is None:
+        return None
+
+    if timezone.is_aware(value):
+        value = timezone.localtime(value)
+
+    return value.strftime('%Y-%m-%d %H:%M:%S')
 
 @shared_task(base=Singleton)
 def update_order_status():
@@ -79,52 +156,78 @@ def update_order_status():
 @shared_task
 def create_ad_order_task(orders_ids: list):
     """
-    Создание репликаций для рекламных заказов.
+    Создаёт задания типа 4 для передачи рекламных заказов
+    в клиентское ПО.
 
-    Для каждого заказа создаётся репликация типа AD (4) с полной
-    информацией о заказе: параметры, временной интервал, плейлист.
-
-    Время передаётся в локальном формате без часового пояса
-    через f-string (как работало в старой версии).
-
-    Аргументы:
-        orders_ids (list): Список UUID заказов
-
-    Returns:
-        str: Сообщение с количеством созданных репликаций
+    Форматы передаваемых значений:
+    - start_time/end_time: HH:MM:SS
+    - broadcast_start/broadcast_end: YYYY-MM-DD HH:MM:SS
+    - times_in_hour/weight: числа
     """
+    AD_TASK_TYPE = 4
     task_list = []
-    AD = 4
-    orders = AdOrder.active.filter(pk__in=orders_ids)
+
+    orders = (
+        AdOrder.active
+        .filter(pk__in=orders_ids)
+        .select_related('owner', 'client', 'playlist')
+        .prefetch_related('playlist__files')
+    )
 
     for order in orders:
+        broadcast_start = None
+        broadcast_end = None
+
+        if order.broadcast_interval:
+            broadcast_start = _format_local_datetime(
+                order.broadcast_interval.lower
+            )
+            broadcast_end = _format_local_datetime(
+                order.broadcast_interval.upper
+            )
+
+        order_parameters = _normalize_order_parameters(
+            order.parameters
+        )
+
+        playlist_files = [
+            {
+                'id': str(file.id),
+                'hash': file.hash,
+            }
+            for file in order.playlist.files.all()
+        ]
+
+        task_parameters = {
+            'order_id': str(order.id),
+
+            'order_parameters': order_parameters,
+
+            'broadcast_type': order.broadcast_type,
+
+            'broadcast_start': broadcast_start,
+            'broadcast_end': broadcast_end,
+
+            'playlist': {
+                'id': str(order.playlist.id),
+                'files': playlist_files,
+                'slides': order.slides if order.slides else None,
+            },
+        }
+
         task_list.append(
             Task(
                 owner=order.owner,
                 client=order.client,
-                type=AD,
-                parameters={
-                    'order_id': str(order.id),
-                    'order_parameters': order.parameters,
-                    'broadcast_type': order.broadcast_type,
-                    'broadcast_start': f'{order.broadcast_interval.lower}' if order.broadcast_interval.lower else None,
-                    'broadcast_end': f'{order.broadcast_interval.upper}' if order.broadcast_interval.upper else None,
-                    'playlist': {
-                        'id': str(order.playlist.id),
-                        'files': [
-                            {
-                                'id': str(file.id),
-                                'hash': file.hash
-                            } for file in order.playlist.files.all()
-                        ],
-                        'slides': order.slides if order.slides else None
-                    }
-                }
+                type=AD_TASK_TYPE,
+                parameters=task_parameters,
             )
         )
 
-    Task.objects.bulk_create(task_list)
-    return f'Создано заказов: {len(task_list)}.'
+    if task_list:
+        Task.objects.bulk_create(task_list)
+
+    return f'Создано рекламных заданий: {len(task_list)}.'
 
 
 @shared_task
@@ -266,8 +369,12 @@ def create_bg_order_task(orders_ids: list):
                     'order_id': str(order.id),
                     'order_type': order.order_type,
                     'is_permanent': order.is_permanent,
-                    'broadcast_start': f'{order.broadcast_interval.lower}' if order.broadcast_interval.lower else None,
-                    'broadcast_end': f'{order.broadcast_interval.upper}' if order.broadcast_interval.upper else None,
+                    'broadcast_start': _format_local_datetime(
+                        order.broadcast_interval.lower
+                    ),
+                    'broadcast_end': _format_local_datetime(
+                        order.broadcast_interval.upper
+                    ),
                     'playlist': {
                         'id': str(order.playlist.id),
                         'files': [
