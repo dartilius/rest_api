@@ -633,7 +633,11 @@ class NomenclatureWebSearchRequestSerializer(serializers.Serializer):
     version = serializers.CharField(required=False, allow_blank=True, max_length=127)
     timezone = serializers.CharField(required=False, allow_blank=True, max_length=31)
     status = serializers.ChoiceField(
-        choices=("0", "1", "2", "null"), required=False
+        choices=("0", "1", "2", "3", "null"), required=False
+    )
+    counterparty_id = serializers.UUIDField(required=False)
+    counterparty_ids = serializers.ListField(
+        child=serializers.UUIDField(), required=False, max_length=100
     )
     brand_id = serializers.UUIDField(required=False)
     brand_ids = serializers.ListField(

@@ -86,8 +86,16 @@ class NomenclatureWebViewSet(viewsets.ReadOnlyModelViewSet):
         if status := filters.get("status"):
             if status == "null":
                 queryset = queryset.filter(availability__status__isnull=True)
-            else:
+            elif status != "3":
                 queryset = queryset.filter(availability__status=status)
+        counterparty_ids = filters.get("counterparty_ids", [])
+        if counterparty_id := filters.get("counterparty_id"):
+            counterparty_ids.append(counterparty_id)
+        if counterparty_ids:
+            queryset = queryset.filter(
+                Q(legalEntity_id__in=counterparty_ids)
+                | Q(tenants__id__in=counterparty_ids)
+            )
         brand_ids = filters.get("brand_ids", [])
         if brand_id := filters.get("brand_id"):
             brand_ids.append(brand_id)
@@ -105,7 +113,12 @@ class NomenclatureWebViewSet(viewsets.ReadOnlyModelViewSet):
         if brand_name := filters.get("brand_name"):
             queryset = queryset.filter(brand__name__icontains=brand_name)
         if type_of_place := filters.get("type_of_place"):
-            queryset = queryset.filter(typeOfPlace__name__icontains=type_of_place)
+            type_names = [
+                value.strip()
+                for value in type_of_place.split(",")
+                if value.strip()
+            ]
+            queryset = queryset.filter(typeOfPlace__name__in=type_names)
         if content_types := filters.get("content_types"):
             queryset = queryset.filter(contentType__in=content_types)
         price_from = filters.get("price_from")
