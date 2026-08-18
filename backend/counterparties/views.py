@@ -15,7 +15,10 @@ from rest_framework import viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
 
 from brands.models import Brand
 from nomenclatures.models import Nomenclature
@@ -151,6 +154,38 @@ class CounterpartiesViewSet(viewsets.ModelViewSet):
             return CounterpartiesListSerializer
         else:
             return CounterpartiesSerializer
+
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='filter-options',
+        permission_classes=[IsAuthenticated],
+    )
+    def filter_options(self, request, *args, **kwargs):
+        """Опции фильтра контрагентов доступны только сотрудникам."""
+        if request.user.role not in {'manager', 'admin', 'superuser'}:
+            raise PermissionDenied('Фильтр по контрагентам доступен только сотрудникам.')
+
+        queryset = self.get_queryset()
+        search = request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(keyword__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(middle_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(inn__icontains=search)
+                | Q(code1c__icontains=search)
+            )
+
+        page = self.paginate_queryset(queryset)
+        serializer = CounterpartiesListSerializer(
+            page if page is not None else queryset,
+            many=True,
+        )
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

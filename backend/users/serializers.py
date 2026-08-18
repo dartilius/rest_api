@@ -222,6 +222,25 @@ class CustomUserShortSerializer(serializers.ModelSerializer):
             repr_.pop(field, None)
 
         return repr_
+
+
+class CurrentUserSerializer(serializers.ModelSerializer):
+    """Профиль текущего авторизованного пользователя."""
+
+    class Meta:
+        model = CustomUser
+        fields = (
+            'id',
+            'email',
+            'phone_number',
+            'first_name',
+            'last_name',
+            'middle_name',
+            'role',
+        )
+        read_only_fields = ('id', 'role')
+
+
 class RegisterUserSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     first_name = serializers.CharField(required=True)

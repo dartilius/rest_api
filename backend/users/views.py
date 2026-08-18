@@ -6,7 +6,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
@@ -18,7 +18,7 @@ from api.constants import DEFAULT_SCHEMA_RESPONSES, DEFAULT_SCHEMA_EXAMPLES
 from users.filters import CustomUserFilter
 from users.models import CustomUser
 from users.permissions import SuperuserCUDAuthRetrieve
-from users.serializers import CustomUserSerializer, RegisterUserSerializer, \
+from users.serializers import CurrentUserSerializer, CustomUserSerializer, RegisterUserSerializer, \
     CustomUserShortSerializer, PasswordResetByEmailSerializer, GetPasswordSerializer
 
 
@@ -143,6 +143,26 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return CustomUserShortSerializer
         return CustomUserSerializer
+
+    @action(
+        methods=['get', 'patch'],
+        detail=False,
+        url_path='me',
+        permission_classes=[IsAuthenticated],
+    )
+    def me(self, request, *args, **kwargs):
+        """Возвращает и обновляет только профиль текущего пользователя."""
+        if request.method == 'GET':
+            return Response(CurrentUserSerializer(request.user).data)
+
+        serializer = CurrentUserSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     @extend_schema(
         summary="Регистрация нового пользователя",

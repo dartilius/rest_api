@@ -25,7 +25,7 @@ from nomenclatures.serializers import (
 )
 from rest_framework import viewsets
 from uuid import UUID
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny
 
 
@@ -42,6 +42,24 @@ class NomenclatureWebViewSet(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = NomenclatureWebSerializer
     permission_classes = [AllowAny]
+
+    @staticmethod
+    def validate_counterparty_filter_access(request, filters):
+        """Ограничивает фильтр по контрагентам сотрудниками компании."""
+        has_counterparty_filter = bool(
+            filters.get('counterparty_id') or filters.get('counterparty_ids')
+        )
+        if not has_counterparty_filter:
+            return
+
+        if getattr(request.user, 'role', None) not in {
+            'manager',
+            'admin',
+            'superuser',
+        }:
+            raise PermissionDenied(
+                'Фильтр по контрагентам доступен только сотрудникам.'
+            )
 
     def get_catalog_queryset(self, *, for_map=False):
         """Базовый запрос публичного каталога без N+1 запросов."""
@@ -182,6 +200,7 @@ class NomenclatureWebViewSet(viewsets.ReadOnlyModelViewSet):
         request_serializer = NomenclatureWebSearchRequestSerializer(data=request.data)
         request_serializer.is_valid(raise_exception=True)
         filters = request_serializer.validated_data
+        self.validate_counterparty_filter_access(request, filters)
 
         queryset = self.order_search_queryset(
             self.apply_search_filters(self.get_catalog_queryset(), filters), filters
@@ -221,6 +240,7 @@ class NomenclatureWebViewSet(viewsets.ReadOnlyModelViewSet):
         request_serializer = NomenclatureWebSearchRequestSerializer(data=request.data)
         request_serializer.is_valid(raise_exception=True)
         filters = request_serializer.validated_data
+        self.validate_counterparty_filter_access(request, filters)
         queryset = self.order_search_queryset(
             self.apply_search_filters(
                 self.get_catalog_queryset(for_map=True), filters
