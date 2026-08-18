@@ -551,6 +551,163 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
         return repr_
 
 
+class NomenclatureWebMapBrandSerializer(serializers.ModelSerializer):
+    """Бренд в выдаче точек публичной карты."""
+
+    logotype = Base64FileField(required=False)
+
+    class Meta:
+        model = Brand
+        fields = ("name", "logotype")
+        read_only_fields = fields
+
+
+class NomenclatureWebMapFacadeSerializer(serializers.ModelSerializer):
+    """Первое фото фасада в выдаче точек публичной карты."""
+
+    class Meta:
+        model = NomenclatureImage
+        fields = ("id", "source")
+        read_only_fields = fields
+
+
+class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
+    """Компактная номенклатура для отображения на карте."""
+
+    brand = NomenclatureWebMapBrandSerializer(read_only=True)
+    type_of_place = serializers.CharField(
+        source="typeOfPlace.abbreviation",
+        read_only=True,
+        allow_null=True,
+    )
+    coordinates = serializers.SerializerMethodField()
+    facade = serializers.SerializerMethodField()
+    old_slug = serializers.CharField(source="old_catalog_slug", read_only=True)
+
+    class Meta:
+        model = Nomenclature
+        fields = (
+            "id",
+            "name",
+            "coordinates",
+            "type_of_place",
+            "brand",
+            "facade",
+            "old_slug",
+        )
+        read_only_fields = fields
+
+    def get_coordinates(self, obj):
+        try:
+            address = obj.address.address
+            coordinates = address.coordinates if address else None
+        except ObjectDoesNotExist:
+            coordinates = None
+
+        if not coordinates:
+            return None
+
+        return {
+            "latitude": str(coordinates.latitude) if coordinates.latitude else None,
+            "longitude": str(coordinates.longitude) if coordinates.longitude else None,
+        }
+
+    def get_facade(self, obj):
+        facades = getattr(obj, "prefetched_facades", None)
+        image = facades[0] if facades else None
+        if image is None and facades is None:
+            image = obj.images.filter(type="exterior").first()
+        return NomenclatureWebMapFacadeSerializer(image).data if image else None
+
+
+class NomenclatureWebSearchRequestSerializer(serializers.Serializer):
+    """Фильтры и пагинация read-only поиска публичного каталога."""
+
+    search = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    id = serializers.UUIDField(required=False)
+    code1c = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    versions = serializers.ListField(
+        child=serializers.CharField(max_length=127), required=False, max_length=100
+    )
+    version = serializers.CharField(required=False, allow_blank=True, max_length=127)
+    timezone = serializers.CharField(required=False, allow_blank=True, max_length=31)
+    status = serializers.ChoiceField(
+        choices=("0", "1", "2", "null"), required=False
+    )
+    brand_id = serializers.UUIDField(required=False)
+    brand_ids = serializers.ListField(
+        child=serializers.UUIDField(), required=False, max_length=100
+    )
+    type_of_place_ids = serializers.ListField(
+        child=serializers.UUIDField(), required=False, max_length=100
+    )
+    city_slugs = serializers.ListField(
+        child=serializers.SlugField(max_length=255), required=False, max_length=100
+    )
+    city_slug = serializers.SlugField(required=False, max_length=255)
+    legal_entity_name = serializers.CharField(
+        required=False, allow_blank=True, max_length=255
+    )
+    brand_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    type_of_place = serializers.CharField(
+        required=False, allow_blank=True, max_length=255
+    )
+    content_types = serializers.ListField(
+        child=serializers.ChoiceField(choices=list(AVAILABLE_CONTENT_TYPES)),
+        required=False,
+        max_length=len(AVAILABLE_CONTENT_TYPES),
+    )
+    price_from = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False, min_value=0
+    )
+    price_to = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False, min_value=0
+    )
+    has_facade = serializers.BooleanField(required=False)
+    ordering = serializers.ChoiceField(
+        choices=(
+            "default",
+            "name",
+            "-name",
+            "price_per_month",
+            "-price_per_month",
+            "pricePerMonth",
+            "-pricePerMonth",
+            "version",
+            "-version",
+            "timezone",
+            "-timezone",
+            "brand_name",
+            "-brand_name",
+            "legal_entity_name",
+            "-legal_entity_name",
+            "type_place",
+            "-type_place",
+            "created",
+            "-created",
+        ),
+        required=False,
+        default="default",
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    limit = serializers.IntegerField(required=False, min_value=1, max_value=100, default=24)
+
+    def validate(self, attrs):
+        search = attrs.get("search", "").strip()
+        if search and len(search) < 3:
+            raise serializers.ValidationError(
+                {"search": "Поисковый запрос должен содержать не менее 3 символов."}
+            )
+        price_from = attrs.get("price_from")
+        price_to = attrs.get("price_to")
+        if price_from is not None and price_to is not None and price_from > price_to:
+            raise serializers.ValidationError(
+                {"price_to": "Должна быть больше или равна price_from."}
+            )
+        return attrs
+
+
 class NomenclatureListSerializer(serializers.ModelSerializer):
     """Сериализатор для списка номенклатур."""
 
@@ -629,7 +786,11 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
 
     def get_exterior(self, obj):
         """Возвращает первое фото экстерьера."""
-        image = obj.images.filter(type="exterior").first()
+        prefetched_exterior = getattr(obj, "prefetched_exterior", None)
+        if prefetched_exterior is None:
+            image = obj.images.filter(type="exterior").first()
+        else:
+            image = prefetched_exterior[0] if prefetched_exterior else None
         if not image:
             return []
         return InNomenclaturePhotoSerializer([image], many=True).data
@@ -681,6 +842,24 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
                 ),
             },
         }
+
+
+class NomenclatureWebSearchResponseSerializer(serializers.Serializer):
+    """Страница результатов публичного поиска."""
+
+    count = serializers.IntegerField(read_only=True)
+    page = serializers.IntegerField(read_only=True)
+    limit = serializers.IntegerField(read_only=True)
+    next_page = serializers.IntegerField(read_only=True, allow_null=True)
+    previous_page = serializers.IntegerField(read_only=True, allow_null=True)
+    results = NomenclatureCardSerializer(many=True, read_only=True)
+
+
+class NomenclatureWebMapResponseSerializer(serializers.Serializer):
+    """Полный набор точек карты для заданных фильтров."""
+
+    count = serializers.IntegerField(read_only=True)
+    results = NomenclatureWebMapPlaceSerializer(many=True, read_only=True)
 
 
 class NomenclatureShortSerializer(serializers.ModelSerializer):

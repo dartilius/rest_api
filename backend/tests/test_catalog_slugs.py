@@ -49,14 +49,14 @@ def test_save_adds_suffix_to_duplicate_legacy_slug(nomenclature, user):
 
 
 @pytest.mark.django_db
-def test_web_detail_allows_nomenclature_address_primary_key(anon_client, nomenclature):
+def test_web_detail_allows_nomenclature_primary_key(anon_client, nomenclature):
     slug = "web-legacy-slug"
     Nomenclature.objects.filter(pk=nomenclature.pk).update(
         old_catalog_slug=slug,
         for_web=True,
     )
 
-    response = anon_client.get(f"/api/nomenclatures/web/{slug}/")
+    response = anon_client.get(f"/api/nomenclatures/web/{nomenclature.id}/")
 
     assert response.status_code == 200
     assert response.json()["id"] == str(nomenclature.id)
