@@ -28,6 +28,7 @@ from nomenclatures.models import (
     StatusHistory,
     STATUSES,
     NomenclatureImage,
+    NomenclatureVideo,
     NomenclatureAddress,
     TypeOfPlace,
     NomenclatureTenant,
@@ -519,6 +520,11 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
     @admin.display(description="Хэш")
     def hash_short(self, obj):
         return f"{obj.hash[:8]}..." if obj.hash else "-"
+
+
+@admin.register(NomenclatureVideo)
+class NomenclatureVideoAdmin(NomenclatureImageAdmin):
+    """Административный интерфейс для видеозаписей номенклатур."""
 
 
 @admin.register(NomenclatureAddress)

@@ -988,7 +988,7 @@ class StatusHistory(models.Model):
 
 
 def media_path(instance, filename):
-    """Генерирует путь для сохранения изображения."""
+    """Генерирует путь для сохранения медиафайла номенклатуры."""
     return f"{TYPES[instance.type]}/{filename}"
 
 
@@ -1057,6 +1057,66 @@ class NomenclatureImage(models.Model):
         ordering = ("-created",)
         verbose_name = "Фотография номенклатуры"
         verbose_name_plural = "Фотографии номенклатур"
+
+    def __str__(self):
+        return f"{self.nomenclature} - {self.type}"
+
+
+class NomenclatureVideo(models.Model):
+    """Видеозаписи интерьера и экстерьера номенклатур."""
+
+    class VideoType(models.TextChoices):
+        INTERIOR = "interior", _("Интерьер")
+        EXTERIOR = "exterior", _("Экстерьер")
+        SIGNAGE = "signage", _("Вывеска")
+        INSTALLATION = "installation", _("Установка")
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid4,
+        editable=False,
+        verbose_name="ИД"
+    )
+
+    source = models.FileField(
+        verbose_name="Файл",
+        upload_to=media_path,
+        storage=MinioBackend(bucket_name="local-media"),
+    )
+
+    type = models.CharField(
+        max_length=31,
+        choices=VideoType.choices,
+        verbose_name="Тип видеозаписи"
+    )
+
+    created = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Дата создания"
+    )
+
+    nomenclature = models.ForeignKey(
+        "Nomenclature",
+        related_name="videos",
+        on_delete=models.CASCADE,
+        verbose_name="Номенклатура",
+    )
+
+    hash = models.CharField(max_length=64, editable=False, db_index=True)
+
+    def save(self, *args, **kwargs):
+        """Сохраняет видеозапись и вычисляет MD5-хэш файла."""
+        if self.source:
+            file_data = self.source.read()
+            self.hash = hashlib.md5(file_data).hexdigest()
+            self.source.seek(0)
+        super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = "nomenclature_videos"
+        ordering = ("-created",)
+        verbose_name = "Видео номенклатуры"
+        verbose_name_plural = "Видео номенклатур"
 
     def __str__(self):
         return f"{self.nomenclature} - {self.type}"

@@ -3,7 +3,7 @@ from rest_framework.routers import SimpleRouter
 from rest_framework_nested import routers
 from nomenclatures.views import (
     NomenclatureViewSet, NomenclatureOrderViewSet, NomenclatureStatisticViewSet,
-    NomenclatureTaskViewSet, NomenclaturePhotoViewSet, TypeOfPlaceViewSet, NomenclatureTenantViewSet,
+    NomenclatureTaskViewSet, NomenclaturePhotoViewSet, NomenclatureVideoViewSet, TypeOfPlaceViewSet, NomenclatureTenantViewSet,
     NomenclatureWebViewSet
 )
 from nomenclatures.views.discount import DiscountRuleViewSet  # добавить
@@ -14,6 +14,7 @@ router.register('orders', NomenclatureOrderViewSet, basename='order')
 router.register('statistics', NomenclatureStatisticViewSet, basename='statistic')
 router.register('tasks', NomenclatureTaskViewSet, basename='task')
 router.register('photos', NomenclaturePhotoViewSet, basename='photo')
+router.register('videos', NomenclatureVideoViewSet, basename='video')
 router.register('place', TypeOfPlaceViewSet, basename='place')
 web_router = SimpleRouter()
 web_router.register('', NomenclatureWebViewSet, basename='web')

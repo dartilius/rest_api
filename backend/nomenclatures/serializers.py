@@ -62,6 +62,7 @@ from nomenclatures.models import (
     StatusHistory,
     TIMEZONES,
     NomenclatureImage,
+    NomenclatureVideo,
     NomenclatureAddress,
     AVAILABLE_CONTENT_TYPES,
     TypeOfPlace,
@@ -75,6 +76,7 @@ serializers.ModelSerializer.serializer_field_mapping[Article] = serializers.Inte
 
 # Разрешенные форматы для загрузки изображений
 ALLOWED_FORMATS = ("jpg", "jpeg", "png", "webp")
+ALLOWED_VIDEO_FORMATS = ("mp4", "webm", "mov")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -201,6 +203,49 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
         model = NomenclatureImage
         fields = ("source", "id")
         read_only_fields = ("source", "id")
+
+
+class VideoSerializer(serializers.ModelSerializer):
+    """Сериализатор для видеозаписей номенклатуры."""
+
+    source = Base64FileField()
+
+    class Meta:
+        model = NomenclatureVideo
+        fields = ("id", "source", "type", "created")
+        read_only_fields = ("id", "created")
+
+    def validate_source(self, file):
+        ext = file.name.rsplit(".", 1)[-1].lower()
+        if ext not in ALLOWED_VIDEO_FORMATS:
+            raise serializers.ValidationError(
+                f"Недопустимый формат файла. Разрешены: {', '.join(ALLOWED_VIDEO_FORMATS)}"
+            )
+        if file.size > 250 * 1024 * 1024:
+            raise serializers.ValidationError("Максимальный размер файла 250MB")
+        return file
+
+    def validate(self, attrs):
+        nomenclature = self.context.get("nomenclature")
+        if not nomenclature:
+            raise serializers.ValidationError("Номенклатура не передана")
+
+        file_data = attrs["source"].read()
+        file_hash = hashlib.md5(file_data).hexdigest()
+        attrs["source"].seek(0)
+
+        if NomenclatureVideo.objects.filter(
+            nomenclature=nomenclature,
+            hash=file_hash
+        ).exists():
+            raise serializers.ValidationError(
+                "Это видео уже прикреплено к номенклатуре"
+            )
+        return attrs
+
+    def create(self, validated_data):
+        validated_data["nomenclature"] = self.context["nomenclature"]
+        return super().create(validated_data)
 
 
 class TypeOfPlaceWebSerializer(serializers.ModelSerializer):
