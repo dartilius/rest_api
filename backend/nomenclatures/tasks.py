@@ -222,6 +222,7 @@ def update_task(nomenclature_id: str, owner_id: str):
     
     from datetime import timedelta
     from api.constants import get_minio_client
+    import re
     
     try:
         client = get_minio_client()
@@ -262,6 +263,26 @@ def update_task(nomenclature_id: str, owner_id: str):
             expires=timedelta(hours=24)
         )
 
+        # Получение SHA-256 из метаданных
+        object_name = f"RMCContentPlayer-{latest_version}.exe"
+        
+        object_info = client.stat_object("builds", object_name)
+        metadata = {
+            str(key).lower(): value
+            for key, value in object_info.metadata.items()
+        }
+
+        sha256 = (
+            metadata.get("x-amz-meta-sha256")
+            or metadata.get("sha256")
+            or ""
+        ).strip().lower()
+
+        if not re.fullmatch(r"[0-9a-f]{64}", sha256):
+            raise ValueError(
+                f"Для обновления {object_name} отсутствует корректный SHA-256"
+            )
+
         Task.objects.create(
             owner=owner,
             client=nomenclature,
@@ -269,7 +290,8 @@ def update_task(nomenclature_id: str, owner_id: str):
             parameters={
                 'responsible': owner.full_name,
                 'url': version_url,
-                'version': latest_version
+                'version': latest_version,
+                'sha256': sha256,
             }
         )
         return f'Обновление отправлено на {nomenclature.name}'
@@ -287,7 +309,6 @@ def update_task(nomenclature_id: str, owner_id: str):
             }
         )
         return f'Ошибка при создании обновления для {nomenclature.name}: {e}'
-
 
 @shared_task
 def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
