@@ -9,6 +9,7 @@ from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
 from datetime import datetime, timedelta
+import re
 
 from django.utils import timezone
 
@@ -210,105 +211,142 @@ def reboot_task(nomenclature_id: str, owner_id: str):
     return f'Перезагрузка отправлена на {nomenclature.name}'
 
 
+BUILD_BUCKET = "builds"
+BUILD_PREFIX = "RMCContentPlayer-"
+BUILD_SUFFIX = ".exe"
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+
+
 @shared_task
 def update_task(nomenclature_id: str, owner_id: str):
     """
-    Отправка команды обновления ПО на устройство.
+    Создаёт задачу обновления ПО.
 
-    Получает последнюю версию из MinIO и создает задачу с URL для скачивания.
+    Выбирает последнюю числовую версию из MinIO, получает SHA-256
+    из metadata EXE и создаёт задачу type=16.
+
+    При отсутствии сборок, SHA-256 или при ошибке пустая задача
+    обновления не создаётся.
     """
-    nomenclature = get_nomenclature(nomenclature_id)
-    owner = get_owner(owner_id)
-    
-    from datetime import timedelta
-    from api.constants import get_minio_client
-    import re
-    
+    nomenclature = None
+
     try:
-        client = get_minio_client()
-        objects = client.list_objects(
-            'builds',
-            prefix='RMCContentPlayer-',
-            recursive=False
+        nomenclature = get_nomenclature(nomenclature_id)
+        owner = get_owner(owner_id)
+
+        minio_client = get_minio_client()
+
+        available_versions = []
+
+        objects = minio_client.list_objects(
+            BUILD_BUCKET,
+            prefix=BUILD_PREFIX,
+            recursive=False,
         )
 
-        versions = []
         for item in objects:
-            name = item.object_name
-            if name.startswith('RMCContentPlayer-') and name.endswith('.exe'):
-                version = name.replace('RMCContentPlayer-', '').replace('.exe', '')
-                versions.append(version)
+            object_name = item.object_name
 
-        if not versions:
-            Task.objects.create(
-                owner=owner,
-                client=nomenclature,
-                type=16,
-                parameters={
-                    'responsible': owner.full_name,
-                    'url': '',
-                    'version': ''
-                }
+            if not (
+                object_name.startswith(BUILD_PREFIX)
+                and object_name.endswith(BUILD_SUFFIX)
+            ):
+                continue
+
+            version = object_name[
+                len(BUILD_PREFIX) : -len(BUILD_SUFFIX)
+            ]
+
+            # Разрешены версии вида 1, 1.2, 1.2.3 и т.д.
+            if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", version):
+                continue
+
+            version_key = tuple(
+                int(part)
+                for part in version.split(".")
             )
-            return f'Нет доступных версий для обновления на {nomenclature.name}'
 
-        versions.sort(key=lambda v: tuple(map(int, v.split('.'))))
-        latest_version = versions[-1]
+            available_versions.append(
+                (version_key, version, object_name)
+            )
 
-        external_client = get_minio_client(external=True)
-        version_url = external_client.get_presigned_url(
-            'GET',
-            'builds',
-            f'RMCContentPlayer-{latest_version}.exe',
-            expires=timedelta(hours=24)
+        if not available_versions:
+            return (
+                "Нет доступных версий для обновления "
+                f"на {nomenclature.name}"
+            )
+
+        _, latest_version, object_name = max(
+            available_versions,
+            key=lambda item: item[0],
         )
 
-        # Получение SHA-256 из метаданных
-        object_name = f"RMCContentPlayer-{latest_version}.exe"
-        
-        object_info = client.stat_object("builds", object_name)
+        # Получаем размер и custom metadata объекта.
+        object_info = minio_client.stat_object(
+            BUILD_BUCKET,
+            object_name,
+        )
+
+        raw_metadata = getattr(object_info, "metadata", {}) or {}
+
         metadata = {
-            str(key).lower(): value
-            for key, value in object_info.metadata.items()
+            str(key).strip().lower(): str(value).strip()
+            for key, value in raw_metadata.items()
         }
 
+        # mc cp --attr "sha256=..." сохраняет значение как
+        # пользовательскую S3 metadata x-amz-meta-sha256.
         sha256 = (
             metadata.get("x-amz-meta-sha256")
             or metadata.get("sha256")
             or ""
-        ).strip().lower()
+        ).lower()
 
-        if not re.fullmatch(r"[0-9a-f]{64}", sha256):
-            raise ValueError(
-                f"Для обновления {object_name} отсутствует корректный SHA-256"
+        if not SHA256_PATTERN.fullmatch(sha256):
+            return (
+                f"Для версии {latest_version} "
+                "не найден корректный SHA-256"
             )
 
+        external_client = get_minio_client(external=True)
+
+        version_url = external_client.get_presigned_url(
+            "GET",
+            BUILD_BUCKET,
+            object_name,
+            expires=timedelta(hours=24),
+        )
+
         Task.objects.create(
             owner=owner,
             client=nomenclature,
             type=16,
             parameters={
-                'responsible': owner.full_name,
-                'url': version_url,
-                'version': latest_version,
-                'sha256': sha256,
-            }
+                "responsible": owner.full_name,
+                "url": version_url,
+                "version": latest_version,
+                "sha256": sha256,
+                "size": object_info.size,
+                "object_name": object_name,
+            },
         )
-        return f'Обновление отправлено на {nomenclature.name}'
-    
-    except Exception as e:
-        Task.objects.create(
-            owner=owner,
-            client=nomenclature,
-            type=16,
-            parameters={
-                'responsible': owner.full_name,
-                'url': '',
-                'version': '',
-                'error': str(e)
-            }
+
+        return (
+            f"Обновление {latest_version} "
+            f"отправлено на {nomenclature.name}"
         )
-        return f'Ошибка при создании обновления для {nomenclature.name}: {e}'
+
+    except Exception:
+        nomenclature_name = getattr(
+            nomenclature,
+            "name",
+            nomenclature_id,
+        )
+
+        return (
+            "Ошибка при создании обновления "
+            f"для {nomenclature_name}"
+        )
 
 @shared_task
 def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
