@@ -27,7 +27,7 @@ from rest_framework import viewsets
 from uuid import UUID
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny
-from .mixins import SignedMediaNoCacheMixin
+from api.mixins import SignedMediaNoCacheMixin
 
 
 @extend_schema(tags=["Номенклатуры WEB"])

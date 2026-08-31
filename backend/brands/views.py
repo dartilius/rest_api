@@ -26,6 +26,7 @@ from rest_framework.decorators import action
 from api.constants import (
     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
 )
+from api.mixins import SignedMediaNoCacheMixin
 from api.pagination import CustomLimitOffsetPagination
 from brands.documents import BrandDocument
 from brands.filters import BrandFilter
@@ -193,7 +194,7 @@ def get_brand_min_price_qs(qs):
     ),
 )
 @extend_schema(tags=["Бренды"])
-class BrandViewSet(viewsets.ModelViewSet):
+class BrandViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
     """
     ViewSet для управления брендами.
 

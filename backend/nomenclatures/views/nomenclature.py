@@ -52,13 +52,13 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from addresses.models import City
 from api.constants import VersionsSerializer, DetailSerializer
+from api.mixins import SignedMediaNoCacheMixin
 from counterparties.models import Counterparty
 from counterparties.serializers import CounterpartiesShortSerializer, CounterpartyContactInfoSerializer
 from django.db import models
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
-from .mixins import SignedMediaNoCacheMixin
 from ..models import Nomenclature, TypeOfPlace, NomenclatureAddress
 from ..serializers import (
     NomenclatureSerializer,

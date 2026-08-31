@@ -4,10 +4,10 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 
 from api.constants import get_instance_or_404
+from api.mixins import SignedMediaNoCacheMixin
 from users.permissions import StaffCUDallRead
 from ..models import Nomenclature, NomenclatureImage
 from ..serializers import PhotoSerializer
-from .mixins import SignedMediaNoCacheMixin
 
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
 
