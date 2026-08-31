@@ -10,7 +10,7 @@ ViewSet для управления номенклатурами.
 1. Использование only() для загрузки только необходимых полей
 2. Использование select_related для FK связей (1 запрос вместо N)
 3. Использование prefetch_related для M2M связей (1 запрос вместо N)
-4. Кеширование результатов поиска на 5 минут
+4. Кеширование идентификаторов результатов поиска на 5 минут
 5. Использование search_vector для полнотекстового поиска
 6. Обработка ошибок с логированием
 
@@ -32,7 +32,6 @@ ViewSet для управления номенклатурами.
 from typing import Callable, Optional
 from uuid import UUID
 
-from django.core.cache import cache
 from django.db.models import Count, Case, When, Value, IntegerField, Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import (
@@ -59,6 +58,7 @@ from django.db import models
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
+from .mixins import SignedMediaNoCacheMixin
 from ..models import Nomenclature, TypeOfPlace, NomenclatureAddress
 from ..serializers import (
     NomenclatureSerializer,
@@ -491,7 +491,7 @@ class NomenclatureExamples:
     )
 )
 @extend_schema(tags=["Номенклатуры"])
-class NomenclatureViewSet(viewsets.ModelViewSet):
+class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
     """
     ViewSet для полного управления номенклатурами в системе.
 
@@ -532,8 +532,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
     permission_classes = [StaffCUDallRead]
     filter_backends = [DjangoFilterBackend]
     filterset_class = NomenclatureFilter
-    CACHE_TIMEOUT = 300
-
     def get_serializer(self, *args, **kwargs):
         """
         Динамически выбирает сериализатор в зависимости от типа операции.
@@ -807,16 +805,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
         if not search_term:
             return super().list(request, *args, **kwargs)
 
-        # Кеширование результатов поиска
-        cache_page = request.query_params.get('page', 1)
-        cache_limit = request.query_params.get('limit', self.paginator.page_size)
-        cache_key = f"nomenclature_search_result_{hash(search_term)}_{cache_page}_{cache_limit}"
-
-        cached_result = cache.get(cache_key)
-        if cached_result:
-            logger.info(f"Взят из кэша результат для '{search_term}'")
-            return Response(cached_result)
-
         try:
             from collections import Counter
             from nomenclatures.services.search import NomenclatureSearchService
@@ -831,7 +819,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
 
             if not base_queryset:
                 result = {'count': 0, 'next': None, 'previous': None, 'results': []}
-                cache.set(cache_key, result, self.CACHE_TIMEOUT)
                 return Response(result)
 
             # Определяем ID торговых центров для сортировки
@@ -888,9 +875,6 @@ class NomenclatureViewSet(viewsets.ModelViewSet):
                     'results': serializer.data
                 }
 
-            # Кеширование результата
-            cache.set(cache_key, result, self.CACHE_TIMEOUT)
-            logger.info(f"Закэширован результат для '{search_term}'")
             return Response(result)
 
         except Exception as e:

@@ -27,10 +27,11 @@ from rest_framework import viewsets
 from uuid import UUID
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny
+from .mixins import SignedMediaNoCacheMixin
 
 
 @extend_schema(tags=["Номенклатуры WEB"])
-class NomenclatureWebViewSet(viewsets.ReadOnlyModelViewSet):
+class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet для веб-интерфейса номенклатур.
 

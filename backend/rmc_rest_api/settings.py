@@ -283,6 +283,9 @@ MINIO_USE_HTTPS = os.environ.get('MINIO_HTTPS', 'false').lower() == 'true'
 MINIO_EXTERNAL_ENDPOINT = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
 MINIO_EXTERNAL_ENDPOINT_USE_HTTPS = os.environ.get('MINIO_EXTERNAL_HTTPS', 'true').lower() == 'true'
 MINIO_REGION = os.environ.get('MINIO_REGION', 'us-east-1')
+# django-minio-backend reads this flag from Django settings when deciding
+# whether storage.url() may reuse a previously generated presigned URL.
+MINIO_URL_CACHING_ENABLED = False
 
 MINIO_PUBLIC_BUCKETS = ['local-static', 'builds']
 MINIO_PRIVATE_BUCKETS = ['local-media']
@@ -301,6 +304,9 @@ STORAGES = {
             'MINIO_PRIVATE_BUCKETS': MINIO_PRIVATE_BUCKETS,
             'MINIO_PUBLIC_BUCKETS': MINIO_PUBLIC_BUCKETS,
             'MINIO_URL_EXPIRY_HOURS': timedelta(days=1),
+            # API responses contain presigned URLs. They must be generated for
+            # the current request, not reused from Django/Redis URL cache.
+            'MINIO_URL_CACHING_ENABLED': False,
             'MINIO_CONSISTENCY_CHECK_ON_START': False,
         }
     },

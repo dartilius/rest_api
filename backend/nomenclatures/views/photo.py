@@ -7,12 +7,13 @@ from api.constants import get_instance_or_404
 from users.permissions import StaffCUDallRead
 from ..models import Nomenclature, NomenclatureImage
 from ..serializers import PhotoSerializer
+from .mixins import SignedMediaNoCacheMixin
 
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
 
 
 @extend_schema(tags=["Фотографии номенклатур", "Номенклатуры"])
-class NomenclaturePhotoViewSet(viewsets.ModelViewSet):
+class NomenclaturePhotoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
     """
     ViewSet для управления фотографиями номенклатур.
 
