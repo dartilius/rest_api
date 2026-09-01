@@ -193,6 +193,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 "for_web",
                 "owner__email",
                 "owner__first_name",
+                "owner__middle_name",
                 "owner__last_name",
                 "availability__status",
                 "availability__last_answer_date",
@@ -306,9 +307,10 @@ class NomenclatureAdmin(admin.ModelAdmin):
     def owner_name(self, obj):
         if not obj.owner:
             return "-"
-        if hasattr(obj.owner, "full_name") and obj.owner.full_name:
-            return obj.owner.full_name
-        elif obj.owner.email:
+        full_name = obj.owner.full_name
+        if full_name:
+            return full_name
+        if obj.owner.email:
             return obj.owner.email
         return f"ID:{str(obj.owner.id)[:8]}"
 
