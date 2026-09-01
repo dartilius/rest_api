@@ -13,10 +13,16 @@
 from opensearchpy import Q
 import logging
 import time
+from hashlib import sha256
 from django.core.cache import cache
 from nomenclatures.documents import NomenclatureDocument
 
 logger = logging.getLogger(__name__)
+
+
+def _query_cache_key(query: str) -> str:
+    """Returns a process-independent cache key component for a query."""
+    return sha256(query.encode("utf-8")).hexdigest()
 
 
 class NomenclatureOpenSearchService:
@@ -55,7 +61,9 @@ class NomenclatureOpenSearchService:
         limit = min(limit, NomenclatureOpenSearchService.SEARCH_LIMIT)
 
         # Проверка кэша (кешируем ID результатов)
-        cache_key = f"opensearch_search_ids_{hash(query)}_{for_web}_{limit}"
+        cache_key = (
+            f"opensearch_search_ids_{_query_cache_key(query)}_{for_web}_{limit}"
+        )
         cached_ids = cache.get(cache_key)
 
         if cached_ids is not None:
@@ -186,16 +194,23 @@ class NomenclatureOpenSearchService:
             return s[:0]
 
     @staticmethod
-    def clear_cache(query: str = None, for_web: bool | None = None):
+    def clear_cache(
+        query: str = None,
+        for_web: bool | None = None,
+        limit: int = 50,
+    ):
         """
         Очищает кэш поиска OpenSearch.
 
         Аргументы:
             query (str, optional): Очищает кэш только для этого запроса
             for_web (bool, optional): Очищает кэш только для for_web
+            limit (int): Лимит результатов, использованный при поиске
         """
         if query:
-            cache_key = f"opensearch_search_ids_{hash(query)}_{for_web}"
+            cache_key = (
+                f"opensearch_search_ids_{_query_cache_key(query)}_{for_web}_{limit}"
+            )
             cache.delete(cache_key)
             logger.info(f"Очищен кэш OpenSearch для запроса: '{query}'")
         else:

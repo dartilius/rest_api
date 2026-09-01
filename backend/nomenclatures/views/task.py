@@ -1,3 +1,5 @@
+import re
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -219,7 +221,7 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
             - pending_tasks() для получения задач на клиентской стороне
         """
         get_instance_or_404(Nomenclature, pk)
-        tasks = Task.objects.filter(client=pk)
+        tasks = Task.objects.filter(client=pk).select_related("owner", "client")
         page = self.paginate_queryset(tasks)
         if page is not None:
             serializer = TaskListSerializer(page, many=True)
@@ -381,7 +383,6 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                     reboot_task.delay(pk, owner)
             case "update":
                 if not nomenclature.tasks.filter(status=0, type=16).exists():
-                    from datetime import timedelta
                     from api.constants import get_minio_client
 
                     client = get_minio_client()
@@ -398,7 +399,10 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                                 and name.endswith('.exe')
                                 and not name.endswith('latest.exe')):
                             version = name.replace('RMCContentPlayer-', '').replace('.exe', '')
-                            versions.append(version)
+                            # Только числовые версии (1, 1.2, 1.2.3) —
+                            # совпадает с фильтром в update_task (nomenclatures/tasks.py)
+                            if re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", version):
+                                versions.append(version)
 
                     if not versions:
                         return Response(
@@ -406,17 +410,9 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                             status=HTTP_400_BAD_REQUEST,
                         )
 
-                    versions.sort(key=lambda v: tuple(map(int, v.split('.'))))
-                    latest_version = versions[-1]
-
-                    external_client = get_minio_client(external=True)
-                    version_url = external_client.get_presigned_url(
-                        'GET',
-                        'builds',
-                        f'RMCContentPlayer-{latest_version}.exe',
-                        expires=timedelta(hours=24)
-                    )
-                    update_task.delay(pk, owner, version_url)
+                    # Задача update_task сама выбирает последнюю версию,
+                    # проверяет SHA-256 из metadata и генерирует presigned URL
+                    update_task.delay(pk, owner)
             case "custom":
                 parameters = request.data.get("parameters")
                 if not parameters:

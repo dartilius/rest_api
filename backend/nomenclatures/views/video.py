@@ -5,13 +5,14 @@ from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
 from drf_spectacular.utils import extend_schema
 
 from api.constants import get_instance_or_404
+from api.mixins import SignedMediaNoCacheMixin
 from users.permissions import StaffCUDallRead
 from ..models import Nomenclature, NomenclatureVideo
 from ..serializers import VideoSerializer
 
 
 @extend_schema(tags=["Видео номенклатур", "Номенклатуры"])
-class NomenclatureVideoViewSet(viewsets.ModelViewSet):
+class NomenclatureVideoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
     """Загрузка, просмотр и удаление видеозаписей номенклатур."""
 
     queryset = NomenclatureVideo.objects.all()

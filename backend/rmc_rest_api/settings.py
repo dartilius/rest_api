@@ -84,7 +84,7 @@ EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
 
 if DEBUG or os.environ.get('DISABLE_EMAIL_SSL_VERIFY', 'true').lower() == 'true':
     EMAIL_BACKEND = 'feedback.email_backend.CustomEmailBackend'
-    print("⚠️  Using email backend without SSL verification")
+    print("Using email backend without SSL verification")
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
@@ -589,7 +589,7 @@ LOGGING = {
 # if DEBUG or os.environ.get('DISABLE_EMAIL_SSL_VERIFY', 'true').lower() == 'true':
 #     # Используем кастомный бэкенд с отключенной проверкой SSL
 #     EMAIL_BACKEND = 'feedback.email_backend.CustomEmailBackend'
-#     print("⚠️  Using email backend without SSL verification")
+#     print("Using email backend without SSL verification")
 # else:
 #     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
@@ -925,14 +925,14 @@ LOGGING = {
 #     with open(test_file, 'w') as f:
 #         f.write('test')
 #     os.remove(test_file)
-#     print(f"✅ LOG_DIR is writable: {LOG_DIR}")
+#     print(f"LOG_DIR is writable: {LOG_DIR}")
 # except Exception as e:
-#     print(f"❌ Cannot write to LOG_DIR: {LOG_DIR}")
+#     print(f"Cannot write to LOG_DIR: {LOG_DIR}")
 #     print(f"Error: {e}")
 #     # Fallback - используем /tmp если не можем писать в LOG_DIR
 #     LOG_DIR = '/tmp'
 #     os.makedirs(LOG_DIR, exist_ok=True)
-#     print(f"⚠️ Using fallback LOG_DIR: {LOG_DIR}")
+#     print(f"Using fallback LOG_DIR: {LOG_DIR}")
 
 # LOGGING = {
 #     'version': 1,
@@ -972,7 +972,7 @@ LOGGING = {
 #             'class': 'logging.FileHandler',
 #             'filename': BASE_DIR / 'logs' / 'api_1c.log',
 #         },
-#         # 🔴 НОВЫЙ HANDLER ДЛЯ OPENSEARCH
+#         # Новый handler для OpenSearch
 #         'opensearch_file': {
 #             'class': 'logging.handlers.RotatingFileHandler',
 #             'filename': os.path.join(LOG_DIR, 'opensearch.log'),
@@ -996,7 +996,7 @@ LOGGING = {
 #             'handlers': ['file', 'console'],
 #             'level': 'INFO',
 #         },
-#         # 🔴 НОВЫЙ LOGGER ДЛЯ OPENSEARCH
+#         # Новый logger для OpenSearch
 #         'nomenclatures.services.opensearch_search': {
 #             'handlers': ['opensearch_file', 'console'],
 #             'level': 'DEBUG',

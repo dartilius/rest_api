@@ -11,11 +11,17 @@
 """
 
 import logging
+from hashlib import sha256
 from django.db.models import Q
 from nomenclatures.models import Nomenclature
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
+
+
+def _query_cache_key(query: str) -> str:
+    """Returns a process-independent cache key component for a query."""
+    return sha256(query.encode("utf-8")).hexdigest()
 
 
 class NomenclatureSearchService:
@@ -63,7 +69,9 @@ class NomenclatureSearchService:
             return qs
 
         if use_cache:
-            cache_key = f"nomenclature_search_ids_{hash(query)}_{for_web}_{limit}"
+            cache_key = (
+                f"nomenclature_search_ids_{_query_cache_key(query)}_{for_web}_{limit}"
+            )
             cached_ids = cache.get(cache_key)
 
             if cached_ids is not None:
@@ -109,18 +117,21 @@ class NomenclatureSearchService:
         )
 
     @staticmethod
-    def clear_cache(query: str = None, for_web: bool = True):
+    def clear_cache(query: str = None, for_web: bool = True, limit: int = 50):
         """
         Очищает кэш поиска.
 
         Аргументы:
             query (str, optional): Очищает кэш только для этого запроса
             for_web (bool): Очищает кэш только для for_web
+            limit (int): Лимит результатов, использованный при поиске
         """
         if query:
-            cache_key = f"nomenclature_search_ids_{hash(query)}_{for_web}"
+            cache_key = (
+                f"nomenclature_search_ids_{_query_cache_key(query)}_{for_web}_{limit}"
+            )
             cache.delete(cache_key)
-            cache.delete(f"nomenclature_search_empty_{for_web}")
+            cache.delete(f"nomenclature_search_empty_{for_web}_{limit}")
             logger.info(f"Очищен кэш для запроса: '{query}'")
         else:
             try:

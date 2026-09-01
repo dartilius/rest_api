@@ -1,17 +1,16 @@
-from rest_framework import viewsets, status
+from drf_spectacular.utils import extend_schema
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
+from rest_framework.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+)
 
 from api.constants import DetailSerializer, get_instance_or_404
 from users.permissions import StaffCUDallRead
 from ..models import Nomenclature
 from ..tasks import resend_orders_task
-
-from rest_framework.status import (
-    HTTP_200_OK,
-    HTTP_201_CREATED,
-)
 
 
 @extend_schema(tags=["Номенклатуры - Заказы"])
@@ -29,6 +28,7 @@ class NomenclatureOrderViewSet(viewsets.ViewSet):
     Permissions:
         - resend_orders: IsAuthenticated + IsStaff
     """
+
     permission_classes = [StaffCUDallRead]
 
     @extend_schema(

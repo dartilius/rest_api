@@ -13,18 +13,20 @@ ViewSet для управления арендаторами номенклат�
 8. Бренд берется из NomenclatureTenant, а не из контрагента
 """
 
+from uuid import UUID
+
+from django.core.cache import cache
+from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
-from uuid import UUID
-from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action, permission_classes
+from rest_framework.decorators import api_view
+from rest_framework.exceptions import NotFound
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.db.models import Count, Prefetch
-from django.core.cache import cache
 
 from api.pagination import CustomLimitOffsetPagination
 from brands.models import Brand
@@ -32,11 +34,9 @@ from counterparties.models import CounterpartyCategory
 from nomenclatures.filters import NomenclatureTenantFilter, GroupedTenantFilter
 from nomenclatures.models import NomenclatureTenant, NomenclatureImage
 from nomenclatures.serializers import (
-    InNomenclaturePhotoSerializer,
     TenantWriteSerializer,
     NomenclatureTenantResponseSerializer,
 )
-from rest_framework.decorators import api_view
 from users.permissions import SuperuserCUDAuthRetrieve
 
 
@@ -102,16 +102,13 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         - only() для выборки только необходимых полей
         - prefetch_related для M2M связей
         """
-        nomenclature_pk = self.kwargs.get('nomenclature_pk')
+        nomenclature_pk = self.kwargs.get("nomenclature_pk")
         filter_field = self._resolve_filter(
-            nomenclature_pk,
-            "nomenclature__id",
-            "nomenclature__code1c"
+            nomenclature_pk, "nomenclature__id", "nomenclature__code1c"
         )
 
         return (
-            NomenclatureTenant.objects
-            .filter(**{filter_field: nomenclature_pk})
+            NomenclatureTenant.objects.filter(**{filter_field: nomenclature_pk})
             .select_related(
                 "tenant",
                 "brand",
@@ -120,17 +117,26 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             .prefetch_related(
                 Prefetch(
                     "tenant__brands",
-                    queryset=Brand.objects.only("id", "name", "logotype")
+                    queryset=Brand.objects.only("id", "name", "logotype"),
                 )
             )
             .only(
-                "id", "floor", "atm",
-                "nomenclature__id", "nomenclature__name", "nomenclature__code1c",
-                "tenant__id", "tenant__first_name", "tenant__last_name",
-                "tenant__keyword", "tenant__code1c",
-                "brand__id", "brand__name", "brand__code1c",
+                "id",
+                "floor",
+                "atm",
+                "nomenclature__id",
+                "nomenclature__name",
+                "nomenclature__code1c",
+                "tenant__id",
+                "tenant__first_name",
+                "tenant__last_name",
+                "tenant__keyword",
+                "tenant__code1c",
+                "brand__id",
+                "brand__name",
+                "brand__code1c",
             )
-            .order_by('id')
+            .order_by("id")
             .distinct()
         )
 
@@ -142,23 +148,17 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
         - UUID (id)
         - code1c
         """
-        nomenclature_pk = self.kwargs.get('nomenclature_pk')
-        tenant_pk = self.kwargs.get('pk')
+        nomenclature_pk = self.kwargs.get("nomenclature_pk")
+        tenant_pk = self.kwargs.get("pk")
 
         nomenclature_filter = self._resolve_filter(
-            nomenclature_pk,
-            "nomenclature__id",
-            "nomenclature__code1c"
+            nomenclature_pk, "nomenclature__id", "nomenclature__code1c"
         )
-        tenant_filter = self._resolve_filter(
-            tenant_pk,
-            "tenant__id",
-            "tenant__code1c"
-        )
+        tenant_filter = self._resolve_filter(tenant_pk, "tenant__id", "tenant__code1c")
 
         obj = get_object_or_404(
             NomenclatureTenant,
-            **{nomenclature_filter: nomenclature_pk, tenant_filter: tenant_pk}
+            **{nomenclature_filter: nomenclature_pk, tenant_filter: tenant_pk},
         )
         self.check_object_permissions(self.request, obj)
         return obj
@@ -192,17 +192,14 @@ class NomenclatureTenantViewSet(viewsets.ModelViewSet):
             .order_by("floor")
         )
 
-        result = [
-            {"label": f"Этаж {floor}", "value": floor}
-            for floor in floors
-        ]
+        result = [{"label": f"Этаж {floor}", "value": floor} for floor in floors]
 
         cache.set(cache_key, result, 300)
         return Response(result)
 
 
 @extend_schema(tags=["Номенклатура - Арендаторы"])
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([AllowAny])
 def grouped_tenants_global(request):
     """
@@ -210,28 +207,21 @@ def grouped_tenants_global(request):
 
     Возвращает список арендаторов, сгруппированных по брендам.
     """
-    base_qs = (
-        NomenclatureTenant.objects
-        .select_related("tenant", "brand")
-        .only(
-            "id",
-            "tenant__id", "tenant__code1c",
-            "brand__id", "brand__name",
-        )
+    base_qs = NomenclatureTenant.objects.select_related("tenant", "brand").only(
+        "id",
+        "tenant__id",
+        "tenant__code1c",
+        "brand__id",
+        "brand__name",
     )
 
-    base_qs = GroupedTenantFilter(
-        request.GET,
-        queryset=base_qs
-    ).qs
+    base_qs = GroupedTenantFilter(request.GET, queryset=base_qs).qs
 
     sort = request.query_params.get("sort", "count_desc")
 
-    queryset = (
-        base_qs
-        .values("tenant_id", "tenant__code1c", "brand_id", "brand__name")
-        .annotate(count=Count("nomenclature_id", distinct=True))
-    )
+    queryset = base_qs.values(
+        "tenant_id", "tenant__code1c", "brand_id", "brand__name"
+    ).annotate(count=Count("nomenclature_id", distinct=True))
 
     ordering = {
         "name_asc": ("brand__name", "tenant_id"),
@@ -248,11 +238,7 @@ def grouped_tenants_global(request):
     if paginated_queryset is None:
         paginated_queryset = []
 
-    brand_ids = [
-        item["brand_id"]
-        for item in paginated_queryset
-        if item["brand_id"]
-    ]
+    brand_ids = [item["brand_id"] for item in paginated_queryset if item["brand_id"]]
 
     brand_logotypes = {
         brand.id: brand.logotype.url if brand.logotype else None
@@ -269,9 +255,7 @@ def grouped_tenants_global(request):
         .values("name", "counterparties__id")
         .order_by("name")
     ):
-        categories_by_tenant[category["counterparties__id"]].append(
-            category["name"]
-        )
+        categories_by_tenant[category["counterparties__id"]].append(category["name"])
 
     result = [
         {
@@ -290,7 +274,7 @@ def grouped_tenants_global(request):
 
 
 @extend_schema(tags=["Номенклатура - Арендаторы"])
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([AllowAny])
 def tenant_detail(request, tenant_pk: str):
     """
@@ -318,8 +302,7 @@ def tenant_detail(request, tenant_pk: str):
         tenant_filter = "tenant__code1c"
 
     qs = (
-        NomenclatureTenant.objects
-        .filter(**{tenant_filter: tenant_pk})
+        NomenclatureTenant.objects.filter(**{tenant_filter: tenant_pk})
         .select_related(
             "tenant",
             "brand",
@@ -329,15 +312,22 @@ def tenant_detail(request, tenant_pk: str):
         .prefetch_related(
             Prefetch(
                 "nomenclature__images",
-                queryset=NomenclatureImage.objects.filter(type="exterior").order_by("created"),
+                queryset=NomenclatureImage.objects.filter(type="exterior").order_by(
+                    "created"
+                ),
                 to_attr="prefetched_exterior",
             ),
         )
         .only(
-            "tenant__id", "tenant__code1c", "tenant__opf",
-            "tenant__inn", "tenant__keyword",
-            "brand__id", "brand__name",
-            "nomenclature__id", "nomenclature__name",
+            "tenant__id",
+            "tenant__code1c",
+            "tenant__opf",
+            "tenant__inn",
+            "tenant__keyword",
+            "brand__id",
+            "brand__name",
+            "nomenclature__id",
+            "nomenclature__name",
             "nomenclature__typeOfPlace__name",
         )
         .order_by("nomenclature__name")
@@ -377,7 +367,7 @@ def tenant_detail(request, tenant_pk: str):
             "name": brand_obj.name,
             "logotype": (
                 brand_obj.logotype.url
-                if hasattr(brand_obj, 'logotype') and brand_obj.logotype
+                if hasattr(brand_obj, "logotype") and brand_obj.logotype
                 else None
             ),
         }
@@ -401,311 +391,3 @@ def tenant_detail(request, tenant_pk: str):
 
     cache.set(cache_key, result, 300)
     return Response(result)
-
-
-# from django.shortcuts import get_object_or_404
-# from django_filters.rest_framework import DjangoFilterBackend
-# from drf_spectacular.utils import extend_schema
-# from rest_framework import viewsets
-# from uuid import UUID
-# from rest_framework.exceptions import NotFound
-# from rest_framework.decorators import action, permission_classes
-# from rest_framework.filters import SearchFilter
-# from rest_framework.permissions import AllowAny, IsAuthenticated
-# from rest_framework.response import Response
-# from django.db.models import Count, Prefetch
-# from api.pagination import CustomLimitOffsetPagination
-# from brands.models import Brand
-# from nomenclatures.filters import NomenclatureTenantFilter, GroupedTenantFilter
-# from nomenclatures.models import NomenclatureTenant, NomenclatureImage
-# from nomenclatures.serializers import (
-#     InNomenclaturePhotoSerializer,
-#     TenantWriteSerializer,
-#     NomenclatureTenantResponseSerializer,
-# )
-# from rest_framework.decorators import api_view
-# from users.permissions import SuperuserCUDAuthRetrieve
-
-# from nomenclatures.models import (
-#     Nomenclature,
-#     NomenclatureImage,
-# )
-# @extend_schema(tags=["Номенклатура - Арендаторы"])
-# class NomenclatureTenantViewSet(viewsets.ModelViewSet):
-#     """
-#     Кастомный viewset для работы с арендаторами места.
-#     Доступные действия:
-#         - List: получить список арендаторов по pk/code1c номенклатуры
-#           (просмотреть может каждый пользователь)
-#         - Create: добавить арендатора к номенклатуре (is_super_user)
-#         - Update: обновить данные (is_super_user)
-#         - Delete: удалить арендатора из ноиенклатуры (is_super_user)
-
-#     Урлы:
-#     GET    /api/nomenclatures/{id_or_code1c}/tenant/        # list
-#     POST   /api/nomenclatures/{id_or_code1c}/tenant/        # create
-#     GET    /api/nomenclatures/{id_or_code1c}/tenant/{id}/   # retrieve
-#     PATCH  /api/nomenclatures/{id_or_code1c}/tenant/{id}/   # partial_update
-#     DELETE /api/nomenclatures/{id_or_code1c}/tenant/{id}/   # destroy
-#     """
-
-#     queryset = NomenclatureTenant.objects.all()
-#     filter_backends = [DjangoFilterBackend, SearchFilter]
-#     filterset_class = NomenclatureTenantFilter
-#     pagination_class = CustomLimitOffsetPagination
-#     # pagination_class = None
-#     search_fields = [
-#         "tenant__first_name",
-#         "tenant__middle_name",
-#         "tenant__last_name",
-#         "tenant__keyword",
-#         "tenant__additional_name",
-#         "brand__name",
-#     ]
-
-#     def get_permissions(self):
-#         if self.action in ["list", "retrieve", "floors"]:
-#             return [AllowAny()]
-#         return [SuperuserCUDAuthRetrieve()]
-
-#     def get_serializer_class(self):
-#         if self.action in ["create", "update", "partial_update"]:
-#             return TenantWriteSerializer
-#         return NomenclatureTenantResponseSerializer
-
-#     @staticmethod
-#     def _resolve_filter(value, id_field, code1c_field):
-#         try:
-#             UUID(hex=value)
-#             return id_field
-#         except (ValueError, AttributeError, TypeError):
-#             return code1c_field
-
-#     def get_queryset(self):
-#         nomenclature_pk = self.kwargs.get('nomenclature_pk')
-#         filter_field = self._resolve_filter(
-#             nomenclature_pk,
-#             "nomenclature__id",
-#             "nomenclature__code1c"
-#         )
-#         qs = (
-#             NomenclatureTenant.objects
-#             .filter(**{filter_field: nomenclature_pk})
-#             .select_related("tenant", "brand")
-#             .order_by('id')
-#             .distinct()
-#         )
-#         print("QS count before search:", qs.count())
-#         print("Search param:", self.request.query_params.get('search'))
-#         return qs
-
-#     def get_object(self):
-#         nomenclature_pk = self.kwargs.get('nomenclature_pk')
-#         tenant_pk = self.kwargs.get('pk')
-
-#         nomenclature_filter = self._resolve_filter(
-#             nomenclature_pk,
-#             "nomenclature__id",
-#             "nomenclature__code1c"
-#         )
-#         tenant_filter = self._resolve_filter(
-#             tenant_pk,
-#             "tenant__id",
-#             "tenant__code1c"
-#         )
-#         print("kwarg:", self.kwargs)
-#         print("nomenclature_filter:", nomenclature_filter, "=", nomenclature_pk)
-#         print("tenant_filter:", tenant_filter, "=", tenant_pk)
-#         print("query:", NomenclatureTenant.objects.filter(
-#             **{nomenclature_filter: nomenclature_pk, tenant_filter: tenant_pk}
-#         ).query)
-
-#         obj = get_object_or_404(
-#             NomenclatureTenant,
-#             **{nomenclature_filter: nomenclature_pk, tenant_filter: tenant_pk}
-#         )
-#         self.check_object_permissions(self.request, obj)
-#         return obj
-
-#     def perform_destroy(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#         instance.delete()
-#         payload = {
-#             "nomenclatureCode": instance.nomenclature.code1c,
-#             "caCode": instance.tenant.code1c,
-#             "brandCode": instance.brand.code1c if instance.brand else None,
-#         }
-#         print("payload:", payload)
-#         # try:
-#         #     response = api_1c.delete("/DeleteCAFromTenants", json=payload)
-#         #     response.raise_for_status()
-#         #
-#         #     logger.info("1С ответ DeleteCAFromTenants: %s", response.json())
-#         # except Exception as e:
-#         #     logger.warning("Не удалось удалить арендатора в 1С: %s", e)
-
-#         return Response(status=204)
-
-#     @action(detail=False, methods=["get"], url_path="floors")
-#     def floors(self, request, *args, **kwargs):
-#         qs = self.get_queryset()
-#         floors = (
-#             qs.exclude(floor="")
-#             .values_list("floor", flat=True)
-#             .distinct()
-#             .order_by("floor")
-#         )
-#         return Response([
-#             {"label": f"Этаж {floor}", "value": floor}
-#             for floor in floors
-#         ])
-
-
-# @extend_schema(tags=["Номенклатура - Арендаторы"])
-# @api_view(['GET'])
-# @permission_classes([AllowAny])
-# def grouped_tenants_global(request):
-#     """
-#     GET /api/tenants/grouped/
-#     Один арендатор может появляться несколько раз — по одному на каждый бренд.
-#     """
-#     base_qs = (
-#         NomenclatureTenant.objects
-#         .select_related("tenant", "brand")
-#     )
-
-#     base_qs = GroupedTenantFilter(
-#         request.GET,
-#         queryset=base_qs
-#     ).qs
-
-#     queryset = (
-#         base_qs
-#         .values("tenant_id", "tenant__code1c", "brand_id", "brand__name")
-#         .annotate(count=Count("id"))
-#         .order_by("-count", "tenant_id")
-#     )
-
-#     paginator = CustomLimitOffsetPagination()
-#     paginated_queryset = paginator.paginate_queryset(queryset, request)
-
-#     if paginated_queryset is None:
-#         paginated_queryset = []
-
-#     brand_ids = [
-#         item["brand_id"]
-#         for item in paginated_queryset
-#         if item["brand_id"]
-#     ]
-#     brand_logotypes = {
-#         brand.id: brand.logotype.url if brand.logotype else None
-#         for brand in Brand.all_objects.filter(id__in=brand_ids).only("id", "logotype")
-#     }
-
-#     result = [
-#         {
-#             "tenantId": item["tenant_id"],
-#             "tenantCode1c": item["tenant__code1c"],
-#             "brandId": item["brand_id"],
-#             "brandName": item["brand__name"] or "Без бренда",
-#             "brandLogotype": brand_logotypes.get(item["brand_id"]),
-#             "count": item["count"],
-#         }
-#         for item in paginated_queryset
-#     ]
-
-#     return paginator.get_paginated_response(result)
-
-
-# @extend_schema(tags=["Номенклатура - Арендаторы"])
-# @api_view(['GET'])
-# @permission_classes([AllowAny])
-# def tenant_detail(request, tenant_pk: str):
-#     """
-#     GET /api/tenants/<uuid>/
-#     GET /api/tenants/<code1c>/
-#     """
-#     try:
-#         UUID(hex=tenant_pk)
-#         tenant_filter = "tenant__id"
-#     except (ValueError, AttributeError):
-#         tenant_filter = "tenant__code1c"
-
-#     qs = (
-#         NomenclatureTenant.objects
-#         .filter(**{tenant_filter: tenant_pk})
-#         .select_related("tenant", "brand", "nomenclature", "nomenclature__typeOfPlace")
-#         .prefetch_related(
-#             Prefetch(
-#                 "tenant__brands",
-#                 queryset=Brand.objects.only("id", "name", "logotype"),
-#                 to_attr="prefetched_brands",
-#             ),
-#             Prefetch(
-#                 "nomenclature__images",
-#                 queryset=NomenclatureImage.objects.filter(type="exterior").order_by("created"),
-#                 to_attr="prefetched_exterior",
-#             ),
-#         )
-
-#         .order_by("nomenclature__name")
-#     )
-
-#     if not qs.exists():
-#         raise NotFound("Арендатор не найден.")
-
-#     first = qs.first()
-#     if first is None:
-#         raise NotFound("Арендатор не найден.")
-
-#     tenant = first.tenant
-
-#     def get_first_exterior(nomenclature):
-#         exterior = getattr(nomenclature, "prefetched_exterior", [])
-#         if not exterior:
-#             return None
-
-#         image = exterior[0]
-
-#         if not image.source:
-#             return None
-
-#         return image.source.url if hasattr(image.source, "url") else str(image.source)
-
-#     places = [
-#         {
-#             "nomenclatureId": str(entry.nomenclature.id),
-#         }
-#         for entry in qs
-#     ]
-
-#     prefetched_brands = getattr(tenant, "prefetched_brands", [])
-#     primary_brand = prefetched_brands[0] if prefetched_brands else None
-
-#     if primary_brand:
-#         brand = {
-#             "id": str(primary_brand.id),
-#             "name": primary_brand.name,
-#             "logotype": (
-#                 primary_brand.logotype.url
-#                 if primary_brand.logotype
-#                 else None
-#             ),
-#         }
-#     else:
-#         brand = {
-#             "id": None,
-#             "name": None,
-#             "logotype": None,
-#         }
-
-#     return Response({
-#         "tenantId": str(tenant.id),
-#         "tenantCode1c": tenant.code1c,
-#         "brand": brand,
-#         "opf": tenant.opf,
-#         "inn": tenant.inn,
-#         "keyword": tenant.keyword,
-#         "totalPlaces": len(places),
-#         "places": places,
-#     })

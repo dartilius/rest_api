@@ -102,6 +102,24 @@ def format_local_datetime(value):
     return f"{timezone.localtime(value):%Y-%m-%d %H:%M:%S}"
 
 
+def get_nomenclature_images(obj, image_type):
+    """Returns prefetched images when available, otherwise queries the relation."""
+    if image_type == "exterior":
+        prefetched_exterior = getattr(obj, "prefetched_exterior", None)
+        if prefetched_exterior is not None:
+            return prefetched_exterior
+
+    prefetched_images = getattr(obj, "prefetched_images", None)
+    if prefetched_images is not None:
+        return [image for image in prefetched_images if image.type == image_type]
+
+    cached_images = getattr(obj, "_prefetched_objects_cache", {}).get("images")
+    if cached_images is not None:
+        return [image for image in cached_images if image.type == image_type]
+
+    return obj.images.filter(type=image_type)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # СЕРИАЛИЗАТОРЫ ДЛЯ СВЯЗАННЫХ СУЩНОСТЕЙ
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -461,7 +479,7 @@ class CityNomenclaturesSerializer(serializers.ModelSerializer):
     def get_exterior(self, obj):
         """Возвращает список фотографий экстерьера."""
         return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="exterior"), many=True
+            get_nomenclature_images(obj, "exterior"), many=True
         ).data
 
     def get_formattedAddress(self, obj):
@@ -553,13 +571,13 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
     def get_interior(self, obj):
         """Возвращает список фотографий интерьера."""
         return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="interior"), many=True
+            get_nomenclature_images(obj, "interior"), many=True
         ).data
 
     def get_exterior(self, obj):
         """Возвращает список фотографий экстерьера."""
         return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="exterior"), many=True
+            get_nomenclature_images(obj, "exterior"), many=True
         ).data
 
     def _user_id_name(self, user):
@@ -780,7 +798,7 @@ class NomenclatureListSerializer(serializers.ModelSerializer):
     def get_exterior(self, obj):
         """Возвращает список фотографий экстерьера."""
         return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="exterior"), many=True
+            get_nomenclature_images(obj, "exterior"), many=True
         ).data
 
     def get_status(self, obj):
@@ -835,11 +853,8 @@ class NomenclatureCardSerializer(serializers.ModelSerializer):
 
     def get_exterior(self, obj):
         """Возвращает первое фото экстерьера."""
-        prefetched_exterior = getattr(obj, "prefetched_exterior", None)
-        if prefetched_exterior is None:
-            image = obj.images.filter(type="exterior").first()
-        else:
-            image = prefetched_exterior[0] if prefetched_exterior else None
+        exterior_images = get_nomenclature_images(obj, "exterior")
+        image = exterior_images[0] if exterior_images else None
         if not image:
             return []
         return InNomenclaturePhotoSerializer([image], many=True).data
@@ -953,7 +968,8 @@ class NomenclatureShortSerializer(serializers.ModelSerializer):
 
     def get_exterior(self, obj):
         """Возвращает первое фото экстерьера."""
-        image = obj.images.filter(type="exterior").first()
+        exterior_images = get_nomenclature_images(obj, "exterior")
+        image = exterior_images[0] if exterior_images else None
         if not image:
             return []
         return InNomenclaturePhotoSerializer([image], many=True).data
@@ -1159,7 +1175,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             list: Список сериализованных фото экстерьера
         """
         return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="exterior"), many=True
+            get_nomenclature_images(obj, "exterior"), many=True
         ).data
 
     def get_interior(self, obj):
@@ -1173,7 +1189,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             list: Список сериализованных фото интерьера
         """
         return InNomenclaturePhotoSerializer(
-            obj.images.filter(type="interior"), many=True
+            get_nomenclature_images(obj, "interior"), many=True
         ).data
 
     def get_formattedAddress(self, obj):

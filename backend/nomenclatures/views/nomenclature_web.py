@@ -9,11 +9,17 @@ ViewSet для веб-интерфейса номенклатур.
 4. Исправлена ошибка с Nomenclature.web.DoesNotExist
 """
 
+from uuid import UUID
+
 from django.db.models import Count, Prefetch, Q
 from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from api.mixins import SignedMediaNoCacheMixin
 from nomenclatures.models import Nomenclature, NomenclatureImage
 from nomenclatures.serializers import (
     NomenclatureCardSerializer,
@@ -23,11 +29,6 @@ from nomenclatures.serializers import (
     NomenclatureWebSearchResponseSerializer,
     NomenclatureWebSerializer,
 )
-from rest_framework import viewsets
-from uuid import UUID
-from rest_framework.exceptions import NotFound, PermissionDenied
-from rest_framework.permissions import AllowAny
-from api.mixins import SignedMediaNoCacheMixin
 
 
 @extend_schema(tags=["Номенклатуры WEB"])
@@ -48,18 +49,18 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
     def validate_counterparty_filter_access(request, filters):
         """Ограничивает фильтр по контрагентам сотрудниками компании."""
         has_counterparty_filter = bool(
-            filters.get('counterparty_id') or filters.get('counterparty_ids')
+            filters.get("counterparty_id") or filters.get("counterparty_ids")
         )
         if not has_counterparty_filter:
             return
 
-        if getattr(request.user, 'role', None) not in {
-            'manager',
-            'admin',
-            'superuser',
+        if getattr(request.user, "role", None) not in {
+            "manager",
+            "admin",
+            "superuser",
         }:
             raise PermissionDenied(
-                'Фильтр по контрагентам доступен только сотрудникам.'
+                "Фильтр по контрагентам доступен только сотрудникам."
             )
 
     def get_catalog_queryset(self, *, for_map=False):
@@ -133,9 +134,7 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
             queryset = queryset.filter(brand__name__icontains=brand_name)
         if type_of_place := filters.get("type_of_place"):
             type_names = [
-                value.strip()
-                for value in type_of_place.split(",")
-                if value.strip()
+                value.strip() for value in type_of_place.split(",") if value.strip()
             ]
             queryset = queryset.filter(typeOfPlace__name__in=type_names)
         if content_types := filters.get("content_types"):
@@ -211,7 +210,7 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         limit = filters["limit"]
         count = queryset.count()
         start = (page - 1) * limit
-        results = queryset[start:start + limit]
+        results = queryset[start : start + limit]
 
         return Response(
             {
@@ -243,9 +242,7 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         filters = request_serializer.validated_data
         self.validate_counterparty_filter_access(request, filters)
         queryset = self.order_search_queryset(
-            self.apply_search_filters(
-                self.get_catalog_queryset(for_map=True), filters
-            ),
+            self.apply_search_filters(self.get_catalog_queryset(for_map=True), filters),
             filters,
         )
         results = NomenclatureWebMapPlaceSerializer(queryset, many=True).data
@@ -264,8 +261,7 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         # catalogue before the detail lookup is applied. Cache the response data
         # instead if needed.
         return (
-            Nomenclature.web
-            .select_related(
+            Nomenclature.web.select_related(
                 "owner",
                 "address",
                 "address__address__country",
@@ -281,24 +277,42 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
             .prefetch_related(
                 Prefetch(
                     "images",
-                    queryset=NomenclatureImage.objects.order_by("-created")[:5],
+                    queryset=NomenclatureImage.objects.order_by("-created"),
                     to_attr="prefetched_images",
                 )
             )
             .only(
-                "id", "name", "code1c", "description", "old_catalog_slug",
-                "pricePerMonth", "contentType", "for_web", "worktime_start",
-                "worktime_end", "possibility", "square", "external_video_media",
-                "external_audio_media", "internal_video_media", "internal_audio_media",
-                "owner__id", "owner__first_name", "owner__last_name",
-                "address__address__id", "address__address__country__name",
-                "address__address__region__name", "address__address__city__name",
+                "id",
+                "name",
+                "code1c",
+                "description",
+                "old_catalog_slug",
+                "pricePerMonth",
+                "contentType",
+                "for_web",
+                "worktime_start",
+                "worktime_end",
+                "possibility",
+                "square",
+                "external_video_media",
+                "external_audio_media",
+                "internal_video_media",
+                "internal_audio_media",
+                "owner__id",
+                "owner__first_name",
+                "owner__last_name",
+                "address__address__id",
+                "address__address__country__name",
+                "address__address__region__name",
+                "address__address__city__name",
                 "address__address__city__slug",
                 "address__address__city__locality_type__name",
                 "address__address__street__name",
                 "address__address__street__street_type__name",
-                "address__address__house__number", "address__address__building__number",
-                "responsible_ad__id", "responsible_ad__first_name",
+                "address__address__house__number",
+                "address__address__building__number",
+                "responsible_ad__id",
+                "responsible_ad__first_name",
                 "responsible_ad__last_name",
             )
         )
@@ -318,7 +332,7 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         Raises:
             NotFound: Если номенклатура не найдена
         """
-        identifier = self.kwargs.get('pk')
+        identifier = self.kwargs.get("pk")
         if not identifier:
             raise NotFound("Не указан идентификатор номенклатуры.")
 
@@ -352,57 +366,3 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
             return nomenclature
 
         raise NotFound("Номенклатура не найдена.")
-
-# from drf_spectacular.utils import extend_schema
-# from nomenclatures.models import Nomenclature
-# from nomenclatures.serializers import NomenclatureWebSerializer
-# from rest_framework import viewsets
-# from uuid import UUID
-# from rest_framework.exceptions import NotFound
-# from rest_framework.permissions import AllowAny
-
-
-# @extend_schema(tags=["Номенклатуры WEB"])
-# class NomenclatureWebViewSet(viewsets.ModelViewSet):
-#     queryset = Nomenclature.web.select_related(
-#         "address",
-#         "address__country",
-#         "address__region",
-#         "address__city",
-#         "address__city__locality_type",
-#         "address__street",
-#         "address__street__street_type",
-#         "address__house",
-#         "address__building",
-#         "responsible_ad"
-#     ).all()
-#     serializer_class = NomenclatureWebSerializer
-#     permission_classes = [AllowAny]
-
-#     def get_object(self):
-#         identifier = self.kwargs.get('pk')
-#         if not identifier:
-#             raise NotFound("Не указан идентификатор номенклатуры.")
-
-#         # Проверяем, валидный ли UUID
-#         is_uuid = False
-#         try:
-#             UUID(str(identifier))
-#             is_uuid = True
-#         except ValueError:
-#             is_uuid = False
-
-#         # Если UUID — ищем по id
-#         if is_uuid:
-#             try:
-#                 nomenclature = Nomenclature.web.get(id=identifier)
-#                 return nomenclature
-#             except Nomenclature.web.DoesNotExist:
-#                 raise NotFound("Номенклатура не найдена.")
-
-#         # Если не UUID — ищем по old_catalog_slug
-#         try:
-#             nomenclature = Nomenclature.web.get(old_catalog_slug=identifier)
-#             return nomenclature
-#         except Nomenclature.web.DoesNotExist:
-#             raise NotFound("Номенклатура не найдена.")

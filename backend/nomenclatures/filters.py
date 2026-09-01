@@ -88,7 +88,7 @@ def full_text_search(queryset, value):
 
         result = queryset.filter(conditions)
 
-        logger.info(f'Найдено результатов: {result.count()}')
+        logger.info('Поисковый queryset сформирован')
 
         return result
 
