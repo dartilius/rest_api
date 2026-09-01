@@ -528,14 +528,28 @@ class Nomenclature(APIBaseObjectModel):
             if user:
                 additional_parts.append(f"{user.first_name} {user.last_name}".strip())
 
-        # Арендаторы (ограничение 10 записей для производительности)
-        # Проверяем, загружены ли данные, чтобы избежать лишнего запроса к БД
-        if hasattr(self, "nomenclature_tenants"):
-            for relation in self.nomenclature_tenants.all()[:10]:
-                if relation.tenant:
-                    additional_parts.append(relation.tenant.keyword or "")
-                if relation.brand:
-                    additional_parts.append(relation.brand.name or "")
+        # Арендаторы (ограничение 10 записей для производительности).
+        # RelatedManager существует всегда, поэтому hasattr здесь не означает, что
+        # связи или их tenant/brand уже загружены. Получаем их одним JOIN-запросом.
+        prefetched_relations = getattr(
+            self, "_prefetched_objects_cache", {}
+        ).get("nomenclature_tenants")
+        if prefetched_relations is not None and all(
+            "tenant" in relation._state.fields_cache
+            and "brand" in relation._state.fields_cache
+            for relation in prefetched_relations[:10]
+        ):
+            tenant_relations = prefetched_relations[:10]
+        else:
+            tenant_relations = self.nomenclature_tenants.select_related(
+                "tenant", "brand"
+            )[:10]
+
+        for relation in tenant_relations:
+            if relation.tenant:
+                additional_parts.append(relation.tenant.keyword or "")
+            if relation.brand:
+                additional_parts.append(relation.brand.name or "")
 
         # Объединяем все части
         all_parts = parts + additional_parts

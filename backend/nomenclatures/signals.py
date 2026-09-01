@@ -58,13 +58,12 @@ def handle_nomenclature_post_save(sender, instance, created, **kwargs):
         "pricePerMonth",
     ]
 
-    should_update = created
-
-    if not should_update and hasattr(instance, "tracker"):
-        for field in relevant_fields:
-            if instance.tracker.has_changed(field):
-                should_update = True
-                break
+    update_fields = kwargs.get("update_fields")
+    should_update = (
+        created
+        or update_fields is None
+        or bool(set(update_fields) & set(relevant_fields))
+    )
 
     if should_update:
         transaction.on_commit(lambda: instance.update_search_vector())

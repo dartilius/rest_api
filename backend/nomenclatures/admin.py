@@ -137,52 +137,17 @@ class NomenclatureAdmin(admin.ModelAdmin):
     raw_id_fields = ("owner", "brand", "legalEntity")
 
     # =========================================================================
-    # ОПТИМИЗИРОВАННЫЙ QUERYSET С КЕШИРОВАНИЕМ ID
+    # ОПТИМИЗИРОВАННЫЙ QUERYSET ДЛЯ СПИСКА
     # =========================================================================
 
     def get_queryset(self, request):
         """
-        Оптимизированный запрос для списка номенклатур с кешированием ID.
+        Оптимизированный запрос для списка номенклатур.
 
-        Кеширование ID вместо всего queryset для экономии памяти.
+        Пагинация Django Admin ограничивает итоговую выборку. Не материализуем
+        все ID таблицы ради кэша: на большой базе это дороже, чем сам список.
         """
-        cache_key = f"nomenclature_admin_qs_{request.user.id}"
-        cached_ids = cache.get(cache_key)
-
-        if cached_ids is not None:
-            return (
-                Nomenclature.objects.filter(id__in=cached_ids)
-                .select_related(
-                    "owner",
-                    "availability",
-                    "brand",
-                    "legalEntity",
-                    "responsible_radio",
-                    "responsible_ad",
-                    "responsible_technic",
-                    "responsible_technic_on_address",
-                    "responsible_placement_marketing",
-                    "typeOfPlace",
-                )
-                .prefetch_related(
-                    "tenants",
-                    Prefetch(
-                        "images",
-                        queryset=NomenclatureImage.objects.filter(type="exterior")[:1],
-                        to_attr="prefetched_exterior",
-                    ),
-                    Prefetch(
-                        "discount_rules",
-                        queryset=DiscountRule.objects.all(),
-                        to_attr="prefetched_discount_rules",
-                    ),
-                )
-                .annotate(
-                    tenants_count=Count("tenants", distinct=True),
-                )
-            )
-
-        queryset = (
+        return (
             Nomenclature.objects.select_related(
                 "owner",
                 "availability",
@@ -250,11 +215,6 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 "typeOfPlace__abbreviation",
             )
         )
-
-        ids = list(queryset.values_list("id", flat=True))
-        cache.set(cache_key, ids, 300)
-
-        return queryset
 
     def get_search_results(self, request, queryset, search_term):
         """
