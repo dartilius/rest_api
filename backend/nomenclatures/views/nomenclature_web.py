@@ -20,6 +20,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from api.mixins import SignedMediaNoCacheMixin
+from brands.models import Brand
 from nomenclatures.models import Nomenclature, NomenclatureImage
 from nomenclatures.serializers import (
     NomenclatureCardSerializer,
@@ -263,6 +264,9 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         return (
             Nomenclature.web.select_related(
                 "owner",
+                "brand",
+                "legalEntity",
+                "typeOfPlace",
                 "address",
                 "address__address__country",
                 "address__address__region",
@@ -275,6 +279,11 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
                 "responsible_ad",
             )
             .prefetch_related(
+                Prefetch(
+                    "legalEntity__brands",
+                    queryset=Brand.objects.only("id", "name"),
+                    to_attr="_prefetched_brands",
+                ),
                 Prefetch(
                     "images",
                     queryset=NomenclatureImage.objects.order_by("-created"),
@@ -301,6 +310,20 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
                 "owner__id",
                 "owner__first_name",
                 "owner__last_name",
+                "brand__id",
+                "brand__name",
+                "brand__logotype",
+                "legalEntity__id",
+                "legalEntity__opf",
+                "legalEntity__first_name",
+                "legalEntity__middle_name",
+                "legalEntity__last_name",
+                "legalEntity__keyword",
+                "legalEntity__additional_name",
+                "legalEntity__description",
+                "typeOfPlace__id",
+                "typeOfPlace__name",
+                "typeOfPlace__abbreviation",
                 "address__address__id",
                 "address__address__country__name",
                 "address__address__region__name",

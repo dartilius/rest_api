@@ -55,6 +55,7 @@ from rest_framework.status import HTTP_200_OK
 from addresses.models import City
 from api.constants import VersionsSerializer, DetailSerializer
 from api.mixins import SignedMediaNoCacheMixin
+from brands.models import Brand
 from counterparties.models import Counterparty
 from counterparties.serializers import (
     CounterpartiesShortSerializer,
@@ -593,6 +594,11 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             ).prefetch_related(
                 "images",
                 Prefetch(
+                    "legalEntity__brands",
+                    queryset=Brand.objects.only("id", "name"),
+                    to_attr="_prefetched_brands",
+                ),
+                Prefetch(
                     "tenants",
                     queryset=Counterparty.objects.only(
                         "id",
@@ -637,6 +643,11 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             )
             .prefetch_related(
                 "images",
+                Prefetch(
+                    "legalEntity__brands",
+                    queryset=Brand.objects.only("id", "name"),
+                    to_attr="_prefetched_brands",
+                ),
                 Prefetch(
                     "tenants",
                     queryset=Counterparty.objects.only(
@@ -846,6 +857,11 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                 )
                 .prefetch_related(
                     "images",
+                    Prefetch(
+                        "legalEntity__brands",
+                        queryset=Brand.objects.only("id", "name"),
+                        to_attr="_prefetched_brands",
+                    ),
                     Prefetch(
                         "tenants",
                         queryset=Counterparty.objects.only(
@@ -1772,6 +1788,11 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             .select_related("brand", "typeOfPlace", "legalEntity", "responsible_ad")
             .prefetch_related(
                 "images",
+                Prefetch(
+                    "legalEntity__brands",
+                    queryset=Brand.objects.only("id", "name"),
+                    to_attr="_prefetched_brands",
+                ),
                 Prefetch(
                     "tenants",
                     queryset=Counterparty.objects.only(

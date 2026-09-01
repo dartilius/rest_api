@@ -21,6 +21,7 @@ from django.http import JsonResponse
 from django.utils.dateparse import parse_date
 from django.utils.html import format_html
 
+from brands.models import Brand
 from ch_statistic.models import MusicStat
 from nomenclatures.models import (
     Nomenclature,
@@ -163,6 +164,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
             .prefetch_related(
                 "tenants",
                 Prefetch(
+                    "legalEntity__brands",
+                    queryset=Brand.objects.only("id", "name"),
+                    to_attr="_prefetched_brands",
+                ),
+                Prefetch(
                     "images",
                     queryset=NomenclatureImage.objects.filter(type="exterior")[:1],
                     to_attr="prefetched_exterior",
@@ -247,6 +253,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 "owner",
                 "brand",
                 "legalEntity",
+                Prefetch(
+                    "legalEntity__brands",
+                    queryset=Brand.objects.only("id", "name"),
+                    to_attr="_prefetched_brands",
+                ),
                 "responsible_radio",
                 "responsible_ad",
                 "responsible_technic",
