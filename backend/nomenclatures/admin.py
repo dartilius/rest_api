@@ -131,7 +131,9 @@ class NomenclatureAdmin(admin.ModelAdmin):
     search_fields = ("name", "code1c", "article", "id_rasb", "brand__name", "id")
 
     list_filter = ("is_active", "timezone", "brand", "contentType")
-    show_full_result_count = True
+    # Пагинатор уже считает отфильтрованный queryset. Полный count всех записей
+    # дублирует тяжёлый GROUP BY по арендаторам на каждой загрузке списка.
+    show_full_result_count = False
     list_per_page = 50
 
     autocomplete_fields = ["owner", "brand", "legalEntity", "responsible_radio"]
@@ -203,6 +205,8 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 "legalEntity__middle_name",
                 "legalEntity__last_name",
                 "legalEntity__keyword",
+                "legalEntity__description",
+                "legalEntity__opf",
                 "responsible_radio__email",
                 "responsible_radio__first_name",
                 "responsible_radio__last_name",
