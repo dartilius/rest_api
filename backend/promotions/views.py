@@ -1,140 +1,102 @@
-from django.db.models import Q
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample, OpenApiResponse
-from rest_framework import viewsets
-from rest_framework.status import HTTP_204_NO_CONTENT
-from rest_framework.exceptions import NotFound
+"""ViewSet для управления акциями."""
+
 from uuid import UUID
 
+from django.db.models import Prefetch
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
+from rest_framework import viewsets
+from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.status import HTTP_204_NO_CONTENT
+
 from api.constants import DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES
-from counterparties.models import Counterparty
+from brands.models import Brand
 from promotions.models import Promotion
-from promotions.serializers import PromotionSerializer, PromotionListSerializer, PromotionOutputSerializer
-from users.models import CONTACT_PERSON_ROLE_KEYS
+from promotions.serializers import PromotionListSerializer, PromotionSerializer
 
 
 @extend_schema_view(
     list=extend_schema(
         summary="Получить пагинированный список акций",
-        description=(
-                "Возвращает постраничный список акций. "
-                "Использует `PromotionListSerializer`."
-        ),
-        responses={
-            200: OpenApiResponse(
-                response=PromotionListSerializer,
-                description="Успешное получение списка акций",
-
-            ),
-            **DEFAULT_SCHEMA_RESPONSES
-        },
+        responses={200: OpenApiResponse(response=PromotionListSerializer)},
     ),
-
     retrieve=extend_schema(
         summary="Получить одну акцию",
-        description="Возвращает полное описание акции через `PromotionSerializer`.",
-        responses={
-            200: PromotionOutputSerializer,
-            **DEFAULT_SCHEMA_RESPONSES
-        }
+        responses={200: PromotionSerializer},
     ),
-
     create=extend_schema(
         summary="Создать акцию",
-        description="Создаёт новую акцию. В запросе используется `PromotionSerializer`.",
         request=PromotionSerializer,
-        responses={
-            201: PromotionOutputSerializer,
-            401: DEFAULT_SCHEMA_EXAMPLES,
-            **DEFAULT_SCHEMA_RESPONSES
-        }
+        responses={201: PromotionSerializer},
     ),
-
-    update=extend_schema(
-        summary="Полностью обновить акцию",
-        request=PromotionSerializer,
-        responses={
-            200: PromotionOutputSerializer,
-            **DEFAULT_SCHEMA_RESPONSES,
-        }
-    ),
-
-    partial_update=extend_schema(
-        summary="Частично обновить акцию",
-        request=PromotionSerializer,
-        responses={
-            200: PromotionOutputSerializer,
-            **DEFAULT_SCHEMA_RESPONSES,
-        }
-    ),
-
+    update=extend_schema(request=PromotionSerializer, responses={200: PromotionSerializer}),
+    partial_update=extend_schema(request=PromotionSerializer, responses={200: PromotionSerializer}),
     destroy=extend_schema(
         summary="Удалить акцию",
         examples=[
-                     OpenApiExample(
-                         "Акция успешна удалена",
-                         status_codes=[HTTP_204_NO_CONTENT],
-                         response_only=True,
-                     )
-                 ] + DEFAULT_SCHEMA_EXAMPLES,
+            OpenApiExample("Акция успешно удалена", status_codes=[HTTP_204_NO_CONTENT], response_only=True),
+        ] + DEFAULT_SCHEMA_EXAMPLES,
         responses={HTTP_204_NO_CONTENT: {}} | DEFAULT_SCHEMA_RESPONSES,
     ),
 )
 @extend_schema(tags=["Акция"])
 class PromotionViewSet(viewsets.ModelViewSet):
-    lookup_field = 'id_or_code1c'
-    http_method_names = ['get', 'post', 'put', 'patch', 'delete']
+    lookup_field = "id_or_code1c"
+    http_method_names = ["get", "post", "put", "patch", "delete"]
     queryset = Promotion.objects.all()
 
-    def get_serializer(self, *args, **kwargs):
-        if self.action == "list":
-            serializer = PromotionListSerializer
-        else:
-            serializer = PromotionSerializer
-
-        return serializer(*args, **kwargs)
-
     def get_queryset(self):
-        user = self.request.user
-        is_admin = (
-            user.is_admin
-            or user.is_superuser
-            or user.is_ordinary
-            or user.is_manager
+        queryset = (
+            Promotion.objects
+            .select_related("counterparty")
+            .prefetch_related(
+                Prefetch(
+                    "counterparty__brands",
+                    queryset=Brand.objects.only("id", "name", "description"),
+                    to_attr="_prefetched_brands",
+                ),
+            )
+            .order_by("-created")
         )
+        user = self.request.user
+        if user.is_employee:
+            return queryset
+        if user.is_contact_person:
+            return queryset.filter(counterparty__contact_persons=user)
+        return queryset.none()
 
-        qs = Promotion.objects.all().order_by('-created')
-
-        if user.role in CONTACT_PERSON_ROLE_KEYS:
-            user_counterparties = Counterparty.objects.filter(contact_persons=user)
-            qs = qs.filter(counterparty__in=user_counterparties)
-        elif is_admin:
-            pass  # админы видят все акции
-        else:
-            qs = Promotion.objects.none()
-        return qs
-
-
+    def get_serializer_class(self):
+        return PromotionListSerializer if self.action == "list" else PromotionSerializer
 
     def get_object(self):
         identifier = self.kwargs.get(self.lookup_field)
         if not identifier:
             raise NotFound("Не указан идентификатор акции.")
 
-        # пробуем UUID
+        queryset = self.get_queryset().filter(is_active=True)
         try:
-            uuid_obj = UUID(str(identifier))
-            promotion = Promotion.active.get(id=uuid_obj)
-            if not promotion.is_active:
-                raise NotFound("Акция не найдена.")
+            promotion = queryset.filter(id=UUID(str(identifier))).first()
+        except ValueError:
+            promotion = None
+        if promotion:
             return promotion
-        except (ValueError, Counterparty.DoesNotExist):
-            pass
 
-        # пробуем code1c
-        try:
-            promotion = Promotion.active.get(code1c=identifier)
-            if not promotion.is_active:
-                raise NotFound("Акция не найдена.")
+        promotion = queryset.filter(code1c=identifier).first()
+        if promotion:
             return promotion
-        except Promotion.DoesNotExist:
-            raise NotFound("Акция не найдена.")
+        raise NotFound("Акция не найдена.")
+
+    def perform_create(self, serializer):
+        self._check_counterparty_access(serializer.validated_data.get("counterparty"))
+        serializer.save(owner=self.request.user)
+
+    def perform_update(self, serializer):
+        counterparty = serializer.validated_data.get("counterparty", serializer.instance.counterparty)
+        self._check_counterparty_access(counterparty)
+        serializer.save()
+
+    def _check_counterparty_access(self, counterparty):
+        if self.request.user.is_employee:
+            return
+        if counterparty and counterparty.contact_persons.filter(pk=self.request.user.pk).exists():
+            return
+        raise PermissionDenied("Недостаточно прав для работы с акцией этого контрагента.")

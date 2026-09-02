@@ -9,9 +9,12 @@ class PromotionAdmin(admin.ModelAdmin):
         'id',
         'name',
         'is_active',
+        'counterparty',
+        'start_period',
+        'end_period',
     )
+    list_display_links = ('name',)
     search_fields = ("name",)
+    list_filter = ('is_active', 'counterparty')
+    date_hierarchy = 'created'
     readonly_fields = ("id", "code1c", "created")
-
-    def get_queryset(self, request):
-        return Promotion.objects.all()
