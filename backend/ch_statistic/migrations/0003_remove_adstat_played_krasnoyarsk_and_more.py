@@ -9,11 +9,19 @@ class Migration(migrations.Migration):
         ('ch_statistic', '0002_adstat_played_krasnoyarsk_and_more'),
     ]
 
+    # The fields are no longer used by application code, but production still
+    # contains historical values.  Keep their physical ClickHouse columns until
+    # a separately verified archival/removal operation is approved.
     operations = [
-        migrations.RemoveField(model_name='adstat', name='played_krasnoyarsk'),
-        migrations.RemoveField(model_name='backupimagestat', name='played_krasnoyarsk'),
-        migrations.RemoveField(model_name='imagestat', name='played_krasnoyarsk'),
-        migrations.RemoveField(model_name='musicstat', name='played_krasnoyarsk'),
-        migrations.RemoveField(model_name='tickerstat', name='played_krasnoyarsk'),
-        migrations.RemoveField(model_name='videostat', name='played_krasnoyarsk'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[],
+            state_operations=[
+                migrations.RemoveField(model_name='adstat', name='played_krasnoyarsk'),
+                migrations.RemoveField(model_name='backupimagestat', name='played_krasnoyarsk'),
+                migrations.RemoveField(model_name='imagestat', name='played_krasnoyarsk'),
+                migrations.RemoveField(model_name='musicstat', name='played_krasnoyarsk'),
+                migrations.RemoveField(model_name='tickerstat', name='played_krasnoyarsk'),
+                migrations.RemoveField(model_name='videostat', name='played_krasnoyarsk'),
+            ],
+        ),
     ]
