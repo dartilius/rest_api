@@ -152,6 +152,9 @@ DATABASES = {
 }
 
 CLICKHOUSE_HOST = os.environ.get('CLICKHOUSE_HOST')
+CLICKHOUSE_STATISTICS_TABLE_SUFFIX = os.environ.get(
+    'CLICKHOUSE_STATISTICS_TABLE_SUFFIX', ''
+)
 if CLICKHOUSE_HOST:
     DATABASES['clickhouse'] = {
         'ENGINE': 'clickhouse_backend.backend',
