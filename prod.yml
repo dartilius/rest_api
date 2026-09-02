@@ -40,6 +40,8 @@ services:
     restart: unless-stopped
     volumes:
       - /file/clickhouse_data/_data:/var/lib/clickhouse
+      - /file/clickhouse_data_cold:/var/lib/clickhouse-cold
+      - ./configs/clickhouse/storage.xml:/etc/clickhouse-server/config.d/storage.xml:ro
     ulimits:
       nofile: 262144
     mem_limit: 16G
