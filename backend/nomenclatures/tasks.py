@@ -1,22 +1,26 @@
-# nomenclatures/tasks.py
-
+import logging
+import re
+from datetime import timedelta
 from itertools import chain
 
 from celery import shared_task
 from celery_singleton import Singleton
+from django.utils import timezone
+
+from api.constants import get_minio_client
 from nomenclatures.models import NomenclatureAvailability, StatusHistory, Nomenclature
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from users.models import CustomUser
-from api.constants import get_minio_client
-from datetime import datetime, timedelta
-import re
-
-from django.utils import timezone
 
 
-@shared_task(base=Singleton)
-def update_opensearch_for_instance(instance_id):
+logger = logging.getLogger(__name__)
+INDEX_RETRY_DELAY_SECONDS = 30
+UPDATE_RETRY_DELAY_SECONDS = 60
+
+
+@shared_task(bind=True, base=Singleton, max_retries=3)
+def update_opensearch_for_instance(self, instance_id):
     """Обновление документа в OpenSearch для конкретной номенклатуры."""
     try:
         from nomenclatures.documents import NomenclatureDocument
@@ -41,11 +45,12 @@ def update_opensearch_for_instance(instance_id):
         )
 
         NomenclatureDocument().index(nomenclature)
-        print(f"OpenSearch обновлён для номенклатуры {instance_id}")
+        logger.info("OpenSearch updated for nomenclature %s", instance_id)
     except Nomenclature.DoesNotExist:
-        print(f"Номенклатура {instance_id} не найдена")
-    except Exception as e:
-        print(f"Ошибка OpenSearch для {instance_id}: {e}")
+        logger.info("Nomenclature %s no longer exists; indexing is not required", instance_id)
+    except Exception as exc:
+        logger.exception("OpenSearch indexing failed for nomenclature %s", instance_id)
+        raise self.retry(exc=exc, countdown=INDEX_RETRY_DELAY_SECONDS)
 
 
 def get_owner(owner_id):
@@ -214,8 +219,8 @@ BUILD_SUFFIX = ".exe"
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
-@shared_task
-def update_task(nomenclature_id: str, owner_id: str):
+@shared_task(bind=True, max_retries=3)
+def update_task(self, nomenclature_id: str, owner_id: str):
     """
     Создаёт задачу обновления ПО.
 
@@ -315,14 +320,12 @@ def update_task(nomenclature_id: str, owner_id: str):
 
         return f"Обновление {latest_version} " f"отправлено на {nomenclature.name}"
 
-    except Exception:
-        nomenclature_name = getattr(
-            nomenclature,
-            "name",
+    except Exception as exc:
+        logger.exception(
+            "Failed to create software-update task for nomenclature %s",
             nomenclature_id,
         )
-
-        return "Ошибка при создании обновления " f"для {nomenclature_name}"
+        raise self.retry(exc=exc, countdown=UPDATE_RETRY_DELAY_SECONDS)
 
 
 @shared_task

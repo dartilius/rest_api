@@ -13,11 +13,12 @@
 import logging
 
 from django.db import transaction
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from counterparties.models import Counterparty
 from nomenclatures.models import Nomenclature, NomenclatureTenant
+from nomenclatures.services.indexing import is_tenant_indexing_suppressed
 from nomenclatures.services.search import NomenclatureSearchService
 from nomenclatures.tasks import update_opensearch_for_instance
 
@@ -106,7 +107,10 @@ def update_opensearch_on_tenant_change(sender, instance, **kwargs):
     if kwargs.get("raw", False):
         return
 
-    if not instance.nomenclature:
+    if not instance.nomenclature_id:
+        return
+
+    if is_tenant_indexing_suppressed(instance.nomenclature_id):
         return
 
     transaction.on_commit(
@@ -142,6 +146,23 @@ def invalidate_search_cache_on_delete(sender, instance, **kwargs):
     NomenclatureSearchService.clear_cache()
 
 
+@receiver(pre_save, sender=Nomenclature)
+def remember_previous_legal_entity(sender, instance, **kwargs):
+    """Save the old legal entity before a nomenclature is updated."""
+    if instance._state.adding:
+        return
+
+    update_fields = kwargs.get("update_fields")
+    if update_fields is not None and "legalEntity" not in update_fields:
+        return
+
+    instance._old_legal_entity_id = (
+        sender.objects.filter(pk=instance.pk)
+        .values_list("legalEntity_id", flat=True)
+        .first()
+    )
+
+
 @receiver(post_save, sender=Nomenclature)
 def nomenclature_set_broadcast(sender, instance, **kwargs):
     """
@@ -159,16 +180,12 @@ def nomenclature_set_broadcast(sender, instance, **kwargs):
 
     old_id = getattr(instance, "_old_legal_entity_id", None)
 
-    if old_id is None and instance.pk:
-        old_id = (
-            sender.objects.filter(pk=instance.pk)
-            .values_list("legalEntity_id", flat=True)
-            .first()
-        )
-
     if old_id and old_id != instance.legalEntity_id:
         if not Nomenclature.objects.filter(legalEntity_id=old_id).exists():
             Counterparty.objects.filter(pk=old_id).update(broadcast=False)
+
+    if hasattr(instance, "_old_legal_entity_id"):
+        delattr(instance, "_old_legal_entity_id")
 
 
 @receiver(post_delete, sender=Nomenclature)

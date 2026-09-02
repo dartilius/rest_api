@@ -69,6 +69,7 @@ from nomenclatures.models import (
     NomenclatureTenant,
     DiscountRule,
 )
+from nomenclatures.services.indexing import suppress_tenant_indexing
 from api.base_objects import Article
 
 # Регистрация кастомных типов полей для DRF
@@ -284,6 +285,23 @@ class TypeOfPlaceSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
+class TenantWriteListSerializer(serializers.ListSerializer):
+    """Validate all tenant identifiers with one query."""
+
+    def validate(self, data):
+        tenant_ids = {item["id"] for item in data}
+        existing_ids = set(
+            Counterparty.objects.filter(id__in=tenant_ids).values_list("id", flat=True)
+        )
+        missing_ids = tenant_ids - existing_ids
+        if missing_ids:
+            missing_id = next(iter(missing_ids))
+            raise serializers.ValidationError(
+                {"id": f"Арендатор с id {missing_id} не найден"}
+            )
+        return data
+
+
 class TenantWriteSerializer(serializers.Serializer):
     """
     Сериализатор для записи арендаторов.
@@ -301,27 +319,8 @@ class TenantWriteSerializer(serializers.Serializer):
         allow_null=True,
     )
 
-    def validate_id(self, value):
-        """
-        Проверка существования арендатора.
-
-        Аргументы:
-            value (UUID): ID арендатора
-
-        Возвращает:
-            UUID: Валидный ID
-
-        Исключения:
-            ValidationError: Если арендатор не найден
-        """
-        try:
-            Counterparty.objects.get(id=value)
-            return value
-        except Counterparty.DoesNotExist:
-            raise serializers.ValidationError(
-                f"Арендатор с id {value} не найден"
-            )
-
+    class Meta:
+        list_serializer_class = TenantWriteListSerializer
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # СЕРИАЛИЗАТОРЫ ДЛЯ СПИСКОВ И КАРТОЧЕК
@@ -1510,9 +1509,13 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             ValidationError: Если арендатор не найден или данные некорректны
         """
         if tenants_data is None or tenants_data == []:
-            NomenclatureTenant.objects.filter(nomenclature=instance).delete()
+            with transaction.atomic():
+                with suppress_tenant_indexing(instance.id):
+                    NomenclatureTenant.objects.filter(nomenclature=instance).delete()
             return
 
+        tenant_ids = {item["id"] for item in tenants_data if item.get("id")}
+        counterparties_by_id = Counterparty.objects.in_bulk(tenant_ids)
         new_rows = []
         seen_keys = set()
 
@@ -1525,9 +1528,8 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             if not tenant_id:
                 continue
 
-            try:
-                counterparty = Counterparty.objects.get(id=tenant_id)
-            except Counterparty.DoesNotExist:
+            counterparty = counterparties_by_id.get(tenant_id)
+            if counterparty is None:
                 continue
 
             unique_key = (
@@ -1552,9 +1554,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             )
 
         with transaction.atomic():
-            NomenclatureTenant.objects.filter(nomenclature=instance).delete()
-            if new_rows:
-                NomenclatureTenant.objects.bulk_create(new_rows, batch_size=100)
+            with suppress_tenant_indexing(instance.id):
+                NomenclatureTenant.objects.filter(nomenclature=instance).delete()
+                if new_rows:
+                    NomenclatureTenant.objects.bulk_create(new_rows, batch_size=100)
 
     def _update_address(self, instance: Nomenclature, address_data: Optional[Dict]) -> None:
         """
