@@ -39,7 +39,7 @@ def enable_ttl_for_optimized_tables(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ch_statistic', '0001_initial'),
+        ('ch_statistic', '0003_remove_adstat_played_krasnoyarsk_and_more'),
     ]
 
     operations = [
