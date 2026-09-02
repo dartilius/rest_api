@@ -49,14 +49,3 @@ class BrandDocument(Document):
     class Django:
         model = Brand
         queryset_pagination = 500
-
-    def get_queryset(self, filter_=None, exclude=None, count=None, alias=None):
-        return super().get_queryset(
-            filter_=filter_,
-            exclude=exclude,
-            count=count,
-            alias=alias,
-        )
-
-    def get_indexing_dict(self, instance):
-        return self.prepare(instance)

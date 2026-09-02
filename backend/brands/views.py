@@ -1,283 +1,118 @@
-"""
-ViewSet для управления брендами.
-
-ОПТИМИЗАЦИЯ:
-───────────────────────────────────────────────────────────────────────────────
-1. Оптимизирован list() с использованием аннотации min_price
-2. Устранены дублирующиеся запросы
-3. Добавлена оптимизация queryset через get_brand_min_price_qs()
-4. Использование Prefetch для предзагрузки данных
-"""
+"""ViewSet для управления брендами."""
 
 from uuid import UUID
-from django.db.models import Q, Min, Prefetch
+
+from django.db.models import Min, Prefetch, Q as DjangoQ
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample, OpenApiParameter
-from rest_framework import status
-from rest_framework import viewsets
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework.status import (
-    HTTP_200_OK, HTTP_204_NO_CONTENT,
-)
-from rest_framework.decorators import action
+from opensearchpy.helpers.search import Q as OpenSearchQ
 
-from api.constants import (
-    DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
-)
 from api.mixins import SignedMediaNoCacheMixin
 from api.pagination import CustomLimitOffsetPagination
 from brands.documents import BrandDocument
 from brands.filters import BrandFilter
 from brands.models import Brand
-from brands.serializers import BrandCreateSerializer, BrandShortSerializer, BrandDetailSerializer, BrandListSerializer
-from nomenclatures.models import Nomenclature
+from brands.serializers import (
+    BrandCreateSerializer,
+    BrandDetailSerializer,
+    BrandListSerializer,
+    BrandShortSerializer,
+)
+from nomenclatures.models import Nomenclature, NomenclatureImage
 from nomenclatures.serializers import NomenclatureShortSerializer
-from services.api_1c_client import api_1c, logger
+from services.api_1c_client import logger
 
 OPENSEARCH_MAX_RESULTS = 1000
 
 
-def get_brand_min_price_qs(qs):
-    """
-    Добавляет аннотацию min_price для оптимизации.
-
-    Используется в list() и get_object() для предзагрузки минимальной цены.
-    """
-    return qs.annotate(
-        min_price=Min("nomenclatures__pricePerMonth")
+def get_brand_min_price_qs(queryset):
+    """Добавляет цену из опубликованных активных номенклатур бренда."""
+    return queryset.annotate(
+        min_price=Min(
+            "nomenclatures__pricePerMonth",
+            filter=DjangoQ(
+                nomenclatures__for_web=True,
+                nomenclatures__is_active=True,
+            ),
+        ),
     )
 
 
 @extend_schema_view(
     list=extend_schema(
         summary="Получить пагинированный список брендов",
-        examples=[
-                     OpenApiExample(
-                         "Список брендов",
-                         response_only=True,
-                         value={
-                             "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-                             "name": "django drf test",
-                             "logotype": "http://192.168.0.90/local-media/brand_logo/example.png",
-                             "created": "2025-10-17T10:42:15.434767",
-                             "description": "django drf test",
-                             "code1c": "0001"
-                         },
-                         status_codes=[HTTP_200_OK],
-                     )
-                 ] + DEFAULT_SCHEMA_EXAMPLES,
-        responses={HTTP_200_OK: BrandListSerializer(many=True)} | DEFAULT_SCHEMA_RESPONSES,
+        responses={200: BrandListSerializer(many=True)},
     ),
     retrieve=extend_schema(
-        summary="Получить расшифровку бренда",
+        summary="Получить бренд",
         parameters=[
             OpenApiParameter(
-                name='id_or_code1c',
-                description='UUID бренда или код 1С',
+                name="id_or_code1c",
+                description="UUID бренда, код 1С или slug",
                 required=True,
                 type=str,
-                location=OpenApiParameter.PATH
-            )
+                location=OpenApiParameter.PATH,
+            ),
         ],
-        examples=[
-                     OpenApiExample(
-                         "Пример бренда",
-                         status_codes=[HTTP_200_OK],
-                         response_only=True,
-                         value={
-                             "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-                             "name": "django drf test",
-                             "logotype": "http://192.168.0.90/local-media/brand_logo/example.png",
-                             "created": "2025-10-17T10:42:15.434767",
-                             "description": "django drf test",
-                             "code1c": "0001"
-                         },
-                     )
-                 ] + DEFAULT_SCHEMA_EXAMPLES,
-        responses={HTTP_200_OK: BrandListSerializer} | DEFAULT_SCHEMA_RESPONSES,
-    ),
-    destroy=extend_schema(
-        summary="Удалить бренд",
-        parameters=[
-            OpenApiParameter(
-                name='id_or_code1c',
-                description='UUID бренда или код 1С',
-                required=True,
-                type=str,
-                location=OpenApiParameter.PATH
-            )
-        ],
-        examples=[
-                     OpenApiExample(
-                         "Бренд успешно удален",
-                         status_codes=[HTTP_204_NO_CONTENT],
-                         response_only=True,
-                     )
-                 ] + DEFAULT_SCHEMA_EXAMPLES,
-        responses={HTTP_204_NO_CONTENT: {}} | DEFAULT_SCHEMA_RESPONSES,
+        responses={200: BrandDetailSerializer},
     ),
     create=extend_schema(
         summary="Создать новый бренд",
-        description="Создает бренд. Если бренд с таким code1c уже существует, вернется ошибка. Поле code1c можно не отправлять.",
         request=BrandCreateSerializer,
-        responses={
-            201: BrandShortSerializer,
-            400: {
-                "description": "Бренд с таким code1c уже существует",
-                "content": {
-                    "application/json": {
-                        "example": {
-                            "error": "Brand with this code1c already exists",
-                            "existing_brand_id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-                            "existing_brand_name": "django drf test",
-                            "existing_brand_code1c": "0001",
-                            "message": "Бренд с кодом '0001' уже существует"
-                        }
-                    }
-                }
-            }
-        },
-        examples=[
-            OpenApiExample(
-                "Успешно создан с code1c",
-                value={
-                    "name": "django drf test",
-                    "code1c": "0002",
-                    "id": "db2f3774-9d0a-4340-8183-b5130e0d073d"
-                },
-                status_codes=[201],
-            ),
-            OpenApiExample(
-                "Успешно создан без code1c",
-                value={
-                    "name": "django drf test without code1c",
-                    "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-                    "code1c": "null"
-                },
-                status_codes=[201],
-            ),
-            OpenApiExample(
-                "Бренд с code1c уже существует",
-                value={
-                    "error": "Brand with this code1c already exists",
-                    "existing_brand_id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-                    "existing_brand_name": "django drf test",
-                    "existing_brand_code1c": "0001",
-                    "message": "Бренд с кодом '0001' уже существует"
-                },
-                status_codes=[400],
-            ),
-        ]
+        responses={201: BrandShortSerializer},
     ),
     partial_update=extend_schema(
-        summary="Частичное обновление бренда",
-        parameters=[
-            OpenApiParameter(
-                name='id_or_code1c',
-                description='UUID бренда или код 1С',
-                required=True,
-                type=str,
-                location=OpenApiParameter.PATH
-            )
-        ],
-        request=BrandListSerializer,
-        responses={HTTP_200_OK: BrandListSerializer} | DEFAULT_SCHEMA_RESPONSES,
-        examples=[
-                     OpenApiExample(
-                         "Поля для обновления бренда",
-                         value={"name": "django drf test 2"},
-                         request_only=True,
-                     )
-                 ] + DEFAULT_SCHEMA_EXAMPLES,
+        summary="Частично обновить бренд",
+        request=BrandCreateSerializer,
+        responses={200: BrandListSerializer},
     ),
 )
 @extend_schema(tags=["Бренды"])
 class BrandViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
-    """
-    ViewSet для управления брендами.
-
-    ОПТИМИЗАЦИЯ ЗАПРОСОВ:
-    ────────────────────────────────────────────────────────────────────────────
-    1. Использование get_brand_min_price_qs() для аннотации min_price
-    2. Устранение дублирующихся запросов в list()
-    3. Использование Prefetch для предзагрузки данных
-    """
+    """Публичное чтение и аутентифицированное управление брендами."""
 
     permission_classes = [IsAuthenticatedOrReadOnly]
     lookup_field = "id_or_code1c"
     http_method_names = ["get", "post", "patch", "delete"]
-    queryset = Brand.objects.all().distinct()
+    queryset = Brand.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_class = BrandFilter
+    pagination_class = CustomLimitOffsetPagination
 
     def get_serializer_class(self):
-        if self.action == "create":
+        if self.action in ("create", "partial_update"):
             return BrandCreateSerializer
-        elif self.action == "retrieve":
+        if self.action == "retrieve":
             return BrandDetailSerializer
-        elif self.action in ("partial_update", "update"):
-            return BrandCreateSerializer
         return BrandListSerializer
 
-    # =========================================================================
-    # LIST С ОПТИМИЗАЦИЕЙ
-    # =========================================================================
-
     def list(self, request, *args, **kwargs):
-        """
-        Оптимизированный список брендов.
-
-        - Добавляет аннотацию min_price одним запросом
-        - Устранены дублирующиеся запросы
-        """
+        """Возвращает бренды, у которых есть опубликованные активные точки."""
         search_query = request.query_params.get("search", "").strip()
+        active_brand_ids = Nomenclature.web.values("brand_id").distinct()
+        queryset = self.filter_queryset(self.get_queryset().filter(id__in=active_brand_ids))
 
-        # Базовый queryset с аннотацией min_price
-        queryset = self.filter_queryset(
-            self.get_queryset()
-            .filter(id__in=Nomenclature.web.values("brand_id").distinct())
-        )
-
-        # Поиск через OpenSearch
         if search_query:
-            matched_ids = self._opensearch_brand_ids(search_query)
-            queryset = queryset.filter(id__in=matched_ids)
+            queryset = queryset.filter(id__in=self._opensearch_brand_ids(search_query))
 
-        # Добавляем аннотацию min_price (один запрос)
         queryset = get_brand_min_price_qs(queryset)
-
-        # Пагинация
-        paginator = CustomLimitOffsetPagination()
-        page = paginator.paginate_queryset(queryset, request)
-
-        # Сериализация (использует аннотацию min_price)
+        page = self.paginate_queryset(queryset)
         serializer = BrandListSerializer(page, many=True)
-
-        # Формируем ответ с min_price (используем уже аннотированный queryset)
-        response = paginator.get_paginated_response(serializer.data)
-        response.data["min_price"] = queryset.aggregate(
-            min_price=Min("nomenclatures__pricePerMonth")
-        )["min_price"]
-
+        response = self.get_paginated_response(serializer.data)
+        response.data["min_price"] = queryset.aggregate(min_price=Min("min_price"))["min_price"]
         return response
 
-    # =========================================================================
-    # OPENSEARCH ПОИСК
-    # =========================================================================
-
     def _opensearch_brand_ids(self, query: str) -> list:
-        """
-        Ищет бренды в OpenSearch.
-
-        Возвращает список UUID строк.
-        """
+        """Ищет идентификаторы брендов в OpenSearch, с fallback на PostgreSQL."""
         try:
             search = BrandDocument.search().filter("term", is_deleted=False)
-
             search = search.query(
-                Q(
+                OpenSearchQ(
                     "multi_match",
                     query=query,
                     fields=[
@@ -289,491 +124,115 @@ class BrandViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                     fuzziness="AUTO",
                     type="best_fields",
                 )
-                | Q("prefix", code1c={"value": query.lower()})
-                | Q("prefix", slug={"value": query.lower()})
+                | OpenSearchQ("prefix", code1c={"value": query.lower()})
+                | OpenSearchQ("prefix", slug={"value": query.lower()})
             )
-
-            search = search.extra(size=OPENSEARCH_MAX_RESULTS)
-            response = search.execute()
-            return [hit.meta.id for hit in response]
-        except Exception as e:
-            logger.warning("OpenSearch недоступен, fallback на БД: %s", e)
+            return [hit.meta.id for hit in search.extra(size=OPENSEARCH_MAX_RESULTS).execute()]
+        except Exception as error:
+            logger.warning("OpenSearch недоступен, fallback на БД: %s", error)
             return list(
                 Brand.objects.filter(
                     name__icontains=query,
-                    id__in=Nomenclature.web.values("brand_id").distinct()
+                    id__in=Nomenclature.web.values("brand_id").distinct(),
                 ).values_list("id", flat=True)
             )
 
-    # =========================================================================
-    # ДРУГИЕ МЕТОДЫ
-    # =========================================================================
-
     def create(self, request, *args, **kwargs):
-        """Создание бренда."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         brand = serializer.save()
         return Response(BrandShortSerializer(brand).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
-        """Мягкое удаление бренда."""
-        brand = self.get_object()
-        brand.delete()
+        self.get_object().delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_object(self):
-        """Получение бренда с аннотацией min_price."""
+        """Ищет бренд по UUID, коду 1С или slug и добавляет минимальную цену."""
         identifier = self.kwargs.get(self.lookup_field)
-        qs = Brand.all_objects
-        qs = get_brand_min_price_qs(qs)  # ✅ Добавляем аннотацию
-
         if not identifier:
             raise NotFound("Не указан идентификатор бренда.")
 
-        # Поиск по UUID
+        queryset = get_brand_min_price_qs(Brand.all_objects)
+
         try:
-            uuid_obj = UUID(str(identifier))
-            brand = qs.get(id=uuid_obj)
-            if brand.is_deleted:
-                raise NotFound("Бренд не найден.")
-            return brand
+            brand = queryset.get(id=UUID(str(identifier)))
         except (ValueError, Brand.DoesNotExist):
             pass
-
-        # Поиск по code1c
-        try:
-            brand = qs.get(code1c=identifier)
+        else:
             if brand.is_deleted:
                 raise NotFound("Бренд не найден.")
             return brand
+
+        try:
+            brand = queryset.get(code1c=identifier)
         except Brand.DoesNotExist:
             pass
-
-        # Поиск по slug
-        try:
-            brand = qs.get(slug=identifier)
+        else:
             if brand.is_deleted:
                 raise NotFound("Бренд не найден.")
-            return self._validate_brand_has_active_nomenclatures(brand)
+            return brand
+
+        try:
+            brand = queryset.get(slug=identifier)
         except Brand.DoesNotExist:
             raise NotFound("Бренд не найден.")
 
+        if brand.is_deleted:
+            raise NotFound("Бренд не найден.")
+        return self._validate_brand_has_active_nomenclatures(brand)
+
     def _validate_brand_has_active_nomenclatures(self, brand: Brand) -> Brand:
-        """Проверяет наличие активных номенклатур."""
         if not Nomenclature.web.filter(brand=brand).exists():
             raise NotFound("Бренд не найден.")
         return brand
 
+    @extend_schema(summary="Удалить логотип бренда", responses={204: None})
     @action(methods=["POST"], detail=True, url_path="unpin_logo")
-    def unpin_logo(self, request, pk=None, *args, **kwargs):
-        """Удаление логотипа бренда."""
-        identifier = self.kwargs.get(self.lookup_field)
-        uuid_obj = UUID(str(identifier))
-        brand = Brand.all_objects.get(id=uuid_obj)
-        brand.logotype.delete(save=False)
+    def unpin_logo(self, request, *args, **kwargs):
+        """Отвязывает логотип; пустое поле считается уже очищенным."""
+        brand = self.get_object()
+        if brand.logotype:
+            brand.logotype.delete(save=False)
         brand.logotype = None
-        brand.save()
+        brand.save(update_fields=["logotype"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(summary="Получить бренды с опубликованными активными точками")
     @action(methods=["GET"], detail=False, url_path="assigned", url_name="assigned")
     def assigned(self, request, *args, **kwargs):
-        """Список брендов, у которых есть активные номенклатуры."""
-        active_ids = Nomenclature.web.values("brand_id").distinct()
-        queryset = Brand.objects.filter(id__in=active_ids)
+        active_brand_ids = Nomenclature.web.values("brand_id").distinct()
+        queryset = Brand.objects.filter(id__in=active_brand_ids)
 
         search_query = request.query_params.get("search", "").strip()
         if search_query:
-            matched_ids = self._opensearch_brand_ids(search_query)
-            queryset = queryset.filter(id__in=matched_ids)
+            queryset = queryset.filter(id__in=self._opensearch_brand_ids(search_query))
 
-        queryset = get_brand_min_price_qs(queryset)  # ✅ Добавляем аннотацию
+        page = self.paginate_queryset(get_brand_min_price_qs(queryset))
+        return self.get_paginated_response(BrandListSerializer(page, many=True).data)
 
-        paginator = CustomLimitOffsetPagination()
-        page = paginator.paginate_queryset(queryset, request)
-        return paginator.get_paginated_response(
-            BrandListSerializer(page, many=True).data
-        )
-
+    @extend_schema(summary="Получить номенклатуры бренда", responses={200: NomenclatureShortSerializer(many=True)})
     @action(methods=["GET"], detail=True, url_path="nomenclatures", url_name="nomenclatures")
     def nomenclatures(self, request, *args, **kwargs):
-        """Список номенклатур, связанных с брендом."""
+        """Возвращает номенклатуры бренда без N+1 запросов сериализатора."""
         brand = self.get_object()
-        queryset = Nomenclature.web.filter(brand=brand)
-
-        # Оптимизация: выбираем только нужные поля
-        queryset = queryset.only('id', 'name', 'code1c', 'pricePerMonth')
-
-        return Response(
-            NomenclatureShortSerializer(queryset, many=True).data
+        queryset = (
+            Nomenclature.web.filter(brand=brand)
+            .select_related(
+                "address__address__city",
+                "address__address__street",
+                "address__address__house",
+                "address__address__building",
+                "typeOfPlace",
+            )
+            .prefetch_related(
+                Prefetch(
+                    "images",
+                    queryset=NomenclatureImage.objects.filter(type="exterior").only(
+                        "id", "source", "type", "nomenclature_id",
+                    ),
+                    to_attr="prefetched_exterior",
+                ),
+            )
         )
-
-
-# from uuid import UUID
-# from django.db.models import Q
-# from django_filters.rest_framework import DjangoFilterBackend
-# from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample, OpenApiParameter
-# from rest_framework import status
-# from rest_framework import viewsets
-# from rest_framework.exceptions import NotFound
-# from rest_framework.permissions import IsAuthenticatedOrReadOnly
-# from rest_framework.response import Response
-# from rest_framework.status import (
-#     HTTP_200_OK, HTTP_204_NO_CONTENT,
-# )
-# from rest_framework.decorators import action
-
-# from api.constants import (
-#     DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES,
-# )
-# from api.pagination import CustomLimitOffsetPagination
-# from brands.documents import BrandDocument
-# from brands.filters import BrandFilter
-# from brands.models import Brand
-# from brands.serializers import BrandCreateSerializer, BrandShortSerializer, BrandDetailSerializer, BrandListSerializer
-# from nomenclatures.models import Nomenclature
-# from nomenclatures.serializers import NomenclatureShortSerializer
-# from services.api_1c_client import api_1c, logger
-# from django.db.models import Min
-# OPENSEARCH_MAX_RESULTS = 1000
-
-
-# def get_brand_min_price_qs(qs):
-#     return qs.annotate(
-#         min_price=Min("nomenclatures__pricePerMonth")
-#     )
-
-# @extend_schema_view(
-#     list=extend_schema(
-#         summary="Получить пагинированный список брендов",
-#         examples=[
-#                      OpenApiExample(
-#                          "Список брендов",
-#                          response_only=True,
-#                          value={
-#                              "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-#                              "name": "django drf test",
-#                              "logotype": "http://192.168.0.90/local-media/brand_logo/example.png",
-#                              "created": "2025-10-17T10:42:15.434767",
-#                              "description": "django drf test",
-#                              "code1c": "0001"
-#                          },
-#                          status_codes=[HTTP_200_OK],
-#                      )
-#                  ] + DEFAULT_SCHEMA_EXAMPLES,
-#         responses={HTTP_200_OK: BrandListSerializer(many=True)} | DEFAULT_SCHEMA_RESPONSES,
-#     ),
-#     retrieve=extend_schema(
-#         summary="Получить расшифровку бренда",
-#         parameters=[
-#             OpenApiParameter(
-#                 name='id_or_code1c',
-#                 description='UUID бренда или код 1С',
-#                 required=True,
-#                 type=str,
-#                 location=OpenApiParameter.PATH
-#             )
-#         ],
-#         examples=[
-#                      OpenApiExample(
-#                          "Пример бренда",
-#                          status_codes=[HTTP_200_OK],
-#                          response_only=True,
-#                          value={
-#                              "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-#                              "name": "django drf test",
-#                              "logotype": "http://192.168.0.90/local-media/brand_logo/example.png",
-#                              "created": "2025-10-17T10:42:15.434767",
-#                              "description": "django drf test",
-#                              "code1c": "0001"
-#                          },
-#                      )
-#                  ] + DEFAULT_SCHEMA_EXAMPLES,
-#         responses={HTTP_200_OK: BrandListSerializer} | DEFAULT_SCHEMA_RESPONSES,
-#     ),
-#     destroy=extend_schema(
-#         summary="Удалить бренд",
-#         parameters=[
-#             OpenApiParameter(
-#                 name='id_or_code1c',
-#                 description='UUID бренда или код 1С',
-#                 required=True,
-#                 type=str,
-#                 location=OpenApiParameter.PATH
-#             )
-#         ],
-#         examples=[
-#                      OpenApiExample(
-#                          "Бренд успешно удален",
-#                          status_codes=[HTTP_204_NO_CONTENT],
-#                          response_only=True,
-#                      )
-#                  ] + DEFAULT_SCHEMA_EXAMPLES,
-#         responses={HTTP_204_NO_CONTENT: {}} | DEFAULT_SCHEMA_RESPONSES,
-#     ),
-#     create=extend_schema(
-#         summary="Создать новый бренд",
-#         description="Создает бренд. Если бренд с таким code1c уже существует, вернется ошибка. Поле code1c можно не отправлять.",
-#         request=BrandCreateSerializer,
-#         responses={
-#             201: BrandShortSerializer,
-#             400: {
-#                 "description": "Бренд с таким code1c уже существует",
-#                 "content": {
-#                     "application/json": {
-#                         "example": {
-#                             "error": "Brand with this code1c already exists",
-#                             "existing_brand_id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-#                             "existing_brand_name": "django drf test",
-#                             "existing_brand_code1c": "0001",
-#                             "message": "Бренд с кодом '0001' уже существует"
-#                         }
-#                     }
-#                 }
-#             }
-#         },
-#         examples=[
-#             OpenApiExample(
-#                 "Успешно создан с code1c",
-#                 value={
-#                     "name": "django drf test",
-#                     "code1c": "0002",
-#                     "id": "db2f3774-9d0a-4340-8183-b5130e0d073d"
-#                 },
-#                 status_codes=[201],
-#             ),
-#             OpenApiExample(
-#                 "Успешно создан без code1c",
-#                 value={
-#                     "name": "django drf test without code1c",
-#                     "id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-#                     "code1c": "null"
-#                 },
-#                 status_codes=[201],
-#             ),
-#             OpenApiExample(
-#                 "Бренд с code1c уже существует",
-#                 value={
-#                     "error": "Brand with this code1c already exists",
-#                     "existing_brand_id": "db2f3774-9d0a-4340-8183-b5130e0d073d",
-#                     "existing_brand_name": "django drf test",
-#                     "existing_brand_code1c": "0001",
-#                     "message": "Бренд с кодом '0001' уже существует"
-#                 },
-#                 status_codes=[400],
-#             ),
-#         ]
-#     ),
-#     partial_update=extend_schema(
-#         summary="Частичное обновление бренда",
-#         parameters=[
-#             OpenApiParameter(
-#                 name='id_or_code1c',
-#                 description='UUID бренда или код 1С',
-#                 required=True,
-#                 type=str,
-#                 location=OpenApiParameter.PATH
-#             )
-#         ],
-#         request=BrandListSerializer,
-#         responses={HTTP_200_OK: BrandListSerializer} | DEFAULT_SCHEMA_RESPONSES,
-#         examples=[
-#                      OpenApiExample(
-#                          "Поля для обновления бренда",
-#                          value={"name": "django drf test 2"},
-#                          request_only=True,
-#                      )
-#                  ] + DEFAULT_SCHEMA_EXAMPLES,
-#     ),
-# )
-# @extend_schema(tags=["Бренды"])
-# class BrandViewSet(viewsets.ModelViewSet):
-#     permission_classes = [IsAuthenticatedOrReadOnly]
-#     lookup_field = "id_or_code1c"
-#     http_method_names = ["get", "post", "patch", "delete"]
-#     queryset = Brand.objects.all().distinct()
-#     filter_backends = [DjangoFilterBackend]
-#     filterset_class = BrandFilter
-
-#     def get_serializer_class(self):
-#         if self.action == "create":
-#             return BrandCreateSerializer
-#         elif self.action == "retrieve":
-#             return BrandDetailSerializer
-#         elif self.action in ("partial_update", "update"):
-#             return BrandCreateSerializer
-#         return BrandListSerializer
-
-#     # ------------------------------------------------------------------ #
-#     #  LIST с OpenSearch                                                   #
-#     # ------------------------------------------------------------------ #
-#     def list(self, request, *args, **kwargs):
-#         search_query = request.query_params.get("search", "").strip()
-
-#         queryset = self.filter_queryset(
-#             self.get_queryset()
-#             .filter(id__in=Nomenclature.web.values("brand_id").distinct())
-#         )
-
-#         if search_query:
-#             matched_ids = self._opensearch_brand_ids(search_query)
-#             queryset = queryset.filter(id__in=matched_ids)
-
-#         paginator = CustomLimitOffsetPagination()
-#         queryset = get_brand_min_price_qs(queryset)
-#         page = paginator.paginate_queryset(queryset, request)
-#         serializer = BrandListSerializer(page, many=True)
-
-#         response = paginator.get_paginated_response(serializer.data)
-#         response.data["min_price"] = queryset.aggregate(
-#             min_price=Min("nomenclatures__pricePerMonth")
-#         )["min_price"]
-#         return response
-
-#     def _opensearch_brand_ids(self, query: str) -> list:
-#         """
-#         Ищет бренды в OpenSearch по name, description (fulltext + edge ngram),
-#         code1c и slug (точное совпадение prefix).
-#         Возвращает список UUID строк.
-#         """
-#         try:
-#             search = BrandDocument.search().filter("term", is_deleted=False)
-
-#             search = search.query(
-#                 Q(
-#                     "multi_match",
-#                     query=query,
-#                     fields=[
-#                         "name^3",
-#                         "name.autocomplete^2",
-#                         "description",
-#                         "description.autocomplete",
-#                     ],
-#                     fuzziness="AUTO",
-#                     type="best_fields",
-#                 )
-#                 | Q("prefix", code1c={"value": query.lower()})
-#                 | Q("prefix", slug={"value": query.lower()})
-#             )
-
-#             search = search.extra(size=OPENSEARCH_MAX_RESULTS)
-#             response = search.execute()
-#             return [hit.meta.id for hit in response]
-#         except Exception as e:
-#             logger.warning("OpenSearch недоступен, fallback на БД: %s", e)
-#             return list(
-#                 Brand.objects.filter(
-#                     name__icontains=query,
-#                     id__in=Nomenclature.web.values("brand_id").distinct()
-#                 ).values_list("id", flat=True)
-#             )
-
-#     # ------------------------------------------------------------------ #
-#     #  Остальные методы — без изменений                                    #
-#     # ------------------------------------------------------------------ #
-
-#     def create(self, request, *args, **kwargs):
-#         name = request.data.get("name")
-#         # if Brand.all_objects.filter(name=name, is_deleted=False).exists():
-#         #     return Response(
-#         #         {"detail": f"Бренд с названием '{name}' уже существует"},
-#         #         status=status.HTTP_400_BAD_REQUEST,
-#         #     )
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         brand = serializer.save()
-
-#         # try:
-#         #     response = api_1c.post("/CreateBrand", {
-#         #         "brandName": brand.name,
-#         #         "brandDescription": brand.description or "",
-#         #     })
-#         #     response.raise_for_status()
-#         #     code1c = response.json().get("brandCode")
-#         #     if code1c:
-#         #         if Brand.objects.filter(code1c=code1c).exclude(id=brand.id).exists():
-#         #             logger.warning("code1c %s уже занят другим брендом", code1c)
-#         #         else:
-#         #             brand.code1c = code1c
-#         #             brand.save(update_fields=["code1c"])
-#         # except Exception as e:
-#         #     logger.warning("Не удалось создать бренд в 1С: %s", e)
-
-#         return Response(BrandShortSerializer(brand).data, status=status.HTTP_201_CREATED)
-
-#     def destroy(self, request, *args, **kwargs):
-#         brand = self.get_object()
-#         brand.delete()
-#         return Response(status=status.HTTP_204_NO_CONTENT)
-
-#     def get_object(self):
-#         identifier = self.kwargs.get(self.lookup_field)
-#         qs = Brand.all_objects
-#         qs = get_brand_min_price_qs(qs)
-#         if not identifier:
-#             raise NotFound("Не указан идентификатор бренда.")
-
-#         try:
-#             uuid_obj = UUID(str(identifier))
-#             brand = Brand.all_objects.get(id=uuid_obj)
-#             if brand.is_deleted:
-#                 raise NotFound("Бренд не найден.")
-#             return brand
-#         except (ValueError, Brand.DoesNotExist):
-#             pass
-
-#         try:
-#             brand = Brand.all_objects.get(code1c=identifier)
-#             if brand.is_deleted:
-#                 raise NotFound("Бренд не найден.")
-#             return brand
-#         except Brand.DoesNotExist:
-#             pass
-
-#         try:
-#             brand = Brand.all_objects.get(slug=identifier)
-#             if brand.is_deleted:
-#                 raise NotFound("Бренд не найден.")
-#             return self._validate_brand_has_active_nomenclatures(brand)
-#         except Brand.DoesNotExist:
-#             raise NotFound("Бренд не найден.")
-
-#     def _validate_brand_has_active_nomenclatures(self, brand: Brand) -> Brand:
-#         if not Nomenclature.web.filter(brand=brand).exists():
-#             raise NotFound("Бренд не найден.")
-#         return brand
-
-#     @action(methods=["POST"], detail=True, url_path="unpin_logo")
-#     def unpin_logo(self, request, pk=None, *args, **kwargs):
-#         identifier = self.kwargs.get(self.lookup_field)
-#         uuid_obj = UUID(str(identifier))
-#         brand = Brand.all_objects.get(id=uuid_obj)
-#         brand.logotype.delete(save=False)
-#         brand.logotype = None
-#         brand.save()
-#         return Response(status=status.HTTP_204_NO_CONTENT)
-
-#     @action(methods=["GET"], detail=False, url_path="assigned", url_name="assigned")
-#     def assigned(self, request, *args, **kwargs):
-#         active_ids = Nomenclature.web.values("brand_id").distinct()
-#         queryset = Brand.objects.filter(id__in=active_ids)
-
-#         search_query = request.query_params.get("search", "").strip()
-#         if search_query:
-#             matched_ids = self._opensearch_brand_ids(search_query)
-#             queryset = queryset.filter(id__in=matched_ids)
-
-#         paginator = CustomLimitOffsetPagination()
-#         page = paginator.paginate_queryset(queryset, request)
-#         return paginator.get_paginated_response(
-#             BrandListSerializer(page, many=True).data
-#         )
-
-#     @action(methods=["GET"], detail=True, url_path="nomenclatures", url_name="nomenclatures")
-#     def nomenclatures(self, request, *args, **kwargs):
-#         brand = self.get_object()
-#         queryset = Nomenclature.web.filter(brand=brand)
-
-#         return Response(
-#             NomenclatureShortSerializer(queryset, many=True).data
-#         )
+        return Response(NomenclatureShortSerializer(queryset, many=True).data)
