@@ -9,7 +9,7 @@ from api.constants import DEFAULT_SCHEMA_EXAMPLES, DEFAULT_SCHEMA_RESPONSES
 from counterparties.models import Counterparty
 from promotions.models import Promotion
 from promotions.serializers import PromotionSerializer, PromotionListSerializer, PromotionOutputSerializer
-from users.models import CONTACT_PERSON_ROLES
+from users.models import CONTACT_PERSON_ROLE_KEYS
 
 
 @extend_schema_view(
@@ -104,8 +104,8 @@ class PromotionViewSet(viewsets.ModelViewSet):
 
         qs = Promotion.objects.all().order_by('-created')
 
-        if user.role in CONTACT_PERSON_ROLES:
-            user_counterparties = Counterparty.objects.filter(contact_person=user)
+        if user.role in CONTACT_PERSON_ROLE_KEYS:
+            user_counterparties = Counterparty.objects.filter(contact_persons=user)
             qs = qs.filter(counterparty__in=user_counterparties)
         elif is_admin:
             pass  # админы видят все акции
