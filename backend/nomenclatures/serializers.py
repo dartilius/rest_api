@@ -563,7 +563,8 @@ class NomenclatureWebSerializer(serializers.ModelSerializer):
             "description", "possibility", "pricePerMonth",
             "external_video_media", "external_audio_media",
             "internal_video_media", "internal_audio_media",
-            "responsible_ad", "nomenclature_tenants"
+            "responsible_ad", "nomenclature_tenants",
+            "slots_per_hour"
         )
         read_only_fields = fields
 
