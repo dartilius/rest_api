@@ -123,21 +123,22 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "tenants_count_display",
         "id_rasb",
         "for_web",
+        "typeOfPlace__abbreviation"
     )
 
     inlines = [DiscountRuleInline]
-    list_display_links = ("name",)
+    list_display_links = ("name", "brand__name", "legal_entity_name", "owner_name")
 
     search_fields = ("name", "code1c", "article", "id_rasb", "brand__name", "id")
 
-    list_filter = ("is_active", "timezone", "brand", "contentType")
+    list_filter = ("is_active", "timezone", "brand", "contentType", "typeOfPlace__abbreviation", "for_web")
     # Пагинатор уже считает отфильтрованный queryset. Полный count всех записей
     # дублирует тяжёлый GROUP BY по арендаторам на каждой загрузке списка.
     show_full_result_count = False
     list_per_page = 50
 
-    autocomplete_fields = ["owner", "brand", "legalEntity", "responsible_radio"]
-    raw_id_fields = ("owner", "brand", "legalEntity")
+    autocomplete_fields = ["owner", "brand", "legalEntity", "responsible_radio", "typeOfPlace"]
+    raw_id_fields = ("owner", "brand", "legalEntity", "responsible_radio", "typeOfPlace")
 
     # =========================================================================
     # ОПТИМИЗИРОВАННЫЙ QUERYSET ДЛЯ СПИСКА
