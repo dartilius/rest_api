@@ -1,6 +1,9 @@
+from types import SimpleNamespace
+
 import pytest
 
 from nomenclatures.models import Nomenclature
+from nomenclatures.serializers import NomenclatureWebMapPlaceSerializer
 
 
 @pytest.mark.django_db
@@ -45,6 +48,26 @@ def test_web_map_returns_compact_public_points(anon_client, nomenclature):
             "old_slug": "test-place",
         }
     ]
+
+
+def test_web_map_generates_name_from_place_brand_and_address():
+    nomenclature = SimpleNamespace(
+        name="Имя из модели",
+        typeOfPlace=SimpleNamespace(abbreviation="ТЦ"),
+        brand=SimpleNamespace(name="Планета"),
+        address=SimpleNamespace(
+            address=SimpleNamespace(
+                city=SimpleNamespace(name="Красноярск"),
+                street=SimpleNamespace(name="9 Мая"),
+                house=SimpleNamespace(number="77"),
+                building=None,
+            )
+        ),
+    )
+
+    assert NomenclatureWebMapPlaceSerializer().get_name(nomenclature) == (
+        "ТЦ Планета, г. Красноярск, ул. 9 Мая, 77"
+    )
 
 
 @pytest.mark.django_db

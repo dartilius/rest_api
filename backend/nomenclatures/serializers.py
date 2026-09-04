@@ -185,17 +185,28 @@ class PhotoSerializer(serializers.ModelSerializer):
             ValidationError: Если фотография уже существует
         """
         nomenclature = self.context.get("nomenclature")
+        if nomenclature is None and self.instance is not None:
+            nomenclature = self.instance.nomenclature
+
         if not nomenclature:
             raise serializers.ValidationError("Номенклатура не передана")
 
-        file_data = attrs["source"].read()
-        file_hash = hashlib.md5(file_data).hexdigest()
-        attrs["source"].seek(0)
+        source = attrs.get("source")
+        if source is None:
+            return attrs
 
-        if NomenclatureImage.objects.filter(
+        file_data = source.read()
+        file_hash = hashlib.md5(file_data).hexdigest()
+        source.seek(0)
+
+        duplicates = NomenclatureImage.objects.filter(
             nomenclature=nomenclature,
             hash=file_hash
-        ).exists():
+        )
+        if self.instance is not None:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+
+        if duplicates.exists():
             raise serializers.ValidationError(
                 "Эта фотография уже прикреплена к номенклатуре"
             )
@@ -637,6 +648,7 @@ class NomenclatureWebMapFacadeSerializer(serializers.ModelSerializer):
 class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
     """Компактная номенклатура для отображения на карте."""
 
+    name = serializers.SerializerMethodField()
     brand = NomenclatureWebMapBrandSerializer(read_only=True)
     type_of_place = serializers.CharField(
         source="typeOfPlace.abbreviation",
@@ -659,6 +671,40 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
             "old_slug",
         )
         read_only_fields = fields
+
+    def get_name(self, obj):
+        """Build a map label from place type, brand and formatted address."""
+        title_parts = []
+        if obj.typeOfPlace and obj.typeOfPlace.abbreviation:
+            title_parts.append(obj.typeOfPlace.abbreviation)
+        if obj.brand and obj.brand.name:
+            title_parts.append(obj.brand.name)
+
+        address_parts = []
+        try:
+            address = obj.address.address
+        except ObjectDoesNotExist:
+            address = None
+
+        if address:
+            if address.city and address.city.name:
+                address_parts.append(f"г. {address.city.name}")
+            if address.street and address.street.name:
+                address_parts.append(f"ул. {address.street.name}")
+
+            house_number = None
+            if address.house and address.house.number:
+                house_number = address.house.number
+            elif address.building and address.building.number:
+                house_number = address.building.number
+            if house_number:
+                address_parts.append(house_number)
+
+        generated_parts = []
+        if title_parts:
+            generated_parts.append(" ".join(title_parts))
+        generated_parts.extend(address_parts)
+        return ", ".join(generated_parts) or obj.name
 
     def get_coordinates(self, obj):
         try:

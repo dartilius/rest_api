@@ -564,6 +564,30 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
 
         return serializer_class(*args, **kwargs)
 
+    @staticmethod
+    def _apply_main_ordering(queryset):
+        """Apply the same ordering used by the main nomenclature list."""
+        shopping_mall = TypeOfPlace.objects.filter(
+            name="Торговый центр"
+        ).first()
+
+        if shopping_mall:
+            ordering_case = Case(
+                When(typeOfPlace_id=shopping_mall.id, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        else:
+            ordering_case = Value(1)
+
+        return queryset.annotate(
+            tenants_count=Count("tenants", distinct=True)
+        ).order_by(
+            ordering_case,
+            "-tenants_count",
+            "-created",
+        )
+
     def get_queryset(self):
         """
         Оптимизирует queryset в зависимости от типа запроса.
@@ -612,18 +636,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             )
 
         # Для обычного списка - НЕТ only() (как в исходном коде)
-        tc = TypeOfPlace.objects.filter(name="Торговый центр").first()
-
-        if tc:
-            ordering_case = Case(
-                When(typeOfPlace_id=tc.id, then=Value(0)),
-                default=Value(1),
-                output_field=IntegerField(),
-            )
-        else:
-            ordering_case = Value(1)
-
-        return (
+        queryset = (
             base_qs.select_related(
                 "legalEntity",
                 "brand",
@@ -660,13 +673,8 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                     ).prefetch_related("brands"),
                 ),
             )
-            .annotate(tenants_count=Count("tenants", distinct=True))
-            .order_by(
-                ordering_case,
-                "-tenants_count",
-                "-created",
-            )
         )
+        return self._apply_main_ordering(queryset)
 
     @extend_schema(
         summary="Номенклатуры по городу",
@@ -711,7 +719,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                 status=404,
             )
 
-        queryset = (
+        queryset = self._apply_main_ordering(
             Nomenclature.web.filter(address__address__city=city)
             .select_related(
                 "typeOfPlace",

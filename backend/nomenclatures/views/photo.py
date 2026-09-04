@@ -149,7 +149,9 @@ class NomenclaturePhotoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             - Фотографии можно удалять отдельно через DELETE
             - Типы фото помогают организовать изображения по назначению
         """
-        nomenclature = get_instance_or_404(Nomenclature, pk=pk)
+        # Use the unfiltered manager so staff can attach photos to archived
+        # nomenclatures as well as active ones.
+        nomenclature = get_instance_or_404(Nomenclature.objects, pk=pk)
 
         serializer = PhotoSerializer(
             data=request.data,
@@ -280,7 +282,8 @@ class NomenclaturePhotoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             - Может не содержать фотографий, если ни одна не загружена
             - Фотографии упорядочены по дате создания (новые первыми)
         """
-        nomenclature = get_instance_or_404(Nomenclature, pk)
+        # Archived nomenclatures must keep their photo gallery manageable.
+        nomenclature = get_instance_or_404(Nomenclature.objects, pk)
         photos = nomenclature.images.all()
         serializer = PhotoSerializer(photos, many=True)
         return Response(serializer.data, status=HTTP_200_OK)

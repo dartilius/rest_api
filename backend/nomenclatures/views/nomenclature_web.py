@@ -71,6 +71,10 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
             "typeOfPlace",
             "availability",
             "address__address__coordinates",
+            "address__address__city",
+            "address__address__street",
+            "address__address__house",
+            "address__address__building",
         )
         return queryset.prefetch_related(
             Prefetch(

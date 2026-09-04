@@ -17,12 +17,65 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from counterparties.models import Counterparty
-from nomenclatures.models import Nomenclature, NomenclatureTenant
+from nomenclatures.models import (
+    Nomenclature,
+    NomenclatureImage,
+    NomenclatureTenant,
+)
 from nomenclatures.services.indexing import is_tenant_indexing_suppressed
 from nomenclatures.services.search import NomenclatureSearchService
 from nomenclatures.tasks import update_opensearch_for_instance
 
 logger = logging.getLogger(__name__)
+
+
+def _delete_image_file(storage, file_name):
+    """Delete an image from storage without invalidating a completed DB change."""
+    try:
+        storage.delete(file_name)
+        logger.info("Фотография удалена из MinIO: %s", file_name)
+    except Exception:
+        logger.exception("Не удалось удалить фотографию из MinIO: %s", file_name)
+
+
+def _delete_image_file_on_commit(instance, file_name):
+    storage = instance.source.storage
+    transaction.on_commit(lambda: _delete_image_file(storage, file_name))
+
+
+@receiver(post_delete, sender=NomenclatureImage)
+def delete_nomenclature_image_from_storage(sender, instance, **kwargs):
+    """Delete the underlying MinIO object after its database row is deleted."""
+    if not instance.source:
+        return
+
+    _delete_image_file_on_commit(instance, instance.source.name)
+
+
+@receiver(pre_save, sender=NomenclatureImage)
+def remember_replaced_nomenclature_image(sender, instance, **kwargs):
+    """Remember the old object name so replacing a photo does not leak it."""
+    if instance._state.adding:
+        return
+
+    old_file_name = (
+        sender.objects.filter(pk=instance.pk)
+        .values_list("source", flat=True)
+        .first()
+    )
+    if old_file_name and old_file_name != instance.source.name:
+        instance._replaced_file_name = old_file_name
+
+
+@receiver(post_save, sender=NomenclatureImage)
+def delete_replaced_nomenclature_image(sender, instance, **kwargs):
+    """Delete the previous MinIO object after a replacement is committed."""
+    old_file_name = getattr(instance, "_replaced_file_name", None)
+    if not old_file_name:
+        return
+
+    _delete_image_file_on_commit(instance, old_file_name)
+    delattr(instance, "_replaced_file_name")
 
 
 @receiver(post_save, sender=Nomenclature)
