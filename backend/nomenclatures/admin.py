@@ -127,7 +127,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
     )
 
     inlines = [DiscountRuleInline]
-    list_display_links = ("name", "brand__name", "legal_entity_name", "owner_name")
+    list_display_links = ("name",)
 
     search_fields = ("name", "code1c", "article", "id_rasb", "brand__name", "id")
 
