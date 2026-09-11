@@ -1467,6 +1467,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         return {
             'name': instance.name,
             'description': instance.description,
+            'for_web': instance.for_web,
             'timezone': instance.timezone,
             'settings': instance.settings,
             'code1c': instance.code1c,
@@ -1942,7 +1943,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         # 6. Обработка простых полей
         simple_fields = {
-            'name', 'description', 'is_active', 'id_rasb', 'timezone', 'settings',
+            'name', 'description', 'is_active', 'for_web', 'id_rasb', 'timezone', 'settings',
             'code1c', 'contentType', 'pricePerMonth',
             'responsible_radio', 'responsible_ad',
             'responsible_technic', 'responsible_technic_on_address',
