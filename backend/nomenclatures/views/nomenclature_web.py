@@ -11,7 +11,7 @@ ViewSet для веб-интерфейса номенклатур.
 
 from uuid import UUID
 
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Max, Min, Prefetch, Q
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -113,7 +113,7 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
                 queryset = queryset.filter(availability__status__isnull=True)
             elif status != "3":
                 queryset = queryset.filter(availability__status=status)
-        counterparty_ids = filters.get("counterparty_ids", [])
+        counterparty_ids = list(filters.get("counterparty_ids", []))
         if counterparty_id := filters.get("counterparty_id"):
             counterparty_ids.append(counterparty_id)
         if counterparty_ids:
@@ -121,14 +121,14 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
                 Q(legalEntity_id__in=counterparty_ids)
                 | Q(tenants__id__in=counterparty_ids)
             )
-        brand_ids = filters.get("brand_ids", [])
+        brand_ids = list(filters.get("brand_ids", []))
         if brand_id := filters.get("brand_id"):
             brand_ids.append(brand_id)
         if brand_ids:
             queryset = queryset.filter(brand_id__in=brand_ids)
         if type_of_place_ids := filters.get("type_of_place_ids"):
             queryset = queryset.filter(typeOfPlace_id__in=type_of_place_ids)
-        city_slugs = filters.get("city_slugs", [])
+        city_slugs = list(filters.get("city_slugs", []))
         if city_slug := filters.get("city_slug"):
             city_slugs.append(city_slug)
         if city_slugs:
@@ -155,6 +155,144 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         elif filters.get("has_facade") is False:
             queryset = queryset.exclude(images__type="exterior")
         return queryset
+
+    @staticmethod
+    def _without_filters(filters, names):
+        """Return a copy of filters without all aliases of one facet."""
+        return {name: value for name, value in filters.items() if name not in names}
+
+    def get_filter_options(self, filters):
+        """Build contextual (faceted) options for the public catalogue.
+
+        A facet is calculated with every *other* filter applied.  Thus, a
+        selected brand narrows cities and place types, but does not hide the
+        other brands which are still compatible with the current selection.
+        """
+        facet_filters = {
+            "brands": {"brand_id", "brand_ids", "brand_name"},
+            "types_of_place": {"type_of_place_ids", "type_of_place"},
+            "cities": {"city_slug", "city_slugs"},
+            "content_types": {"content_types"},
+            "versions": {"version", "versions"},
+            "timezones": {"timezone"},
+            "statuses": {"status"},
+            "has_facade": {"has_facade"},
+            "price": {"price_from", "price_to"},
+        }
+
+        def context_for(facet_name):
+            return self.apply_search_filters(
+                Nomenclature.web.all(),
+                self._without_filters(filters, facet_filters[facet_name]),
+            )
+
+        def values_with_counts(queryset, *fields, order_by=None):
+            return list(
+                queryset.values(*fields)
+                .annotate(count=Count("id", distinct=True))
+                .order_by(*(order_by or fields))
+            )
+
+        brands = values_with_counts(
+            context_for("brands").exclude(brand_id__isnull=True),
+            "brand_id",
+            "brand__name",
+            order_by=("brand__name", "brand_id"),
+        )
+        types_of_place = values_with_counts(
+            context_for("types_of_place").exclude(typeOfPlace_id__isnull=True),
+            "typeOfPlace_id",
+            "typeOfPlace__name",
+            order_by=("typeOfPlace__name", "typeOfPlace_id"),
+        )
+        cities = values_with_counts(
+            context_for("cities").exclude(address__address__city__slug__isnull=True),
+            "address__address__city__slug",
+            "address__address__city__name",
+            order_by=(
+                "address__address__city__name",
+                "address__address__city__slug",
+            ),
+        )
+        content_types = values_with_counts(
+            context_for("content_types").exclude(contentType__isnull=True),
+            "contentType",
+        )
+        versions = values_with_counts(
+            context_for("versions").exclude(version__isnull=True).exclude(version=""),
+            "version",
+        )
+        timezones = values_with_counts(
+            context_for("timezones").exclude(timezone__isnull=True), "timezone"
+        )
+
+        statuses = values_with_counts(context_for("statuses"), "availability__status")
+        for status in statuses:
+            status["availability__status"] = (
+                str(status["availability__status"])
+                if status["availability__status"] is not None
+                else "null"
+            )
+
+        facade_queryset = context_for("has_facade")
+        has_facade = [
+            {
+                "value": True,
+                "count": facade_queryset.filter(images__type="exterior")
+                .values("id")
+                .distinct()
+                .count(),
+            },
+            {
+                "value": False,
+                "count": facade_queryset.exclude(images__type="exterior")
+                .values("id")
+                .distinct()
+                .count(),
+            },
+        ]
+        price = context_for("price").aggregate(
+            min=Min("pricePerMonth"), max=Max("pricePerMonth")
+        )
+
+        return {
+            "brands": [
+                {"id": row["brand_id"], "name": row["brand__name"], "count": row["count"]}
+                for row in brands
+            ],
+            "types_of_place": [
+                {
+                    "id": row["typeOfPlace_id"],
+                    "name": row["typeOfPlace__name"],
+                    "count": row["count"],
+                }
+                for row in types_of_place
+            ],
+            "cities": [
+                {
+                    "slug": row["address__address__city__slug"],
+                    "name": row["address__address__city__name"],
+                    "count": row["count"],
+                }
+                for row in cities
+            ],
+            "content_types": [
+                {"value": row["contentType"], "count": row["count"]}
+                for row in content_types
+            ],
+            "versions": [
+                {"value": row["version"], "count": row["count"]} for row in versions
+            ],
+            "timezones": [
+                {"value": row["timezone"], "count": row["count"]} for row in timezones
+            ],
+            "statuses": [
+                {"value": row["availability__status"], "count": row["count"]}
+                for row in statuses
+            ],
+            "has_facade": has_facade,
+            "price": price,
+        }
 
     def order_search_queryset(self, queryset, filters):
         if filters["ordering"] == "default":
@@ -227,6 +365,29 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
                 "results": NomenclatureCardSerializer(results, many=True).data,
             }
         )
+
+    @extend_schema(
+        summary="Контекстные опции фильтров публичного каталога",
+        description=(
+            "Возвращает фасеты с количеством номенклатур. Для каждого фасета "
+            "его собственное условие не учитывается, а все остальные фильтры "
+            "сохраняются."
+        ),
+        request=NomenclatureWebSearchRequestSerializer,
+        responses={200: OpenApiResponse(description="Контекстные опции фильтров")},
+    )
+    @action(detail=False, methods=["post"], url_path="filter-options")
+    def filter_options(self, request):
+        """Return mutually dependent options for every public catalogue facet.
+
+        Text search filters have no finite list of values. Counterparty filters
+        are deliberately not exposed because they are employee-only.
+        """
+        request_serializer = NomenclatureWebSearchRequestSerializer(data=request.data)
+        request_serializer.is_valid(raise_exception=True)
+        filters = request_serializer.validated_data
+        self.validate_counterparty_filter_access(request, filters)
+        return Response(self.get_filter_options(filters))
 
     @extend_schema(
         summary="Точки номенклатур для публичной карты",

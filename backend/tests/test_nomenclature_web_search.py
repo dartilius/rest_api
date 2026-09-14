@@ -2,7 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from nomenclatures.models import Nomenclature
+from brands.models import Brand
+from nomenclatures.models import Nomenclature, TypeOfPlace
 from nomenclatures.serializers import NomenclatureWebMapPlaceSerializer
 
 
@@ -80,3 +81,74 @@ def test_web_search_validates_price_range(anon_client):
 
     assert response.status_code == 400
     assert "price_to" in response.json()
+
+
+@pytest.mark.django_db
+def test_web_filter_options_are_mutually_dependent(anon_client, nomenclature, user):
+    brand_a = Brand.objects.create(name="Brand A")
+    brand_b = Brand.objects.create(name="Brand B")
+    type_a = TypeOfPlace.objects.create(name="Type A")
+    type_b = TypeOfPlace.objects.create(name="Type B")
+
+    Nomenclature.objects.filter(pk=nomenclature.pk).update(
+        for_web=True,
+        brand=brand_a,
+        typeOfPlace=type_a,
+        contentType="audio",
+    )
+    Nomenclature.objects.create(
+        name="Compatible place",
+        owner=user,
+        timezone="Etc/GMT-7",
+        settings=nomenclature.settings,
+        for_web=True,
+        brand=brand_a,
+        typeOfPlace=type_b,
+        contentType="video",
+    )
+    Nomenclature.objects.create(
+        name="Other brand place",
+        owner=user,
+        timezone="Etc/GMT-7",
+        settings=nomenclature.settings,
+        for_web=True,
+        brand=brand_b,
+        typeOfPlace=type_b,
+        contentType="video",
+    )
+
+    response = anon_client.post(
+        "/api/nomenclatures/web/filter-options/",
+        data={"brand_ids": [str(brand_a.id)]},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert {option["id"] for option in payload["brands"]} == {
+        str(brand_a.id),
+        str(brand_b.id),
+    }
+    assert {option["id"] for option in payload["types_of_place"]} == {
+        str(type_a.id),
+        str(type_b.id),
+    }
+    assert payload["content_types"] == [
+        {"value": "audio", "count": 1},
+        {"value": "video", "count": 1},
+    ]
+
+    response = anon_client.post(
+        "/api/nomenclatures/web/filter-options/",
+        data={"content_types": ["audio"]},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["brands"] == [
+        {"id": str(brand_a.id), "name": "Brand A", "count": 1}
+    ]
+    assert payload["types_of_place"] == [
+        {"id": str(type_a.id), "name": "Type A", "count": 1}
+    ]
