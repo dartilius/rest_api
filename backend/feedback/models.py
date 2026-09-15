@@ -48,6 +48,19 @@ class Feedback(models.Model):
         null=True,
         blank=True,
     )
+    placement_order = models.ForeignKey(
+        "placement_order.PlacementOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="feedback_requests",
+        verbose_name="Placement order",
+    )
+    attribution = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="Marketing attribution",
+    )
     created = models.DateTimeField(
         verbose_name="Дата создания",
         auto_now_add=True,

@@ -4,6 +4,18 @@ from django.utils import timezone
 
 from nomenclatures.models import Nomenclature
 from .models import PlacementOrder, PlacementOrderItem
+from .marketing import validate_attribution_payload
+
+
+class AttributionField(serializers.JSONField):
+    """JSON field constrained to the documented attribution allow-list."""
+
+    def to_internal_value(self, data):
+        value = super().to_internal_value(data)
+        try:
+            return validate_attribution_payload(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
 
 
 class PlacementOrderItemSerializer(serializers.ModelSerializer):
@@ -40,6 +52,7 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
     items = PlacementOrderItemSerializer(many=True, read_only=True)
     start_date = serializers.DateField(required=False, allow_null=True)
     end_date = serializers.DateField(required=False, allow_null=True)
+    attribution = AttributionField(required=False, allow_null=True)
 
     class Meta:
         model = PlacementOrder
@@ -49,8 +62,13 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
             "all_days", "days_of_week",
             "nomenclature_ids",
             "items",
+            "commercial_status", "lost_reason", "attribution",
+            "qualified_at", "proposal_sent_at", "booked_at", "lost_at",
         ]
-        read_only_fields = ["owner"]
+        read_only_fields = [
+            "owner", "commercial_status", "lost_reason", "qualified_at",
+            "proposal_sent_at", "booked_at", "lost_at",
+        ]
 
     def validate(self, attrs):
         all_days = attrs.get("all_days", True)
@@ -81,3 +99,29 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return attrs
+
+
+class CommercialStatusSerializer(serializers.ModelSerializer):
+    """Staff-only serializer for the commercial funnel transition."""
+
+    class Meta:
+        model = PlacementOrder
+        fields = [
+            "commercial_status", "lost_reason", "qualified_at",
+            "proposal_sent_at", "booked_at", "lost_at",
+        ]
+        read_only_fields = ["qualified_at", "proposal_sent_at", "booked_at", "lost_at"]
+
+    def validate(self, attrs):
+        status = attrs.get("commercial_status", self.instance.commercial_status)
+        reason = attrs.get("lost_reason", self.instance.lost_reason)
+        if status == "lost" and not reason:
+            raise serializers.ValidationError({"lost_reason": "This field is required for lost orders."})
+        if status != "lost" and "lost_reason" in attrs and reason:
+            raise serializers.ValidationError({"lost_reason": "Only allowed when commercial_status is lost."})
+        return attrs
+
+    def update(self, instance, validated_data):
+        if validated_data.get("commercial_status", instance.commercial_status) != "lost":
+            validated_data["lost_reason"] = None
+        return super().update(instance, validated_data)

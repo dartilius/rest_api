@@ -1,11 +1,28 @@
 # views.py
 
-from rest_framework import mixins, viewsets
-from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
+from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.response import Response
 
-from services.api_1c_client import api_1c, logger
+from services.api_1c_client import logger
 from .models import PlacementOrder, PlacementOrderItem
-from .serializers import PlacementOrderSerializer
+from .serializers import CommercialStatusSerializer, PlacementOrderSerializer
+
+
+MARKETING_ROLES = {"manager", "admin", "superuser"}
+
+
+class MarketingReportPermission(BasePermission):
+    message = "Marketing report is available to managers and marketing staff only."
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and getattr(request.user, "role", None) in MARKETING_ROLES
+        )
 
 
 class PlacementOrderViewSet(mixins.CreateModelMixin,
@@ -16,25 +33,41 @@ class PlacementOrderViewSet(mixins.CreateModelMixin,
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return PlacementOrder.objects.filter(
-            owner=self.request.user
-        )
+        queryset = PlacementOrder.objects.select_related("owner").prefetch_related("items")
+        if getattr(self.request.user, "role", None) in MARKETING_ROLES:
+            return queryset
+        return queryset.filter(owner=self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == "commercial_status":
+            return CommercialStatusSerializer
+        return PlacementOrderSerializer
+
+    @action(detail=True, methods=["patch"], url_path="commercial-status")
+    def commercial_status(self, request, *args, **kwargs):
+        if getattr(request.user, "role", None) not in MARKETING_ROLES:
+            return Response(
+                {"detail": "Only managers and marketing staff may change commercial status."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        order = self.get_object()
+        serializer = self.get_serializer(order, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
-        print("validated_data:", serializer.validated_data)
         nomenclatures = serializer.validated_data.pop("nomenclatures")
-        order = serializer.save(owner=self.request.user)
-        print("order.start_date:", order.start_date)
-        print("order.end_date:", order.end_date)
-
-        PlacementOrderItem.objects.bulk_create([
-            PlacementOrderItem(
-                order=order,
-                nomenclature=nom,
-                responsible=nom.responsible_ad
-            )
-            for nom in nomenclatures
-        ])
+        with transaction.atomic():
+            order = serializer.save(owner=self.request.user)
+            PlacementOrderItem.objects.bulk_create([
+                PlacementOrderItem(
+                    order=order,
+                    nomenclature=nom,
+                    responsible=nom.responsible_ad,
+                )
+                for nom in nomenclatures
+            ])
 
         try:
             from placement_order.tasks import send_placement_order_email

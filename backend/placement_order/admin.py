@@ -13,11 +13,22 @@ class PlacementOrderItemInline(admin.TabularInline):
 
 @admin.register(PlacementOrder)
 class PlacementOrderAdmin(admin.ModelAdmin):
-    list_display = ["id", "owner", "duration", "all_days", "created"]
-    list_filter = ["all_days"]
+    list_display = ["id", "owner", "commercial_status", "duration", "all_days", "created"]
+    list_filter = ["all_days", "commercial_status"]
     search_fields = ["owner__email", "owner__first_name", "owner__last_name"]
-    readonly_fields = ["owner", "created"]
+    readonly_fields = [
+        "owner", "created", "qualified_at", "proposal_sent_at", "booked_at", "lost_at",
+    ]
     inlines = [PlacementOrderItemInline]
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        return fieldsets + (("Commercial funnel", {
+            "fields": (
+                "commercial_status", "lost_reason", "attribution", "qualified_at",
+                "proposal_sent_at", "booked_at", "lost_at",
+            )
+        }),)
 
     fieldsets = (
         ("Основное", {
