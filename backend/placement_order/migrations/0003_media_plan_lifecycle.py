@@ -5,7 +5,7 @@ from django.utils import timezone
 def populate_media_plan_fields(apps, schema_editor):
     PlacementOrder = apps.get_model("placement_order", "PlacementOrder")
     used_names = set()
-    for order in PlacementOrder.objects.order_by("created", "id").iterator():
+    for order in PlacementOrder._base_manager.order_by("created", "id").iterator():
         day = order.created.date() if order.created else timezone.localdate()
         base_name = f"Медиаплан {day:%Y-%m-%d}"
         name = base_name
