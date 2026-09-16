@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path, re_path
 
 from drf_spectacular.views import (
@@ -9,7 +10,14 @@ from rest_framework import permissions
 from docs.views import docs, openapi_scheme
 from users.views import LogoutView
 
+
+def healthcheck(request):
+    """Container liveness endpoint independent of application data and auth."""
+    return JsonResponse({"status": "ok"})
+
+
 urlpatterns = [
+    path('healthz/', healthcheck, name='healthcheck'),
     path('admin/', admin.site.urls),
     path('docs/', docs),
     path('docs/openapi-schema.yml', openapi_scheme),

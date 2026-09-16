@@ -156,7 +156,7 @@ services:
       - ./backend/promotions/migrations:/app/promotions/migrations
       - ./backend/feedback/migrations:/app/feedback/migrations
     healthcheck:
-      test: curl --fail ${BACKEND_HC} || exit 1
+      test: ['CMD-SHELL', 'curl --fail --silent http://localhost:8000/healthz/ || exit 1']
       interval: 10s
       timeout: 5s
       retries: 5
