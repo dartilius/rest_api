@@ -12,6 +12,8 @@ from django.db.models import (
 from django.utils import timezone
 from uuid import uuid4
 
+from .dates import current_business_date
+
 from api import UUIDPKField
 from api.custom_managers import ActiveManager
 
@@ -146,7 +148,7 @@ class PlacementOrder(models.Model):
         if self.all_days and self.days_of_week:
             errors["days_of_week"] = "Нельзя указывать дни недели при all_days = true."
 
-        today = timezone.localdate()
+        today = current_business_date()
         min_start = today + timedelta(days=2)
 
         def to_date(value):
@@ -186,9 +188,9 @@ class PlacementOrder(models.Model):
     def save(self, *args, **kwargs):
         """Set a funnel timestamp once, on the first transition into that status."""
         if not self.name:
-            self.name = f"Медиаплан {timezone.localdate():%Y-%m-%d}"
+            self.name = f"Медиаплан {current_business_date():%Y-%m-%d}"
         if not self.plan_number:
-            prefix = timezone.localdate().strftime("MP-%Y%m%d-")
+            prefix = current_business_date().strftime("MP-%Y%m%d-")
             candidate = f"{prefix}{uuid4().hex[:8].upper()}"
             while type(self).objects.filter(plan_number=candidate).exists():
                 candidate = f"{prefix}{uuid4().hex[:8].upper()}"

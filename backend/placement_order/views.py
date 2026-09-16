@@ -1,7 +1,6 @@
 # views.py
 
 from django.db import transaction
-from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import BasePermission, IsAuthenticated
@@ -9,6 +8,7 @@ from rest_framework.response import Response
 
 from services.api_1c_client import logger
 from .models import PlacementOrder, PlacementOrderItem
+from .dates import current_business_date
 from .serializers import CommercialStatusSerializer, PlacementOrderSerializer
 
 
@@ -156,7 +156,7 @@ class PlacementOrderViewSet(mixins.CreateModelMixin,
         nomenclatures = serializer.validated_data.pop("nomenclatures")
         with transaction.atomic():
             if not serializer.validated_data.get("name"):
-                base_name = f"Медиаплан {timezone.localdate():%Y-%m-%d}"
+                base_name = f"Медиаплан {current_business_date():%Y-%m-%d}"
                 names = set(PlacementOrder.objects.filter(name__startswith=base_name).values_list("name", flat=True))
                 name, number = base_name, 2
                 while name in names:

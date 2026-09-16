@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from datetime import timedelta
-from django.utils import timezone
 
 from nomenclatures.models import Nomenclature
 from .models import PlacementOrder, PlacementOrderItem
+from .dates import current_business_date
 from .marketing import validate_attribution_payload
 
 
@@ -97,7 +97,7 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
             errors["days_of_week"] = "Нельзя указывать дни недели при all_days = true."
 
         # start_date минимум +2 дня от сегодня
-        today = timezone.localdate()
+        today = current_business_date()
         min_start = today + timedelta(days=2)
 
         if start_date and start_date < min_start:
