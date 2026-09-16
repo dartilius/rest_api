@@ -177,4 +177,4 @@ configs/
 *.dump
 *.backup.*
 *.bak*
-backend-marketing-contract.md
+/docs/*

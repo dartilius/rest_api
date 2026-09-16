@@ -133,6 +133,10 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
             city_slugs.append(city_slug)
         if city_slugs:
             queryset = queryset.filter(address__address__city__slug__in=city_slugs)
+        if exclude_city_slug := filters.get("exclude_city_slug"):
+            queryset = queryset.exclude(
+                address__address__city__slug=exclude_city_slug
+            )
         if legal_entity_name := filters.get("legal_entity_name"):
             queryset = queryset.filter(legalEntity__name__icontains=legal_entity_name)
         if brand_name := filters.get("brand_name"):

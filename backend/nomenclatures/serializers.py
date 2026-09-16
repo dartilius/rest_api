@@ -759,6 +759,7 @@ class NomenclatureWebSearchRequestSerializer(serializers.Serializer):
         child=serializers.SlugField(max_length=255), required=False, max_length=100
     )
     city_slug = serializers.SlugField(required=False, max_length=255)
+    exclude_city_slug = serializers.SlugField(required=False, max_length=255)
     legal_entity_name = serializers.CharField(
         required=False, allow_blank=True, max_length=255
     )

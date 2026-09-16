@@ -198,6 +198,9 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageLimitPagination',
     'PAGE_SIZE': 25,
+    'DEFAULT_THROTTLE_RATES': {
+        'feedback': '10/hour',
+    },
 }
 
 if not DEBUG:

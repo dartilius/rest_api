@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from feedback.models import Feedback
-from placement_order.models import PlacementOrder
 from placement_order.serializers import AttributionField
 
 
@@ -11,12 +10,6 @@ class FeedbackSerializer(serializers.ModelSerializer):
     nomenclaturesIds = serializers.ListField(
         child=serializers.CharField(),
         source="nomenclatures_ids",
-        required=False,
-        allow_null=True,
-    )
-    placement_order_id = serializers.PrimaryKeyRelatedField(
-        source="placement_order",
-        queryset=PlacementOrder.objects.all(),
         required=False,
         allow_null=True,
     )
@@ -34,20 +27,10 @@ class FeedbackSerializer(serializers.ModelSerializer):
             "pathname",
             "brandId",
             "nomenclaturesIds",
-            "placement_order_id",
             "attribution",
             "created",
         ]
         read_only_fields = ["id", "created"]
 
     def validate(self, attrs):
-        placement_order = attrs.get("placement_order")
-        attribution = attrs.get("attribution")
-        if placement_order and attribution and placement_order.attribution:
-            if attribution != placement_order.attribution:
-                raise serializers.ValidationError({
-                    "attribution": "Must match the linked placement order attribution."
-                })
-        if placement_order and attribution is None:
-            attrs["attribution"] = placement_order.attribution
         return attrs

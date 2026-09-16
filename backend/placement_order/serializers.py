@@ -53,28 +53,40 @@ class PlacementOrderSerializer(serializers.ModelSerializer):
     start_date = serializers.DateField(required=False, allow_null=True)
     end_date = serializers.DateField(required=False, allow_null=True)
     attribution = AttributionField(required=False, allow_null=True)
+    duration = serializers.IntegerField(required=False, default=30, min_value=1)
+    all_days = serializers.BooleanField(required=False, default=True)
+    commercial_status_display = serializers.CharField(
+        source="get_commercial_status_display", read_only=True
+    )
+    cabinet_url = serializers.SerializerMethodField()
 
     class Meta:
         model = PlacementOrder
         fields = [
-            "id", "owner", "duration",
+            "id", "owner", "name", "plan_number", "revision", "cabinet_url", "duration",
             "start_date", "end_date",
             "all_days", "days_of_week",
             "nomenclature_ids",
             "items",
-            "commercial_status", "lost_reason", "attribution",
+            "commercial_status", "commercial_status_display", "lost_reason", "manager_comment",
+            "attribution", "created", "updated",
             "qualified_at", "proposal_sent_at", "booked_at", "lost_at",
         ]
         read_only_fields = [
-            "owner", "commercial_status", "lost_reason", "qualified_at",
+            "owner", "plan_number", "revision", "commercial_status", "commercial_status_display",
+            "lost_reason", "manager_comment", "created", "updated", "qualified_at",
             "proposal_sent_at", "booked_at", "lost_at",
         ]
 
+    def get_cabinet_url(self, obj):
+        return f"/media-plans/{obj.id}"
+
     def validate(self, attrs):
-        all_days = attrs.get("all_days", True)
-        days_of_week = attrs.get("days_of_week", [])
-        start_date = attrs.get("start_date")
-        end_date = attrs.get("end_date")
+        instance = self.instance
+        all_days = attrs.get("all_days", instance.all_days if instance else True)
+        days_of_week = attrs.get("days_of_week", instance.days_of_week if instance else [])
+        start_date = attrs.get("start_date", instance.start_date if instance else None)
+        end_date = attrs.get("end_date", instance.end_date if instance else None)
 
         errors = {}
 
@@ -107,7 +119,7 @@ class CommercialStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlacementOrder
         fields = [
-            "commercial_status", "lost_reason", "qualified_at",
+            "commercial_status", "lost_reason", "manager_comment", "qualified_at",
             "proposal_sent_at", "booked_at", "lost_at",
         ]
         read_only_fields = ["qualified_at", "proposal_sent_at", "booked_at", "lost_at"]

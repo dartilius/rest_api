@@ -10,6 +10,7 @@ from django.db.models import (
     DateTimeField,
 )
 from django.utils import timezone
+from uuid import uuid4
 
 from api import UUIDPKField
 from api.custom_managers import ActiveManager
@@ -25,11 +26,11 @@ DAYS_OF_WEEK = [
 ]
 
 COMMERCIAL_STATUS_CHOICES = [
-    ("new", "New"),
-    ("qualified", "Qualified"),
-    ("proposal_sent", "Proposal sent"),
-    ("booked", "Booked"),
-    ("lost", "Lost"),
+    ("new", "Новый"),
+    ("qualified", "Квалифицирован"),
+    ("proposal_sent", "Предложение отправлено"),
+    ("booked", "Забронирован"),
+    ("lost", "Проигран"),
 ]
 
 LOST_REASON_CHOICES = [
@@ -56,6 +57,10 @@ class PlacementOrder(models.Model):
         null=True,
         blank=True,
     )
+    name = CharField(max_length=120, blank=True, verbose_name="Название медиаплана")
+    plan_number = CharField(max_length=24, unique=True, null=True, blank=True, editable=False)
+    revision = PositiveIntegerField(default=1, editable=False)
+    manager_comment = models.TextField(blank=True, default="")
     owner = ForeignKey(
         "users.CustomUser",
         on_delete=models.CASCADE,
@@ -102,6 +107,8 @@ class PlacementOrder(models.Model):
         auto_now_add=True,
         verbose_name='Дата создания'
     )
+
+    updated = DateTimeField(auto_now=True)
 
     commercial_status = CharField(
         max_length=16,
@@ -178,6 +185,14 @@ class PlacementOrder(models.Model):
 
     def save(self, *args, **kwargs):
         """Set a funnel timestamp once, on the first transition into that status."""
+        if not self.name:
+            self.name = f"Медиаплан {timezone.localdate():%Y-%m-%d}"
+        if not self.plan_number:
+            prefix = timezone.localdate().strftime("MP-%Y%m%d-")
+            candidate = f"{prefix}{uuid4().hex[:8].upper()}"
+            while type(self).objects.filter(plan_number=candidate).exists():
+                candidate = f"{prefix}{uuid4().hex[:8].upper()}"
+            self.plan_number = candidate
         update_fields = kwargs.get("update_fields")
         if self.pk and self.commercial_status in STATUS_TIMESTAMP_FIELDS:
             previous_status = type(self).objects.filter(pk=self.pk).values_list(
