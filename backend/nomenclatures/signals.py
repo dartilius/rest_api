@@ -12,7 +12,6 @@
 
 import logging
 
-from django.core.management import call_command
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
@@ -28,31 +27,6 @@ from nomenclatures.services.search import NomenclatureSearchService
 from nomenclatures.tasks import update_opensearch_for_instance
 
 logger = logging.getLogger(__name__)
-
-
-def _rebuild_search_vectors() -> None:
-    """Run the canonical batch rebuild after a nomenclature DB change commits."""
-    try:
-        call_command("rebuild_search_vectors", batch_size=5000)
-    except Exception:
-        logger.exception("Could not rebuild nomenclature search vectors")
-
-
-def _schedule_search_vector_rebuild() -> None:
-    transaction.on_commit(_rebuild_search_vectors)
-
-
-@receiver(post_save, sender=Nomenclature)
-def rebuild_search_vectors_on_nomenclature_save(sender, instance, **kwargs):
-    """Rebuild vectors after every nomenclature creation or update."""
-    if not kwargs.get("raw", False):
-        _schedule_search_vector_rebuild()
-
-
-@receiver(post_delete, sender=Nomenclature)
-def rebuild_search_vectors_on_nomenclature_delete(sender, instance, **kwargs):
-    """Rebuild vectors after a nomenclature has been removed."""
-    _schedule_search_vector_rebuild()
 
 
 def _delete_image_file(storage, file_name):
