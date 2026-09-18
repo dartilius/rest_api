@@ -139,8 +139,8 @@ def delete_from_opensearch(sender, instance, **kwargs):
     from nomenclatures.documents import NomenclatureDocument
 
     try:
-        doc = NomenclatureDocument()
-        doc.delete(instance)
+        doc = NomenclatureDocument(meta={"id": str(instance.id)})
+        doc.delete(ignore=404)
         logger.info(f"Удалена из OpenSearch: {instance.id}")
     except Exception as e:
         logger.error(f"Ошибка удаления из OpenSearch: {e}")

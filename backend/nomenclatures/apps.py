@@ -8,3 +8,4 @@ class NomenclaturesConfig(AppConfig):
 
     def ready(self):
         import nomenclatures.signals
+        import nomenclatures.station_admin

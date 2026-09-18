@@ -34,7 +34,14 @@ def to_utc(played):
     return played.astimezone(pytz.utc)
 
 
-@shared_task
+@shared_task(
+    acks_late=True,
+    reject_on_worker_lost=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=5,
+)
 def create_statistic(stat_type, nomenclature_id, stat_list):
     """
     Создает записи статистики.

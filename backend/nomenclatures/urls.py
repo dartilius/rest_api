@@ -8,6 +8,8 @@ from nomenclatures.views import (
 )
 from nomenclatures.views.discount import DiscountRuleViewSet  # добавить
 from nomenclatures.views.tenant import grouped_tenants_global, tenant_detail
+from nomenclatures.views.station_v2 import StationV2SyncView
+from nomenclatures.views.station_binding import StationV2BindingView
 router = routers.DefaultRouter()
 router.register('nomenclatures', NomenclatureViewSet, basename='nomenclature')
 router.register('orders', NomenclatureOrderViewSet, basename='order')
@@ -24,6 +26,8 @@ nomenclature_router.register('tenant', NomenclatureTenantViewSet, basename='nome
 nomenclature_router.register('discounts', DiscountRuleViewSet, basename='nomenclature-discounts')  # добавить
 
 urlpatterns = [
+    path('station/v2/bind/', StationV2BindingView.as_view(), name='station-v2-bind'),
+    path('station/v2/sync/', StationV2SyncView.as_view(), name='station-v2-sync'),
     path('', include(router.urls)),
     path('nomenclatures/web/', include(web_router.urls)),
     path('tenants/grouped/', grouped_tenants_global, name='grouped-tenants-global'),

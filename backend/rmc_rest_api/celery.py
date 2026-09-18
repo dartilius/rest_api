@@ -11,7 +11,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", 'rmc_rest_api.settings')
 
 app = Celery('rmc_rest_api')
 app.config_from_object('django.conf:settings', namespace="CELERY")
-app.conf.singleton_backend_url = settings.CELERY_SINGLETON_BACKEND_URL
+singleton_backend_url = getattr(settings, 'CELERY_SINGLETON_BACKEND_URL', None)
+if singleton_backend_url:
+    app.conf.singleton_backend_url = singleton_backend_url
 app.autodiscover_tasks()
 
 # Создаем директорию для логов

@@ -40,7 +40,6 @@ from nomenclatures.models import Nomenclature
 from nomenclatures.serializers import StatusHistorySerializer
 from users.permissions import StaffCUDallRead
 
-
 # ============================================================================
 # ЕДИНЫЙ VIEWSET ДЛЯ ВСЕЙ СТАТИСТИКИ
 # ============================================================================

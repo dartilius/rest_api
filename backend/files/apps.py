@@ -23,17 +23,13 @@ class FilesConfig(AppConfig):
 
     def ready(self):
         """Инициализация бакетов MinIO — только если MinIO реально доступен."""
-        # 🚫 Не выполняем в DEBUG-режиме (локально)
-        if getattr(settings, 'DEBUG', True):
-            print("DEBUG=True: пропускаем инициализацию MinIO")
-            return
-
         # 🚫 Не выполняем, если MINIO_ENDPOINT не задан
         if not getattr(settings, 'MINIO_ENDPOINT', None):
             print("MINIO_ENDPOINT не задан: пропускаем инициализацию MinIO")
             return
 
-        # ✅ Только теперь пытаемся подключиться
+        # ✅ Пытаемся подключиться. Если MinIO недоступен (например, локальная
+        # разработка без MinIO) — просто логируем и продолжаем работу.
         try:
             from . import minio_setup
             minio_setup.initialize_minio_buckets()

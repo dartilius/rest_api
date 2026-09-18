@@ -25,6 +25,7 @@ import hashlib
 import re
 from uuid import uuid4
 
+from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.validators import KeysValidator
 from django.db import models
@@ -393,9 +394,31 @@ class Nomenclature(APIBaseObjectModel):
         blank=True,
         default=dict,
     )
+    applied_settings_revision = models.PositiveIntegerField(
+        verbose_name="Версия подтверждённых настроек",
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    station_capabilities = models.JSONField(
+        verbose_name="Доступные устройства Player",
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    visual_output_settings = models.JSONField(
+        verbose_name="Подтверждённые настройки визуального вывода",
+        null=True,
+        blank=True,
+        editable=False,
+    )
 
     hw_info = models.JSONField(
         verbose_name="Информация о железе", blank=True, null=True
+    )
+
+    runtime_state = models.JSONField(
+        verbose_name="Текущее состояние эфира", blank=True, null=True
     )
 
     brand = models.ForeignKey(
@@ -830,6 +853,104 @@ class Nomenclature(APIBaseObjectModel):
             models.Index(fields=["brand", "typeOfPlace"]),
             models.Index(fields=["legalEntity", "brand"]),
             models.Index(fields=["search_vector"]),
+        ]
+
+
+class StatisticReceipt(models.Model):
+    """Durable acknowledgement of an idempotent playback statistic event."""
+
+    nomenclature = models.ForeignKey(
+        Nomenclature,
+        on_delete=models.CASCADE,
+        related_name="statistic_receipts",
+        verbose_name="Рабочая станция",
+    )
+    event_id = models.UUIDField(verbose_name="Идентификатор события")
+    stat_type = models.CharField(max_length=16, verbose_name="Тип статистики")
+    received_at = models.DateTimeField(auto_now_add=True, verbose_name="Принято")
+
+    class Meta:
+        db_table = "statistic_receipt"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["nomenclature", "event_id"],
+                name="unique_statistic_receipt_event",
+            )
+        ]
+        indexes = [models.Index(fields=["received_at"])]
+
+
+class StationCredential(models.Model):
+    """Ключ legacy-совместимости для изолированного протокола Player v2."""
+
+    nomenclature = models.OneToOneField(
+        Nomenclature, on_delete=models.CASCADE, related_name="station_credential"
+    )
+    token_hash = models.CharField(max_length=64, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    rotated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Ключ доступа станции"
+        verbose_name_plural = "Ключи доступа станций"
+
+
+class StationInstallation(models.Model):
+    """Установка Player, которую можно безопасно перепривязать к другой точке."""
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    nomenclature = models.ForeignKey(
+        Nomenclature, on_delete=models.CASCADE, related_name="station_installations"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="station_installations",
+    )
+    token_hash = models.CharField(max_length=64, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    rotated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Установка плеера"
+        verbose_name_plural = "Установки плеера"
+        indexes = [
+            models.Index(fields=("nomenclature", "is_active")),
+            models.Index(fields=("created_by", "is_active")),
+        ]
+
+
+class StationCommandV2(models.Model):
+    """Идемпотентная команда конкретной точки, отдельная от legacy Task."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает"
+        APPLIED = "applied", "Применена"
+        FAILED = "failed", "Ошибка"
+
+    command_id = models.UUIDField(default=uuid4, unique=True, editable=False)
+    nomenclature = models.ForeignKey(
+        Nomenclature, on_delete=models.CASCADE, related_name="v2_commands"
+    )
+    kind = models.CharField(max_length=64, default="apply_settings_patch")
+    body = models.JSONField(default=dict)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    result = models.JSONField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Команда плеера v2"
+        verbose_name_plural = "Команды плеера v2"
+        indexes = [
+            models.Index(
+                fields=("nomenclature", "status", "created_at"),
+                name="nomenclatur_nomencl_7e2a54_idx",
+            ),
         ]
 
 

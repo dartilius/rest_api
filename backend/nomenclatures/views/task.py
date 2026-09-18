@@ -1,4 +1,5 @@
 import re
+from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -14,6 +15,7 @@ from ..tasks import (
     reboot_task,
     update_task,
     custom_task,
+    maintenance_mode_task,
     settings_task
 )
 
@@ -22,7 +24,11 @@ from ch_statistic.tasks import create_statistic
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from api.constants import get_bg_task_type, get_instance_or_404
-from nomenclatures.models import Nomenclature, NomenclatureAvailability
+from nomenclatures.models import (
+    Nomenclature,
+    NomenclatureAvailability,
+    StatisticReceipt,
+)
 from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 from tasks.serializers import TaskListSerializer
@@ -31,6 +37,86 @@ from users.permissions import StaffCUDallRead
 
 CANCEL_TASK_TYPES = {5, 6, 7, 8, 9}
 ACTIVE_ORDER_STATUSES = {0, 1}
+STATISTIC_TYPES = frozenset({"ad", "music", "video", "image", "ticker"})
+TASK_STATUS_VALUES = frozenset({0, 1, 2, 3, 4})
+
+
+def _validate_statistic_event_ids(statistics):
+    """Return a validation error response when a statistic batch is malformed."""
+    if not isinstance(statistics, dict):
+        return Response(
+            {"detail": "Поле statistic должно быть объектом."},
+            status=HTTP_400_BAD_REQUEST,
+        )
+
+    for stat_type, stat_list in statistics.items():
+        if stat_type not in STATISTIC_TYPES:
+            return Response(
+                {"detail": f"Неизвестный тип статистики: {stat_type}."},
+                status=HTTP_400_BAD_REQUEST,
+            )
+        if not isinstance(stat_list, list):
+            return Response(
+                {"detail": f"Статистика {stat_type} должна быть списком."},
+                status=HTTP_400_BAD_REQUEST,
+            )
+        for event in stat_list:
+            if not isinstance(event, dict):
+                return Response(
+                    {"detail": f"Событие {stat_type} должно быть объектом."},
+                    status=HTTP_400_BAD_REQUEST,
+                )
+            event_id = event.get("event_id")
+            if event_id is None:
+                continue
+            if not isinstance(event_id, str):
+                return Response(
+                    {"detail": "event_id должен быть UUID-строкой."},
+                    status=HTTP_400_BAD_REQUEST,
+                )
+            try:
+                UUID(event_id)
+            except ValueError:
+                return Response(
+                    {"detail": "event_id должен быть UUID-строкой."},
+                    status=HTTP_400_BAD_REQUEST,
+                )
+
+    return None
+
+
+def _validate_task_statuses(task_statuses):
+    """Validate task receipts before writing any station-owned task."""
+    if not isinstance(task_statuses, dict):
+        return Response(
+            {"detail": "Поле task_status должно быть объектом."},
+            status=HTTP_400_BAD_REQUEST,
+        )
+
+    for task_id, task_status in task_statuses.items():
+        if not isinstance(task_id, str):
+            return Response(
+                {"detail": "Идентификатор задачи должен быть UUID-строкой."},
+                status=HTTP_400_BAD_REQUEST,
+            )
+        try:
+            UUID(task_id)
+        except ValueError:
+            return Response(
+                {"detail": "Идентификатор задачи должен быть UUID-строкой."},
+                status=HTTP_400_BAD_REQUEST,
+            )
+        if (
+            not isinstance(task_status, int)
+            or isinstance(task_status, bool)
+            or task_status not in TASK_STATUS_VALUES
+        ):
+            return Response(
+                {"detail": "Недопустимый статус задачи."},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+    return None
 
 
 @extend_schema(tags=["Номенклатуры - Задачи"])
@@ -421,6 +507,20 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                         status=HTTP_400_BAD_REQUEST,
                     )
                 custom_task.delay(pk, parameters, owner)
+            case "maintenance":
+                enabled = request.data.get("enabled")
+                reason = request.data.get("reason")
+                if not isinstance(enabled, bool):
+                    return Response(
+                        {"detail": "enabled должен быть true или false."},
+                        status=HTTP_400_BAD_REQUEST,
+                    )
+                if enabled and (not isinstance(reason, str) or not reason.strip()):
+                    return Response(
+                        {"detail": "Укажите причину сервисного режима."},
+                        status=HTTP_400_BAD_REQUEST,
+                    )
+                maintenance_mode_task.delay(pk, enabled, (reason or "").strip(), owner)
             case "settings":
                 settings_task.delay(pk, owner)
             case _:
@@ -622,33 +722,101 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
             сервером и клиентским ПО на устройствах.
         """
         nomenclature = get_instance_or_404(Nomenclature, pk)
+        task_statuses = request.data.get("task_status")
+        if task_statuses is not None:
+            validation_error = _validate_task_statuses(task_statuses)
+            if validation_error:
+                return validation_error
         update_fields = []
         data = dict()
 
-        if "version" in request.data:
+        if "version" in request.data and request.data["version"] != nomenclature.version:
             nomenclature.version = request.data["version"]
             update_fields.append("version")
 
-        if "hw_info" in request.data:
+        if "hw_info" in request.data and request.data["hw_info"] != nomenclature.hw_info:
             nomenclature.hw_info = request.data["hw_info"]
             update_fields.append("hw_info")
+
+        if (
+            "runtime_state" in request.data
+            and request.data["runtime_state"] != nomenclature.runtime_state
+        ):
+            nomenclature.runtime_state = request.data["runtime_state"]
+            update_fields.append("runtime_state")
 
         if update_fields:
             nomenclature.save(update_fields=update_fields)
 
         if "statistic" in request.data:
             statistics = request.data["statistic"]
-            for stat_type, stat_list in statistics.items():
-                if len(stat_list) > 0:
+            validation_error = _validate_statistic_event_ids(statistics)
+            if validation_error:
+                return validation_error
+
+            event_types = {
+                UUID(event["event_id"]): stat_type
+                for stat_type, stat_list in statistics.items()
+                for event in stat_list
+                if event.get("event_id") is not None
+            }
+            existing_event_types = dict(
+                StatisticReceipt.objects.filter(
+                    nomenclature=nomenclature,
+                    event_id__in=event_types,
+                ).values_list("event_id", "stat_type")
+            )
+            if any(
+                existing_event_types.get(event_id, stat_type) != stat_type
+                for event_id, stat_type in event_types.items()
+            ):
+                return Response(
+                    {"detail": "event_id уже относится к другому типу статистики."},
+                    status=HTTP_400_BAD_REQUEST,
+                )
+
+            accepted_statistics = {}
+            statistics_to_dispatch = {}
+            with transaction.atomic():
+                for stat_type, stat_list in statistics.items():
+                    if not stat_list:
+                        continue
+
+                    new_events = []
+                    for event in stat_list:
+                        event_id = event.get("event_id")
+                        if event_id is None:
+                            # Старые клиенты не передают идентификаторы. Для них
+                            # сохраняем прежнее поведение без дедупликации.
+                            new_events.append(event)
+                            continue
+
+                        receipt, created = StatisticReceipt.objects.get_or_create(
+                            nomenclature=nomenclature,
+                            event_id=event_id,
+                            defaults={"stat_type": stat_type},
+                        )
+                        if created:
+                            new_events.append(event)
+
+                    if new_events:
+                        statistics_to_dispatch[stat_type] = new_events
+                    # Повтор с уже сохранённой квитанцией тоже подтверждается,
+                    # чтобы клиент мог безопасно удалить локальную запись.
+                    accepted_statistics[stat_type] = len(stat_list)
+
+                for stat_type, stat_list in statistics_to_dispatch.items():
                     create_statistic.delay(stat_type, pk, stat_list)
 
-        if "task_status" in request.data:
-            task_list = list()
-            for task_id in request.data["task_status"]:
-                task_status = request.data["task_status"][task_id]
-                task_instance = Task.objects.get(id=task_id)
-                task_instance.status = task_status
-                task_list.append(task_instance)
+            if accepted_statistics:
+                data["statistics_accepted"] = accepted_statistics
+
+        if task_statuses:
+            task_list = list(
+                Task.objects.filter(client=nomenclature, id__in=task_statuses)
+            )
+            for task_instance in task_list:
+                task_instance.status = task_statuses[str(task_instance.id)]
             Task.objects.bulk_update(task_list, ["status"])
 
         if "files_to_download" in request.data:

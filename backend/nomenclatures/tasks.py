@@ -344,7 +344,7 @@ def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
         params_dict = (
             json.loads(parameters) if isinstance(parameters, str) else parameters
         )
-    except:
+    except (TypeError, ValueError):
         params_dict = {"command": parameters}
 
     params_dict["responsible"] = owner.full_name
@@ -353,6 +353,27 @@ def custom_task(nomenclature_id: str, parameters: str, owner_id: str):
         owner=owner, client=nomenclature, type=17, parameters=params_dict
     )
     return f"SH команда отправлена на {nomenclature.name}"
+
+
+@shared_task
+def maintenance_mode_task(
+    nomenclature_id: str, enabled: bool, reason: str, owner_id: str
+):
+    """Queue a typed service-mode command for a Content Player station."""
+    nomenclature = get_nomenclature(nomenclature_id)
+    owner = get_owner(owner_id)
+    Task.objects.create(
+        owner=owner,
+        client=nomenclature,
+        type=17,
+        parameters={
+            "command": "maintenance_mode",
+            "enabled": enabled,
+            "reason": reason,
+            "responsible": owner.full_name,
+        },
+    )
+    return f"Сервисный режим отправлен на {nomenclature.name}"
 
 
 @shared_task

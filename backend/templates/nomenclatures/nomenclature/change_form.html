@@ -4,6 +4,32 @@
 	{{ block.super }}
 
 	{% if not add %}
+		<div class="module" id="maintenance-mode-section" style="margin-top: 20px;">
+			<h2 style="padding: 8px 12px; background: #8b3a3a; color: white; margin: 0;">
+				🛠 Сервисный режим
+			</h2>
+			<div style="padding: 12px;">
+				{% if original.runtime_state.maintenance_mode %}
+					<p style="margin-top: 0; color: #8b3a3a; font-weight: bold;">Станция сообщает: сервисный режим включён.</p>
+				{% else %}
+					<p style="margin-top: 0;">Включение остановит весь эфир, включая рекламу. Станция останется доступной для синхронизации и диагностики.</p>
+				{% endif %}
+				<form method="post" action="{% url 'admin:nomenclature_maintenance' original.pk %}">
+					{% csrf_token %}
+					<label for="maintenance-enabled">Команда</label>
+					<select id="maintenance-enabled" name="enabled" style="margin: 0 12px 8px 4px;">
+						<option value="true">Включить сервисный режим</option>
+						<option value="false">Выключить сервисный режим</option>
+					</select>
+					<label for="maintenance-reason">Причина входа</label>
+					<input id="maintenance-reason" name="reason" type="text" maxlength="500"
+						placeholder="Например: замена монитора" style="min-width: 260px; margin: 0 12px 8px 4px;">
+					<button type="submit" class="button">Отправить команду</button>
+				</form>
+				<p class="help" style="margin-bottom: 0;">Причина обязательна при включении. Команда будет применена при ближайшей синхронизации станции.</p>
+			</div>
+		</div>
+
 		<div class="module" id="music-stat-section" style="margin-top: 20px;">
 			<h2 style="padding: 8px 12px; background: #417690; color: white; margin: 0;">
 				🎵 Статистика музыки

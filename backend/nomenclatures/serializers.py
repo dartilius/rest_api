@@ -1171,7 +1171,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         model = Nomenclature
         fields = "__all__"
         read_only_fields = (
-            "id", "owner", "hw_info", "version", "created",
+            "id", "owner", "hw_info", "runtime_state", "version", "created",
             "status", "last_answer", "interior", "exterior",
             "typeOfPlace", "formattedAddress",
         )

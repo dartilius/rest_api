@@ -12,17 +12,22 @@
 """
 
 from django.contrib import admin
+from django.contrib import messages
 from django.core.cache import cache
 from django.db.models import Prefetch, Count, Q
 from django.db.models import prefetch_related_objects
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.http import JsonResponse
+from django.http import HttpResponseNotAllowed, JsonResponse
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils.dateparse import parse_date
 from django.utils.html import format_html
 
 from brands.models import Brand
 from ch_statistic.models import MusicStat
+from nomenclatures.tasks import maintenance_mode_task
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
@@ -64,8 +69,58 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.music_stat_view),
                 name="nomenclature_music_stat",
             ),
+            path(
+                "<uuid:object_id>/maintenance/",
+                self.admin_site.admin_view(self.maintenance_mode_view),
+                name="nomenclature_maintenance",
+            ),
         ]
         return custom + urls
+
+    def maintenance_mode_view(self, request, object_id):
+        """Queue a service-mode command from the station card in Django Admin."""
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+
+        nomenclature = self.get_object(request, object_id)
+        if nomenclature is None:
+            return redirect("admin:nomenclatures_nomenclature_changelist")
+        if not self.has_change_permission(request, nomenclature):
+            raise PermissionDenied
+
+        enabled_value = request.POST.get("enabled")
+        if enabled_value not in {"true", "false"}:
+            self.message_user(
+                request,
+                "Выберите состояние сервисного режима.",
+                level=messages.ERROR,
+            )
+        else:
+            enabled = enabled_value == "true"
+            reason = request.POST.get("reason", "").strip()
+            if enabled and not reason:
+                self.message_user(
+                    request,
+                    "Для входа в сервисный режим укажите причину.",
+                    level=messages.ERROR,
+                )
+            else:
+                maintenance_mode_task.delay(
+                    str(nomenclature.pk),
+                    enabled,
+                    reason,
+                    str(request.user.pk),
+                )
+                state = "включение" if enabled else "выключение"
+                self.message_user(
+                    request,
+                    f"Команда на {state} сервисного режима поставлена в очередь.",
+                    level=messages.SUCCESS,
+                )
+
+        return redirect(
+            reverse("admin:nomenclatures_nomenclature_change", args=[nomenclature.pk])
+        )
 
     def music_stat_view(self, request, object_id):
         date_from = request.GET.get("date_from")
@@ -139,6 +194,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     autocomplete_fields = ["owner", "brand", "legalEntity", "responsible_radio", "typeOfPlace"]
     raw_id_fields = ("owner", "brand", "legalEntity", "responsible_radio", "typeOfPlace")
+    readonly_fields = ("hw_info", "runtime_state")
 
     # =========================================================================
     # ОПТИМИЗИРОВАННЫЙ QUERYSET ДЛЯ СПИСКА
