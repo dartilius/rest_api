@@ -1505,6 +1505,12 @@ class NomenclatureSerializer(serializers.ModelSerializer):
         Возвращает:
             bool: True если поле изменилось, False в противном случае
         """
+        if field_name == 'for_web' and new_value in (None, '', False):
+            if isinstance(new_value, str) and new_value == '':
+                return False
+            if new_value is None:
+                return False
+        
         # Для write_only полей - отдельная логика
         if field_name in ['tenants_id', 'address_data']:
             return new_value is not None and new_value != []
@@ -1879,6 +1885,10 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             7. Валидация измененных полей (code1c, pricePerMonth)
             8. Сохранение только измененных полей (update_fields)
         """
+        raw_for_web = self.initial_data.get("for_web")
+        if raw_for_web == "":
+            validated_data.pop("for_web", None)
+
         # 1. Получение текущих значений
         current_values = self._get_current_values(instance)
 

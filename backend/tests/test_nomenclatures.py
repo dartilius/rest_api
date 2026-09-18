@@ -745,6 +745,28 @@ class TestNomenclaturesCRUD:
         nomenclature.refresh_from_db()
         assert nomenclature.for_web is False
 
+    def test_partial_update_nomenclature_for_web_keeps_true_on_empty_string(
+        self,
+        admin_client,
+        nomenclature
+    ):
+        nomenclature.for_web = True
+        nomenclature.save(update_fields=['for_web'])
+        url = self.nomenclature_detail_url.format(
+            nomenclature_id=str(nomenclature.id)
+        )
+
+        response = admin_client.patch(
+            url,
+            data={'name': 'Новое название', 'for_web': ''},
+            format='json'
+        )
+
+        assert response.status_code == HTTPStatus.OK, response.json()
+        nomenclature.refresh_from_db()
+        assert nomenclature.for_web is True
+        assert nomenclature.name == 'Новое название'
+
     def test_valid_partial_update_nomenclature_manager(
         self,
         manager_client,
