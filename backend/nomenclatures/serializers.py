@@ -645,6 +645,41 @@ class NomenclatureWebMapFacadeSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+def build_nomenclature_web_name(obj):
+    """Build the shared public label from place type, brand and address."""
+    title_parts = []
+    if obj.typeOfPlace and obj.typeOfPlace.abbreviation:
+        title_parts.append(obj.typeOfPlace.abbreviation)
+    if obj.brand and obj.brand.name:
+        title_parts.append(obj.brand.name)
+
+    address_parts = []
+    try:
+        address = obj.address.address
+    except ObjectDoesNotExist:
+        address = None
+
+    if address:
+        if address.city and address.city.name:
+            address_parts.append(f"г. {address.city.name}")
+        if address.street and address.street.name:
+            address_parts.append(f"ул. {address.street.name}")
+
+        house_number = None
+        if address.house and address.house.number:
+            house_number = address.house.number
+        elif address.building and address.building.number:
+            house_number = address.building.number
+        if house_number:
+            address_parts.append(house_number)
+
+    generated_parts = []
+    if title_parts:
+        generated_parts.append(" ".join(title_parts))
+    generated_parts.extend(address_parts)
+    return ", ".join(generated_parts) or obj.name
+
+
 class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
     """Компактная номенклатура для отображения на карте."""
 
@@ -677,38 +712,7 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_name(self, obj):
-        """Build a map label from place type, brand and formatted address."""
-        title_parts = []
-        if obj.typeOfPlace and obj.typeOfPlace.abbreviation:
-            title_parts.append(obj.typeOfPlace.abbreviation)
-        if obj.brand and obj.brand.name:
-            title_parts.append(obj.brand.name)
-
-        address_parts = []
-        try:
-            address = obj.address.address
-        except ObjectDoesNotExist:
-            address = None
-
-        if address:
-            if address.city and address.city.name:
-                address_parts.append(f"г. {address.city.name}")
-            if address.street and address.street.name:
-                address_parts.append(f"ул. {address.street.name}")
-
-            house_number = None
-            if address.house and address.house.number:
-                house_number = address.house.number
-            elif address.building and address.building.number:
-                house_number = address.building.number
-            if house_number:
-                address_parts.append(house_number)
-
-        generated_parts = []
-        if title_parts:
-            generated_parts.append(" ".join(title_parts))
-        generated_parts.extend(address_parts)
-        return ", ".join(generated_parts) or obj.name
+        return build_nomenclature_web_name(obj)
 
     def get_coordinates(self, obj):
         try:
@@ -743,6 +747,40 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
             - datetime.combine(datetime.min.date(), worktime_start)
         ).total_seconds() / 3600
         return float(slots_per_hour) * worktime
+
+
+class NomenclatureWebLKBrandSerializer(serializers.ModelSerializer):
+    """Brand data consumed by LK KrasRM."""
+
+    class Meta:
+        model = Brand
+        fields = ("code1c", "name")
+        read_only_fields = fields
+
+
+class NomenclatureWebLKSerializer(serializers.ModelSerializer):
+    """Compact active nomenclature payload for LK KrasRM."""
+
+    name = serializers.SerializerMethodField()
+    brand = NomenclatureWebLKBrandSerializer(read_only=True)
+
+    class Meta:
+        model = Nomenclature
+        fields = ("name", "brand", "code1c")
+        read_only_fields = fields
+
+    def get_name(self, obj):
+        return build_nomenclature_web_name(obj)
+
+
+class NomenclatureWebLKRequestSerializer(serializers.Serializer):
+    """Optional filters for the LK KrasRM nomenclature list."""
+
+    search = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    broadcast = serializers.BooleanField(required=False)
+    content_type = serializers.ChoiceField(
+        choices=list(AVAILABLE_CONTENT_TYPES), required=False
+    )
 
 
 class NomenclatureWebSearchRequestSerializer(serializers.Serializer):

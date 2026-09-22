@@ -4,8 +4,12 @@ from types import SimpleNamespace
 import pytest
 
 from brands.models import Brand
+from counterparties.models import Counterparty
 from nomenclatures.models import Nomenclature, TypeOfPlace
-from nomenclatures.serializers import NomenclatureWebMapPlaceSerializer
+from nomenclatures.serializers import (
+    NomenclatureWebLKSerializer,
+    NomenclatureWebMapPlaceSerializer,
+)
 
 
 @pytest.mark.django_db
@@ -91,6 +95,114 @@ def test_web_map_generates_name_from_place_brand_and_address():
     assert NomenclatureWebMapPlaceSerializer().get_name(nomenclature) == (
         "ТЦ Планета, г. Красноярск, ул. 9 Мая, 77"
     )
+
+
+@pytest.mark.django_db
+def test_lk_krasrm_com_returns_active_web_nomenclatures_as_array(
+    anon_client, nomenclature
+):
+    brand = Brand.objects.create(name="LK Brand", code1c="brand-1c")
+    Nomenclature.objects.filter(pk=nomenclature.pk).update(
+        for_web=True,
+        brand=brand,
+        code1c="nomenclature-1c",
+    )
+    inactive = Nomenclature.objects.create(
+        name="Inactive", owner=nomenclature.owner, timezone="Etc/GMT-7",
+        settings=nomenclature.settings, for_web=True, is_active=False,
+    )
+    not_for_web = Nomenclature.objects.create(
+        name="Not for web", owner=nomenclature.owner, timezone="Etc/GMT-7",
+        settings=nomenclature.settings, for_web=False,
+    )
+
+    response = anon_client.post(
+        "/api/nomenclatures/web/lk-krasrm-com/", data={}, format="json"
+    )
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+    assert response.json() == [
+        {
+            "name": "LK Brand",
+            "brand": {"code1c": "brand-1c", "name": "LK Brand"},
+            "code1c": "nomenclature-1c",
+        }
+    ]
+    assert inactive.pk != nomenclature.pk
+    assert not_for_web.pk != nomenclature.pk
+
+
+def test_lk_serializer_uses_the_map_name_algorithm():
+    nomenclature = SimpleNamespace(
+        name="Имя из модели",
+        typeOfPlace=SimpleNamespace(abbreviation="ТЦ"),
+        brand=SimpleNamespace(name="Планета"),
+        address=SimpleNamespace(
+            address=SimpleNamespace(
+                city=SimpleNamespace(name="Красноярск"),
+                street=SimpleNamespace(name="9 Мая"),
+                house=SimpleNamespace(number="77"),
+                building=None,
+            )
+        ),
+    )
+
+    assert NomenclatureWebLKSerializer().get_name(nomenclature) == (
+        NomenclatureWebMapPlaceSerializer().get_name(nomenclature)
+    )
+
+
+@pytest.mark.django_db
+def test_lk_krasrm_com_applies_search_broadcast_and_content_type_filters(
+    anon_client, nomenclature, user
+):
+    broadcasting = Counterparty.objects.create(keyword="Broadcast", broadcast=True)
+    not_broadcasting = Counterparty.objects.create(
+        keyword="No broadcast", broadcast=False
+    )
+    Nomenclature.objects.filter(pk=nomenclature.pk).update(
+        for_web=True, name="Matching audio", legalEntity=broadcasting,
+        contentType="audio",
+    )
+    without_legal_entity = Nomenclature.objects.create(
+        name="Matching video without entity", owner=user, timezone="Etc/GMT-7",
+        settings=nomenclature.settings, for_web=True, contentType="video",
+    )
+    with_non_broadcasting_entity = Nomenclature.objects.create(
+        name="Other video", owner=user, timezone="Etc/GMT-7",
+        settings=nomenclature.settings, for_web=True, legalEntity=not_broadcasting,
+        contentType="video",
+    )
+
+    response = anon_client.post(
+        "/api/nomenclatures/web/lk-krasrm-com/",
+        data={"search": "matching", "broadcast": True, "content_type": "audio"},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()] == ["Matching audio"]
+
+    response = anon_client.post(
+        "/api/nomenclatures/web/lk-krasrm-com/",
+        data={"broadcast": False, "content_type": "video"}, format="json",
+    )
+    assert response.status_code == 200
+    assert {item["name"] for item in response.json()} == {
+        "Matching video without entity", "Other video"
+    }
+    assert without_legal_entity.pk != with_non_broadcasting_entity.pk
+
+
+@pytest.mark.django_db
+def test_lk_krasrm_com_rejects_unknown_content_type(anon_client):
+    response = anon_client.post(
+        "/api/nomenclatures/web/lk-krasrm-com/",
+        data={"content_type": "unknown"}, format="json",
+    )
+
+    assert response.status_code == 400
+    assert "content_type" in response.json()
 
 
 @pytest.mark.django_db

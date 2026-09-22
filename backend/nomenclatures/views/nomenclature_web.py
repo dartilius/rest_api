@@ -24,6 +24,8 @@ from brands.models import Brand
 from nomenclatures.models import Nomenclature, NomenclatureImage
 from nomenclatures.serializers import (
     NomenclatureCardSerializer,
+    NomenclatureWebLKRequestSerializer,
+    NomenclatureWebLKSerializer,
     NomenclatureWebMapPlaceSerializer,
     NomenclatureWebMapResponseSerializer,
     NomenclatureWebSearchRequestSerializer,
@@ -45,6 +47,48 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
 
     serializer_class = NomenclatureWebSerializer
     permission_classes = [AllowAny]
+
+    def get_lk_krasrm_com_queryset(self):
+        """Return the fully-loaded active public catalogue for LK KrasRM."""
+        return Nomenclature.web.select_related(
+            "brand",
+            "legalEntity",
+            "typeOfPlace",
+            "address__address__city",
+            "address__address__street",
+            "address__address__house",
+            "address__address__building",
+        )
+
+    @extend_schema(
+        summary="Номенклатуры для LK KrasRM",
+        description="Активные номенклатуры веб-каталога без пагинации.",
+        request=NomenclatureWebLKRequestSerializer,
+        responses={200: NomenclatureWebLKSerializer(many=True)},
+    )
+    @action(detail=False, methods=["post"], url_path="lk-krasrm-com")
+    def lk_krasrm_com(self, request):
+        """Return LK KrasRM nomenclatures as a plain JSON array."""
+        request_serializer = NomenclatureWebLKRequestSerializer(data=request.data)
+        request_serializer.is_valid(raise_exception=True)
+        filters = request_serializer.validated_data
+
+        queryset = self.get_lk_krasrm_com_queryset()
+        if search := filters.get("search", "").strip():
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(code1c__icontains=search)
+            )
+        if "broadcast" in filters:
+            if filters["broadcast"]:
+                queryset = queryset.filter(legalEntity__broadcast=True)
+            else:
+                queryset = queryset.filter(
+                    Q(legalEntity__isnull=True) | Q(legalEntity__broadcast=False)
+                )
+        if content_type := filters.get("content_type"):
+            queryset = queryset.filter(contentType=content_type)
+
+        return Response(NomenclatureWebLKSerializer(queryset, many=True).data)
 
     @staticmethod
     def validate_counterparty_filter_access(request, filters):
