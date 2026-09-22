@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("nomenclatures", "0010_rename_nomenclatur_search__index_nomenclatur_search__488b14_idx_and_more"),
+        ("nomenclatures", "0011_alter_nomenclatureaddress_options_and_more"),
     ]
 
     operations = [
