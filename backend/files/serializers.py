@@ -212,7 +212,6 @@ class PlaylistSerializer(serializers.ModelSerializer):
     def to_representation(self, value):
         repr_ = super().to_representation(value)
         repr_['owner'] = value.owner.full_name
-        repr_['files_count'] = value.files.count()
         repr_['files'] = [
             {'id': file.id,
              'name': file.name,

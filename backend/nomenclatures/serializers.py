@@ -658,6 +658,7 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
     coordinates = serializers.SerializerMethodField()
     facade = serializers.SerializerMethodField()
     old_slug = serializers.CharField(source="old_catalog_slug", read_only=True)
+    per_day = serializers.SerializerMethodField()
 
     class Meta:
         model = Nomenclature
@@ -668,6 +669,7 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
             "type_of_place",
             "brand",
             "facade",
+            "per_day",
             "old_slug",
         )
         read_only_fields = fields
@@ -727,6 +729,16 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
         if image is None and facades is None:
             image = obj.images.filter(type="exterior").first()
         return NomenclatureWebMapFacadeSerializer(image).data if image else None
+
+    def per_day(self, obj):
+        import datetime
+        slots_per_hour = obj.slots_per_hour
+        worktime_start = obj.worktime_start
+        worktime_end = obj.worktime_end
+        if slots_per_hour is None or worktime_start is None or worktime_end is None:
+            return None
+        worktime = (datetime.combine(datetime.date.min, worktime_end) - datetime.combine(datetime.date.min, worktime_start)).total_seconds() / 3600
+        return slots_per_hour * worktime
 
 
 class NomenclatureWebSearchRequestSerializer(serializers.Serializer):
@@ -1510,7 +1522,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
                 return False
             if new_value is None:
                 return False
-        
+
         # Для write_only полей - отдельная логика
         if field_name in ['tenants_id', 'address_data']:
             return new_value is not None and new_value != []
