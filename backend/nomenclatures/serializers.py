@@ -774,7 +774,7 @@ class NomenclatureWebLKSerializer(serializers.ModelSerializer):
         return build_nomenclature_web_name(obj)
 
     def get_broadcast(self, obj):
-        return bool(obj.legalEntity and obj.legalEntity.broadcast)
+        return obj.broadcast
 
 
 class NomenclatureWebLKRequestSerializer(serializers.Serializer):
@@ -1527,6 +1527,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
             'name': instance.name,
             'description': instance.description,
             'for_web': instance.for_web,
+            'broadcast': instance.broadcast,
             'timezone': instance.timezone,
             'settings': instance.settings,
             'code1c': instance.code1c,
@@ -2012,7 +2013,7 @@ class NomenclatureSerializer(serializers.ModelSerializer):
 
         # 6. Обработка простых полей
         simple_fields = {
-            'name', 'description', 'is_active', 'for_web', 'id_rasb', 'timezone', 'settings',
+            'name', 'description', 'is_active', 'for_web', 'broadcast', 'id_rasb', 'timezone', 'settings',
             'code1c', 'contentType', 'pricePerMonth',
             'responsible_radio', 'responsible_ad',
             'responsible_technic', 'responsible_technic_on_address',

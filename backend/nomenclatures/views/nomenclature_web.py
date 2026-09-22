@@ -79,12 +79,7 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
                 Q(name__icontains=search) | Q(code1c__icontains=search)
             )
         if "broadcast" in filters:
-            if filters["broadcast"]:
-                queryset = queryset.filter(legalEntity__broadcast=True)
-            else:
-                queryset = queryset.filter(
-                    Q(legalEntity__isnull=True) | Q(legalEntity__broadcast=False)
-                )
+            queryset = queryset.filter(broadcast=filters["broadcast"])
         if content_type := filters.get("content_type"):
             queryset = queryset.filter(contentType=content_type)
 

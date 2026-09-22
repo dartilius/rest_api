@@ -9,6 +9,7 @@ from nomenclatures.models import Nomenclature, TypeOfPlace
 from nomenclatures.serializers import (
     NomenclatureWebLKSerializer,
     NomenclatureWebMapPlaceSerializer,
+    NomenclatureSerializer,
 )
 
 
@@ -155,16 +156,25 @@ def test_lk_serializer_uses_the_map_name_algorithm():
 
 
 @pytest.mark.django_db
+def test_nomenclature_broadcast_can_be_updated(nomenclature):
+    serializer = NomenclatureSerializer(
+        nomenclature, data={"broadcast": True}, partial=True
+    )
+
+    assert serializer.is_valid(), serializer.errors
+    serializer.save()
+    nomenclature.refresh_from_db()
+    assert nomenclature.broadcast is True
+
+
+@pytest.mark.django_db
 def test_lk_krasrm_com_applies_search_broadcast_and_content_type_filters(
     anon_client, nomenclature, user
 ):
     broadcasting = Counterparty.objects.create(keyword="Broadcast", broadcast=True)
-    not_broadcasting = Counterparty.objects.create(
-        keyword="No broadcast", broadcast=False
-    )
     Nomenclature.objects.filter(pk=nomenclature.pk).update(
         for_web=True, name="Matching audio", legalEntity=broadcasting,
-        contentType="audio",
+        contentType="audio", broadcast=True,
     )
     without_legal_entity = Nomenclature.objects.create(
         name="Matching video without entity", owner=user, timezone="Etc/GMT-7",
@@ -172,7 +182,7 @@ def test_lk_krasrm_com_applies_search_broadcast_and_content_type_filters(
     )
     with_non_broadcasting_entity = Nomenclature.objects.create(
         name="Other video", owner=user, timezone="Etc/GMT-7",
-        settings=nomenclature.settings, for_web=True, legalEntity=not_broadcasting,
+        settings=nomenclature.settings, for_web=True, legalEntity=broadcasting,
         contentType="video",
     )
 

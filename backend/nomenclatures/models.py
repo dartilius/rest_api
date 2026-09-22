@@ -278,6 +278,7 @@ class Nomenclature(APIBaseObjectModel):
     """
 
     for_web = models.BooleanField(default=False, verbose_name="Отображать в веб")
+    broadcast = models.BooleanField(default=False, verbose_name="Вещание")
 
     slots_per_hour = models.CharField(
         verbose_name="Кол-во выходов в час", null=True, blank=True, default=1
