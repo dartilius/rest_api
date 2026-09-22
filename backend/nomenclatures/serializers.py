@@ -763,14 +763,18 @@ class NomenclatureWebLKSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     brand = NomenclatureWebLKBrandSerializer(read_only=True)
+    broadcast = serializers.SerializerMethodField()
 
     class Meta:
         model = Nomenclature
-        fields = ("name", "brand", "code1c")
+        fields = ("name", "brand", "code1c", "broadcast")
         read_only_fields = fields
 
     def get_name(self, obj):
         return build_nomenclature_web_name(obj)
+
+    def get_broadcast(self, obj):
+        return bool(obj.legalEntity and obj.legalEntity.broadcast)
 
 
 class NomenclatureWebLKRequestSerializer(serializers.Serializer):

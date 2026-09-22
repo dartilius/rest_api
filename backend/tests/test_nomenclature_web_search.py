@@ -127,6 +127,7 @@ def test_lk_krasrm_com_returns_active_web_nomenclatures_as_array(
             "name": "LK Brand",
             "brand": {"code1c": "brand-1c", "name": "LK Brand"},
             "code1c": "nomenclature-1c",
+            "broadcast": False,
         }
     ]
     assert inactive.pk != nomenclature.pk
@@ -182,6 +183,7 @@ def test_lk_krasrm_com_applies_search_broadcast_and_content_type_filters(
     )
     assert response.status_code == 200
     assert [item["name"] for item in response.json()] == ["Matching audio"]
+    assert response.json()[0]["broadcast"] is True
 
     response = anon_client.post(
         "/api/nomenclatures/web/lk-krasrm-com/",
@@ -191,6 +193,7 @@ def test_lk_krasrm_com_applies_search_broadcast_and_content_type_filters(
     assert {item["name"] for item in response.json()} == {
         "Matching video without entity", "Other video"
     }
+    assert {item["broadcast"] for item in response.json()} == {False}
     assert without_legal_entity.pk != with_non_broadcasting_entity.pk
 
 
