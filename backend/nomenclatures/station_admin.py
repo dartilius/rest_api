@@ -3,7 +3,12 @@
 from django import forms
 from django.contrib import admin, messages
 
-from nomenclatures.models import Nomenclature, StationCommandV2, StationCredential
+from nomenclatures.models import (
+    Nomenclature,
+    StationCommandV2,
+    StationCredential,
+    StationInstallation,
+)
 from nomenclatures.settings_patch import SettingsPatchError, apply_settings_operations
 from nomenclatures.station_credentials import (
     generate_station_token,
@@ -351,6 +356,33 @@ class StationCredentialAdmin(admin.ModelAdmin):
             f"Station token (copy now; it will not be shown again): {token}",
             level=messages.WARNING,
         )
+
+
+@admin.register(StationInstallation)
+class StationInstallationAdmin(admin.ModelAdmin):
+    """Показывает привязки, созданные автоматически после входа Player."""
+
+    list_display = (
+        "installation_id",
+        "nomenclature",
+        "created_by",
+        "is_active",
+        "created_at",
+        "rotated_at",
+    )
+    list_filter = ("is_active",)
+    search_fields = ("id", "nomenclature__name", "nomenclature__code1c", "created_by__email")
+    autocomplete_fields = ("nomenclature", "created_by")
+    readonly_fields = ("id", "token_hash", "created_at", "rotated_at")
+    fields = ("id", "nomenclature", "created_by", "is_active", "token_hash", "created_at", "rotated_at")
+
+    @admin.display(description="ID установки", ordering="id")
+    def installation_id(self, obj):
+        return str(obj.pk)
+
+    def has_add_permission(self, request):
+        """Установки создаёт только защищённый endpoint привязки Player."""
+        return False
 
 
 @admin.register(StationCommandV2)

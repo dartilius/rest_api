@@ -39,6 +39,7 @@ from nomenclatures.models import (
     TypeOfPlace,
     NomenclatureTenant,
     DiscountRule,
+    StationInstallation,
 )
 
 
@@ -51,6 +52,20 @@ class DiscountRuleInline(admin.TabularInline):
     extra = 1
     fields = ("days_from", "days_to", "coefficient")
     ordering = ("days_from",)
+
+
+class StationInstallationInline(admin.TabularInline):
+    """История автоматических привязок Player в карточке точки вещания."""
+
+    model = StationInstallation
+    extra = 0
+    can_delete = False
+    fields = ("id", "created_by", "is_active", "token_hash", "created_at", "rotated_at")
+    readonly_fields = fields
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Nomenclature)
@@ -181,12 +196,20 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "typeOfPlace__abbreviation"
     )
 
-    inlines = [DiscountRuleInline]
+    inlines = [DiscountRuleInline, StationInstallationInline]
     list_display_links = ("name",)
 
     search_fields = ("name", "code1c", "article", "id_rasb", "brand__name", "id")
 
-    list_filter = ("is_active", "timezone", "brand", "contentType", "typeOfPlace__abbreviation", "for_web")
+    list_filter = (
+        "version",
+        "is_active",
+        "timezone",
+        "brand",
+        "contentType",
+        "typeOfPlace__abbreviation",
+        "for_web",
+    )
     # Пагинатор уже считает отфильтрованный queryset. Полный count всех записей
     # дублирует тяжёлый GROUP BY по арендаторам на каждой загрузке списка.
     show_full_result_count = False
