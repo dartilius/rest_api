@@ -1,3 +1,4 @@
+from datetime import time
 from types import SimpleNamespace
 
 import pytest
@@ -33,6 +34,9 @@ def test_web_map_returns_compact_public_points(anon_client, nomenclature):
     Nomenclature.objects.filter(pk=nomenclature.pk).update(
         for_web=True,
         old_catalog_slug="test-place",
+        slots_per_hour="2",
+        worktime_start=time(9),
+        worktime_end=time(20),
     )
 
     response = anon_client.post("/api/nomenclatures/web/map/", data={}, format="json")
@@ -46,9 +50,27 @@ def test_web_map_returns_compact_public_points(anon_client, nomenclature):
             "type_of_place": None,
             "brand": None,
             "facade": None,
+            "per_day": 22.0,
             "old_slug": "test-place",
         }
     ]
+
+
+@pytest.mark.django_db
+def test_web_map_per_day_is_null_when_schedule_is_incomplete(nomenclature):
+    assert NomenclatureWebMapPlaceSerializer(nomenclature).data["per_day"] is None
+
+
+@pytest.mark.django_db
+def test_web_map_per_day_calculates_slots_from_string_rate(nomenclature):
+    Nomenclature.objects.filter(pk=nomenclature.pk).update(
+        slots_per_hour="2",
+        worktime_start=time(9),
+        worktime_end=time(20),
+    )
+    nomenclature.refresh_from_db()
+
+    assert NomenclatureWebMapPlaceSerializer(nomenclature).data["per_day"] == 22.0
 
 
 def test_web_map_generates_name_from_place_brand_and_address():

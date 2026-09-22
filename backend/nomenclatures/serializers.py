@@ -37,7 +37,7 @@ NomenclatureSerializer
 
 import hashlib
 import json
-from datetime import time
+from datetime import datetime, time
 from typing import Optional, Dict, Any, Set, List, Tuple, Union
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -730,15 +730,17 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
             image = obj.images.filter(type="exterior").first()
         return NomenclatureWebMapFacadeSerializer(image).data if image else None
 
-    def per_day(self, obj):
-        import datetime
+    def get_per_day(self, obj):
         slots_per_hour = obj.slots_per_hour
         worktime_start = obj.worktime_start
         worktime_end = obj.worktime_end
         if slots_per_hour is None or worktime_start is None or worktime_end is None:
             return None
-        worktime = (datetime.combine(datetime.date.min, worktime_end) - datetime.combine(datetime.date.min, worktime_start)).total_seconds() / 3600
-        return slots_per_hour * worktime
+        worktime = (
+            datetime.combine(datetime.min.date(), worktime_end)
+            - datetime.combine(datetime.min.date(), worktime_start)
+        ).total_seconds() / 3600
+        return float(slots_per_hour) * worktime
 
 
 class NomenclatureWebSearchRequestSerializer(serializers.Serializer):
