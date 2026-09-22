@@ -659,7 +659,7 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
     facade = serializers.SerializerMethodField()
     old_slug = serializers.CharField(source="old_catalog_slug", read_only=True)
     per_day = serializers.SerializerMethodField()
-    slots_per_hour = serializers.CharField(source="slots_per_hour", read_only=True)
+    per_hour = serializers.CharField(source="slots_per_hour", read_only=True)
 
     class Meta:
         model = Nomenclature
@@ -672,7 +672,7 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
             "facade",
             "per_day",
             "old_slug",
-            "slots_per_hour",
+            "per_hour",
         )
         read_only_fields = fields
 
