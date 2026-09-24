@@ -43,6 +43,19 @@ def get_brand_min_price_qs(queryset):
     )
 
 
+def get_brand_min_price(queryset):
+    """Возвращает минимальную цену опубликованных активных точек брендов."""
+    return queryset.aggregate(
+        min_price=Min(
+            "nomenclatures__pricePerMonth",
+            filter=DjangoQ(
+                nomenclatures__for_web=True,
+                nomenclatures__is_active=True,
+            ),
+        ),
+    )["min_price"]
+
+
 @extend_schema_view(
     list=extend_schema(
         summary="Получить пагинированный список брендов",
@@ -104,7 +117,7 @@ class BrandViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
         page = self.paginate_queryset(queryset)
         serializer = BrandListSerializer(page, many=True)
         response = self.get_paginated_response(serializer.data)
-        response.data["min_price"] = queryset.aggregate(min_price=Min("min_price"))["min_price"]
+        response.data["min_price"] = get_brand_min_price(queryset)
         return response
 
     def _opensearch_brand_ids(self, query: str) -> list:
