@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from nomenclatures.models import NomenclatureImage
+from nomenclatures.models import NomenclatureMedia
 
 
 @pytest.fixture
@@ -17,20 +17,20 @@ def inactive_offweb_nomenclature(nomenclature):
 
 @pytest.fixture
 def inactive_nomenclature_photo(inactive_offweb_nomenclature):
-    photo = NomenclatureImage(
+    photo = NomenclatureMedia(
         source="exterior/test.jpg",
-        type=NomenclatureImage.PhotoType.EXTERIOR,
+        type=NomenclatureMedia.PhotoType.EXTERIOR,
         nomenclature=inactive_offweb_nomenclature,
         hash=hashlib.md5(b"existing-photo").hexdigest(),
     )
-    NomenclatureImage.objects.bulk_create([photo])
+    NomenclatureMedia.objects.bulk_create([photo])
     return photo
 
 
 @pytest.mark.django_db
 class TestInactiveNomenclaturePhotos:
     def test_add_photo(self, admin_client, inactive_offweb_nomenclature, monkeypatch):
-        storage = NomenclatureImage._meta.get_field("source").storage
+        storage = NomenclatureMedia._meta.get_field("source").storage
         monkeypatch.setattr(
             storage,
             "save",
@@ -46,13 +46,13 @@ class TestInactiveNomenclaturePhotos:
             f"/api/photos/{inactive_offweb_nomenclature.id}/add_photo/",
             data={
                 "source": "data:test.jpg;base64,dGVzdA==",
-                "type": NomenclatureImage.PhotoType.INTERIOR,
+                "type": NomenclatureMedia.PhotoType.INTERIOR,
             },
             format="json",
         )
 
         assert response.status_code == HTTPStatus.CREATED
-        photo = NomenclatureImage.objects.get(pk=response.json()["id"])
+        photo = NomenclatureMedia.objects.get(pk=response.json()["id"])
         assert photo.nomenclature_id == inactive_offweb_nomenclature.id
         assert photo.hash == hashlib.md5(b"test").hexdigest()
 
@@ -66,7 +66,7 @@ class TestInactiveNomenclaturePhotos:
     def test_patch_photo_type(
         self, admin_client, inactive_nomenclature_photo, monkeypatch
     ):
-        storage = NomenclatureImage._meta.get_field("source").storage
+        storage = NomenclatureMedia._meta.get_field("source").storage
         monkeypatch.setattr(
             storage,
             "url",
@@ -76,7 +76,7 @@ class TestInactiveNomenclaturePhotos:
 
         response = admin_client.patch(
             f"/api/photos/{inactive_nomenclature_photo.id}/",
-            data={"type": NomenclatureImage.PhotoType.INTERIOR},
+            data={"type": NomenclatureMedia.PhotoType.INTERIOR},
             format="json",
         )
 
@@ -84,7 +84,7 @@ class TestInactiveNomenclaturePhotos:
         inactive_nomenclature_photo.refresh_from_db()
         assert (
             inactive_nomenclature_photo.type
-            == NomenclatureImage.PhotoType.INTERIOR
+            == NomenclatureMedia.PhotoType.INTERIOR
         )
         assert inactive_nomenclature_photo.source.name == "exterior/test.jpg"
         assert inactive_nomenclature_photo.hash == old_hash
@@ -96,7 +96,7 @@ class TestInactiveNomenclaturePhotos:
         monkeypatch,
         django_capture_on_commit_callbacks,
     ):
-        storage = NomenclatureImage._meta.get_field("source").storage
+        storage = NomenclatureMedia._meta.get_field("source").storage
         monkeypatch.setattr(
             storage,
             "save",
@@ -133,7 +133,7 @@ class TestInactiveNomenclaturePhotos:
         monkeypatch,
         django_capture_on_commit_callbacks,
     ):
-        storage = NomenclatureImage._meta.get_field("source").storage
+        storage = NomenclatureMedia._meta.get_field("source").storage
         delete_mock = Mock()
         monkeypatch.setattr(storage, "delete", delete_mock)
         source_name = inactive_nomenclature_photo.source.name
@@ -144,7 +144,7 @@ class TestInactiveNomenclaturePhotos:
             )
 
         assert response.status_code == HTTPStatus.NO_CONTENT
-        assert not NomenclatureImage.objects.filter(
+        assert not NomenclatureMedia.objects.filter(
             pk=inactive_nomenclature_photo.id
         ).exists()
         delete_mock.assert_called_once_with(source_name)

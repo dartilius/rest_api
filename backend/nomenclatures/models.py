@@ -138,6 +138,8 @@ class NomenclatureTenant(models.Model):
         brand (ForeignKey): Бренд арендатора
     """
 
+    public_id = models.UUIDField(default=uuid4, unique=True, editable=False)
+
     nomenclature = models.ForeignKey(
         "Nomenclature",
         on_delete=models.CASCADE,
@@ -148,6 +150,8 @@ class NomenclatureTenant(models.Model):
         "counterparties.Counterparty",
         on_delete=models.CASCADE,
         related_name="tenant_nomenclatures",
+        null=True,
+        blank=True,
         verbose_name="Арендатор",
     )
     floor = models.CharField(max_length=10, blank=True, verbose_name="Этаж")
@@ -186,6 +190,8 @@ class DiscountRule(models.Model):
         days_to (int): Конец периода (включительно, None = без верхней границы)
         coefficient (Decimal): Множитель цены
     """
+
+    public_id = models.UUIDField(default=uuid4, unique=True, editable=False)
 
     nomenclature = models.ForeignKey(
         "Nomenclature",
@@ -1057,10 +1063,10 @@ class StatusHistory(models.Model):
 
 def media_path(instance, filename):
     """Генерирует путь для сохранения медиафайла номенклатуры."""
-    return f"{TYPES[instance.type]}/{filename}"
+    return f"{instance.type or 'unclassified'}/{filename}"
 
 
-class NomenclatureImage(models.Model):
+class NomenclatureMedia(models.Model):
     """
     Фотографии экстерьера и интерьера номенклатур.
 
@@ -1072,6 +1078,10 @@ class NomenclatureImage(models.Model):
         nomenclature (ForeignKey): Номенклатура
         hash (str): MD5 хэш файла
     """
+
+    class MediaType(models.TextChoices):
+        IMAGE = "image", "image"
+        VIDEO = "video", "video"
 
     class PhotoType(models.TextChoices):
         INTERIOR = "interior", _("Интерьер")
@@ -1087,9 +1097,17 @@ class NomenclatureImage(models.Model):
         verbose_name="Файл",
         upload_to=media_path,
         storage=MinioBackend(bucket_name="local-media"),
+        null=True,
+        blank=True,
+    )
+
+    media_type = models.CharField(
+        max_length=8, choices=MediaType.choices, default=MediaType.IMAGE
     )
 
     type = models.CharField(
+        null=True,
+        blank=True,
         max_length=31, choices=PhotoType.choices, verbose_name="Тип фотографии"
     )
 
@@ -1097,7 +1115,7 @@ class NomenclatureImage(models.Model):
 
     nomenclature = models.ForeignKey(
         "Nomenclature",
-        related_name="images",
+        related_name="media",
         on_delete=models.CASCADE,
         verbose_name="Номенклатура",
     )
@@ -1113,7 +1131,7 @@ class NomenclatureImage(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
-        db_table = "nomenclature_images"
+        db_table = "nomenclature_media"
         ordering = ("-created",)
         verbose_name = "Фотография номенклатуры"
         verbose_name_plural = "Фотографии номенклатур"
@@ -1122,7 +1140,7 @@ class NomenclatureImage(models.Model):
         return f"{self.nomenclature} - {self.type}"
 
 
-class NomenclatureVideo(models.Model):
+class LegacyNomenclatureVideo:
     """Видеозаписи интерьера и экстерьера номенклатур."""
 
     class VideoType(models.TextChoices):

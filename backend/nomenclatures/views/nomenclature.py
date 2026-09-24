@@ -64,7 +64,7 @@ from counterparties.serializers import (
 from users.permissions import StaffCUDallRead
 from users.serializers import UserContactInfoSerializer
 from ..filters import NomenclatureFilter
-from ..models import Nomenclature, NomenclatureImage, TypeOfPlace, NomenclatureAddress
+from ..models import Nomenclature, NomenclatureMedia, TypeOfPlace, NomenclatureAddress
 from ..serializers import (
     NomenclatureSerializer,
     NomenclatureListSerializer,
@@ -616,7 +616,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                 "address__address__building",
                 "address__address__coordinates",
             ).prefetch_related(
-                "images",
+                "media",
                 Prefetch(
                     "legalEntity__brands",
                     queryset=Brand.objects.only("id", "name"),
@@ -655,7 +655,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                 "address__address__coordinates",
             )
             .prefetch_related(
-                "images",
+                "media",
                 Prefetch(
                     "legalEntity__brands",
                     queryset=Brand.objects.only("id", "name"),
@@ -728,8 +728,8 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             )
             .prefetch_related(
                 Prefetch(
-                    "images",
-                    queryset=NomenclatureImage.objects.filter(type="exterior"),
+                    "media",
+                    queryset=NomenclatureMedia.objects.filter(media_type="image", type="exterior"),
                     to_attr="prefetched_exterior",
                 ),
                 Prefetch(
@@ -864,7 +864,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                     "brand", "typeOfPlace", "legalEntity", "responsible_ad"
                 )
                 .prefetch_related(
-                    "images",
+                    "media",
                     Prefetch(
                         "legalEntity__brands",
                         queryset=Brand.objects.only("id", "name"),
@@ -1098,7 +1098,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
         Returns:
             Response: Сериализованный список фотографий
         """
-        serializer = PhotoSerializer(nomenclature.images.all(), many=True)
+        serializer = PhotoSerializer(nomenclature.media.filter(media_type="image"), many=True)
         return Response(serializer.data)
 
     @extend_schema(
@@ -1251,7 +1251,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
         """
         qs = Nomenclature.inactive.select_related(
             "owner", "availability", "brand", "address"
-        ).prefetch_related("images")
+        ).prefetch_related("media")
 
         page = self.paginate_queryset(qs)
         serializer = self.get_serializer(page or qs, many=True)
@@ -1315,7 +1315,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                     Nomenclature.inactive.select_related(
                         "owner", "availability", "brand", "address"
                     )
-                    .prefetch_related("images")
+                    .prefetch_related("media")
                     .get(id=identifier)
                 )
             except Nomenclature.DoesNotExist:
@@ -1327,7 +1327,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                     Nomenclature.inactive.select_related(
                         "owner", "availability", "brand", "address"
                     )
-                    .prefetch_related("images")
+                    .prefetch_related("media")
                     .get(code1c=identifier)
                 )
             except Nomenclature.DoesNotExist:
@@ -1387,7 +1387,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
                 Nomenclature.objects.select_related(
                     "owner", "availability", "brand", "address"
                 )
-                .prefetch_related("images")
+                .prefetch_related("media")
                 .filter(legalEntity__broadcast=True)
             )
         elif is_broadcast:
@@ -1795,7 +1795,7 @@ class NomenclatureViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             Nomenclature.web.filter(id__in=ids)
             .select_related("brand", "typeOfPlace", "legalEntity", "responsible_ad")
             .prefetch_related(
-                "images",
+                "media",
                 Prefetch(
                     "legalEntity__brands",
                     queryset=Brand.objects.only("id", "name"),

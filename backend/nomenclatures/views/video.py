@@ -7,7 +7,7 @@ from drf_spectacular.utils import extend_schema
 from api.constants import get_instance_or_404
 from api.mixins import SignedMediaNoCacheMixin
 from users.permissions import StaffCUDallRead
-from ..models import Nomenclature, NomenclatureVideo
+from ..models import Nomenclature, NomenclatureMedia
 from ..serializers import VideoSerializer
 
 
@@ -15,7 +15,7 @@ from ..serializers import VideoSerializer
 class NomenclatureVideoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
     """Загрузка, просмотр и удаление видеозаписей номенклатур."""
 
-    queryset = NomenclatureVideo.objects.all()
+    queryset = NomenclatureMedia.objects.filter(media_type="video")
     serializer_class = VideoSerializer
     permission_classes = [StaffCUDallRead]
     http_method_names = ["get", "post", "delete", "patch"]
@@ -38,13 +38,13 @@ class NomenclatureVideoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
 
     @action(methods=["GET"], detail=False)
     def get_videos(self, request):
-        videos = NomenclatureVideo.objects.filter(nomenclature__isnull=False)
+        videos = NomenclatureMedia.objects.filter(nomenclature__isnull=False, media_type="video")
         return Response(VideoSerializer(videos, many=True).data, status=HTTP_200_OK)
 
     @action(methods=["GET"], detail=True)
     def get_nomenclature_videos(self, request, pk):
         nomenclature = get_instance_or_404(Nomenclature, pk)
         return Response(
-            VideoSerializer(nomenclature.videos.all(), many=True).data,
+            VideoSerializer(nomenclature.media.filter(media_type="video"), many=True).data,
             status=HTTP_200_OK,
         )

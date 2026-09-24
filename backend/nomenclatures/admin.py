@@ -33,8 +33,7 @@ from nomenclatures.models import (
     NomenclatureAvailability,
     StatusHistory,
     STATUSES,
-    NomenclatureImage,
-    NomenclatureVideo,
+    NomenclatureMedia,
     NomenclatureAddress,
     TypeOfPlace,
     NomenclatureTenant,
@@ -251,8 +250,8 @@ class NomenclatureAdmin(admin.ModelAdmin):
                     to_attr="_prefetched_brands",
                 ),
                 Prefetch(
-                    "images",
-                    queryset=NomenclatureImage.objects.filter(type="exterior")[:1],
+                    "media",
+                    queryset=NomenclatureMedia.objects.filter(media_type="image", type="exterior")[:1],
                     to_attr="prefetched_exterior",
                 ),
                 Prefetch(
@@ -354,8 +353,8 @@ class NomenclatureAdmin(admin.ModelAdmin):
                 "nomenclature_tenants__tenant",
                 "nomenclature_tenants__brand",
                 Prefetch(
-                    "images",
-                    queryset=NomenclatureImage.objects.order_by("-created")[:5],
+                    "media",
+                    queryset=NomenclatureMedia.objects.filter(media_type="image").order_by("-created")[:5],
                     to_attr="prefetched_images",
                 ),
                 Prefetch(
@@ -576,10 +575,10 @@ class StatusHistoryAdmin(admin.ModelAdmin):
         return STATUSES.get(obj.status, "Неизвестно")
 
 
-@admin.register(NomenclatureImage)
-class NomenclatureImageAdmin(admin.ModelAdmin):
-    list_display = ("id_short", "nomenclature_name", "type", "created", "hash_short")
-    list_filter = ("type", "created")
+@admin.register(NomenclatureMedia)
+class NomenclatureMediaAdmin(admin.ModelAdmin):
+    list_display = ("id_short", "nomenclature_name", "media_type", "type", "created", "hash_short")
+    list_filter = ("media_type", "type", "created")
     search_fields = ("nomenclature__name", "hash")
     show_full_result_count = True
     raw_id_fields = ("nomenclature",)
@@ -611,11 +610,6 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
     @admin.display(description="Хэш")
     def hash_short(self, obj):
         return f"{obj.hash[:8]}..." if obj.hash else "-"
-
-
-@admin.register(NomenclatureVideo)
-class NomenclatureVideoAdmin(NomenclatureImageAdmin):
-    """Административный интерфейс для видеозаписей номенклатур."""
 
 
 @admin.register(NomenclatureAddress)
@@ -716,3 +710,6 @@ def invalidate_nomenclature_cache(sender, **kwargs):
     cache.delete_pattern("nomenclature_admin_qs_*")
     if "instance" in kwargs:
         cache.delete(f"nomenclature_obj_full_{kwargs['instance'].pk}")
+
+
+from nomenclatures import admin_1c  # noqa: F401, E402

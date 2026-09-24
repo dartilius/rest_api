@@ -1,4 +1,5 @@
 from .nomenclature import NomenclatureViewSet
+from .nomenclature_1c import Nomenclature1CViewSet
 from .order import NomenclatureOrderViewSet
 from .place import TypeOfPlaceViewSet
 from .statistic import NomenclatureStatisticViewSet
@@ -11,6 +12,7 @@ from .nomenclature_web import NomenclatureWebViewSet
 
 __all__ = [
     'NomenclatureViewSet',
+    'Nomenclature1CViewSet',
     'NomenclatureOrderViewSet',
     'NomenclatureStatisticViewSet',
     'NomenclatureTaskViewSet',

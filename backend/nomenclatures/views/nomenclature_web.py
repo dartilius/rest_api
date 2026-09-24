@@ -21,7 +21,7 @@ from rest_framework.response import Response
 
 from api.mixins import SignedMediaNoCacheMixin
 from brands.models import Brand
-from nomenclatures.models import Nomenclature, NomenclatureImage
+from nomenclatures.models import Nomenclature, NomenclatureMedia
 from nomenclatures.serializers import (
     NomenclatureCardSerializer,
     NomenclatureWebLKRequestSerializer,
@@ -117,8 +117,8 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         )
         return queryset.prefetch_related(
             Prefetch(
-                "images",
-                queryset=NomenclatureImage.objects.filter(type="exterior")
+                "media",
+                queryset=NomenclatureMedia.objects.filter(media_type="image", type="exterior")
                 .order_by("-created", "id")
                 .only("id", "source", "nomenclature_id", "created"),
                 to_attr="prefetched_facades" if for_map else "prefetched_exterior",
@@ -194,9 +194,9 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         if price_to is not None:
             queryset = queryset.filter(pricePerMonth__lte=price_to)
         if filters.get("has_facade") is True:
-            queryset = queryset.filter(images__type="exterior")
+            queryset = queryset.filter(media__media_type="image", media__type="exterior")
         elif filters.get("has_facade") is False:
-            queryset = queryset.exclude(images__type="exterior")
+            queryset = queryset.exclude(media__media_type="image", media__type="exterior")
         return queryset
 
     @staticmethod
@@ -281,14 +281,14 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
         has_facade = [
             {
                 "value": True,
-                "count": facade_queryset.filter(images__type="exterior")
+                "count": facade_queryset.filter(media__media_type="image", media__type="exterior")
                 .values("id")
                 .distinct()
                 .count(),
             },
             {
                 "value": False,
-                "count": facade_queryset.exclude(images__type="exterior")
+                "count": facade_queryset.exclude(media__media_type="image", media__type="exterior")
                 .values("id")
                 .distinct()
                 .count(),
@@ -493,8 +493,8 @@ class NomenclatureWebViewSet(SignedMediaNoCacheMixin, viewsets.ReadOnlyModelView
                     to_attr="_prefetched_brands",
                 ),
                 Prefetch(
-                    "images",
-                    queryset=NomenclatureImage.objects.order_by("-created"),
+                    "media",
+                    queryset=NomenclatureMedia.objects.filter(media_type="image").order_by("-created"),
                     to_attr="prefetched_images",
                 )
             )

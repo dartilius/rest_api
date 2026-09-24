@@ -61,8 +61,7 @@ from nomenclatures.models import (
     Nomenclature,
     StatusHistory,
     TIMEZONES,
-    NomenclatureImage,
-    NomenclatureVideo,
+    NomenclatureMedia,
     NomenclatureAddress,
     AVAILABLE_CONTENT_TYPES,
     TypeOfPlace,
@@ -70,6 +69,7 @@ from nomenclatures.models import (
     DiscountRule,
 )
 from nomenclatures.services.indexing import suppress_tenant_indexing
+from nomenclatures.services.naming import build_nomenclature_web_name
 from api.base_objects import Article
 
 # Регистрация кастомных типов полей для DRF
@@ -112,13 +112,13 @@ def get_nomenclature_images(obj, image_type):
 
     prefetched_images = getattr(obj, "prefetched_images", None)
     if prefetched_images is not None:
-        return [image for image in prefetched_images if image.type == image_type]
+        return [image for image in prefetched_images if image.media_type == "image" and image.type == image_type]
 
-    cached_images = getattr(obj, "_prefetched_objects_cache", {}).get("images")
+    cached_images = getattr(obj, "_prefetched_objects_cache", {}).get("media")
     if cached_images is not None:
-        return [image for image in cached_images if image.type == image_type]
+        return [image for image in cached_images if image.media_type == "image" and image.type == image_type]
 
-    return obj.images.filter(type=image_type)
+    return obj.media.filter(media_type="image", type=image_type)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -145,7 +145,7 @@ class PhotoSerializer(serializers.ModelSerializer):
     source = Base64FileField()
 
     class Meta:
-        model = NomenclatureImage
+        model = NomenclatureMedia
         fields = ("id", "source", "type", "created")
         read_only_fields = ("id", "created")
 
@@ -199,8 +199,9 @@ class PhotoSerializer(serializers.ModelSerializer):
         file_hash = hashlib.md5(file_data).hexdigest()
         source.seek(0)
 
-        duplicates = NomenclatureImage.objects.filter(
+        duplicates = NomenclatureMedia.objects.filter(
             nomenclature=nomenclature,
+            media_type="image",
             hash=file_hash
         )
         if self.instance is not None:
@@ -223,6 +224,7 @@ class PhotoSerializer(serializers.ModelSerializer):
             NomenclatureImage: Созданный объект
         """
         validated_data["nomenclature"] = self.context["nomenclature"]
+        validated_data["media_type"] = "image"
         return super().create(validated_data)
 
 
@@ -230,7 +232,7 @@ class InNomenclaturePhotoSerializer(serializers.ModelSerializer):
     """Упрощенный сериализатор для фотографий внутри номенклатуры."""
 
     class Meta:
-        model = NomenclatureImage
+        model = NomenclatureMedia
         fields = ("source", "id")
         read_only_fields = ("source", "id")
 
@@ -241,7 +243,7 @@ class VideoSerializer(serializers.ModelSerializer):
     source = Base64FileField()
 
     class Meta:
-        model = NomenclatureVideo
+        model = NomenclatureMedia
         fields = ("id", "source", "type", "created")
         read_only_fields = ("id", "created")
 
@@ -264,8 +266,9 @@ class VideoSerializer(serializers.ModelSerializer):
         file_hash = hashlib.md5(file_data).hexdigest()
         attrs["source"].seek(0)
 
-        if NomenclatureVideo.objects.filter(
+        if NomenclatureMedia.objects.filter(
             nomenclature=nomenclature,
+            media_type="video",
             hash=file_hash
         ).exists():
             raise serializers.ValidationError(
@@ -275,6 +278,7 @@ class VideoSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["nomenclature"] = self.context["nomenclature"]
+        validated_data["media_type"] = "video"
         return super().create(validated_data)
 
 
@@ -640,44 +644,9 @@ class NomenclatureWebMapFacadeSerializer(serializers.ModelSerializer):
     """Первое фото фасада в выдаче точек публичной карты."""
 
     class Meta:
-        model = NomenclatureImage
+        model = NomenclatureMedia
         fields = ("id", "source")
         read_only_fields = fields
-
-
-def build_nomenclature_web_name(obj):
-    """Build the shared public label from place type, brand and address."""
-    title_parts = []
-    if obj.typeOfPlace and obj.typeOfPlace.abbreviation:
-        title_parts.append(obj.typeOfPlace.abbreviation)
-    if obj.brand and obj.brand.name:
-        title_parts.append(obj.brand.name)
-
-    address_parts = []
-    try:
-        address = obj.address.address
-    except ObjectDoesNotExist:
-        address = None
-
-    if address:
-        if address.city and address.city.name:
-            address_parts.append(f"г. {address.city.name}")
-        if address.street and address.street.name:
-            address_parts.append(f"ул. {address.street.name}")
-
-        house_number = None
-        if address.house and address.house.number:
-            house_number = address.house.number
-        elif address.building and address.building.number:
-            house_number = address.building.number
-        if house_number:
-            address_parts.append(house_number)
-
-    generated_parts = []
-    if title_parts:
-        generated_parts.append(" ".join(title_parts))
-    generated_parts.extend(address_parts)
-    return ", ".join(generated_parts) or obj.name
 
 
 class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
@@ -733,7 +702,7 @@ class NomenclatureWebMapPlaceSerializer(serializers.ModelSerializer):
         facades = getattr(obj, "prefetched_facades", None)
         image = facades[0] if facades else None
         if image is None and facades is None:
-            image = obj.images.filter(type="exterior").first()
+            image = obj.media.filter(media_type="image", type="exterior").first()
         return NomenclatureWebMapFacadeSerializer(image).data if image else None
 
     def get_per_day(self, obj):

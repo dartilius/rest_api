@@ -6,7 +6,7 @@ from drf_spectacular.utils import extend_schema
 from api.constants import get_instance_or_404
 from api.mixins import SignedMediaNoCacheMixin
 from users.permissions import StaffCUDallRead
-from ..models import Nomenclature, NomenclatureImage
+from ..models import Nomenclature, NomenclatureMedia
 from ..serializers import PhotoSerializer
 
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
@@ -35,7 +35,7 @@ class NomenclaturePhotoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
         PATCH /api/photos/{photo_id}/ - Обновить метаданные фотографии
         DELETE /api/photos/{photo_id}/ - Удалить фотографию
     """
-    queryset = NomenclatureImage.objects.all()
+    queryset = NomenclatureMedia.objects.filter(media_type="image")
     serializer_class = PhotoSerializer
     permission_classes = [StaffCUDallRead]
     http_method_names = ["get", "post", "delete", "patch"]
@@ -217,7 +217,7 @@ class NomenclaturePhotoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             - get_nomenclature_photos() для фото конкретной номенклатуры
             - add_photo() для загрузки новых фото
         """
-        photos = NomenclatureImage.objects.filter(nomenclature__isnull=False)
+        photos = NomenclatureMedia.objects.filter(nomenclature__isnull=False, media_type="image")
         serializer = PhotoSerializer(photos, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
@@ -284,6 +284,6 @@ class NomenclaturePhotoViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
         """
         # Archived nomenclatures must keep their photo gallery manageable.
         nomenclature = get_instance_or_404(Nomenclature.objects, pk)
-        photos = nomenclature.images.all()
+        photos = nomenclature.media.filter(media_type="image")
         serializer = PhotoSerializer(photos, many=True)
         return Response(serializer.data, status=HTTP_200_OK)

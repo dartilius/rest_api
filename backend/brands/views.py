@@ -23,7 +23,7 @@ from brands.serializers import (
     BrandListSerializer,
     BrandShortSerializer,
 )
-from nomenclatures.models import Nomenclature, NomenclatureImage
+from nomenclatures.models import Nomenclature, NomenclatureMedia
 from nomenclatures.serializers import NomenclatureShortSerializer
 from services.api_1c_client import logger
 
@@ -227,9 +227,9 @@ class BrandViewSet(SignedMediaNoCacheMixin, viewsets.ModelViewSet):
             )
             .prefetch_related(
                 Prefetch(
-                    "images",
-                    queryset=NomenclatureImage.objects.filter(type="exterior").only(
-                        "id", "source", "type", "nomenclature_id",
+                    "media",
+                    queryset=NomenclatureMedia.objects.filter(media_type="image", type="exterior").only(
+                        "id", "source", "type", "media_type", "nomenclature_id",
                     ),
                     to_attr="prefetched_exterior",
                 ),

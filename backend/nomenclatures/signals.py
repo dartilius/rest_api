@@ -19,7 +19,7 @@ from django.dispatch import receiver
 from counterparties.models import Counterparty
 from nomenclatures.models import (
     Nomenclature,
-    NomenclatureImage,
+    NomenclatureMedia,
     NomenclatureTenant,
 )
 from nomenclatures.services.indexing import is_tenant_indexing_suppressed
@@ -43,7 +43,7 @@ def _delete_image_file_on_commit(instance, file_name):
     transaction.on_commit(lambda: _delete_image_file(storage, file_name))
 
 
-@receiver(post_delete, sender=NomenclatureImage)
+@receiver(post_delete, sender=NomenclatureMedia)
 def delete_nomenclature_image_from_storage(sender, instance, **kwargs):
     """Delete the underlying MinIO object after its database row is deleted."""
     if not instance.source:
@@ -52,7 +52,7 @@ def delete_nomenclature_image_from_storage(sender, instance, **kwargs):
     _delete_image_file_on_commit(instance, instance.source.name)
 
 
-@receiver(pre_save, sender=NomenclatureImage)
+@receiver(pre_save, sender=NomenclatureMedia)
 def remember_replaced_nomenclature_image(sender, instance, **kwargs):
     """Remember the old object name so replacing a photo does not leak it."""
     if instance._state.adding:
@@ -67,7 +67,7 @@ def remember_replaced_nomenclature_image(sender, instance, **kwargs):
         instance._replaced_file_name = old_file_name
 
 
-@receiver(post_save, sender=NomenclatureImage)
+@receiver(post_save, sender=NomenclatureMedia)
 def delete_replaced_nomenclature_image(sender, instance, **kwargs):
     """Delete the previous MinIO object after a replacement is committed."""
     old_file_name = getattr(instance, "_replaced_file_name", None)

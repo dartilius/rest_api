@@ -32,7 +32,7 @@ from api.pagination import CustomLimitOffsetPagination
 from brands.models import Brand
 from counterparties.models import CounterpartyCategory
 from nomenclatures.filters import NomenclatureTenantFilter, GroupedTenantFilter
-from nomenclatures.models import NomenclatureTenant, NomenclatureImage
+from nomenclatures.models import NomenclatureTenant, NomenclatureMedia
 from nomenclatures.serializers import (
     TenantWriteSerializer,
     NomenclatureTenantResponseSerializer,
@@ -311,8 +311,8 @@ def tenant_detail(request, tenant_pk: str):
         )
         .prefetch_related(
             Prefetch(
-                "nomenclature__images",
-                queryset=NomenclatureImage.objects.filter(type="exterior").order_by(
+                "nomenclature__media",
+                queryset=NomenclatureMedia.objects.filter(media_type="image", type="exterior").order_by(
                     "created"
                 ),
                 to_attr="prefetched_exterior",
