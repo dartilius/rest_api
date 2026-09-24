@@ -448,7 +448,7 @@ class Region(models.Model):
     def __str__(self):
         """
         ФОРМАТИРОВАННОЕ СТРОКОВОЕ ПРЕДСТАВЛЕНИЕ РЕГИОНА.
-        
+
         ОПТИМИЗИРОВАННАЯ ВЕРСИЯ:
         • Проверяет наличие загруженного type_region
         • Использует кэширование через hasattr
@@ -459,7 +459,7 @@ class Region(models.Model):
             type_region = self._cached_type_region
         else:
             type_region = self.type_region
-        
+
         if type_region and not type_region.skip_in_name:
             if type_region.show_before_name:
                 return f"{type_region.abbreviated_name} {self.name}"
@@ -712,7 +712,7 @@ class City(models.Model):
     def __str__(self):
         """
         ФОРМАТИРОВАННОЕ СТРОКОВОЕ ПРЕДСТАВЛЕНИЕ ГОРОДА.
-        
+
         ОПТИМИЗИРОВАННАЯ ВЕРСИЯ:
         • Проверяет наличие загруженного locality_type
         • Использует кэширование через hasattr
@@ -722,7 +722,7 @@ class City(models.Model):
             locality_type = self._cached_locality_type
         else:
             locality_type = self.locality_type
-        
+
         if locality_type:
             if locality_type.show_before_name:
                 prefix = locality_type.abbreviated_name or locality_type.name
@@ -1046,7 +1046,7 @@ class Street(models.Model):
     def __str__(self):
         """
         ФОРМАТИРОВАННОЕ СТРОКОВОЕ ПРЕДСТАВЛЕНИЕ УЛИЦЫ.
-        
+
         ОПТИМИЗИРОВАННАЯ ВЕРСИЯ:
         • Проверяет наличие загруженного street_type
         """
@@ -1054,7 +1054,7 @@ class Street(models.Model):
             street_type = self._cached_street_type
         else:
             street_type = self.street_type
-        
+
         if street_type:
             if street_type.show_before_name:
                 prefix = street_type.abbreviated_name or street_type.name
@@ -1477,66 +1477,61 @@ class Address(models.Model):
     @extend_schema_field(OpenApiTypes.STR)
     def full_address(self) -> str:
         """
-        ПОЛНЫЙ АДРЕС в строковом формате.
-
-        ВОЗВРАЩАЕТ:
-            str: Полный адрес, собранный из всех заполненных компонентов
-
-        ФОРМАТ:
-            "Страна, Регион, Город, Улица, д. Номер, стр. Номер, Микрорайон"
-
-        ПРИМЕР:
-            >>> address.full_address
-            'Россия, Московская область, Москва, ул. Ленина, д. 1, стр. А, Центральный микрорайон'
-
-        ОСОБЕННОСТИ:
-            • Пропускает пустые компоненты
-            • Использует правильные форматы для типов (г., ул., д., стр.)
-            • Автоматически заполняет недостающие компоненты из иерархии
+        Полный адрес в формате:
+        "Красноярский кр., г. Красноярск, Советский р-н, мкр. Взлетка, ул. Весны, д. 1"
         """
-        # Собираем компоненты адреса
-        components = []
+        parts = []
 
-        # Страна (если указана явно или может быть получена из иерархии)
-        country = self._get_country()
-        if country:
-            components.append(country.name)
-
-        # Регион (если указан явно или может быть получен из иерархии)
         region = self._get_region()
         if region:
-            components.append(str(region))
+            type_region = getattr(region, 'type_region', None)
+            if type_region and not type_region.skip_in_name:
+                if type_region.show_before_name:
+                    region_name = f"{type_region.abbreviated_name or type_region.name} {region.name}"
+                else:
+                    region_name = f"{region.name} {type_region.abbreviated_name or type_region.name}"
+            else:
+                region_name = region.name
+            parts.append(region_name)
 
-        # Город (если указан явно или может быть получен из иерархии)
         city = self._get_city()
         if city:
-            components.append(str(city))
+            locality_type = getattr(city, 'locality_type', None)
+            if locality_type:
+                city_prefix = locality_type.abbreviated_name or locality_type.name
+                if locality_type.show_before_name:
+                    city_name = f"{city_prefix} {city.name}"
+                else:
+                    city_name = f"{city.name} {city_prefix}"
+            else:
+                city_name = city.name
+            parts.append(city_name)
 
-        # Административная единица (если есть)
         if self.administrative_unit:
-            components.append(str(self.administrative_unit))
+            district_name = self.administrative_unit.name.strip()
+            if not district_name.endswith('р-н') and not district_name.endswith('район'):
+                district_name = f"{district_name} р-н"
+            parts.append(district_name)
 
-        # Улица (если есть)
-        if self.street:
-            components.append(str(self.street))
-
-        # Дом (если есть)
-        if self.house:
-            components.append(f"д. {self.house.number}")
-
-        # Строение (если есть)
-        if self.building:
-            components.append(f"стр. {self.building.number}")
-
-        # Микрорайон (если есть)
         if self.microdistrict:
-            components.append(self.microdistrict)
+            parts.append(f"мкр. {self.microdistrict.strip()}")
 
-        # Индекс (добавляем в начало, если есть)
-        if self.index:
-            components.insert(0, self.index)
+        if self.street:
+            street_type = getattr(self.street, 'street_type', None)
+            if street_type:
+                prefix = street_type.abbreviated_name or street_type.name
+                if street_type.show_before_name:
+                    street_name = f"{prefix} {self.street.name}"
+                else:
+                    street_name = f"{self.street.name} {prefix}"
+            else:
+                street_name = self.street.name
+            parts.append(street_name)
 
-        return ", ".join(filter(None, components))
+        if self.house:
+            parts.append(f"д. {self.house.number}")
+
+        return ", ".join(filter(None, parts))
 
     # ==========================================================================
     # ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
