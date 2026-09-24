@@ -178,3 +178,4 @@ configs/
 *.backup.*
 *.bak*
 /docs/*
+AGENTS.md
