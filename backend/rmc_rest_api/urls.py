@@ -8,6 +8,7 @@ from drf_spectacular.views import (
 from rest_framework import permissions
 
 from docs.views import docs, openapi_scheme
+from api.legacy_jwt_views import LegacyTokenRefreshView
 from users.views import LogoutView
 
 
@@ -42,6 +43,11 @@ urlpatterns = [
     path('api/', include('tasks.urls')),
     path("api/", include("placement_order.urls")),
     path('auth/', include('djoser.urls')),
+    path(
+        'auth/jwt/legacy-refresh/',
+        LegacyTokenRefreshView.as_view(),
+        name='legacy-jwt-refresh',
+    ),
     path('auth/', include('djoser.urls.jwt')),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('__debug__/', include('debug_toolbar.urls')),

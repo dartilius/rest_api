@@ -191,7 +191,7 @@ PASSWORD_HASHERS = [
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'api.jwt.DualJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -292,6 +292,10 @@ MINIO_REGION = os.environ.get('MINIO_REGION', 'us-east-1')
 # django-minio-backend reads this flag from Django settings when deciding
 # whether storage.url() may reuse a previously generated presigned URL.
 MINIO_URL_CACHING_ENABLED = False
+# The local Kubernetes JWT lab intentionally has no object-storage workload.
+# Keep production's startup bucket validation, while allowing DEBUG services to
+# start before MinIO is added to the local profile.
+MINIO_CONSISTENCY_CHECK_ON_START = not DEBUG
 
 MINIO_PUBLIC_BUCKETS = ['local-static', 'builds']
 MINIO_PRIVATE_BUCKETS = ['local-media']
@@ -328,7 +332,7 @@ STORAGES = {
             'MINIO_EXTERNAL_ENDPOINT_USE_HTTPS': MINIO_EXTERNAL_ENDPOINT_USE_HTTPS,
             'MINIO_STATIC_FILES_BUCKET': 'local-static',
             'MINIO_URL_EXPIRY_HOURS': timedelta(days=365),
-            'MINIO_CONSISTENCY_CHECK_ON_START': True,
+            'MINIO_CONSISTENCY_CHECK_ON_START': MINIO_CONSISTENCY_CHECK_ON_START,
         }
     },
 }
@@ -373,13 +377,29 @@ if not DEBUG:
     CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': td(days=30),
+    'ACCESS_TOKEN_LIFETIME': td(days=7),
     'REFRESH_TOKEN_LIFETIME': td(days=60),
     'AUTH_HEADER_TYPES': ('access_token',),
     'BLACKLIST_AFTER_ROTATION': True,
     'ROTATE_REFRESH_TOKENS': True,
-    'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',)
+    'AUTH_TOKEN_CLASSES': ('api.tokens.CustomAccessToken',),
+    'ALGORITHM': 'RS256',
+    'SIGNING_KEY': Path(os.environ['JWT_PRIVATE_KEY_PATH']).read_text(),
+    'VERIFYING_KEY': Path(os.environ['JWT_PUBLIC_KEY_PATH']).read_text(),
+    'ISSUER': 'rmc-django',
+    'AUDIENCE': 'rmc-site-api',
+    'USER_ID_CLAIM': 'sub',
+    'TOKEN_OBTAIN_SERIALIZER': 'api.jwt.CustomTokenObtainPairSerializer',
+    'TOKEN_REFRESH_SERIALIZER': 'api.jwt.CustomTokenRefreshSerializer',
 }
+
+# The previous HS256 key is accepted only during the explicit migration
+# window.  It must remain equal to the former Django SECRET_KEY until the
+# deadline, then both variables and the compatibility code are removed.
+JWT_LEGACY_HS256_SECRET = os.environ.get('JWT_LEGACY_HS256_SECRET')
+JWT_LEGACY_HS256_ACCEPT_UNTIL = os.environ.get(
+    'JWT_LEGACY_HS256_ACCEPT_UNTIL'
+)
 
 # =============================================================================
 # 13. ОТЛАДКА (Debug Toolbar)

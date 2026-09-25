@@ -1,0 +1,198 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-api
+  namespace: rmc
+spec:
+  selector:
+    app: django-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-api
+  namespace: rmc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: django-api
+  template:
+    metadata:
+      labels:
+        app: django-api
+    spec:
+      containers:
+        - name: django-api
+          image: rmc-django:local
+          imagePullPolicy: Never
+          command: ['gunicorn']
+          args: ['--bind', '0.0.0.0:8000', '--workers', '2', '--threads', '2', '--timeout', '90', 'rmc_rest_api.wsgi']
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: DEBUG
+              value: 'true'
+            - name: ALLOWED_HOSTS
+              value: '*'
+            - name: MINIO_ENDPOINT
+              value: minio:9000
+            # The JWT lab does not start MinIO, but django-debug-toolbar
+            # still renders static URLs for probe responses in DEBUG mode.
+            - name: MINIO_EXTERNAL_ENDPOINT
+              value: minio:9000
+            - name: MINIO_HTTPS
+              value: 'false'
+            - name: MINIO_EXTERNAL_HTTPS
+              value: 'false'
+            - name: MINIO_REGION
+              value: us-east-1
+            - name: URL_1C
+              value: http://1c-disabled.local
+            - name: FRONTEND_DOMEN
+              value: http://localhost:8080
+            - name: JWT_PRIVATE_KEY_PATH
+              value: /run/secrets/jwt/private.pem
+            - name: JWT_PUBLIC_KEY_PATH
+              value: /run/secrets/jwt/public.pem
+          envFrom:
+            - secretRef:
+                name: django-runtime
+          readinessProbe:
+            httpGet: { path: /healthz/, port: http }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz/, port: http }
+            initialDelaySeconds: 15
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { cpu: 1, memory: 1Gi }
+          volumeMounts:
+            - name: django-jwt-keys
+              mountPath: /run/secrets/jwt
+              readOnly: true
+      volumes:
+        - name: django-jwt-keys
+          secret:
+            secretName: django-jwt-keys
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nest-api
+  namespace: rmc
+spec:
+  selector:
+    app: nest-api
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nest-api
+  namespace: rmc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nest-api
+  template:
+    metadata:
+      labels:
+        app: nest-api
+    spec:
+      containers:
+        - name: nest-api
+          image: rmc-nest:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            - name: PORT
+              value: '3001'
+            - name: SOURCE_DB_HOST
+              value: postgres
+            - name: SOURCE_DB_PORT
+              value: '5432'
+            - name: SOURCE_DB_NAME
+              value: rmc
+            - name: SOURCE_DB_SCHEMA
+              value: public
+            - name: MINIO_ENDPOINT
+              value: minio
+            - name: MINIO_PORT
+              value: '9000'
+            - name: MINIO_USE_SSL
+              value: 'false'
+            - name: MINIO_REGION
+              value: us-east-1
+            - name: MINIO_MEDIA_BUCKET
+              value: local-media
+            - name: MINIO_PRESIGNED_URL_TTL_SECONDS
+              value: '900'
+            - name: JWT_PUBLIC_KEY_PATH
+              value: /run/secrets/jwt/public.pem
+            - name: JWT_ISSUER
+              value: rmc-django
+            - name: JWT_AUDIENCE
+              value: rmc-site-api
+          envFrom:
+            - secretRef:
+                name: nest-runtime
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 15
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 1, memory: 512Mi }
+          volumeMounts:
+            - name: nest-jwt-public
+              mountPath: /run/secrets/jwt
+              readOnly: true
+      volumes:
+        - name: nest-jwt-public
+          secret:
+            secretName: nest-jwt-public
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rmc-api
+  namespace: rmc
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 64m
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: django-api
+                port: { number: 8000 }
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: django-api
+                port: { number: 8000 }
+          - path: /site-api
+            pathType: Prefix
+            backend:
+              service:
+                name: nest-api
+                port: { number: 3001 }

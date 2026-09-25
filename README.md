@@ -16,11 +16,9 @@ git clone git@webgit.krasrm.com:shaleinikove/rmc_rest_api.git
 SECRET_KEY
 ALLOWED_HOSTS
 DEBUG
-FRONTEND_DOMEN
 
 # healthcheck
 BACKEND_HC
-FRONTEND_HC
 
 # create superuser
 DJANGO_SUPERUSER_NAME
@@ -60,8 +58,6 @@ CELERY_WORKERS
 RABBITMQ_USER
 RABBITMQ_PASS
 
-# frontend
-NEXT_PUBLIC_API_URL
 ```
 
 3. Поднимаем файловое хранилище чтобы получить

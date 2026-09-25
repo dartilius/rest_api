@@ -11,6 +11,13 @@ def refill_slugs(apps, schema_editor):
     Nomenclature = apps.get_model('nomenclatures', 'Nomenclature')
     db = schema_editor.connection.alias
 
+    # This migration predates the ``for_web`` field.  A new database applies
+    # migrations in dependency order, so that field may not exist yet here.
+    # Existing databases that had the field when this data migration was first
+    # applied keep the original slug backfill behaviour.
+    if 'for_web' not in {field.name for field in Nomenclature._meta.get_fields()}:
+        return
+
     queryset = (
         Nomenclature._base_manager
         .filter(

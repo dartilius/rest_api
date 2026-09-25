@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nest-source-reader-sql
+  namespace: rmc
+data:
+  grant.sql: |
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nest_source_reader') THEN
+        CREATE ROLE nest_source_reader LOGIN;
+      END IF;
+    END
+    $$;
+    ALTER ROLE nest_source_reader PASSWORD :'reader_password';
+    GRANT CONNECT ON DATABASE rmc TO nest_source_reader;
+    GRANT USAGE ON SCHEMA public TO nest_source_reader;
+    GRANT SELECT ON TABLE
+      public.brands,
+      public.addresses_country,
+      public.addresses_federal_district,
+      public.addresses_type_region,
+      public.addresses_timezone,
+      public.addresses_region,
+      public.addresses_locality_type,
+      public.addresses_city,
+      public.addresses_administrative_territory,
+      public.addresses_administrative_territorial_unit,
+      public.addresses_street_type,
+      public.addresses_street,
+      public.addresses_house,
+      public.addresses_building,
+      public.addresses_coordinates,
+      public.addresses_address,
+      public.contact_info,
+      public.counterparty_categories,
+      public.counterparty_contact_info,
+      public.counterparties,
+      public.counterparty_category_assignments,
+      public.counterparties_contact_persons,
+      public.counterparties_brands,
+      public.type_of_place,
+      public.nomenclature,
+      public.nomenclature_tenant,
+      public.discount_rule,
+      public.statistic_receipt,
+      public.nomenclatures_stationcredential,
+      public.nomenclatures_stationinstallation,
+      public.nomenclatures_stationcommandv2,
+      public.availability,
+      public.nomenclature_addresses,
+      public.status_history,
+      public.nomenclature_images
+    TO nest_source_reader;
+    GRANT SELECT (id, avatar, last_name, first_name, middle_name, role, phone_number,
+      email, is_active, is_staff, created, code1c)
+      ON public.custom_user TO nest_source_reader;
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: django-migrate-and-bootstrap
+  namespace: rmc
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: django-migrate
+          image: rmc-django:local
+          imagePullPolicy: Never
+          command: ['sh', '-ec']
+          args:
+            - |
+              python manage.py shell -c "from django.db import connection; connection.cursor().execute('CREATE EXTENSION IF NOT EXISTS pg_trgm')"
+              python manage.py migrate --noinput
+              python manage.py shell -c "from users.models import CustomUser; u, _ = CustomUser.objects.get_or_create(email='$LOCAL_TEST_EMAIL', defaults={'phone_number': '$LOCAL_TEST_PHONE', 'role': 'ordinary'}); u.phone_number='$LOCAL_TEST_PHONE'; u.role='ordinary'; u.is_active=True; u.set_password('$LOCAL_TEST_PASSWORD'); u.save()"
+          env:
+            - name: DEBUG
+              value: 'true'
+            - name: MINIO_ENDPOINT
+              value: minio:9000
+            - name: MINIO_HTTPS
+              value: 'false'
+            - name: MINIO_EXTERNAL_HTTPS
+              value: 'false'
+            - name: MINIO_REGION
+              value: us-east-1
+            - name: URL_1C
+              value: http://1c-disabled.local
+            - name: FRONTEND_DOMEN
+              value: http://localhost:8080
+            - name: JWT_PRIVATE_KEY_PATH
+              value: /run/secrets/jwt/private.pem
+            - name: JWT_PUBLIC_KEY_PATH
+              value: /run/secrets/jwt/public.pem
+          envFrom:
+            - secretRef:
+                name: django-runtime
+          volumeMounts:
+            - name: django-jwt-keys
+              mountPath: /run/secrets/jwt
+              readOnly: true
+      volumes:
+        - name: django-jwt-keys
+          secret:
+            secretName: django-jwt-keys
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: grant-nest-source-reader
+  namespace: rmc
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: grant-reader
+          image: postgres:18.3
+          command: ['sh', '-ec']
+          args:
+            - |
+              export PGPASSWORD="$POSTGRES_PASSWORD"
+              # StationCredential is created late in the nomenclatures
+              # migration chain. Waiting only for custom_user allowed this
+              # Job to run while Django was still applying migrations.
+              until psql -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT to_regclass('public.nomenclatures_stationcredential') IS NOT NULL" | grep -q t; do sleep 2; done
+              psql -v ON_ERROR_STOP=1 -v reader_password="$SOURCE_DB_PASSWORD" -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /sql/grant.sql
+          envFrom:
+            - secretRef:
+                name: postgres-credentials
+            - secretRef:
+                name: nest-runtime
+          volumeMounts:
+            - name: sql
+              mountPath: /sql
+              readOnly: true
+      volumes:
+        - name: sql
+          configMap:
+            name: nest-source-reader-sql

@@ -1,5 +1,11 @@
-import pytest
 from http import HTTPStatus
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+
+import jwt
+import pytest
+from django.conf import settings
+from django.test import override_settings
 
 from users.models import CustomUser
 
@@ -431,6 +437,17 @@ class TestJWT:
                 'с соответствующим токеном.'
             )
 
+        access_payload = jwt.decode(
+            response.json()['access'],
+            settings.SIMPLE_JWT['VERIFYING_KEY'],
+            algorithms=['RS256'],
+            audience='rmc-site-api',
+            issuer='rmc-django',
+        )
+        assert access_payload['sub'] == str(user.id)
+        assert access_payload['role'] == user.role
+        assert access_payload['token_type'] == 'access'
+
     def test_jwt_refresh__invalid_data(self, client):
         invalid_data = {
             'refresh': 'invalid token'
@@ -488,3 +505,45 @@ class TestJWT:
                 f'отправленный к `{url}`, возвращает ответ со статусом 200. '
                 f'Корректными данными считаются `refresh`- и `access`-токены.'
             )
+
+    def test_legacy_refresh_exchanges_old_hs256_token_once(self, client, user):
+        now = datetime.now(timezone.utc)
+        legacy_secret = 'test-legacy-django-secret'
+        legacy_refresh = jwt.encode(
+            {
+                'token_type': 'refresh',
+                'user_id': str(user.id),
+                'jti': uuid4().hex,
+                'iat': now,
+                'exp': now + timedelta(days=1),
+            },
+            legacy_secret,
+            algorithm='HS256',
+        )
+
+        with override_settings(
+            JWT_LEGACY_HS256_SECRET=legacy_secret,
+            JWT_LEGACY_HS256_ACCEPT_UNTIL=(now + timedelta(days=1)).isoformat(),
+        ):
+            response = client.post(
+                '/auth/jwt/legacy-refresh/',
+                data={'refresh': legacy_refresh},
+                format='json',
+            )
+            replay_response = client.post(
+                '/auth/jwt/legacy-refresh/',
+                data={'refresh': legacy_refresh},
+                format='json',
+            )
+
+        assert response.status_code == HTTPStatus.OK
+        assert replay_response.status_code == HTTPStatus.UNAUTHORIZED
+        payload = jwt.decode(
+            response.json()['access'],
+            settings.SIMPLE_JWT['VERIFYING_KEY'],
+            algorithms=['RS256'],
+            audience='rmc-site-api',
+            issuer='rmc-django',
+        )
+        assert payload['sub'] == str(user.id)
+        assert payload['role'] == user.role
