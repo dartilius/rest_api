@@ -69,19 +69,28 @@ def send_password_reset_verification_code(email: str) -> None:
             verification.expires_at = expires_at
             verification.save(update_fields=['code', 'expires_at', 'updated_at'])
 
-    recipients = [email]
     audit_email = getattr(settings, 'PASSWORD_RESET_CODE_AUDIT_EMAIL', 'info@krasrm.com')
-    if audit_email and audit_email.lower() != email.lower():
-        recipients.append(audit_email)
-
     send_mail(
         subject='Код подтверждения сброса пароля',
         message=(f'Код подтверждения сброса пароля: {code}.\n'
-                 f'Код действует {int(REGISTRATION_CODE_TTL.total_seconds() // 60)} минут.'),
+                 f'Код действует {int(REGISTRATION_CODE_TTL.total_seconds() // 60)} минут.\n\n'
+                 'Не сообщайте этот код никому. Если вы не запрашивали сброс пароля, '
+                 'ничего не делайте и свяжитесь с вашим менеджером.'),
         from_email=settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER,
-        recipient_list=recipients,
+        recipient_list=[email],
         fail_silently=False,
     )
+
+    if audit_email and audit_email.lower() != email.lower():
+        send_mail(
+            subject='Запрошен сброс пароля',
+            message=(f'Запрошен сброс пароля для пользователя: {email}.\n'
+                     f'Код подтверждения: {code}.\n'
+                     f'Код действует {int(REGISTRATION_CODE_TTL.total_seconds() // 60)} минут.'),
+            from_email=settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER,
+            recipient_list=[audit_email],
+            fail_silently=False,
+        )
 
 
 def consume_password_reset_verification_code(email: str, code: str) -> bool:
