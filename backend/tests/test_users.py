@@ -5,6 +5,28 @@ from users.models import CustomUser
 
 
 @pytest.mark.django_db
+class TestEmailCheck:
+    url = '/api/users/check-email/'
+
+    def test_returns_empty_200_when_email_is_available(self, anon_client):
+        response = anon_client.get(self.url, {'email': 'available@example.com'})
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.content == b''
+
+    def test_returns_204_when_email_already_exists(self, anon_client, user):
+        response = anon_client.get(self.url, {'email': user.email})
+
+        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert response.content == b''
+
+    def test_rejects_missing_or_invalid_email(self, anon_client):
+        for params in ({}, {'email': 'not-an-email'}):
+            response = anon_client.get(self.url, params)
+            assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+@pytest.mark.django_db
 class TestUsers:
 
     url = '/api/users/'

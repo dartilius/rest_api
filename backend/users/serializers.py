@@ -248,6 +248,20 @@ class RegisterUserSerializer(serializers.Serializer):
     phone_number = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
 
+
+class RegistrationEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+class RegistrationEmailCodeSerializer(RegistrationEmailSerializer):
+    code = serializers.RegexField(r'^\d{6}$', required=True)
+
+
+class EmailCheckSerializer(serializers.Serializer):
+    """Валидация email, передаваемого для проверки доступности."""
+
+    email = serializers.EmailField(required=True)
+
 class ManagerSerializer(serializers.ModelSerializer):
     """Сериализатор для менеджера — только id и ФИО."""
 

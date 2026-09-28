@@ -41,6 +41,27 @@ class ContactInfo(ContactInformation):
         verbose_name = "Контактная информация"
         verbose_name_plural = 'Контактная информация'
 
+class RegistrationEmailVerification(models.Model):
+    """One-time email verification state used before self-registration."""
+
+    email = models.EmailField(max_length=255, unique=True)
+    code = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'registration_email_verification'
+        verbose_name = 'Подтверждение email при регистрации'
+        verbose_name_plural = 'Подтверждения email при регистрации'
+        indexes = [models.Index(fields=['expires_at'])]
+
+    @property
+    def is_verified(self):
+        return self.verified_at is not None and self.expires_at > timezone.now()
+
+
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Пользователи."""
 

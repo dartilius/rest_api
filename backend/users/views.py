@@ -9,17 +9,22 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import (
-    HTTP_401_UNAUTHORIZED,
+    HTTP_200_OK, HTTP_401_UNAUTHORIZED,
     HTTP_204_NO_CONTENT, HTTP_201_CREATED
 )
 from rest_framework.views import APIView
 
 from api.constants import DEFAULT_SCHEMA_RESPONSES, DEFAULT_SCHEMA_EXAMPLES
 from users.filters import CustomUserFilter
-from users.models import CustomUser
+from users.models import CustomUser, RegistrationEmailVerification
 from users.permissions import SuperuserCUDAuthRetrieve
 from users.serializers import CurrentUserSerializer, CustomUserSerializer, RegisterUserSerializer, \
-    CustomUserShortSerializer, PasswordResetByEmailSerializer, GetPasswordSerializer
+    CustomUserShortSerializer, PasswordResetByEmailSerializer, GetPasswordSerializer, \
+    EmailCheckSerializer, RegistrationEmailSerializer, RegistrationEmailCodeSerializer
+from users.services import (
+    confirm_registration_verification_code,
+    send_registration_verification_code,
+)
 
 
 @extend_schema_view(
@@ -165,6 +170,33 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @extend_schema(
+        summary="Проверка занятости email",
+        parameters=[EmailCheckSerializer],
+        responses={
+            200: OpenApiResponse(description="Email отсутствует в базе."),
+            204: OpenApiResponse(description="Email уже есть в базе."),
+            400: OpenApiResponse(description="Некорректный или отсутствующий email."),
+        },
+    )
+    @action(
+        methods=['get'],
+        url_path='check-email',
+        url_name='check-email',
+        detail=False,
+        permission_classes=[AllowAny],
+    )
+    def check_email(self, request, *args, **kwargs):
+        """Возвращает 204, если email уже зарегистрирован, иначе пустой 200."""
+        serializer = EmailCheckSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        if CustomUser.objects.filter(
+            email__iexact=serializer.validated_data['email']
+        ).exists():
+            return Response(status=HTTP_204_NO_CONTENT)
+        return Response(status=HTTP_200_OK)
+
+    @extend_schema(
         summary="Регистрация нового пользователя",
         description=(
                 "Создает нового пользователя в системе по email, имени, фамилии, "
@@ -205,6 +237,15 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
         validated = serializer.validated_data
 
+        verification = RegistrationEmailVerification.objects.filter(
+            email=validated['email'],
+        ).first()
+        if verification and not verification.is_verified:
+            return Response(
+                {'email': ['Подтвердите email кодом из письма.']},
+                status=400,
+            )
+
         user = CustomUser(
             email=validated["email"],
             first_name=validated["first_name"],
@@ -214,10 +255,51 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         user.set_password(validated["password"])
         user.save()
 
+        if verification:
+            verification.delete()
+
         return Response(
             {"detail": "Регистрация успешна", "id": str(user.id)},
             status=HTTP_201_CREATED
         )
+
+    @extend_schema(
+        summary='Отправить код подтверждения регистрации',
+        request=RegistrationEmailSerializer,
+        responses={200: OpenApiResponse(description='Код отправлен на email.')},
+    )
+    @action(
+        methods=['post'], url_path='send-registration-code',
+        url_name='send-registration-code', detail=False,
+        permission_classes=[AllowAny],
+    )
+    def send_registration_code(self, request, *args, **kwargs):
+        serializer = RegistrationEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            return Response({'email': ['Пользователь с таким email уже существует.']}, status=400)
+
+        send_registration_verification_code(email)
+        return Response({'detail': 'Код подтверждения отправлен на email.'})
+
+    @extend_schema(
+        summary='Подтвердить email кодом регистрации',
+        request=RegistrationEmailCodeSerializer,
+        responses={200: OpenApiResponse(description='Email подтверждён.')},
+    )
+    @action(
+        methods=['post'], url_path='confirm-registration-code',
+        url_name='confirm-registration-code', detail=False,
+        permission_classes=[AllowAny],
+    )
+    def confirm_registration_code(self, request, *args, **kwargs):
+        serializer = RegistrationEmailCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not confirm_registration_verification_code(**serializer.validated_data):
+            return Response({'code': ['Неверный или просроченный код.']}, status=400)
+        return Response({'detail': 'Email подтверждён.'})
 
     @extend_schema(
         summary="Сброс пароля по email",
