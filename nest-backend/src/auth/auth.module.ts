@@ -14,5 +14,6 @@ import {
     DjangoJwtVerifier,
     DjangoJwtAuthGuard,
   ],
+  exports: [DjangoJwtAuthGuard, DjangoJwtVerifier],
 })
 export class AuthModule {}

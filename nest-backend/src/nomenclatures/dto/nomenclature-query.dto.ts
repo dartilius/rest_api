@@ -129,11 +129,17 @@ export class NomenclatureQueryDto extends NomenclatureFiltersDto {
   @IsOptional() @IsIn(ORDERINGS)
   ordering: typeof ORDERINGS[number] = 'default';
 
-  @ApiPropertyOptional({ minimum: 1, default: 24, example: 24, description: 'Размер страницы без верхнего лимита на уровне API / Page size; API does not impose an upper limit.' })
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1)
+  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 24, example: 24, description: 'Размер страницы, максимум 100 записей / Page size, maximum 100 records.' })
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100)
   limit = 24;
 
   @ApiPropertyOptional({ minimum: 0, default: 0, example: 0, description: 'Смещение от начала списка / Offset from the first result.' })
   @IsOptional() @Type(() => Number) @IsInt() @Min(0)
   offset = 0;
+}
+
+export class NomenclatureMapQueryDto extends NomenclatureFiltersDto {
+  @ApiPropertyOptional({ minimum: 1, maximum: 1000, default: 1000, example: 500, description: 'Maximum number of map points returned.' })
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1000)
+  limit = 1000;
 }

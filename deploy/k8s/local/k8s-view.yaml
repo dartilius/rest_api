@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+# Local development only.  This role deliberately gives k8s-view the same
+# operational capabilities as kubectl, so it must never be exposed publicly.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-view
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-view-local-admin
+rules:
+  - apiGroups: ['*']
+    resources: ['*']
+    verbs: ['*']
+  - nonResourceURLs: ['*']
+    verbs: ['*']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-view-local-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-view-local-admin
+subjects:
+  - kind: ServiceAccount
+    name: k8s-view
+    namespace: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-view
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-view
+  template:
+    metadata:
+      labels:
+        app: k8s-view
+    spec:
+      serviceAccountName: k8s-view
+      containers:
+        - name: k8s-view
+          image: ghcr.io/beztebya666/k8s-view:v0.4.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: K8SVIEW_IN_CLUSTER
+              value: 'true'
+            - name: K8SVIEW_OPEN
+              value: 'false'
+            - name: K8SVIEW_ALLOW_ORIGINS
+              value: http://localhost:8081
+          readinessProbe:
+            httpGet: { path: /api/v1/healthz, port: http }
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: { path: /api/v1/healthz, port: http }
+            initialDelaySeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-view
+  namespace: monitoring
+spec:
+  selector:
+    app: k8s-view
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

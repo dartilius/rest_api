@@ -1,0 +1,169 @@
+apiVersion: v1
+kind: Service
+metadata: { name: postgres, namespace: rmc }
+spec: { selector: { app: postgres }, ports: [{ name: postgres, port: 5432, targetPort: postgres }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: postgres, namespace: rmc }
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector: { matchLabels: { app: postgres } }
+  template:
+    metadata: { labels: { app: postgres } }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18.3
+          envFrom: [{ secretRef: { name: postgres-credentials } }]
+          ports: [{ name: postgres, containerPort: 5432 }]
+          readinessProbe: { tcpSocket: { port: postgres } }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: '1', memory: 1Gi } }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql }]
+  volumeClaimTemplates: [{ metadata: { name: data }, spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 4Gi } } } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: opensearch, namespace: rmc }
+spec: { selector: { app: opensearch }, ports: [{ name: http, port: 9200 }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: opensearch, namespace: rmc }
+spec:
+  serviceName: opensearch
+  replicas: 1
+  selector: { matchLabels: { app: opensearch } }
+  template:
+    metadata: { labels: { app: opensearch } }
+    spec:
+      containers:
+        - name: opensearch
+          image: opensearchproject/opensearch:2.13.0
+          env:
+            - { name: discovery.type, value: single-node }
+            - { name: DISABLE_SECURITY_PLUGIN, value: 'true' }
+            - { name: OPENSEARCH_JAVA_OPTS, value: '-Xms512m -Xmx512m' }
+          ports: [{ name: http, containerPort: 9200 }]
+          readinessProbe: { httpGet: { path: /, port: http }, initialDelaySeconds: 20, periodSeconds: 10 }
+          resources: { requests: { cpu: 250m, memory: 1Gi }, limits: { cpu: '2', memory: 2Gi } }
+          volumeMounts: [{ name: data, mountPath: /usr/share/opensearch/data }]
+  volumeClaimTemplates: [{ metadata: { name: data }, spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 4Gi } } } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: minio, namespace: rmc }
+spec: { selector: { app: minio }, ports: [{ name: api, port: 9000 }, { name: console, port: 9001 }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: minio, namespace: rmc }
+spec:
+  serviceName: minio
+  replicas: 1
+  selector: { matchLabels: { app: minio } }
+  template:
+    metadata: { labels: { app: minio } }
+    spec:
+      containers:
+        - name: minio
+          image: moechs/bitnami-minio:2026.7.17-debian-12-r5
+          imagePullPolicy: IfNotPresent
+          args: ['server', '/data', '--console-address', ':9001']
+          envFrom: [{ secretRef: { name: minio-root-credentials } }]
+          ports: [{ name: api, containerPort: 9000 }, { name: console, containerPort: 9001 }]
+          readinessProbe: { httpGet: { path: /minio/health/live, port: api } }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: '1', memory: 1Gi } }
+          volumeMounts: [{ name: data, mountPath: /data }]
+  volumeClaimTemplates: [{ metadata: { name: data }, spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 4Gi } } } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: rabbitmq, namespace: rmc }
+spec: { selector: { app: rabbitmq }, ports: [{ name: amqp, port: 5672 }, { name: management, port: 15672 }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: rabbitmq, namespace: rmc }
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector: { matchLabels: { app: rabbitmq } }
+  template:
+    metadata: { labels: { app: rabbitmq } }
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:4.2.2-management
+          envFrom: [{ secretRef: { name: rabbitmq-credentials } }]
+          ports: [{ name: amqp, containerPort: 5672 }, { name: management, containerPort: 15672 }]
+          readinessProbe: { tcpSocket: { port: amqp } }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: '1', memory: 1Gi } }
+          volumeMounts: [{ name: data, mountPath: /var/lib/rabbitmq }]
+  volumeClaimTemplates: [{ metadata: { name: data }, spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 2Gi } } } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis, namespace: rmc }
+spec: { selector: { app: redis }, ports: [{ name: redis, port: 6379 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: redis, namespace: rmc }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis } }
+    spec:
+      containers:
+        - name: redis
+          image: redis:8.4.0-alpine
+          args: ['redis-server', '--appendonly', 'no', '--maxmemory', '256mb', '--maxmemory-policy', 'allkeys-lru']
+          ports: [{ name: redis, containerPort: 6379 }]
+          readinessProbe: { exec: { command: ['redis-cli', 'ping'] } }
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: clickhouse, namespace: rmc }
+spec: { selector: { app: clickhouse }, ports: [{ name: http, port: 8123 }, { name: native, port: 9000 }] }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: clickhouse-storage-policy, namespace: rmc }
+data:
+  storage.xml: |
+    <clickhouse>
+      <storage_configuration>
+        <disks><cold><type>local</type><path>/var/lib/clickhouse-cold/</path></cold></disks>
+        <policies><statistics_tiered><volumes><hot><disk>default</disk></hot><cold><disk>cold</disk></cold></volumes></statistics_tiered></policies>
+      </storage_configuration>
+    </clickhouse>
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: clickhouse, namespace: rmc }
+spec:
+  serviceName: clickhouse
+  replicas: 1
+  selector: { matchLabels: { app: clickhouse } }
+  template:
+    metadata: { labels: { app: clickhouse } }
+    spec:
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:25.8
+          envFrom: [{ secretRef: { name: clickhouse-credentials } }]
+          ports: [{ name: http, containerPort: 8123 }, { name: native, containerPort: 9000 }]
+          readinessProbe: { httpGet: { path: /ping, port: http } }
+          resources: { requests: { cpu: 250m, memory: 512Mi }, limits: { cpu: '2', memory: 2Gi } }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/clickhouse }
+            - { name: cold, mountPath: /var/lib/clickhouse-cold }
+            - { name: storage-policy, mountPath: /etc/clickhouse-server/config.d/storage.xml, subPath: storage.xml, readOnly: true }
+      volumes: [{ name: storage-policy, configMap: { name: clickhouse-storage-policy } }]
+  volumeClaimTemplates:
+    - { metadata: { name: data }, spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 4Gi } } } }
+    - { metadata: { name: cold }, spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 2Gi } } } }

@@ -1,16 +1,22 @@
+import hashlib
+import secrets
 from uuid import UUID
 
+from django.conf import settings
+from django.core.mail import send_mail
+from django.core.cache import cache
+from django.utils.crypto import constant_time_compare
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_401_UNAUTHORIZED,
-    HTTP_204_NO_CONTENT, HTTP_201_CREATED
+    HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_201_CREATED
 )
 from rest_framework.views import APIView
 
@@ -19,7 +25,15 @@ from users.filters import CustomUserFilter
 from users.models import CustomUser
 from users.permissions import SuperuserCUDAuthRetrieve
 from users.serializers import CurrentUserSerializer, CustomUserSerializer, RegisterUserSerializer, \
-    CustomUserShortSerializer, PasswordResetByEmailSerializer, GetPasswordSerializer
+    CustomUserShortSerializer, EmailSerializer, PasswordResetByEmailSerializer, GetPasswordSerializer
+
+
+REGISTRATION_CODE_TTL_SECONDS = 10 * 60
+
+
+def _registration_code_cache_key(email):
+    email_digest = hashlib.sha256(email.strip().lower().encode()).hexdigest()
+    return f'registration-code:{email_digest}'
 
 
 @extend_schema_view(
@@ -204,20 +218,90 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         validated = serializer.validated_data
+        email = validated['email'].lower()
+        code_cache_key = _registration_code_cache_key(email)
+        saved_code = cache.get(code_cache_key)
+        if not saved_code or not constant_time_compare(
+            str(saved_code), validated['verification_code']
+        ):
+            raise ValidationError({'verification_code': 'Неверный или просроченный код подтверждения.'})
+
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            raise ValidationError({'email': 'Пользователь с таким email уже существует.'})
 
         user = CustomUser(
-            email=validated["email"],
+            email=email,
             first_name=validated["first_name"],
             last_name=validated["last_name"],
             phone_number=validated["phone_number"],
         )
         user.set_password(validated["password"])
         user.save()
+        cache.delete(code_cache_key)
 
         return Response(
             {"detail": "Регистрация успешна", "id": str(user.id)},
             status=HTTP_201_CREATED
         )
+
+    @extend_schema(
+        summary='Проверка доступности email для регистрации',
+        parameters=[EmailSerializer],
+        responses={HTTP_200_OK: None, HTTP_204_NO_CONTENT: None},
+    )
+    @action(
+        methods=['get'],
+        url_path='check-email',
+        url_name='check-email',
+        detail=False,
+        permission_classes=[AllowAny],
+    )
+    def check_email(self, request, *args, **kwargs):
+        serializer = EmailSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            return Response(status=HTTP_204_NO_CONTENT)
+        return Response(status=HTTP_200_OK)
+
+    @extend_schema(
+        summary='Отправка кода подтверждения регистрации',
+        request=EmailSerializer,
+        responses={HTTP_200_OK: None, HTTP_204_NO_CONTENT: None},
+    )
+    @action(
+        methods=['post'],
+        url_path='send-registration-code',
+        url_name='send-registration-code',
+        detail=False,
+        permission_classes=[AllowAny],
+    )
+    def send_registration_code(self, request, *args, **kwargs):
+        serializer = EmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].lower()
+
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            return Response(status=HTTP_204_NO_CONTENT)
+
+        verification_code = f'{secrets.randbelow(1_000_000):06d}'
+        send_mail(
+            subject='Код подтверждения регистрации',
+            message=(
+                'Ваш код подтверждения регистрации: '
+                f'{verification_code}. Код действует 10 минут.'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        cache.set(
+            _registration_code_cache_key(email),
+            verification_code,
+            timeout=REGISTRATION_CODE_TTL_SECONDS,
+        )
+        return Response(status=HTTP_200_OK)
 
     @extend_schema(
         summary="Сброс пароля по email",

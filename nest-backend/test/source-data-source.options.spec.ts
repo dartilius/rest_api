@@ -12,6 +12,11 @@ test('source connection is read-only and cannot manage Django schema', () => {
   assert.equal(options.schema, 'public');
   assert.equal(options.synchronize, false);
   assert.equal(options.migrationsRun, false);
-  assert.equal((options.extra as { options: string }).options, '-c default_transaction_read_only=on');
-  assert.equal(sourceEntities.length, 37);
+  assert.equal(
+    (options.extra as { options: string }).options,
+    '-c default_transaction_read_only=on -c statement_timeout=5000',
+  );
+  assert.equal((options.extra as { max: number }).max, 10);
+  assert.equal((options.extra as { query_timeout: number }).query_timeout, 5_000);
+  assert.equal(sourceEntities.length, 38);
 });

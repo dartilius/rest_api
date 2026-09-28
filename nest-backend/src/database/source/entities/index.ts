@@ -2,6 +2,7 @@ import { AddressEntity, AdministrativeTerritorialUnitEntity, AdministrativeTerri
 import { BrandEntity } from './brands.entity';
 import { CounterpartyBrandEntity, CounterpartyCategoryAssignmentEntity, CounterpartyCategoryEntity, CounterpartyContactInfoEntity, CounterpartyContactPersonEntity, CounterpartyEntity } from './counterparties.entities';
 import { DiscountRuleEntity, NomenclatureAddressEntity, NomenclatureAvailabilityEntity, NomenclatureEntity, NomenclatureImageEntity, NomenclatureTenantEntity, NomenclatureVideoEntity, StatisticReceiptEntity, StationCommandV2Entity, StationCredentialEntity, StationInstallationEntity, StatusHistoryEntity, TypeOfPlaceEntity } from './nomenclatures.entities';
+import { PromotionEntity } from './promotions.entity';
 import { ContactInfoEntity, CustomUserEntity } from './users.entities';
 
 /**
@@ -17,6 +18,7 @@ export const sourceEntities = [
   CustomUserEntity, ContactInfoEntity,
   CounterpartyCategoryEntity, CounterpartyEntity, CounterpartyContactInfoEntity,
   CounterpartyCategoryAssignmentEntity, CounterpartyContactPersonEntity, CounterpartyBrandEntity,
+  PromotionEntity,
   TypeOfPlaceEntity, NomenclatureEntity, NomenclatureTenantEntity, DiscountRuleEntity,
   StatisticReceiptEntity, StationCredentialEntity, StationInstallationEntity,
   StationCommandV2Entity, NomenclatureAvailabilityEntity, NomenclatureAddressEntity,
@@ -31,6 +33,7 @@ export {
   CountryEntity, CustomUserEntity, DiscountRuleEntity, FederalDistrictEntity, HouseEntity,
   LocalityTypeEntity, NomenclatureAddressEntity, NomenclatureAvailabilityEntity,
   NomenclatureEntity, NomenclatureImageEntity, NomenclatureTenantEntity, NomenclatureVideoEntity,
+  PromotionEntity,
   RegionEntity, StatisticReceiptEntity, StationCommandV2Entity, StationCredentialEntity,
   StationInstallationEntity, StatusHistoryEntity, StreetEntity, StreetTypeEntity, TimezoneEntity,
   TypeOfPlaceEntity, TypeRegionEntity,

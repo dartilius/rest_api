@@ -65,6 +65,26 @@ The external application endpoints are `/auth/...`, `/api/...`, and
 `/site-api/v1/...`. Liveness/readiness health endpoints are intentionally
 internal: `/healthz/` for Django and `/healthz` for Nest.
 
+## Kubernetes dashboard
+
+The local setup also starts `k8s-view` in the separate `monitoring` namespace.
+It has full cluster-administrator-style permissions **only in the local k3d
+cluster**, so do not expose it through Ingress or copy this RBAC configuration
+to production.
+
+Open it from a second PowerShell window:
+
+```powershell
+kubectl port-forward -n monitoring svc/k8s-view 8081:80
+```
+
+Then browse to `http://localhost:8081`. The panel can inspect resources and
+logs, open an exec session, scale workloads, restart rollouts, and edit YAML.
+Stop the port-forward with `Ctrl+C` when finished.
+
+For production, deploy the dashboard with a read-only ServiceAccount and make
+it reachable only through the corporate VPN/SSO; it is not an application API.
+
 ## Importing a production database snapshot
 
 `scripts/k8s/import-production-db.ps1` copies PostgreSQL data from a remote

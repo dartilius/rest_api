@@ -815,8 +815,23 @@ class Nomenclature(APIBaseObjectModel):
             )
         ]
         indexes = [
+            models.Index(
+                fields=["-created", "id"],
+                name="nom_web_active_created_idx",
+                condition=models.Q(for_web=True, is_active=True),
+            ),
+            models.Index(
+                fields=["brand", "pricePerMonth"],
+                name="nom_web_brand_price_idx",
+                condition=models.Q(for_web=True, is_active=True),
+            ),
             GinIndex(
                 name="nom_name_trgm_idx", fields=["name"], opclasses=["gin_trgm_ops"]
+            ),
+            GinIndex(
+                name="nom_search_vector_trgm_idx",
+                fields=["search_vector"],
+                opclasses=["gin_trgm_ops"],
             ),
             GinIndex(
                 name="nomenclature_name_gin_idx",
@@ -1115,6 +1130,12 @@ class NomenclatureImage(models.Model):
     class Meta:
         db_table = "nomenclature_images"
         ordering = ("-created",)
+        indexes = [
+            models.Index(
+                fields=["nomenclature", "type", "-created", "id"],
+                name="nom_image_type_created_idx",
+            ),
+        ]
         verbose_name = "Фотография номенклатуры"
         verbose_name_plural = "Фотографии номенклатур"
 

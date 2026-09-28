@@ -125,6 +125,8 @@ spec:
               value: '5432'
             - name: SOURCE_DB_NAME
               value: rmc
+            - name: CACHE_REDIS_URL
+              value: redis://redis:6379/1
             - name: SOURCE_DB_SCHEMA
               value: public
             - name: MINIO_ENDPOINT

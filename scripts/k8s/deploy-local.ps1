@@ -25,15 +25,19 @@ try {
     kubectl wait --for=condition=complete job/grant-nest-source-reader -n $Namespace --timeout=180s
 
     kubectl apply -f deploy/k8s/local/apps.yaml
+    kubectl apply -f deploy/k8s/local/k8s-view.yaml
     # Secrets may have been regenerated above; force both processes to mount
     # the same fresh RSA key pair before reporting the environment ready.
     kubectl rollout restart deployment/django-api -n $Namespace
     kubectl rollout restart deployment/nest-api -n $Namespace
     kubectl rollout status deployment/django-api -n $Namespace --timeout=180s
     kubectl rollout status deployment/nest-api -n $Namespace --timeout=180s
+    kubectl rollout status deployment/k8s-view -n monitoring --timeout=180s
 }
 finally {
     Pop-Location
 }
 
 Write-Host 'Local RMC cluster is ready at http://localhost:8080'
+Write-Host 'Run: kubectl port-forward -n monitoring svc/k8s-view 8081:80'
+Write-Host 'Then open: http://localhost:8081'

@@ -1,13 +1,21 @@
 from http import HTTPStatus
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
+import re
 
 import jwt
 import pytest
 from django.conf import settings
+from django.core.cache import cache
+from django.core import mail
 from django.test import override_settings
+from rest_framework.test import APIClient
 
 from users.models import CustomUser
+from users.views import (
+    REGISTRATION_CODE_TTL_SECONDS,
+    _registration_code_cache_key,
+)
 
 
 @pytest.mark.django_db
@@ -351,6 +359,149 @@ class TestUsers:
             assert getattr(user_obj, key) != data[key], (
                 f'Данные пользователя обновились без авторизации: {key}'
             )
+
+
+@pytest.mark.django_db
+class TestEmailAvailabilityAndRegistrationCode:
+    check_email_url = '/api/users/check-email/'
+    send_registration_code_url = '/api/users/send-registration-code/'
+    register_url = '/api/users/register/'
+
+    @staticmethod
+    def registration_data(email, verification_code):
+        return {
+            'email': email,
+            'verification_code': verification_code,
+            'first_name': 'New',
+            'last_name': 'User',
+            'phone_number': '+78005550001',
+            'password': 'secure-password',
+        }
+
+    def test_check_email_returns_empty_200_for_available_email(self):
+        response = APIClient().get(
+            self.check_email_url,
+            {'email': 'available@example.com'},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.content == b''
+
+    def test_check_email_returns_empty_204_for_existing_email(self, user):
+        response = APIClient().get(
+            self.check_email_url,
+            {'email': user.email},
+        )
+
+        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert response.content == b''
+
+    def test_check_email_rejects_invalid_email(self):
+        response = APIClient().get(
+            self.check_email_url,
+            {'email': 'invalid-email'},
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert 'email' in response.json()
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_send_registration_code_sends_six_digit_code_for_available_email(self):
+        mail.outbox.clear()
+
+        response = APIClient().post(
+            self.send_registration_code_url,
+            {'email': 'available@example.com'},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.content == b''
+        assert len(mail.outbox) == 1
+        message = mail.outbox[0]
+        assert message.to == ['available@example.com']
+        assert re.search(r'\b\d{6}\b', message.body)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_send_registration_code_returns_empty_204_for_existing_email(self, user):
+        mail.outbox.clear()
+
+        response = APIClient().post(
+            self.send_registration_code_url,
+            {'email': user.email},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert response.content == b''
+        assert mail.outbox == []
+
+    def test_send_registration_code_rejects_invalid_email(self):
+        response = APIClient().post(
+            self.send_registration_code_url,
+            {'email': 'invalid-email'},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert 'email' in response.json()
+
+    def test_register_creates_user_with_cached_verification_code(self):
+        email = 'new-user@example.com'
+        code = '123456'
+        cache_key = _registration_code_cache_key(email)
+        cache.set(cache_key, code, timeout=REGISTRATION_CODE_TTL_SECONDS)
+
+        response = APIClient().post(
+            self.register_url,
+            self.registration_data(email, code),
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+        assert CustomUser.objects.filter(email=email).exists()
+        assert cache.get(cache_key) is None
+
+    def test_register_rejects_wrong_verification_code(self):
+        email = 'wrong-code@example.com'
+        cache.set(
+            _registration_code_cache_key(email),
+            '123456',
+            timeout=REGISTRATION_CODE_TTL_SECONDS,
+        )
+
+        response = APIClient().post(
+            self.register_url,
+            self.registration_data(email, '654321'),
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert not CustomUser.objects.filter(email=email).exists()
+
+    def test_register_cannot_reuse_consumed_verification_code(self):
+        email = 'single-use@example.com'
+        code = '123456'
+        cache.set(
+            _registration_code_cache_key(email),
+            code,
+            timeout=REGISTRATION_CODE_TTL_SECONDS,
+        )
+
+        first_response = APIClient().post(
+            self.register_url,
+            self.registration_data(email, code),
+            format='json',
+        )
+        second_response = APIClient().post(
+            self.register_url,
+            self.registration_data(email, code),
+            format='json',
+        )
+
+        assert first_response.status_code == HTTPStatus.CREATED
+        assert second_response.status_code == HTTPStatus.BAD_REQUEST
+        assert CustomUser.objects.filter(email=email).count() == 1
 
 
 @pytest.mark.django_db(transaction=True)

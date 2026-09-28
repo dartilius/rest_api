@@ -10,11 +10,31 @@ function required(name: string, env: NodeJS.ProcessEnv): string {
   return value;
 }
 
+function positiveInteger(name: string, value: string | undefined, fallback: number): number {
+  const parsed = Number(value ?? fallback);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
 export function sourceDataSourceOptions(env = process.env): DataSourceOptions {
   const port = Number(env.SOURCE_DB_PORT ?? '5432');
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('SOURCE_DB_PORT must be a valid TCP port');
   }
+  const poolMax = positiveInteger('SOURCE_DB_POOL_MAX', env.SOURCE_DB_POOL_MAX, 10);
+  const connectionTimeoutMillis = positiveInteger(
+    'SOURCE_DB_CONNECTION_TIMEOUT_MS',
+    env.SOURCE_DB_CONNECTION_TIMEOUT_MS,
+    3_000,
+  );
+  const queryTimeout = positiveInteger('SOURCE_DB_QUERY_TIMEOUT_MS', env.SOURCE_DB_QUERY_TIMEOUT_MS, 5_000);
+  const statementTimeout = positiveInteger(
+    'SOURCE_DB_STATEMENT_TIMEOUT_MS',
+    env.SOURCE_DB_STATEMENT_TIMEOUT_MS,
+    5_000,
+  );
 
   return {
     name: SOURCE_DATABASE_CONNECTION,
@@ -29,8 +49,15 @@ export function sourceDataSourceOptions(env = process.env): DataSourceOptions {
     synchronize: false,
     migrationsRun: false,
     logging: false,
-    // Defence in depth. PostgreSQL role grants remain the authoritative control.
-    extra: { options: '-c default_transaction_read_only=on' },
+    // PostgreSQL grants remain authoritative. The remaining limits prevent one
+    // slow catalogue query from holding every reader connection indefinitely.
+    extra: {
+      options: `-c default_transaction_read_only=on -c statement_timeout=${statementTimeout}`,
+      max: poolMax,
+      connectionTimeoutMillis,
+      query_timeout: queryTimeout,
+      statement_timeout: statementTimeout,
+    },
   };
 }
 

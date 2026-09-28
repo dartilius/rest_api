@@ -45,26 +45,27 @@ export class BrandsService {
     const limitIndex = queryParams.push(query.limit);
     const offsetIndex = queryParams.push(query.offset);
 
-    const rows = await this.sourceDataSource.query<BrandRow[]>(`
-      SELECT
-        brand.id::text AS id,
-        brand.name AS name,
-        brand.slug AS slug,
-        brand.logotype AS logotype,
-        MIN(nomenclature."pricePerMonth")::text AS min_price
-      ${VISIBLE_BRANDS_FROM}
-      ${filter}
-      GROUP BY brand.id, brand.name, brand.slug, brand.logotype
-      ORDER BY brand.name ASC, brand.id ASC
-      LIMIT $${limitIndex} OFFSET $${offsetIndex}
-    `, queryParams);
-
     const countParams = pattern ? [pattern] : [];
-    const count = await this.sourceDataSource.query<Array<{ total: string }>>(`
-      SELECT COUNT(DISTINCT brand.id)::text AS total
-      ${VISIBLE_BRANDS_FROM}
-      ${filter}
-    `, countParams);
+    const [rows, count] = await Promise.all([
+      this.sourceDataSource.query<BrandRow[]>(`
+        SELECT
+          brand.id::text AS id,
+          brand.name AS name,
+          brand.slug AS slug,
+          brand.logotype AS logotype,
+          MIN(nomenclature."pricePerMonth")::text AS min_price
+        ${VISIBLE_BRANDS_FROM}
+        ${filter}
+        GROUP BY brand.id, brand.name, brand.slug, brand.logotype
+        ORDER BY brand.name ASC, brand.id ASC
+        LIMIT $${limitIndex} OFFSET $${offsetIndex}
+      `, queryParams),
+      this.sourceDataSource.query<Array<{ total: string }>>(`
+        SELECT COUNT(DISTINCT brand.id)::text AS total
+        ${VISIBLE_BRANDS_FROM}
+        ${filter}
+      `, countParams),
+    ]);
 
     return {
       data: await Promise.all(rows.map((row) => this.toListItem(row))),

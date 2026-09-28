@@ -49,6 +49,17 @@ if ($LASTEXITCODE -ne 0) {
       --from-literal=POSTGRES_PASSWORD=$postgresPassword
 }
 else {
+    # PostgreSQL keeps its credentials in the existing PVC. Reuse the
+    # password stored in its Secret so regenerated Django/Nest runtime
+    # secrets keep connecting after a local redeploy.
+    $encodedPostgresPassword = kubectl -n $Namespace get secret postgres-credentials `
+      -o jsonpath='{.data.POSTGRES_PASSWORD}'
+    if ([string]::IsNullOrWhiteSpace($encodedPostgresPassword)) {
+        throw 'Existing postgres-credentials Secret has no POSTGRES_PASSWORD value.'
+    }
+    $postgresPassword = [System.Text.Encoding]::UTF8.GetString(
+      [System.Convert]::FromBase64String($encodedPostgresPassword)
+    )
     Write-Host 'Preserved existing PostgreSQL credentials for the local PVC.'
 }
 

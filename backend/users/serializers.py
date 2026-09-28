@@ -247,6 +247,16 @@ class RegisterUserSerializer(serializers.Serializer):
     last_name = serializers.CharField(required=True)
     phone_number = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
+    verification_code = serializers.RegexField(
+        regex=r'^\d{6}$',
+        write_only=True,
+        required=True,
+        error_messages={'invalid': 'Код подтверждения должен состоять из 6 цифр.'},
+    )
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
 
 class ManagerSerializer(serializers.ModelSerializer):
     """Сериализатор для менеджера — только id и ФИО."""

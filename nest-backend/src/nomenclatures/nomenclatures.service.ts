@@ -3,7 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { SOURCE_DATABASE_CONNECTION } from '../database/source/source-data-source.options';
 import { MinioReadService } from '../storage/minio-read.service';
-import { NomenclatureFiltersDto, NomenclatureQueryDto } from './dto/nomenclature-query.dto';
+import { NomenclatureFiltersDto, NomenclatureMapQueryDto, NomenclatureQueryDto } from './dto/nomenclature-query.dto';
 import {
   NomenclatureBrandDto,
   NomenclatureDetailDto,
@@ -284,23 +284,25 @@ export class NomenclaturesService {
     const selectParams = [...params];
     const limitIndex = selectParams.push(query.limit);
     const offsetIndex = selectParams.push(query.offset);
-    const rows = await this.sourceDataSource.query<NomenclatureRow[]>(`
-      SELECT ${CATALOG_COLUMNS}
-      ${CATALOG_FROM}
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*)::integer AS count
-        FROM public.nomenclature_tenant AS tenant
-        WHERE tenant.nomenclature_id = nomenclature.id
-      ) AS tenant_count ON TRUE
-      ${where}
-      ORDER BY ${sortClause(query.ordering)}
-      LIMIT $${limitIndex} OFFSET $${offsetIndex}
-    `, selectParams);
-    const count = await this.sourceDataSource.query<Array<{ total: string }>>(`
-      SELECT COUNT(*)::text AS total
-      ${FILTER_FROM}
-      ${where}
-    `, params);
+    const [rows, count] = await Promise.all([
+      this.sourceDataSource.query<NomenclatureRow[]>(`
+        SELECT ${CATALOG_COLUMNS}
+        ${CATALOG_FROM}
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::integer AS count
+          FROM public.nomenclature_tenant AS tenant
+          WHERE tenant.nomenclature_id = nomenclature.id
+        ) AS tenant_count ON TRUE
+        ${where}
+        ORDER BY ${sortClause(query.ordering)}
+        LIMIT $${limitIndex} OFFSET $${offsetIndex}
+      `, selectParams),
+      this.sourceDataSource.query<Array<{ total: string }>>(`
+        SELECT COUNT(*)::text AS total
+        ${FILTER_FROM}
+        ${where}
+      `, params),
+    ]);
 
     return {
       data: await Promise.all(rows.map((row) => this.toListItem(row))),
@@ -398,8 +400,9 @@ export class NomenclaturesService {
     };
   }
 
-  async map(filters: NomenclatureFiltersDto): Promise<NomenclatureMapResponseDto> {
+  async map(filters: NomenclatureMapQueryDto): Promise<NomenclatureMapResponseDto> {
     const { where, params } = this.filters(filters);
+    const limitIndex = params.push(filters.limit);
     const rows = await this.sourceDataSource.query<MapRow[]>(`
       SELECT ${MAP_COLUMNS}
       ${CATALOG_FROM}
@@ -410,6 +413,7 @@ export class NomenclaturesService {
       ) AS tenant_count ON TRUE
       ${where}
       ORDER BY type_of_place.is_mall DESC NULLS LAST, tenant_count.count DESC, nomenclature.created DESC, nomenclature.id ASC
+      LIMIT $${limitIndex}
     `, params);
 
     return {

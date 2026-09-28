@@ -4,15 +4,21 @@ import { ApiErrorResponseDto } from '../common/http/api-error.dto';
 import { BrandQueryDto } from './dto/brand-query.dto';
 import { BrandDetailDto, BrandsListResponseDto } from './dto/brand-response.dto';
 import { BrandsService } from './brands.service';
+import { PublicCacheService } from '../common/cache/public-cache.service';
+
+const PUBLIC_CACHE_CONTROL = 'public, max-age=60, s-maxage=300';
 
 @ApiTags('Brands')
 @Controller('brands')
 export class BrandsController {
-  constructor(private readonly brandsService: BrandsService) {}
+  constructor(
+    private readonly brandsService: BrandsService,
+    private readonly publicCacheService: PublicCacheService,
+  ) {}
 
   @Get()
   @HttpCode(200)
-  @Header('Cache-Control', 'no-store')
+  @Header('Cache-Control', PUBLIC_CACHE_CONTROL)
   @ApiOperation({
     summary: 'Список публичных брендов / List public brands',
     description: 'Возвращает только неудалённые бренды с хотя бы одной активной опубликованной номенклатурой. / Returns only non-deleted brands with active published nomenclatures.',
@@ -25,12 +31,12 @@ export class BrandsController {
     },
   })
   list(@Query() query: BrandQueryDto): Promise<BrandsListResponseDto> {
-    return this.brandsService.list(query);
+    return this.publicCacheService.getOrSet('brands:list', query, () => this.brandsService.list(query));
   }
 
   @Get(':identifier')
   @HttpCode(200)
-  @Header('Cache-Control', 'no-store')
+  @Header('Cache-Control', PUBLIC_CACHE_CONTROL)
   @ApiOperation({ summary: 'Публичный бренд по идентификатору / Get a public brand by identifier' })
   @ApiParam({ name: 'identifier', description: 'UUID, slug или код 1С / UUID, slug, or 1C code.', example: 'demo-brand' })
   @ApiOkResponse({
@@ -39,6 +45,6 @@ export class BrandsController {
   })
   @ApiNotFoundResponse({ type: ApiErrorResponseDto, description: 'Бренд отсутствует, удалён или не имеет публичных номенклатур / Brand is absent, deleted, or has no public nomenclatures.', example: { error: { code: 'BRAND_NOT_FOUND', message: 'Brand not found.' } } })
   findOne(@Param('identifier') identifier: string): Promise<BrandDetailDto> {
-    return this.brandsService.findOne(identifier);
+    return this.publicCacheService.getOrSet('brands:detail', { identifier }, () => this.brandsService.findOne(identifier));
   }
 }

@@ -1,0 +1,184 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: gateway-config, namespace: rmc }
+data:
+  default.conf: |
+    server {
+      listen 80;
+      absolute_redirect off;
+      client_max_body_size 2048m;
+      location /api/ { proxy_pass http://django-api:8000; }
+      location /auth/ { proxy_pass http://django-api:8000; }
+      location /site-api/ { proxy_pass http://nest-api:3001; }
+      location /maps/ { proxy_pass http://tileserver:7777/; }
+      location /local-static/ { proxy_pass http://minio:9000; }
+      location /local-media/ { proxy_pass http://minio:9000; }
+      location /backupvm/ { proxy_pass http://minio:9000; }
+      location = / { return 302 /admin/; }
+      # Preserve the requested URI.  A proxy_pass ending in /admin/ here turns
+      # /admin/login/ into /admin/admin/login/, causing an infinite login redirect.
+      location / { proxy_pass http://django-api:8000; }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: django-api, namespace: rmc }
+spec: { selector: { app: django-api }, ports: [{ name: http, port: 8000 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: django-api, namespace: rmc }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: django-api } }
+  template:
+    metadata: { labels: { app: django-api } }
+    spec:
+      containers:
+        - name: django-api
+          image: rmc-django:local
+          imagePullPolicy: Never
+          command: ['gunicorn']
+          args: ['--bind', '0.0.0.0:8000', '--workers', '2', '--threads', '2', '--timeout', '90', 'rmc_rest_api.wsgi']
+          envFrom: [{ secretRef: { name: django-runtime } }]
+          env: [{ name: FRONTEND_DOMEN, value: 'http://127.0.0.1:8080, http://localhost:8080' }, { name: JWT_PRIVATE_KEY_PATH, value: /run/secrets/jwt/private.pem }, { name: JWT_PUBLIC_KEY_PATH, value: /run/secrets/jwt/public.pem }]
+          ports: [{ name: http, containerPort: 8000 }]
+          readinessProbe: { httpGet: { path: /healthz/, port: http } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: '2', memory: 2Gi } }
+          volumeMounts: [{ name: jwt, mountPath: /run/secrets/jwt, readOnly: true }]
+      volumes: [{ name: jwt, secret: { secretName: django-jwt-keys } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: nest-api, namespace: rmc }
+spec: { selector: { app: nest-api }, ports: [{ name: http, port: 3001 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: nest-api, namespace: rmc }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: nest-api } }
+  template:
+    metadata: { labels: { app: nest-api } }
+    spec:
+      containers:
+        - name: nest-api
+          image: rmc-nest:local
+          imagePullPolicy: Never
+          envFrom: [{ secretRef: { name: nest-runtime } }]
+          env:
+            - { name: PORT, value: '3001' }
+            - { name: SOURCE_DB_HOST, value: postgres }
+            - { name: SOURCE_DB_PORT, value: '5432' }
+            - { name: SOURCE_DB_NAME, value: rmc }
+            - { name: CACHE_REDIS_URL, value: redis://redis:6379/1 }
+            - { name: MINIO_ENDPOINT, value: minio }
+            - { name: MINIO_PORT, value: '9000' }
+            - { name: MINIO_USE_SSL, value: 'false' }
+            - { name: MINIO_REGION, value: us-east-1 }
+            - { name: MINIO_MEDIA_BUCKET, value: local-media }
+            - { name: JWT_PUBLIC_KEY_PATH, value: /run/secrets/jwt/public.pem }
+            - { name: JWT_ISSUER, value: rmc-django }
+            - { name: JWT_AUDIENCE, value: rmc-site-api }
+          ports: [{ name: http, containerPort: 3001 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http } }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: '1', memory: 512Mi } }
+          volumeMounts: [{ name: jwt, mountPath: /run/secrets/jwt, readOnly: true }]
+      volumes: [{ name: jwt, secret: { secretName: nest-jwt-public } }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: celery-worker, namespace: rmc }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: celery-worker } }
+  template:
+    metadata: { labels: { app: celery-worker } }
+    spec:
+      containers:
+        - name: worker
+          image: rmc-django:local
+          imagePullPolicy: Never
+          command: ['celery', '-A', 'rmc_rest_api', 'worker', '--loglevel=INFO', '--concurrency=2', '--prefetch-multiplier=1']
+          envFrom: [{ secretRef: { name: django-runtime } }]
+          env: [{ name: JWT_PRIVATE_KEY_PATH, value: /run/secrets/jwt/private.pem }, { name: JWT_PUBLIC_KEY_PATH, value: /run/secrets/jwt/public.pem }]
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: '2', memory: 2Gi } }
+          volumeMounts: [{ name: jwt, mountPath: /run/secrets/jwt, readOnly: true }]
+      volumes: [{ name: jwt, secret: { secretName: django-jwt-keys } }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: celery-beat, namespace: rmc }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: celery-beat } }
+  template:
+    metadata: { labels: { app: celery-beat } }
+    spec:
+      containers:
+        - name: beat
+          image: rmc-django:local
+          imagePullPolicy: Never
+          command: ['celery', '-A', 'rmc_rest_api', 'beat', '--loglevel=INFO', '--schedule=/tmp/celerybeat-schedule']
+          envFrom: [{ secretRef: { name: django-runtime } }]
+          env: [{ name: JWT_PRIVATE_KEY_PATH, value: /run/secrets/jwt/private.pem }, { name: JWT_PUBLIC_KEY_PATH, value: /run/secrets/jwt/public.pem }]
+          resources: { requests: { cpu: 50m, memory: 256Mi }, limits: { cpu: '1', memory: 1Gi } }
+          volumeMounts: [{ name: jwt, mountPath: /run/secrets/jwt, readOnly: true }]
+      volumes: [{ name: jwt, secret: { secretName: django-jwt-keys } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: tileserver, namespace: rmc }
+spec: { selector: { app: tileserver }, ports: [{ name: http, port: 7777 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: tileserver, namespace: rmc }
+spec:
+  # The actual .mbtiles source is intentionally not committed. Set this to 1
+  # after mounting siberian-fed-district.mbtiles into /data.
+  replicas: 0
+  selector: { matchLabels: { app: tileserver } }
+  template:
+    metadata: { labels: { app: tileserver } }
+    spec:
+      containers:
+        - name: tileserver
+          image: maptiler/tileserver-gl:latest
+          args: ['--file', '/data/siberian-fed-district.mbtiles', '--port', '7777', '--public_url', 'http://localhost:8080/maps/']
+          ports: [{ name: http, containerPort: 7777 }]
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: '1', memory: 1Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: gateway, namespace: rmc }
+spec: { selector: { app: gateway }, ports: [{ name: http, port: 80 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: gateway, namespace: rmc }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: gateway } }
+  template:
+    metadata: { labels: { app: gateway } }
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.31.1
+          ports: [{ name: http, containerPort: 80 }]
+          volumeMounts: [{ name: config, mountPath: /etc/nginx/conf.d/default.conf, subPath: default.conf }]
+      volumes: [{ name: config, configMap: { name: gateway-config } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: { name: rmc, namespace: rmc }
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: gateway, port: { number: 80 } } }

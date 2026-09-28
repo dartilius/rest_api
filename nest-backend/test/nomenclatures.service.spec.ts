@@ -4,7 +4,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { DataSource } from 'typeorm';
-import { NomenclatureFiltersDto, NomenclatureQueryDto } from '../src/nomenclatures/dto/nomenclature-query.dto';
+import { NomenclatureFiltersDto, NomenclatureMapQueryDto, NomenclatureQueryDto } from '../src/nomenclatures/dto/nomenclature-query.dto';
 import { NomenclaturesService } from '../src/nomenclatures/nomenclatures.service';
 import type { MinioReadService } from '../src/storage/minio-read.service';
 
@@ -22,10 +22,10 @@ const row = {
   latitude: '56.010', longitude: '92.870', exterior_id: '00000000-0000-0000-0000-000000000004', exterior_source: 'exterior/acme.jpg',
 };
 
-test('allows a nomenclature list limit above 100', async () => {
+test('rejects a nomenclature list limit above 100', async () => {
   const query = plainToInstance(NomenclatureQueryDto, { limit: '1000' });
 
-  assert.deepEqual(await validate(query), []);
+  assert.equal((await validate(query)).some((error) => error.property === 'limit'), true);
   assert.equal(query.limit, 1000);
 });
 
@@ -117,7 +117,7 @@ test('validates filter-options body without pagination fields', async () => {
   assert.equal('ordering' in filters, false);
 });
 
-test('returns all matching public map points with compact camelCase fields', async () => {
+test('bounds public map points with a parameterized limit and compact camelCase fields', async () => {
   const calls: Array<{ sql: string; params: unknown[] }> = [];
   const source = {
     query: async (sql: string, params: unknown[]) => {
@@ -128,7 +128,7 @@ test('returns all matching public map points with compact camelCase fields', asy
   const minio = { getReadUrl: async (key: string | null) => key ? `signed:${key}` : null } as unknown as MinioReadService;
   const service = new NomenclaturesService(source, minio);
 
-  const result = await service.map({ citySlug: 'krasnoyarsk' });
+  const result = await service.map({ citySlug: 'krasnoyarsk', limit: 500 });
 
   assert.deepEqual(result, {
     count: 1,
@@ -147,8 +147,17 @@ test('returns all matching public map points with compact camelCase fields', asy
   assert.match(calls[0]?.sql ?? '', /nomenclature\.for_web = TRUE/);
   assert.match(calls[0]?.sql ?? '', /nomenclature\.is_active = TRUE/);
   assert.match(calls[0]?.sql ?? '', /ORDER BY type_of_place\.is_mall/);
-  assert.doesNotMatch(calls[0]?.sql ?? '', /LIMIT\s+\$/);
-  assert.deepEqual(calls[0]?.params, [['krasnoyarsk']]);
+  assert.match(calls[0]?.sql ?? '', /LIMIT\s+\$2/);
+  assert.deepEqual(calls[0]?.params, [['krasnoyarsk'], 500]);
+});
+
+test('validates the map point limit and supplies its bounded default', async () => {
+  const defaultQuery = plainToInstance(NomenclatureMapQueryDto, {});
+  const tooLarge = plainToInstance(NomenclatureMapQueryDto, { limit: '1001' });
+
+  assert.deepEqual(await validate(defaultQuery), []);
+  assert.equal(defaultQuery.limit, 1000);
+  assert.equal((await validate(tooLarge)).some((error) => error.property === 'limit'), true);
 });
 
 test('keeps a map point without coordinates and incomplete schedule', async () => {
@@ -163,7 +172,7 @@ test('keeps a map point without coordinates and incomplete schedule', async () =
   const minio = { getReadUrl: async () => null } as unknown as MinioReadService;
   const service = new NomenclaturesService(source, minio);
 
-  const result = await service.map({});
+  const result = await service.map({ limit: 1000 });
 
   assert.equal(result.results[0]?.coordinates, null);
   assert.equal(result.results[0]?.perDay, null);

@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Namespace
+metadata: { name: monitoring }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: flower-ui, namespace: monitoring }
+spec: { selector: { app: flower }, ports: [{ name: http, port: 5555 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: flower, namespace: monitoring }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: flower } }
+  template:
+    metadata: { labels: { app: flower } }
+    spec:
+      containers:
+        - name: flower
+          image: mher/flower:2.0
+          command: ['sh', '-ec']
+          args: ['celery --broker="$CELERY_BROKER" flower --port=5555']
+          envFrom: [{ secretRef: { name: flower-runtime } }]
+          env: [{ name: FLOWER_PORT, value: '5555' }]
+          ports: [{ name: http, containerPort: 5555 }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: pgadmin, namespace: monitoring }
+spec: { selector: { app: pgadmin }, ports: [{ name: http, port: 80, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: pgadmin, namespace: monitoring }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: pgadmin } }
+  template:
+    metadata: { labels: { app: pgadmin } }
+    spec:
+      containers:
+        - name: pgadmin
+          image: dpage/pgadmin4:9.9.0
+          env: [{ name: PGADMIN_DEFAULT_EMAIL, value: admin@example.com }, { name: PGADMIN_DEFAULT_PASSWORD, value: LocalAdmin!2026 }, { name: PGADMIN_LISTEN_PORT, value: '80' }]
+          ports: [{ name: http, containerPort: 80 }]
