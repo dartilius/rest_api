@@ -91,6 +91,9 @@ EMAIL_BACKEND = os.environ.get(
 )
 
 EMAIL_TIMEOUT = 10
+PASSWORD_RESET_CODE_AUDIT_EMAIL = os.environ.get(
+    'PASSWORD_RESET_CODE_AUDIT_EMAIL', 'info@krasrm.com'
+)
 
 if not DEBUG:
     EMAIL_SSL_CERTFILE = None

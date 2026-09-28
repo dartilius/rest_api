@@ -62,6 +62,22 @@ class RegistrationEmailVerification(models.Model):
         return self.verified_at is not None and self.expires_at > timezone.now()
 
 
+class PasswordResetEmailVerification(models.Model):
+    """One-time email verification state used before a password reset."""
+
+    email = models.EmailField(max_length=255, unique=True)
+    code = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'password_reset_email_verification'
+        verbose_name = 'Подтверждение сброса пароля'
+        verbose_name_plural = 'Подтверждения сброса пароля'
+        indexes = [models.Index(fields=['expires_at'])]
+
+
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Пользователи."""
 

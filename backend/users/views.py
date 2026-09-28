@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
@@ -20,10 +21,13 @@ from users.models import CustomUser, RegistrationEmailVerification
 from users.permissions import SuperuserCUDAuthRetrieve
 from users.serializers import CurrentUserSerializer, CustomUserSerializer, RegisterUserSerializer, \
     CustomUserShortSerializer, PasswordResetByEmailSerializer, GetPasswordSerializer, \
-    EmailCheckSerializer, RegistrationEmailSerializer, RegistrationEmailCodeSerializer
+    EmailCheckSerializer, RegistrationEmailSerializer, RegistrationEmailCodeSerializer, \
+    PasswordResetCodeRequestSerializer
 from users.services import (
     confirm_registration_verification_code,
+    consume_password_reset_verification_code,
     send_registration_verification_code,
+    send_password_reset_verification_code,
 )
 
 
@@ -302,6 +306,29 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return Response({'detail': 'Email подтверждён.'})
 
     @extend_schema(
+        summary="Отправить код подтверждения сброса пароля",
+        request=PasswordResetCodeRequestSerializer,
+        responses={200: OpenApiResponse(description="Код отправлен на email.")},
+    )
+    @action(
+        methods=['post'],
+        url_path="request-reset-password-code",
+        url_name="request-reset-password-code",
+        detail=False,
+        permission_classes=[AllowAny],
+    )
+    def request_reset_password_code(self, request, *args, **kwargs):
+        serializer = PasswordResetCodeRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        if not CustomUser.objects.filter(email__iexact=email, is_active=True).exists():
+            raise NotFound("Пользователь с таким email не найден.")
+
+        send_password_reset_verification_code(email)
+        return Response({"detail": "Код подтверждения отправлен на email."})
+
+    @extend_schema(
         summary="Сброс пароля по email",
         request=PasswordResetByEmailSerializer,
         responses={
@@ -330,8 +357,17 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         except CustomUser.DoesNotExist:
             raise NotFound("Пользователь с таким email не найден.")
 
-        user.set_password(validated['new_password'])
-        user.save(update_fields=['password'])
+        with transaction.atomic():
+            if not consume_password_reset_verification_code(
+                validated['email'], validated['code']
+            ):
+                return Response(
+                    {'code': ['Неверный или просроченный код подтверждения.']},
+                    status=400,
+                )
+
+            user.set_password(validated['new_password'])
+            user.save(update_fields=['password'])
 
         return Response({"detail": "Пароль успешно изменён."})
 

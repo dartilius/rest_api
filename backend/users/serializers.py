@@ -287,6 +287,7 @@ class PasswordResetByEmailSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     new_password = serializers.CharField(write_only=True, required=True)
     new_password_confirm = serializers.CharField(write_only=True, required=True)
+    code = serializers.RegexField(r'^\d{6}$', write_only=True, required=True)
 
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
@@ -294,6 +295,10 @@ class PasswordResetByEmailSerializer(serializers.Serializer):
                 {"new_password_confirm": "Пароли не совпадают."}
             )
         return attrs
+
+
+class PasswordResetCodeRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
 
 class GetPasswordSerializer(serializers.ModelSerializer):
     password = serializers.SerializerMethodField()
