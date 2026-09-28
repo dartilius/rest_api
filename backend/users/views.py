@@ -171,7 +171,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         summary="Проверка занятости email",
-        parameters=[EmailCheckSerializer],
+        request=EmailCheckSerializer,
         responses={
             200: OpenApiResponse(description="Email отсутствует в базе."),
             204: OpenApiResponse(description="Email уже есть в базе."),
@@ -179,7 +179,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         },
     )
     @action(
-        methods=['get'],
+        methods=['post'],
         url_path='check-email',
         url_name='check-email',
         detail=False,
@@ -187,7 +187,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     )
     def check_email(self, request, *args, **kwargs):
         """Возвращает 204, если email уже зарегистрирован, иначе пустой 200."""
-        serializer = EmailCheckSerializer(data=request.query_params)
+        serializer = EmailCheckSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         if CustomUser.objects.filter(
