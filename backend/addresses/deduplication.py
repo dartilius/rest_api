@@ -52,6 +52,19 @@ def _is_missing(value: Any) -> bool:
     return value is None or value == ""
 
 
+def _coordinate_value(address: Address) -> tuple[str, str] | None:
+    if not address.coordinates_id:
+        return None
+    coordinates = address.coordinates
+    return (coordinates.latitude.strip(), coordinates.longitude.strip())
+
+
+def _metadata_value(address: Address, field_name: str) -> Any:
+    if field_name == "coordinates_id":
+        return _coordinate_value(address)
+    return getattr(address, field_name)
+
+
 def get_or_create_canonical_address(**address_fields: Any) -> tuple[Address, bool]:
     """Return the existing physical address or create it after hierarchy checks."""
     candidate = Address(**address_fields)
@@ -111,15 +124,22 @@ def _metadata_plan(addresses: list[Address], canonical: Address) -> tuple[dict[s
 
     for field_name in _METADATA_FIELDS:
         values = {
-            getattr(address, field_name)
+            _metadata_value(address, field_name)
             for address in addresses
-            if not _is_missing(getattr(address, field_name))
+            if not _is_missing(_metadata_value(address, field_name))
         }
         if len(values) > 1:
             conflicts.append(field_name)
             continue
         if values and _is_missing(getattr(canonical, field_name)):
-            updates[field_name] = values.pop()
+            value = values.pop()
+            if field_name == "coordinates_id":
+                source = next(
+                    address for address in addresses if _metadata_value(address, field_name) == value
+                )
+                updates[field_name] = source.coordinates_id
+            else:
+                updates[field_name] = value
 
     return updates, tuple(conflicts)
 
@@ -141,7 +161,7 @@ def deduplicate_final_addresses(
         queryset = Address.objects.filter(**identity).order_by("id")
 
         if not apply:
-            addresses = list(queryset)
+            addresses = list(queryset.select_related("coordinates"))
             if len(addresses) < 2:
                 continue
 
@@ -163,7 +183,10 @@ def deduplicate_final_addresses(
             continue
 
         with transaction.atomic():
-            addresses = list(queryset.select_for_update())
+            # `coordinates` is nullable.  `select_related()` would add a LEFT OUTER
+            # JOIN here, which PostgreSQL does not allow together with FOR UPDATE.
+            # Prefetch it separately so that only address rows are locked.
+            addresses = list(queryset.select_for_update().prefetch_related("coordinates"))
             if len(addresses) < 2:
                 continue
 
@@ -211,7 +234,9 @@ def address_metadata_conflicts() -> list[dict[str, Any]]:
     conflicts: list[dict[str, Any]] = []
     for identity in _identity_groups():
         identity.pop("address_count")
-        addresses = list(Address.objects.filter(**identity).order_by("id"))
+        addresses = list(
+            Address.objects.filter(**identity).select_related("coordinates").order_by("id")
+        )
         address_ids = [address.id for address in addresses]
         nomenclature_counts, counterparty_counts = _link_counts(address_ids)
         canonical = _choose_canonical(addresses, nomenclature_counts, counterparty_counts)
@@ -221,7 +246,10 @@ def address_metadata_conflicts() -> list[dict[str, Any]]:
 
         values = {
             field_name: [
-                {"address_id": str(address.id), "value": str(getattr(address, field_name) or "")}
+                {
+                    "address_id": str(address.id),
+                    "value": str(_metadata_value(address, field_name) or ""),
+                }
                 for address in addresses
             ]
             for field_name in fields
