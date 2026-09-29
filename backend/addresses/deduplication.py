@@ -204,3 +204,36 @@ def deduplicate_final_addresses(
             )
 
     return results
+
+
+def address_metadata_conflicts() -> list[dict[str, Any]]:
+    """Return read-only details for groups blocked by conflicting metadata."""
+    conflicts: list[dict[str, Any]] = []
+    for identity in _identity_groups():
+        identity.pop("address_count")
+        addresses = list(Address.objects.filter(**identity).order_by("id"))
+        address_ids = [address.id for address in addresses]
+        nomenclature_counts, counterparty_counts = _link_counts(address_ids)
+        canonical = _choose_canonical(addresses, nomenclature_counts, counterparty_counts)
+        _updates, fields = _metadata_plan(addresses, canonical)
+        if not fields:
+            continue
+
+        values = {
+            field_name: [
+                {"address_id": str(address.id), "value": str(getattr(address, field_name) or "")}
+                for address in addresses
+            ]
+            for field_name in fields
+        }
+        conflicts.append(
+            {
+                "canonical_id": str(canonical.id),
+                "address_ids": [str(address_id) for address_id in address_ids],
+                "conflict_fields": list(fields),
+                "values": values,
+                "nomenclature_links": sum(nomenclature_counts.values()),
+                "counterparty_links": sum(counterparty_counts.values()),
+            }
+        )
+    return conflicts
