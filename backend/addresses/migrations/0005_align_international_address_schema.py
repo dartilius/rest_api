@@ -47,8 +47,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS addresses_country_iso_code_uniq
     ON addresses_country (iso_code) WHERE iso_code IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS addresses_country_iso3_code_uniq
     ON addresses_country (iso3_code) WHERE iso3_code IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS addresses_region_country_name_uniq
-    ON addresses_region (country_id, name);
 CREATE INDEX IF NOT EXISTS region_country_name_idx
     ON addresses_region (country_id, name);
 
@@ -112,7 +110,6 @@ class Migration(migrations.Migration):
                         related_name="regions", null=True, blank=True,
                     ),
                 ),
-                migrations.AlterUniqueTogether(name="region", unique_together={("country", "name")}),
                 migrations.AddIndex(
                     model_name="region",
                     index=BTreeIndex(fields=["country", "name"], name="region_country_name_idx"),
