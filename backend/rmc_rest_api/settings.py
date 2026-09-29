@@ -82,13 +82,18 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
 
-if DEBUG or os.environ.get('DISABLE_EMAIL_SSL_VERIFY', 'true').lower() == 'true':
-    EMAIL_BACKEND = 'feedback.email_backend.CustomEmailBackend'
-    print("Using email backend without SSL verification")
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# The previously configured feedback.email_backend.CustomEmailBackend no longer
+# exists in this project. Use Django's maintained SMTP backend by default; it
+# verifies the server TLS certificate as intended.
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.smtp.EmailBackend',
+)
 
 EMAIL_TIMEOUT = 10
+PASSWORD_RESET_CODE_AUDIT_EMAIL = os.environ.get(
+    'PASSWORD_RESET_CODE_AUDIT_EMAIL', 'info@krasrm.com'
+)
 
 if not DEBUG:
     EMAIL_SSL_CERTFILE = None
