@@ -756,8 +756,8 @@ class AddressAdmin(admin.ModelAdmin):
     
     def save_model(self, request, obj, form, change):
         if obj.region and not obj.country:
-            obj.country = obj.region.federal_district.country
-        if obj.region and not obj.federal_district:
+            obj.country = obj.region.country
+        if obj.region and obj.region.federal_district and not obj.federal_district:
             obj.federal_district = obj.region.federal_district
         if obj.city and not obj.region:
             obj.region = obj.city.region

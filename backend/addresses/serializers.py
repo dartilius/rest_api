@@ -36,6 +36,7 @@ from .models import (
     AdministrativeTerritorialUnit, StreetType, Street,
     House, Building, Address, Coordinates
 )
+from .deduplication import get_or_create_canonical_address
 
 
 # ====================================================================================
@@ -67,7 +68,7 @@ class CountrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Country
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'iso_code', 'iso3_code']
         read_only_fields = ['id']
 
 
@@ -188,15 +189,16 @@ class RegionSerializer(serializers.ModelSerializer):
             Идентификатор часового пояса
     """
 
-    federal_district = serializers.PrimaryKeyRelatedField(read_only=True)
-    type_region = serializers.PrimaryKeyRelatedField(read_only=True)
+    country = serializers.PrimaryKeyRelatedField(read_only=True)
+    federal_district = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
+    type_region = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
     timezone = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
 
     class Meta:
         model = Region
         fields = [
             'id', 'name', 'abbreviated_name',
-            'federal_district', 'type_region', 'timezone'
+            'country', 'federal_district', 'type_region', 'timezone'
         ]
         read_only_fields = ['id']
 
@@ -502,10 +504,19 @@ class NestedCountrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Country
-        fields = ['name']
+        fields = ['name', 'iso_code', 'iso3_code']
         extra_kwargs = {
-            'name': {'validators': []}  # Отключаем валидацию уникальности
+            'name': {'validators': []},
+            'iso_code': {'validators': []},
+            'iso3_code': {'validators': []},
         }
+
+    def to_internal_value(self, data):
+        data = data.copy()
+        for field in ('iso_code', 'iso3_code'):
+            if data.get(field):
+                data[field] = data[field].upper()
+        return super().to_internal_value(data)
 
     def create(self, validated_data):
         """
@@ -533,6 +544,12 @@ class NestedCountrySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'name': 'Название страны обязательно для создания'
             })
+
+        iso_code = validated_data.get('iso_code')
+        if iso_code:
+            country = Country.objects.filter(iso_code=iso_code).first()
+            if country:
+                return country
 
         # Используем get_or_create для избежания дублирования
         country, created = Country.objects.get_or_create(
@@ -689,17 +706,21 @@ class NestedRegionSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Создание или получение региона."""
+        country = self.context.get('country')
         federal_district = self.context.get('federal_district')
         type_region = self.context.get('type_region')
 
-        if not federal_district:
+        if not country and federal_district:
+            country = federal_district.country
+
+        if not country:
             raise serializers.ValidationError({
-                'federal_district': 'Федеральный округ обязателен для создания региона'
+                'country': 'Страна обязательна для создания региона'
             })
 
-        if not type_region:
+        if federal_district and federal_district.country_id != country.id:
             raise serializers.ValidationError({
-                'type_region': 'Тип региона обязателен для создания региона'
+                'federal_district': 'Федеральный округ принадлежит другой стране'
             })
 
         name = validated_data.get('name')
@@ -709,12 +730,14 @@ class NestedRegionSerializer(serializers.ModelSerializer):
                 'name': 'Название региона обязательно'
             })
 
-        # Ищем регион в рамках федерального округа
+        # Регион идентифицируется страной и именем; федеральный округ и тип —
+        # факультативные признаки конкретной административной системы.
         region, created = Region.objects.get_or_create(
-            federal_district=federal_district,
+            country=country,
             name=name,
             defaults={
                 **validated_data,
+                'country': country,
                 'federal_district': federal_district,
                 'type_region': type_region
             }
@@ -1249,21 +1272,18 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             type_region_serializer.is_valid(raise_exception=True)
             type_region = type_region_serializer.save()
 
-        # 4. Регион (требует федеральный округ и тип региона)
+        # 4. Регион: для мировой адресации требуется страна; федеральный
+        # округ и тип региона остаются необязательными.
         if region_data:
-            if not federal_district:
+            if not country:
                 raise serializers.ValidationError({
-                    'region': 'Для создания региона требуется федеральный округ'
-                })
-
-            if not type_region:
-                raise serializers.ValidationError({
-                    'region': 'Для создания региона требуется тип региона'
+                    'region': 'Для создания региона требуется страна'
                 })
 
             region_serializer = NestedRegionSerializer(
                 data=region_data,
                 context={
+                    'country': country,
                     'federal_district': federal_district,
                     'type_region': type_region
                 }
@@ -1382,47 +1402,7 @@ class AddressCreateSerializer(serializers.ModelSerializer):
             coordinates = coordinates_serializer.save()
 
 
-        # Формируем условия для поиска существующего адреса
-        address_lookup = {}
-
-        if country:
-            address_lookup['country'] = country
-        if federal_district:
-            address_lookup['federal_district'] = federal_district
-        if region:
-            address_lookup['region'] = region
-        if city:
-            address_lookup['city'] = city
-        if administrative_territory:
-            address_lookup['administrative_territory'] = administrative_territory
-        if administrative_unit:
-            address_lookup['administrative_unit'] = administrative_unit
-        if street:
-            address_lookup['street'] = street
-        if house:
-            address_lookup['house'] = house
-        if building:
-            address_lookup['building'] = building
-        if coordinates:
-            address_lookup['coordinates'] = coordinates
-
-        # Добавляем дополнительные поля
-        if validated_data.get('microdistrict'):
-            address_lookup['microdistrict'] = validated_data['microdistrict']
-        if validated_data.get('index'):
-            address_lookup['index'] = validated_data['index']
-
-        # Ищем существующий адрес
-        existing_address = None
-        if address_lookup:
-            existing_address = Address.objects.filter(**address_lookup).first()
-
-        # Если нашли существующий адрес - возвращаем его
-        if existing_address:
-            return existing_address
-
-        # Создаем новый адрес
-        address = Address.objects.create(
+        address, _created = get_or_create_canonical_address(
             country=country,
             federal_district=federal_district,
             region=region,

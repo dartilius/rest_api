@@ -81,6 +81,27 @@ class Country(models.Model):
         help_text="Полное официальное название страны на русском языке"
     )
 
+    iso_code = models.CharField(
+        "Код страны ISO 3166-1 alpha-2",
+        max_length=2,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        validators=[RegexValidator(r"^[A-Z]{2}$", "Используйте двухбуквенный код ISO в верхнем регистре")],
+        help_text="Например, RU, US, DE. Поле временно допускает NULL для уже загруженных стран."
+    )
+
+    iso3_code = models.CharField(
+        "Код страны ISO 3166-1 alpha-3",
+        max_length=3,
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[RegexValidator(r"^[A-Z]{3}$", "Используйте трёхбуквенный код ISO в верхнем регистре")],
+        help_text="Например, RUS, USA, DEU."
+    )
+
     class Meta:
         verbose_name = "Страна"
         verbose_name_plural = "Страны"
@@ -110,8 +131,17 @@ class Country(models.Model):
         if len(self.name) > 255:
             raise ValidationError({'name': 'Название страны слишком длинное (максимум 255 символов)'})
 
+        if self.iso_code:
+            self.iso_code = self.iso_code.upper()
+        if self.iso3_code:
+            self.iso3_code = self.iso3_code.upper()
+
     def save(self, *args, **kwargs):
         """Сохранение модели страны с дополнительной обработкой."""
+        if self.iso_code:
+            self.iso_code = self.iso_code.upper()
+        if self.iso3_code:
+            self.iso3_code = self.iso3_code.upper()
         self.full_clean()
         super().save(*args, **kwargs)
 
@@ -402,18 +432,30 @@ class Region(models.Model):
         help_text="Сокращенное название региона (если есть)"
     )
 
+    country = models.ForeignKey(
+        "Country",
+        on_delete=models.PROTECT,
+        related_name="regions",
+        verbose_name="Страна",
+        help_text="Страна, которой принадлежит административная единица"
+    )
+
     federal_district = models.ForeignKey(
         "FederalDistrict",
         on_delete=models.PROTECT,
         related_name="regions",
+        null=True,
+        blank=True,
         verbose_name="Федеральный округ",
-        help_text="Федеральный округ, в который входит регион"
+        help_text="Факультативный промежуточный уровень для стран, где он используется"
     )
 
     type_region = models.ForeignKey(
         "TypeRegion",
         on_delete=models.PROTECT,
         related_name="regions",
+        null=True,
+        blank=True,
         verbose_name="Тип региона",
         help_text="Тип региона (область, край, республика и т.д.)"
     )
@@ -432,12 +474,12 @@ class Region(models.Model):
         verbose_name = "Регион"
         verbose_name_plural = "Регионы"
         db_table = "addresses_region"
-        unique_together = ("federal_district", "name")
-        ordering = ['federal_district__name', 'name']
+        unique_together = ("country", "name")
+        ordering = ['country__name', 'name']
 
         indexes = [
             BTreeIndex(fields=['name'], name='region_name_idx'),
-            BTreeIndex(fields=['federal_district', 'name'], name='region_fd_name_idx'),
+            BTreeIndex(fields=['country', 'name'], name='region_country_name_idx'),
             GinIndex(
                 fields=['name'],
                 name='region_name_gin_idx',
@@ -466,6 +508,12 @@ class Region(models.Model):
             else:
                 return f"{self.name} {type_region.abbreviated_name}"
         return self.name
+
+    def clean(self):
+        if self.federal_district and self.federal_district.country_id != self.country_id:
+            raise ValidationError({
+                'federal_district': 'Федеральный округ должен принадлежать той же стране, что и регион'
+            })
 
     # def __str__(self):
     #     """Форматированное строковое представление региона."""
@@ -1409,13 +1457,16 @@ class Address(models.Model):
 
     index = models.CharField(
         "Почтовый индекс",
-        max_length=6,
+        max_length=20,
         validators=[
-            RegexValidator(r"^\d{6}$", "Индекс должен содержать 6 цифр"),
+            RegexValidator(
+                r"^[A-Za-z0-9][A-Za-z0-9 -]{0,19}$",
+                "Почтовый индекс может содержать буквы, цифры, пробелы и дефисы"
+            ),
         ],
         blank=True,
         null=True,
-        help_text="6-значный почтовый индекс"
+        help_text="Почтовый индекс в национальном формате страны"
     )
 
     latitude = models.CharField(
@@ -1549,9 +1600,9 @@ class Address(models.Model):
         elif self.federal_district:
             return self.federal_district.country
         elif self.region:
-            return self.region.federal_district.country
+            return self.region.country
         elif self.city:
-            return self.city.region.federal_district.country
+            return self.city.region.country
         return None
 
     def _get_region(self):
@@ -1639,12 +1690,39 @@ class Address(models.Model):
         if self.city and not self.region:
             errors['city'] = 'Для указания города должен быть указан регион'
 
-        # Проверка 5: Регион требует федеральный округ (для России)
-        if self.region and self.region.federal_district.country.name == "Россия" and not self.federal_district:
-            # Автоматически заполняем федеральный округ из региона
+        if self.city and self.region and self.city.region_id != self.region_id:
+            errors['city'] = 'Город не соответствует региону'
+        if self.street and self.city and self.street.city_id != self.city_id:
+            errors['street'] = 'Улица не соответствует городу'
+        if self.house and self.street and self.house.street_id != self.street_id:
+            errors['house'] = 'Дом не соответствует улице'
+        if self.building and self.house and self.building.house_id != self.house_id:
+            errors['building'] = 'Строение не соответствует дому'
+        if (
+            self.administrative_territory
+            and self.city
+            and self.administrative_territory.city_id != self.city_id
+        ):
+            errors['administrative_territory'] = 'Территория не соответствует городу'
+        if self.administrative_unit and self.city and self.administrative_unit.city_id != self.city_id:
+            errors['administrative_unit'] = 'Единица не соответствует городу'
+        if (
+            self.administrative_unit
+            and self.administrative_territory
+            and self.administrative_unit.administrative_territory_id
+            != self.administrative_territory_id
+        ):
+            errors['administrative_unit'] = 'Единица не соответствует территории'
+
+        # Федеральный округ — необязательный уровень, но при наличии обязан
+        # совпадать с уровнем региона.
+        if self.region and self.region.federal_district and not self.federal_district:
             self.federal_district = self.region.federal_district
         elif self.federal_district and self.region and self.federal_district != self.region.federal_district:
             errors['federal_district'] = 'Федеральный округ не соответствует региону'
+
+        if self.country and self.region and self.country_id != self.region.country_id:
+            errors['country'] = 'Страна не соответствует региону'
 
         if errors:
             raise ValidationError(errors)
@@ -1657,29 +1735,41 @@ class Address(models.Model):
 
     def clean(self):
         """Валидация адреса перед сохранением."""
-        # Проверяем целостность иерархии
-        self.validate_hierarchy()
-
         # Автоматически заполняем недостающие поля из иерархии
         self._auto_fill_hierarchy()
 
+        # Проверяем целостность уже полной иерархии
+        self.validate_hierarchy()
+
         # Проверяем почтовый индекс
-        if self.index and len(self.index) != 6:
-            raise ValidationError({'index': 'Почтовый индекс должен содержать 6 цифр'})
+        if self.index:
+            self.index = self.index.strip()
 
     def _auto_fill_hierarchy(self):
         """Автоматически заполняет недостающие поля из иерархии."""
-        # Заполняем страну, если она не указана, но есть другие компоненты
-        if not self.country and self.region:
-            self.country = self.region.federal_district.country
+        if self.building and not self.house:
+            self.house = self.building.house
+        if self.house and not self.street:
+            self.street = self.house.street
+        if self.street and not self.city:
+            self.city = self.street.city
+        if self.administrative_unit:
+            if not self.city:
+                self.city = self.administrative_unit.city
+            if not self.administrative_territory:
+                self.administrative_territory = self.administrative_unit.administrative_territory
 
-        # Заполняем федеральный округ для России
-        if self.country and self.country.name == "Россия" and self.region and not self.federal_district:
-            self.federal_district = self.region.federal_district
-
-        # Заполняем регион из города
+        # Заполняем регион из города до страны.
         if not self.region and self.city:
             self.region = self.city.region
+
+        # Заполняем страну, если она не указана, но есть другие компоненты
+        if not self.country and self.region:
+            self.country = self.region.country
+
+        # Заполняем федеральный округ для России
+        if self.region and self.region.federal_district and not self.federal_district:
+            self.federal_district = self.region.federal_district
 
     def save(self, *args, **kwargs):
         """Сохранение адреса с дополнительной обработкой."""

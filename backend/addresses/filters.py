@@ -1,62 +1,51 @@
+"""
+Фильтры для справочника адресов.
+
+Фильтры позволяют искать и сортировать данные через API.
+Все фильтры поддерживают:
+- search — поиск по текстовым полям
+- ids — фильтр по списку UUID
+- ordering — сортировка
+"""
+
 import uuid
-from django_filters import FilterSet, CharFilter, UUIDFilter, BaseInFilter, OrderingFilter
+from django_filters import (
+    FilterSet,
+    CharFilter,
+    UUIDFilter,
+    BaseInFilter,
+    OrderingFilter,
+)
 from django.db.models import Q
 from .models import (
-    Country, FederalDistrict, TypeRegion, Timezone, Region,
-    LocalityType, City, AdministrativeTerritory,
-    AdministrativeTerritorialUnit, StreetType, Street,
-    House, Building, Address, Coordinates
+    Country,
+    FederalDistrict,
+    Region,
+    City,
+    AdministrativeTerritory,
+    AdministrativeTerritorialUnit,
+    Street,
+    House,
+    Building,
+    Address,
 )
 
-# ==================== БАЗОВЫЕ КЛАССЫ ====================
 
 class UUIDCommaInFilter(BaseInFilter, UUIDFilter):
-    """Фильтр для списка UUID через запятую."""
+    """Фильтр для списка UUID через запятую: ?ids=uuid1,uuid2,uuid3"""
 
-    def filter(self, qs, value):
-        if not value:
-            return qs
-
-        uuids = []
-        if isinstance(value, str):
-            for v in value.split(','):
-                v = v.strip()
-                if v:
-                    try:
-                        uuid.UUID(v)
-                        uuids.append(v)
-                    except (ValueError, AttributeError):
-                        continue
-
-        if not uuids:
-            return qs
-
-        return super().filter(qs, uuids)
+    pass
 
 
 class BaseFilter(FilterSet):
-    """Базовый фильтр с search, ids, ordering для ВСЕХ моделей."""
+    """Базовый фильтр с общими параметрами для всех моделей."""
 
-    search = CharFilter(
-        method='filter_search',
-        label='Поиск',
-        help_text='Поиск по названию'
-    )
-
-    ids = UUIDCommaInFilter(
-        field_name='id',
-        lookup_expr='in',
-        label='Идентификаторы',
-        help_text='Фильтр по ID через запятую. Пример: ?ids=uuid1,uuid2,uuid3'
-    )
-
-    ordering = OrderingFilter(
-        label='Сортировка',
-        help_text='Сортировка результатов. Пример: ?ordering=name'
-    )
+    search = CharFilter(method="filter_search", label="Поиск")
+    ids = UUIDCommaInFilter(field_name="id", lookup_expr="in", label="ID")
+    ordering = OrderingFilter(label="Сортировка")
 
     def filter_search(self, queryset, name, value):
-        """По умолчанию ищем по полю name."""
+        """Поиск по полю name (можно переопределить в наследниках)."""
         if not value:
             return queryset
         return queryset.filter(name__icontains=value)
@@ -65,127 +54,113 @@ class BaseFilter(FilterSet):
         abstract = True
 
 
-# ==================== КОНКРЕТНЫЕ ФИЛЬТРЫ ====================
-
 class CountryFilter(BaseFilter):
-    class Meta(BaseFilter.Meta):
-        model = Country
-        fields = ['search', 'ids']
-        ordering_fields = ['name']
+    """Фильтр для стран. Ищет по названию."""
 
-
-class FederalDistrictFilter(BaseFilter):
     def filter_search(self, queryset, name, value):
         if not value:
             return queryset
         return queryset.filter(
-            Q(name__icontains=value) |
-            Q(abbreviated_name__icontains=value)
+            Q(name__icontains=value)
+            | Q(iso_code__icontains=value)
+            | Q(iso3_code__icontains=value)
         )
 
-    class Meta(BaseFilter.Meta):
-        model = FederalDistrict
-        fields = ['search', 'ids']
-        ordering_fields = ['name', 'abbreviated_name']
+    class Meta:
+        model = Country
+        fields = ["search", "ids"]
+        ordering_fields = ["name"]
 
 
 class RegionFilter(BaseFilter):
-    # ДОБАВЛЯЕМ фильтр по федеральным округам
+    """Фильтр для регионов."""
+
     federal_districts = UUIDCommaInFilter(
-        field_name='federal_district_id',
-        lookup_expr='in',
-        label='Федеральные округа',
-        help_text='Фильтрация по федеральным округам. Пример: ?federal_districts=uuid-цфо,uuid-сзфо'
+        field_name="federal_district_id", lookup_expr="in", label="Федеральные округа"
+    )
+    countries = UUIDCommaInFilter(
+        field_name="country_id", lookup_expr="in", label="Страны"
     )
 
     def filter_search(self, queryset, name, value):
         if not value:
             return queryset
         return queryset.filter(
-            Q(name__icontains=value) |
-            Q(abbreviated_name__icontains=value) |
-            Q(federal_district__name__icontains=value)
+            Q(name__icontains=value)
+            | Q(abbreviated_name__icontains=value)
+            | Q(country__name__icontains=value)
+            | Q(federal_district__name__icontains=value)
         )
 
-    class Meta(BaseFilter.Meta):
+    class Meta:
         model = Region
-        fields = ['search', 'ids', 'federal_districts']
-        ordering_fields = ['name', 'abbreviated_name', 'federal_district__name']
+        fields = ["search", "ids", "countries", "federal_districts"]
+        ordering_fields = ["name", "country__name", "federal_district__name"]
 
 
 class CityFilter(BaseFilter):
-    # ДОБАВЛЯЕМ фильтр по регионам
-    regions = UUIDCommaInFilter(
-        field_name='region_id',
-        lookup_expr='in',
-        label='Регионы',
-        help_text='Фильтрация по регионам. Пример: ?regions=uuid-московская-обл,uuid-ленинградская-обл'
-    )
+    """Фильтр для городов."""
 
-    # ОПЦИОНАЛЬНО: фильтр по федеральным округам (через регионы)
+    regions = UUIDCommaInFilter(
+        field_name="region_id", lookup_expr="in", label="Регионы"
+    )
     federal_districts = UUIDCommaInFilter(
-        field_name='region__federal_district_id',
-        lookup_expr='in',
-        label='Федеральные округа',
-        help_text='Фильтрация по федеральным округам. Пример: ?federal_districts=uuid-цфо'
+        field_name="region__federal_district_id",
+        lookup_expr="in",
+        label="Федеральные округа",
     )
 
     def filter_search(self, queryset, name, value):
         if not value:
             return queryset
         return queryset.filter(
-            Q(name__icontains=value) |
-            Q(region__name__icontains=value) |
-            Q(region__federal_district__name__icontains=value)
+            Q(name__icontains=value)
+            | Q(region__name__icontains=value)
+            | Q(region__federal_district__name__icontains=value)
         )
 
-    class Meta(BaseFilter.Meta):
+    class Meta:
         model = City
-        fields = ['search', 'ids', 'regions', 'federal_districts']
-        ordering_fields = ['name', 'region__name', 'region__federal_district__name']
+        fields = ["search", "ids", "regions", "federal_districts"]
+        ordering_fields = ["name", "region__name"]
 
 
 class StreetFilter(BaseFilter):
-    # ДОБАВЛЯЕМ фильтр по городам
-    cities = UUIDCommaInFilter(
-        field_name='city_id',
-        lookup_expr='in',
-        label='Города',
-        help_text='Фильтрация по городам. Пример: ?cities=uuid-москва,uuid-спб'
-    )
+    """Фильтр для улиц."""
+
+    cities = UUIDCommaInFilter(field_name="city_id", lookup_expr="in", label="Города")
 
     def filter_search(self, queryset, name, value):
         if not value:
             return queryset
         return queryset.filter(
-            Q(name__icontains=value) |
-            Q(city__name__icontains=value)
+            Q(name__icontains=value) | Q(city__name__icontains=value)
         )
 
-    class Meta(BaseFilter.Meta):
+    class Meta:
         model = Street
-        fields = ['search', 'ids', 'cities']
-        ordering_fields = ['name', 'city__name']
+        fields = ["search", "ids", "cities"]
+        ordering_fields = ["name", "city__name"]
 
 
-# УПРОЩЁННЫЙ AddressFilter
 class AddressFilter(BaseFilter):
     """
-    ФИЛЬТР ДЛЯ АДРЕСОВ ТОЛЬКО С ГЛОБАЛЬНЫМ ПОИСКОМ.
+    Фильтр для адресов.
 
-    📌 ПАРАМЕТРЫ:
-    • search - универсальный поиск по всем компонентам адреса
-    • ids - фильтр по ID адресов через запятую
-    • ordering - сортировка
-
-    📌 ПОИСК ИЩЕТ ПО:
-    • Стране, региону, городу, улице
-    • Номеру дома и строения
-    • Почтовому индексу и микрорайону
+    Поиск работает по ВСЕМ компонентам адреса:
+    стране, региону, городу, улице, дому, индексу.
     """
 
+    country = UUIDCommaInFilter(
+        field_name="country_id", lookup_expr="in", label="Страна"
+    )
+    region = UUIDCommaInFilter(field_name="region_id", lookup_expr="in", label="Регион")
+    city = UUIDCommaInFilter(field_name="city_id", lookup_expr="in", label="Город")
+    street = UUIDCommaInFilter(field_name="street_id", lookup_expr="in", label="Улица")
+    index = CharFilter(field_name="index", lookup_expr="icontains", label="Индекс")
+
     def filter_search(self, queryset, name, value):
-        """Глобальный поиск по всем компонентам адреса."""
+        """Поиск по всем компонентам адреса."""
         if not value:
             return queryset
 
@@ -195,27 +170,26 @@ class AddressFilter(BaseFilter):
         for word in words:
             if len(word) >= 2:
                 word_q = (
-                        Q(country__name__icontains=word) |  # Страна
-                        Q(region__name__icontains=word) |  # Регион
-                        Q(city__name__icontains=word) |  # Город
-                        Q(street__name__icontains=word) |  # Улица
-                        Q(house__number__icontains=word) |  # Номер дома
-                        Q(building__number__icontains=word) |  # Номер строения
-                        Q(microdistrict__icontains=word) |  # Микрорайон
-                        Q(index__icontains=word) |  # Почтовый индекс
-                        Q(administrative_territory__name__icontains=word) |  # Адм. округ
-                        Q(administrative_unit__name__icontains=word)  # Район/округ
+                    Q(country__name__icontains=word)
+                    | Q(region__name__icontains=word)
+                    | Q(city__name__icontains=word)
+                    | Q(street__name__icontains=word)
+                    | Q(house__number__icontains=word)
+                    | Q(building__number__icontains=word)
+                    | Q(index__icontains=word)
+                    | Q(microdistrict__icontains=word)
                 )
                 q_objects &= word_q
 
         return queryset.filter(q_objects).distinct()
 
-    class Meta(BaseFilter.Meta):
+    class Meta:
         model = Address
-        fields = ['search', 'ids']  # ← ТОЛЬКО search и ids!
-
+        fields = ["search", "ids", "country", "region", "city", "street", "index"]
         ordering_fields = [
-            'country__name', 'region__name', 'city__name',
-            'street__name', 'house__number', 'building__number',
-            'index', 'microdistrict',
+            "country__name",
+            "region__name",
+            "city__name",
+            "street__name",
+            "house__number",
         ]

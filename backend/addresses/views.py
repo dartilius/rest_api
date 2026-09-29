@@ -63,6 +63,7 @@ from .serializers import (
 from .filters import (
     CountryFilter, RegionFilter, CityFilter, StreetFilter, AddressFilter
 )
+from .deduplication import get_or_create_canonical_address
 from .schemas import (
     country_list_schema,
     city_list_schema, street_list_schema
@@ -304,14 +305,14 @@ class TimezoneViewSet(viewsets.ModelViewSet):
 class RegionViewSet(viewsets.ModelViewSet):
     """VIEWSET ДЛЯ УПРАВЛЕНИЯ РЕГИОНАМИ."""
     queryset = Region.objects.all().select_related(
-        'federal_district', 'type_region', 'timezone'
-    ).order_by('federal_district__name', 'name')
+        'country', 'federal_district', 'type_region', 'timezone'
+    ).order_by('country__name', 'name')
 
     serializer_class = RegionSerializer
     pagination_class = OptionalPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = RegionFilter  # ← С федеральными округами
-    ordering = ['federal_district__name', 'name']
+    ordering = ['country__name', 'name']
 
 
 @extend_schema(
@@ -730,7 +731,7 @@ class AddressViewSet(viewsets.ModelViewSet):
             if data.get('region'):
                 address_data['region'] = get_object_or_404(Region, id=data['region'])
                 if not address_data.get('country'):
-                    address_data['country'] = address_data['region'].federal_district.country
+                    address_data['country'] = address_data['region'].country
 
             if data.get('city'):
                 address_data['city'] = get_object_or_404(City, id=data['city'])
@@ -761,16 +762,15 @@ class AddressViewSet(viewsets.ModelViewSet):
             if data.get('index'):
                 address_data['index'] = data['index']
 
-            # Создаем адрес
-            serializer = AddressCreateSerializer(data=address_data)
-            serializer.is_valid(raise_exception=True)
-            address = serializer.save()
+            # Повторный запрос с той же физической цепочкой возвращает
+            # существующий адрес; индекс и координаты не создают второй адрес.
+            address, created = get_or_create_canonical_address(**address_data)
 
             # Возвращаем результат
             read_serializer = AddressReadSerializer(address)
             return Response(
                 read_serializer.data,
-                status=status.HTTP_201_CREATED
+                status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
             )
 
         except Exception as e:

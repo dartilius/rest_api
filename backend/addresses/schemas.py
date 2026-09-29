@@ -1,662 +1,860 @@
 """
-Схемы (OpenAPI) для фильтров адресов с актуальным функционалом.
+OpenAPI схемы для документации API адресов.
 
-МОДУЛЬ SCHEMAS:
-─────────────────────────────────────────────────────────────────────────────────────
-Содержит схемы OpenAPI для всех фильтров приложения addresses.
-Все схемы соответствуют текущему функционалу, описанному в filters.py.
-
-ТЕКУЩИЙ ФУНКЦИОНАЛ ФИЛЬТРАЦИИ:
-─────────────────────────────────────────────────────────────────────────────────────
-1. Базовые параметры для всех моделей:
-   • search - текстовый поиск по названию
-   • ids - фильтр по ID через запятую
-   • ordering - сортировка результатов
-
-2. Специфичные параметры для некоторых моделей:
-   • Регионы: federal_districts - фильтр по федеральным округам
-   • Города: regions, federal_districts - фильтры по регионам и федеральным округам
-   • Улицы: cities - фильтр по городам
-
-3. Адреса: только универсальный поиск (search) по всем полям адреса
-
-ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ ДЛЯ ФРОНТЕНД-РАЗРАБОТЧИКОВ:
-─────────────────────────────────────────────────────────────────────────────────────
-1. ПРОСТОЙ ПОИСК:
-   GET /api/addresses/addresses/?search=Москва Ленина
-
-2. МУЛЬТИВЫБОР ПО ID:
-   GET /api/addresses/addresses/?ids=uuid1,uuid2,uuid3
-
-3. ФИЛЬТРАЦИЯ СТРАН:
-   GET /api/addresses/countries/?search=Рос
-
-4. ФИЛЬТРАЦИЯ ГОРОДОВ ПО РЕГИОНАМ:
-   GET /api/addresses/cities/?regions=uuid1,uuid2
-
-5. ПАГИНАЦИЯ (ОПЦИОНАЛЬНО):
-   GET /api/addresses/addresses/?page=2&page_size=50
-
-6. СОРТИРОВКА:
-   GET /api/addresses/addresses/?ordering=city__name,-street__name
+Здесь описаны ВСЕ возможные параметры, запросы и ответы для каждого эндпоинта.
+Эта информация отображается в Swagger UI (/api/docs/) и в ReDoc (/api/redoc/).
 """
 
 from drf_spectacular.utils import OpenApiParameter, OpenApiExample, extend_schema
 from drf_spectacular.types import OpenApiTypes
 
-# ====================================================================================
-# МОДУЛЬ 1: ОБЩИЕ ПАРАМЕТРЫ ДЛЯ ВСЕХ ФИЛЬТРОВ
-# ====================================================================================
+# ══════════════════════════════════════════════════════════════════════════════════
+# ОБЩИЕ ПАРАМЕТРЫ (используются почти везде)
+# ══════════════════════════════════════════════════════════════════════════════════
 
-COMMON_FILTER_PARAMETERS = [
+COMMON_PARAMETERS = [
     OpenApiParameter(
-        name='ordering',
+        name="search",
         type=OpenApiTypes.STR,
         location=OpenApiParameter.QUERY,
-        description='''
-        Сортировка результатов.
-        
-        ФОРМАТ: имя_поля или -имя_поля для обратной сортировки
-        
-        ПРИМЕРЫ:
-        • ?ordering=name → сортировка по названию (A-Z)
-        • ?ordering=-name → обратная сортировка по названию (Z-A)
-        • ?ordering=city__name,-street__name → сортировка по городу, затем по улице в обратном порядке
-        
-        ДОСТУПНЫЕ ПОЛЯ ДЛЯ КАЖДОЙ МОДЕЛИ:
-        • Страны: name
-        • Федеральные округа: name, abbreviated_name
-        • Регионы: name, abbreviated_name, federal_district__name
-        • Города: name, region__name, region__federal_district__name
-        • Улицы: name, city__name
-        • Адреса: country__name, region__name, city__name, street__name, house__number, building__number, index, microdistrict
-        ''',
-        required=False,
-        examples=[
-            OpenApiExample('По возрастанию', value='name'),
-            OpenApiExample('По убыванию', value='-name'),
-            OpenApiExample('Сложная сортировка', value='city__name,-street__name'),
-        ]
+        description=(
+            "Поиск по текстовым полям.\n\n"
+            "Ищет вхождение подстроки без учёта регистра.\n"
+            "Набор полей зависит от модели:\n"
+            "- Страны: name, iso_code_2, iso_code_3\n"
+            "- Адм. единицы: name, code\n"
+            "- Нас. пункты: name, postal_code\n"
+            "- Улицы: name, locality__name\n"
+            "- Дома: number, street__name\n"
+            "- Адреса: ВСЕ компоненты (страна, город, улица, дом, индекс...)\n\n"
+            "Примеры:\n"
+            "- ?search=Москва\n"
+            "- ?search=Ленина"
+        ),
+    ),
+    OpenApiParameter(
+        name="ids",
+        type=OpenApiTypes.STR,
+        location=OpenApiParameter.QUERY,
+        description=(
+            "Фильтр по списку UUID через запятую.\n\n"
+            "Позволяет получить несколько конкретных записей за один запрос.\n"
+            "Некорректные UUID в списке игнорируются.\n\n"
+            "Пример: ?ids=550e8400-e29b-41d4-a716-446655440000,550e8400-e29b-41d4-a716-446655440001"
+        ),
+    ),
+    OpenApiParameter(
+        name="ordering",
+        type=OpenApiTypes.STR,
+        location=OpenApiParameter.QUERY,
+        description=(
+            "Сортировка результатов.\n\n"
+            "Доступные поля зависят от модели.\n"
+            'Префикс "-" для сортировки по убыванию.\n\n'
+            "Примеры:\n"
+            "- ?ordering=name — по имени (А→Я)\n"
+            "- ?ordering=-created — сначала новые"
+        ),
     ),
 ]
 
 PAGINATION_PARAMETERS = [
     OpenApiParameter(
-        name='page',
+        name="page",
         type=OpenApiTypes.INT,
         location=OpenApiParameter.QUERY,
-        description='''
-        Номер страницы для пагинации.
-        
-        📌 ВАЖНО: Пагинация отключена по умолчанию!
-        Без параметра ?page= возвращаются ВСЕ данные.
-        
-        Примеры:
-        • ?page=2 → включает пагинацию (страница 2)
-        • Без ?page= → все данные без пагинации
-        
-        РЕАЛИЗАЦИЯ:
-        Используется OptionalPagination из views.py, которая активируется только при наличии параметра ?page=
-        ''',
+        description=(
+            "Номер страницы для постраничной навигации.\n\n"
+            "ВАЖНО: Если параметр НЕ указан — возвращаются ВСЕ записи без пагинации.\n"
+            "Если указан — включается пагинация.\n\n"
+            "Пример: ?page=1 — первая страница"
+        ),
         required=False,
-        examples=[
-            OpenApiExample('Страница 1', value=1),
-            OpenApiExample('Страница 2', value=2),
-            OpenApiExample('Страница 3', value=3),
-        ]
     ),
     OpenApiParameter(
-        name='page_size',
+        name="limit",
         type=OpenApiTypes.INT,
         location=OpenApiParameter.QUERY,
-        description='''
-        Размер страницы при использовании пагинации.
-        
-        РАБОТАЕТ ТОЛЬКО С ПАРАМЕТРОМ ?page=
-        
-        Примеры:
-        • ?page=1&page_size=50 → страница 1, 50 записей
-        • ?page=2&page_size=100 → страница 2, 100 записей
-        • Без ?page= → параметр игнорируется
-        
-        ОГРАНИЧЕНИЯ:
-        • Максимальный размер: 1000 записей
-        • Минимальный размер: 1 запись
-        • По умолчанию: 100 записей
-        ''',
+        description=(
+            "Размер страницы (работает только вместе с ?page=).\n"
+            "По умолчанию: 100\n"
+            "Максимум: 1000\n\n"
+            "Пример: ?page=1&limit=50"
+        ),
         required=False,
-        examples=[
-            OpenApiExample('10 записей', value=10),
-            OpenApiExample('50 записей', value=50),
-            OpenApiExample('100 записей', value=100),
-            OpenApiExample('200 записей', value=200),
-        ]
     ),
 ]
 
-# ====================================================================================
-# МОДУЛЬ 2: ПАРАМЕТРЫ ДЛЯ ФИЛЬТРА АДРЕСОВ (УПРОЩЕННЫЕ)
-# ====================================================================================
 
-ADDRESS_FILTER_PARAMETERS = COMMON_FILTER_PARAMETERS + PAGINATION_PARAMETERS + [
-    OpenApiParameter(
-        name='search',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='''
-        УНИВЕРСАЛЬНЫЙ ПОИСК по всем компонентам адреса.
-        
-        КАК РАБОТАЕТ (логика из AddressFilter.filter_search):
-        1. Разбивает поисковую фразу на слова
-        2. Ищет совпадения по всем словам одновременно (логическое И)
-        3. Игнорирует слова короче 2 символов
-        4. Ищет в текстовых полях всех связанных моделей
-        
-        ПОЛЯ ПОИСКА:
-        • Страна: country__name
-        • Регион: region__name
-        • Город: city__name
-        • Улица: street__name
-        • Дом: house__number
-        • Строение: building__number
-        • Микрорайон: microdistrict
-        • Почтовый индекс: index
-        • Административный округ: administrative_territory__name
-        • Административная единица: administrative_unit__name
-        
-        ПРИМЕРЫ:
-        • ?search=Москва → адреса, содержащие "Москва" в любом поле
-        • ?search=Ленина 1 → адреса с "Ленина" И "1" (оба слова должны быть найдены)
-        • ?search=101000 → поиск по почтовому индексу
-        • ?search=д 12 → поиск домов с номером 12
-        • ?search=Москва Центральный → адреса Москвы в Центральном микрорайоне
-        
-        ОСОБЕННОСТИ:
-        • Регистронезависимый поиск
-        • Частичное совпадение (icontains)
-        • Логическое И для нескольких слов
-        ''',
-        required=False,
-        examples=[
-            OpenApiExample(
-                'Поиск по адресу',
-                value='Москва Ленина 1',
-                description='Найдет адреса, содержащие все три слова: Москва, Ленина и 1'
-            ),
-            OpenApiExample(
-                'Поиск по индексу',
-                value='101000',
-                description='Найдет адреса с почтовым индексом 101000'
-            ),
-            OpenApiExample(
-                'Поиск по микрорайону',
-                value='Центральный',
-                description='Найдет адреса в Центральном микрорайоне'
-            ),
-            OpenApiExample(
-                'Комбинированный поиск',
-                value='Санкт-Петербург Невский',
-                description='Найдет адреса в Санкт-Петербурге на Невском проспекте'
-            ),
+# ══════════════════════════════════════════════════════════════════════════════════
+# ПРИМЕРЫ ОТВЕТОВ (успешных и ошибочных)
+# ══════════════════════════════════════════════════════════════════════════════════
+
+# --- Успешные ответы ---
+
+COUNTRY_EXAMPLE = OpenApiExample(
+    name="Страна (200)",
+    description="Пример ответа со всеми полями страны",
+    value={
+        "id": "550e8400-e29b-41d4-a716-446655440001",
+        "name": "Россия",
+        "iso_code_2": "RU",
+        "iso_code_3": "RUS",
+        "iso_numeric": "643",
+        "is_active": True,
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+COUNTRY_LIST_EXAMPLE = OpenApiExample(
+    name="Список стран (200)",
+    description="Ответ с пагинацией",
+    value={
+        "count": 195,
+        "next": "http://localhost:8000/api/addresses/countries/?page=2",
+        "previous": None,
+        "results": [
+            {
+                "id": "...",
+                "name": "Россия",
+                "iso_code_2": "RU",
+                "iso_code_3": "RUS",
+                "iso_numeric": "643",
+                "is_active": True,
+            },
+            {
+                "id": "...",
+                "name": "США",
+                "iso_code_2": "US",
+                "iso_code_3": "USA",
+                "iso_numeric": "840",
+                "is_active": True,
+            },
+        ],
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+COUNTRY_LIST_NO_PAGINATION_EXAMPLE = OpenApiExample(
+    name="Список стран без пагинации (200)",
+    description="Ответ когда ?page= не указан — все записи",
+    value={
+        "count": 195,
+        "results": [
+            {"id": "...", "name": "Россия", "iso_code_2": "RU", "is_active": True},
+            {"id": "...", "name": "США", "iso_code_2": "US", "is_active": True},
+        ],
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+ADMIN_DIVISION_EXAMPLE = OpenApiExample(
+    name="Адм. единица (200)",
+    value={
+        "id": "550e8400-e29b-41d4-a716-446655440002",
+        "name": "Московская область",
+        "abbreviated_name": "МО",
+        "code": "50",
+        "level": {"id": "...", "name": "Регион", "level": 2, "show_in_address": True},
+        "is_active": True,
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+LOCALITY_EXAMPLE = OpenApiExample(
+    name="Населённый пункт (200)",
+    value={
+        "id": "550e8400-e29b-41d4-a716-446655440003",
+        "name": "Москва",
+        "postal_code": "101000",
+        "locality_type": {
+            "id": "...",
+            "name": "город",
+            "abbreviated_name": "г.",
+            "show_before_name": True,
+            "has_administrative_division": True,
+        },
+        "administrative_division": {"id": "...", "name": "Московская область"},
+        "is_active": True,
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+STREET_EXAMPLE = OpenApiExample(
+    name="Улица (200)",
+    value={
+        "id": "550e8400-e29b-41d4-a716-446655440004",
+        "name": "Ленина",
+        "locality": {"id": "...", "name": "Москва"},
+        "street_type": {
+            "id": "...",
+            "name": "улица",
+            "abbreviated_name": "ул.",
+            "show_before_name": True,
+        },
+        "is_active": True,
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+HOUSE_EXAMPLE = OpenApiExample(
+    name="Дом (200)",
+    value={
+        "id": "550e8400-e29b-41d4-a716-446655440005",
+        "number": "1",
+        "street": {"id": "...", "name": "Ленина"},
+        "is_active": True,
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+BUILDING_EXAMPLE = OpenApiExample(
+    name="Строение (200)",
+    value={
+        "id": "550e8400-e29b-41d4-a716-446655440006",
+        "number": "А",
+        "house": {"id": "...", "number": "1"},
+        "is_active": True,
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+ADDRESS_FULL = OpenApiExample(
+    name="Полный адрес (200)",
+    description="Адрес со всеми заполненными компонентами",
+    value={
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "country": {"id": "...", "name": "Россия", "iso_code_2": "RU"},
+        "administrative_division": {"id": "...", "name": "Московская область"},
+        "locality": {
+            "id": "...",
+            "name": "Москва",
+            "locality_type": {"name": "город", "abbreviated_name": "г."},
+        },
+        "street": {
+            "id": "...",
+            "name": "Ленина",
+            "street_type": {"name": "улица", "abbreviated_name": "ул."},
+        },
+        "house": {"id": "...", "number": "1"},
+        "building": {"id": "...", "number": "А"},
+        "coordinates": {"id": "...", "latitude": 55.755826, "longitude": 37.617300},
+        "postal_code": "101000",
+        "apartment": "15",
+        "additional_info": "подъезд 2, этаж 3, домофон 15",
+        "is_active": True,
+        "full_address": "101000, Россия, Московская область, г. Москва, ул. Ленина, д. 1, стр. А, кв. 15",
+        "created": "2026-06-20T08:00:00Z",
+        "updated": "2026-06-25T10:00:00Z",
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+ADDRESS_MINIMAL = OpenApiExample(
+    name="Минимальный адрес (200)",
+    description="Адрес только со страной (остальное не заполнено)",
+    value={
+        "id": "550e8400-...",
+        "country": {"id": "...", "name": "Россия", "iso_code_2": "RU"},
+        "administrative_division": None,
+        "locality": None,
+        "street": None,
+        "house": None,
+        "building": None,
+        "coordinates": None,
+        "postal_code": None,
+        "apartment": None,
+        "additional_info": None,
+        "is_active": True,
+        "full_address": "Россия",
+        "created": "2026-06-25T08:00:00Z",
+        "updated": "2026-06-25T08:00:00Z",
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+ADDRESS_CREATED = OpenApiExample(
+    name="Адрес создан (201)",
+    description="Ответ при успешном создании адреса",
+    value={
+        "id": "550e8400-...",
+        "country": {"name": "Россия", "iso_code_2": "RU"},
+        "locality": {"name": "Москва"},
+        "full_address": "Россия, г. Москва",
+        "is_active": True,
+        "created": "2026-06-25T10:00:00Z",
+        "updated": "2026-06-25T10:00:00Z",
+    },
+    response_only=True,
+    status_codes=["201"],
+)
+
+SEARCH_RESPONSE = OpenApiExample(
+    name="Результат поиска (200)",
+    value={
+        "total": 5,
+        "limit": 10,
+        "offset": 0,
+        "results": [
+            {
+                "id": "...",
+                "country": {"name": "Россия"},
+                "locality": {"name": "Москва"},
+                "street": {"name": "Ленина"},
+                "house": {"number": "1"},
+                "full_address": "Россия, г. Москва, ул. Ленина, д. 1",
+                "postal_code": "101000",
+                "is_active": True,
+            }
+        ],
+    },
+    response_only=True,
+    status_codes=["200"],
+)
+
+BULK_RESPONSE_ALL_OK = OpenApiExample(
+    name="Массовое создание — всё успешно (201)",
+    value={
+        "created": [
+            {"index": 0, "id": "uuid-1", "address": "Россия, г. Москва"},
+            {"index": 1, "id": "uuid-2", "address": "Россия, г. Санкт-Петербург"},
+        ],
+        "errors": [],
+        "total": 2,
+        "success_count": 2,
+        "error_count": 0,
+    },
+    response_only=True,
+    status_codes=["201"],
+)
+
+BULK_RESPONSE_PARTIAL = OpenApiExample(
+    name="Массовое создание — часть с ошибками (201)",
+    description="Первый адрес создан, второй — ошибка валидации",
+    value={
+        "created": [{"index": 0, "id": "uuid-1", "address": "Россия, г. Москва"}],
+        "errors": [{"index": 1, "errors": {"country": ["Обязательное поле."]}}],
+        "total": 2,
+        "success_count": 1,
+        "error_count": 1,
+    },
+    response_only=True,
+    status_codes=["201"],
+)
+
+BULK_RESPONSE_ALL_ERRORS = OpenApiExample(
+    name="Массовое создание — всё с ошибками (400)",
+    description="Ни один адрес не создан",
+    value={
+        "created": [],
+        "errors": [
+            {"index": 0, "errors": {"country": ["Обязательное поле."]}},
+            {"index": 1, "errors": {"country": ["Обязательное поле."]}},
+        ],
+        "total": 2,
+        "success_count": 0,
+        "error_count": 2,
+    },
+    response_only=True,
+    status_codes=["400"],
+)
+
+
+# --- Ошибки ---
+
+ERROR_400_VALIDATION = OpenApiExample(
+    name="Ошибка валидации (400)",
+    description="Ответ когда данные не прошли проверку",
+    value={
+        "country": ["Обязательное поле."],
+        "locality": ["Нельзя указать населённый пункт без страны."],
+    },
+    response_only=True,
+    status_codes=["400"],
+)
+
+ERROR_400_SEARCH_EMPTY = OpenApiExample(
+    name="Ошибка поиска — нет параметров (400)",
+    description="Ответ когда ни один параметр поиска не указан",
+    value={
+        "non_field_errors": [
+            'Укажите хотя бы один параметр для поиска. Например: {"query": "Москва"}'
         ]
-    ),
+    },
+    response_only=True,
+    status_codes=["400"],
+)
 
-    OpenApiParameter(
-        name='ids',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='''
-        ФИЛЬТРАЦИЯ ПО НЕСКОЛЬКИМ ID АДРЕСОВ через запятую.
-        
-        ФОРМАТ: UUID1,UUID2,UUID3
-        
-        ПРИМЕРЫ:
-        • ?ids=550e8400-e29b-41d4-a716-446655440000 → один адрес
-        • ?ids=uuid1,uuid2,uuid3 → несколько адресов
-        • ?ids= → пустой параметр (игнорируется)
-        
-        ВАЛИДАЦИЯ:
-        • Некорректные UUID игнорируются
-        • Пустые значения пропускаются
-        • Минимальная длина UUID: 36 символов
-        
-        РЕАЛИЗАЦИЯ:
-        Использует UUIDCommaInFilter из filters.py
-        ''',
-        required=False,
-        examples=[
-            OpenApiExample(
-                'Один ID',
-                value='550e8400-e29b-41d4-a716-446655440000',
-                description='Точный поиск по одному UUID адреса'
-            ),
-            OpenApiExample(
-                'Несколько ID',
-                value='uuid1,uuid2,uuid3',
-                description='Поиск по нескольким UUID адресов'
-            ),
-        ]
-    ),
-]
+ERROR_400_NOT_LIST = OpenApiExample(
+    name="Ошибка массового создания — не массив (400)",
+    description="Ответ когда в bulk_create передан не массив",
+    value={"error": "Ожидается список адресов в формате JSON-массива"},
+    response_only=True,
+    status_codes=["400"],
+)
 
-# ====================================================================================
-# МОДУЛЬ 3: ПАРАМЕТРЫ ДЛЯ ДРУГИХ МОДЕЛЕЙ
-# ====================================================================================
+ERROR_401 = OpenApiExample(
+    name="Не авторизован (401)",
+    description="Ответ при отсутствии или неверном JWT токене",
+    value={"detail": "Учетные данные не были предоставлены."},
+    response_only=True,
+    status_codes=["401"],
+)
 
-COUNTRY_FILTER_PARAMETERS = COMMON_FILTER_PARAMETERS + PAGINATION_PARAMETERS + [
-    OpenApiParameter(
-        name='search',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='''
-        ПОИСК ПО НАЗВАНИЮ СТРАНЫ.
-        
-        ЛОГИКА (из CountryFilter.filter_search):
-        • Ищет по полю name
-        • Частичное совпадение (icontains)
-        • Регистронезависимый поиск
-        
-        ПРИМЕРЫ:
-        • ?search=Рос → найдет "Россия", "Белоруссия"
-        • ?search=США → найдет "Соединенные Штаты Америки"
-        • ?search=land → найдет "England", "Ireland", "Finland"
-        ''',
-        required=False,
-        examples=[
-            OpenApiExample('Поиск России', value='Рос'),
-            OpenApiExample('Поиск США', value='США'),
-            OpenApiExample('Поиск Германии', value='Герма'),
-        ]
-    ),
+ERROR_403 = OpenApiExample(
+    name="Доступ запрещён (403)",
+    description="Ответ когда прав недостаточно",
+    value={"detail": "У вас недостаточно прав для выполнения данного действия."},
+    response_only=True,
+    status_codes=["403"],
+)
 
-    OpenApiParameter(
-        name='ids',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='Фильтрация по нескольким ID стран через запятую',
-        examples=[OpenApiExample('Две страны', value='uuid1,uuid2')]
-    ),
-]
+ERROR_404 = OpenApiExample(
+    name="Не найдено (404)",
+    description="Ответ когда объект с указанным ID не существует",
+    value={"detail": "Страница не найдена."},
+    response_only=True,
+    status_codes=["404"],
+)
 
-CITY_FILTER_PARAMETERS = COMMON_FILTER_PARAMETERS + PAGINATION_PARAMETERS + [
-    OpenApiParameter(
-        name='search',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='''
-        ПОИСК ПО ГОРОДАМ.
-        
-        ЛОГИКА (из CityFilter.filter_search):
-        • Ищет по названию города (name)
-        • Ищет по названию региона (region__name)
-        • Ищет по названию федерального округа (region__federal_district__name)
-        • Частичное совпадение (icontains)
-        
-        ПРИМЕРЫ:
-        • ?search=Моск → найдет "Москва"
-        • ?search=Санкт → найдет "Санкт-Петербург"
-        • ?search=Новоси → найдет "Новосибирск"
-        • ?search=Московская → найдет города Московской области
-        • ?search=ЦФО → найдет города Центрального федерального округа
-        ''',
-        required=False,
-        examples=[
-            OpenApiExample('Поиск Москвы', value='Моск'),
-            OpenApiExample('Поиск городов области', value='Московская'),
-            OpenApiExample('Поиск по федеральному округу', value='ЦФО'),
-        ]
-    ),
 
-    OpenApiParameter(
-        name='ids',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='Фильтрация по нескольким ID городов через запятую',
-        examples=[OpenApiExample('Три города', value='uuid1,uuid2,uuid3')]
-    ),
+# --- Запросы ---
 
-    OpenApiParameter(
-        name='regions',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='''
-        ФИЛЬТРАЦИЯ ПО РЕГИОНАМ (UUID через запятую).
-        
-        ЛОГИКА:
-        • Выбирает города, принадлежащие указанным регионам
-        • Поддерживает несколько регионов через запятую
-        • Использует UUIDCommaInFilter
-        
-        ПРИМЕРЫ:
-        • ?regions=uuid-московская-обл → города Московской области
-        • ?regions=uuid1,uuid2 → города двух регионов
-        • ?regions= → пустой параметр (игнорируется)
-        ''',
-        required=False,
-        examples=[OpenApiExample('Два региона', value='uuid1,uuid2')]
-    ),
+COUNTRY_CREATE_REQUEST = OpenApiExample(
+    name="Создание страны (запрос)",
+    value={
+        "name": "Россия",
+        "iso_code_2": "RU",
+        "iso_code_3": "RUS",
+        "iso_numeric": "643",
+    },
+    request_only=True,
+)
 
-    OpenApiParameter(
-        name='federal_districts',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='''
-        ФИЛЬТРАЦИЯ ПО ФЕДЕРАЛЬНЫМ ОКРУГАМ (UUID через запятую).
-        
-        ЛОГИКА:
-        • Выбирает города, принадлежащие регионам указанных федеральных округов
-        • Фильтрация через связь: city → region → federal_district
-        • Поддерживает несколько федеральных округов через запятую
-        
-        ПРИМЕРЫ:
-        • ?federal_districts=uuid-цфо → города Центрального федерального округа
-        • ?federal_districts=uuid-цфо,uuid-сзфо → города двух федеральных округов
-        ''',
-        required=False,
-        examples=[OpenApiExample('Один федеральный округ', value='uuid-цфо')]
-    ),
-]
+ADDRESS_CREATE_NESTED_REQUEST = OpenApiExample(
+    name="Создание адреса — вложенные объекты",
+    description="Сервер сам создаст/найдет компоненты",
+    value={
+        "country": {"name": "Россия", "iso_code_2": "RU"},
+        "locality": {"name": "Москва"},
+        "street": {"name": "Ленина"},
+        "house": {"number": "1"},
+        "postal_code": "101000",
+        "apartment": "15",
+    },
+    request_only=True,
+)
 
-STREET_FILTER_PARAMETERS = COMMON_FILTER_PARAMETERS + PAGINATION_PARAMETERS + [
-    OpenApiParameter(
-        name='search',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='''
-        ПОИСК ПО УЛИЦАМ.
-        
-        ЛОГИКА (из StreetFilter.filter_search):
-        • Ищет по названию улицы (name)
-        • Ищет по названию города (city__name)
-        • Частичное совпадение (icontains)
-        
-        ПРИМЕРЫ:
-        • ?search=Ленина → найдет улицы с названием "Ленина"
-        • ?search=проспект → найдет проспекты
-        • ?search=Москва Ленина → найдет улицу Ленина в Москве
-        • ?search=Санкт-Петербург Невский → найдет Невский проспект в СПб
-        ''',
-        required=False,
-        examples=[
-            OpenApiExample('Поиск улицы', value='Ленина'),
-            OpenApiExample('Поиск проспекта', value='проспект'),
-            OpenApiExample('Поиск по городу и улице', value='Москва Ленина'),
-        ]
-    ),
+ADDRESS_CREATE_BY_ID_REQUEST = OpenApiExample(
+    name="Создание адреса — по ID",
+    description="Все компоненты должны уже существовать в базе",
+    value={
+        "country_id": "550e8400-e29b-41d4-a716-446655440001",
+        "locality_id": "550e8400-e29b-41d4-a716-446655440003",
+        "street_id": "550e8400-e29b-41d4-a716-446655440004",
+        "house_id": "550e8400-e29b-41d4-a716-446655440005",
+        "postal_code": "101000",
+    },
+    request_only=True,
+)
 
-    OpenApiParameter(
-        name='ids',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='Фильтрация по нескольким ID улиц через запятую',
-        examples=[OpenApiExample('Две улицы', value='uuid1,uuid2')]
-    ),
+ADDRESS_CREATE_COUNTRY_ONLY_REQUEST = OpenApiExample(
+    name="Создание адреса — только страна",
+    description="Минимально возможный адрес",
+    value={"country": {"name": "Россия", "iso_code_2": "RU"}},
+    request_only=True,
+)
 
-    OpenApiParameter(
-        name='cities',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='''
-        ФИЛЬТРАЦИЯ ПО ГОРОДАМ (UUID через запятую).
-        
-        ЛОГИКА:
-        • Выбирает улицы, принадлежащие указанным городам
-        • Поддерживает несколько городов через запятую
-        • Использует UUIDCommaInFilter
-        
-        ПРИМЕРЫ:
-        • ?cities=uuid-москва → улицы Москвы
-        • ?cities=uuid1,uuid2 → улицы двух городов
-        • ?cities= → пустой параметр (игнорируется)
-        ''',
-        required=False,
-        examples=[OpenApiExample('Один город', value='uuid-москва')]
-    ),
-]
+SEARCH_REQUEST_EXAMPLE = OpenApiExample(
+    name="Поиск адресов (запрос)",
+    value={"query": "Москва Ленина 1", "limit": 10, "offset": 0},
+    request_only=True,
+)
 
-# ====================================================================================
-# МОДУЛЬ 4: ДЕКОРАТОРЫ ДЛЯ VIEWSETS (ОБНОВЛЕННЫЕ)
-# ====================================================================================
+BULK_REQUEST_EXAMPLE = OpenApiExample(
+    name="Массовое создание (запрос)",
+    value=[
+        {
+            "country": {"name": "Россия", "iso_code_2": "RU"},
+            "locality": {"name": "Москва"},
+        },
+        {
+            "country": {"name": "Россия", "iso_code_2": "RU"},
+            "locality": {"name": "Санкт-Петербург"},
+        },
+    ],
+    request_only=True,
+)
 
-def address_list_schema():
-    """
-    ДЕКОРАТОР ДЛЯ ДОКУМЕНТАЦИИ СПИСКА АДРЕСОВ.
 
-    СООТВЕТСТВУЕТ ТЕКУЩЕМУ ФУНКЦИОНАЛУ AddressFilter.
-    """
-    return extend_schema(
-        summary="Список адресов",
-        description="""
-        Получение списка адресов с текущей фильтрацией.
-        
-        ## ТЕКУЩИЙ ФУНКЦИОНАЛ ФИЛЬТРАЦИИ:
-        
-        ### 1. УНИВЕРСАЛЬНЫЙ ПОИСК (search):
-        ```http
-        GET /api/addresses/addresses/?search=Москва Ленина
-        ```
-        • Ищет по всем компонентам адреса
-        • Разбивает фразу на слова
-        • Требует совпадения по всем словам (логическое И)
-        
-        ### 2. ФИЛЬТРАЦИЯ ПО ID (ids):
-        ```http
-        GET /api/addresses/addresses/?ids=uuid1,uuid2,uuid3
-        ```
-        • Выборка конкретных адресов по UUID
-        • Поддерживает несколько ID через запятую
-        
-        ### 3. ПАГИНАЦИЯ (опциональная):
-        ```http
-        GET /api/addresses/addresses/ → ВСЕ данные
-        GET /api/addresses/addresses/?page=2 → страница 2
-        GET /api/addresses/addresses/?page=1&page_size=50 → страница 1, 50 записей
-        ```
-        
-        ## ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ:
-        
-        ### ВСЕ АДРЕСА МОСКВЫ:
-        ```http
-        GET /api/addresses/addresses/?search=Москва
-        ```
-        
-        ### АДРЕСА НА УЛИЦЕ ЛЕНИНА:
-        ```http
-        GET /api/addresses/addresses/?search=Ленина
-        ```
-        
-        ### КОНКРЕТНЫЕ АДРЕСА ПО ID:
-        ```http
-        GET /api/addresses/addresses/?ids=550e8400-e29b-41d4-a716-446655440000,uuid2,uuid3
-        ```
-        
-        ### ПОИСК С СОРТИРОВКОЙ:
-        ```http
-        GET /api/addresses/addresses/?search=Москва&ordering=street__name
-        ```
-        
-        ### ПАГИНИРОВАННЫЙ ПОИСК:
-        ```http
-        GET /api/addresses/addresses/?page=1&page_size=20&search=Ленина&ordering=-city__name
-        ```
-        """,
-        parameters=ADDRESS_FILTER_PARAMETERS,
-        examples=[
-            OpenApiExample(
-                'Пример 1: Простой поиск',
-                value={
-                    'search': 'Москва Ленина',
-                    'ordering': 'street__name'
-                },
-                description='Поиск адресов Москвы на улице Ленина, отсортированных по названию улицы'
-            ),
-            OpenApiExample(
-                'Пример 2: Фильтр по ID',
-                value={
-                    'ids': 'uuid1,uuid2,uuid3',
-                    'ordering': 'city__name'
-                },
-                description='Конкретные адреса по ID, отсортированные по городу'
-            ),
-            OpenApiExample(
-                'Пример 3: С пагинацией',
-                value={
-                    'page': 2,
-                    'page_size': 50,
-                    'search': 'Центральный',
-                    'ordering': 'region__name,city__name'
-                },
-                description='Страница 2 адресов в Центральном микрорайоне, отсортированных по региону и городу'
-            ),
-        ]
-    )
+# ══════════════════════════════════════════════════════════════════════════════════
+# ДЕКОРАТОРЫ ДЛЯ ЭНДПОИНТОВ
+# ══════════════════════════════════════════════════════════════════════════════════
 
 
 def country_list_schema():
-    """Декоратор для документации списка стран."""
+    """Схема для GET /api/addresses/countries/"""
     return extend_schema(
-        summary="Список стран",
-        description="""
-        Получение списка стран.
-        
-        ДОСТУПНЫЕ ФИЛЬТРЫ:
-        • search - поиск по названию страны
-        • ids - фильтр по ID через запятую
-        • ordering - сортировка
-        • page, page_size - пагинация (опционально)
-        
-        ПРИМЕРЫ:
-        ```http
-        GET /api/addresses/countries/ → все страны
-        GET /api/addresses/countries/?search=Рос → поиск стран с "Рос"
-        GET /api/addresses/countries/?ids=uuid1,uuid2 → фильтр по ID
-        GET /api/addresses/countries/?page=2 → пагинация
-        GET /api/addresses/countries/?ordering=-name → сортировка по названию (Z-A)
-        ```
-        """,
-        parameters=COUNTRY_FILTER_PARAMETERS,
-        examples=[
-            OpenApiExample(
-                'Пример без пагинации',
-                value={'search': 'Рос', 'ordering': 'name'},
-                description='Поиск стран с "Рос", отсортированных по названию'
+        summary="Получить список стран",
+        description=(
+            "Возвращает список всех стран.\n\n"
+            "### Поиск\n"
+            "Параметр `search` ищет по полям: `name`, `iso_code_2`, `iso_code_3`.\n"
+            "Регистронезависимый. Можно искать часть слова.\n\n"
+            "### Пагинация\n"
+            "Без `?page=` — все страны сразу.\n"
+            "С `?page=1` — по 100 на странице.\n"
+            "`?limit=50` — изменить размер страницы.\n\n"
+            "### Примеры URL\n"
+            "- `/api/addresses/countries/` — все страны\n"
+            "- `/api/addresses/countries/?search=Рос` — поиск\n"
+            "- `/api/addresses/countries/?page=1&limit=20` — с пагинацией\n"
+            "- `/api/addresses/countries/?ordering=-name` — сортировка"
+        ),
+        parameters=COMMON_PARAMETERS + PAGINATION_PARAMETERS,
+        examples=[COUNTRY_LIST_EXAMPLE, COUNTRY_LIST_NO_PAGINATION_EXAMPLE],
+    )
+
+
+def country_create_schema():
+    """Схема для POST /api/addresses/countries/"""
+    return extend_schema(
+        summary="Создать страну",
+        description=(
+            "Создание новой страны.\n\n"
+            "### Обязательные поля\n"
+            "- `name` — название страны\n"
+            "- `iso_code_2` — двухбуквенный код (должен быть УНИКАЛЬНЫМ)\n\n"
+            "### Необязательные поля\n"
+            "- `iso_code_3` — трёхбуквенный код (уникальный)\n"
+            "- `iso_numeric` — числовой код (уникальный)\n\n"
+            "### Возможные ошибки\n"
+            "- **400** — не указаны обязательные поля, или код уже занят\n"
+            "- **401** — не авторизован (нужен JWT токен)"
+        ),
+        examples=[COUNTRY_CREATE_REQUEST, ERROR_400_VALIDATION, ERROR_401],
+    )
+
+
+def administrative_division_list_schema():
+    """Схема для GET /api/addresses/administrative-divisions/"""
+    return extend_schema(
+        summary="Получить список административных единиц",
+        description=(
+            "Возвращает список административных единиц (области, районы, штаты).\n\n"
+            "### Иерархия\n"
+            "Единицы организованы в древовидную структуру:\n"
+            "- Уровень 1 → Федеральный округ / Штат\n"
+            "- Уровень 2 → Регион / Провинция\n"
+            "- Уровень 3 → Район / Графство\n\n"
+            "### Фильтры\n"
+            "- `country` — все единицы страны\n"
+            "- `level` — единицы конкретного уровня\n"
+            "- `parent` — дочерние единицы (например: районы внутри области)"
+        ),
+        parameters=COMMON_PARAMETERS
+        + PAGINATION_PARAMETERS
+        + [
+            OpenApiParameter(
+                "country",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID страны",
             ),
-        ]
+            OpenApiParameter(
+                "level",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID уровня",
+            ),
+            OpenApiParameter(
+                "parent",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID родительской единицы",
+            ),
+        ],
+        examples=[ADMIN_DIVISION_EXAMPLE],
+    )
+
+
+def locality_list_schema():
+    """Схема для GET /api/addresses/localities/"""
+    return extend_schema(
+        summary="Получить список населённых пунктов",
+        description=(
+            "Возвращает список населённых пунктов (города, посёлки, деревни).\n\n"
+            "### Типы\n"
+            "У каждого пункта есть `locality_type`:\n"
+            "- город (г.) — `show_before_name: true`\n"
+            "- посёлок (п.)\n"
+            "- деревня (д.)\n"
+            "- село (с.)\n\n"
+            "### Фильтры\n"
+            "- `country` — нас. пункты страны\n"
+            "- `administrative_division` — в конкретной области\n"
+            "- `locality_type` — только города / только деревни\n"
+            "- `postal_code` — по индексу"
+        ),
+        parameters=COMMON_PARAMETERS
+        + PAGINATION_PARAMETERS
+        + [
+            OpenApiParameter(
+                "country",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID страны",
+            ),
+            OpenApiParameter(
+                "administrative_division",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID адм. единицы",
+            ),
+            OpenApiParameter(
+                "locality_type",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID типа",
+            ),
+            OpenApiParameter(
+                "postal_code",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="Почтовый индекс",
+            ),
+        ],
+        examples=[LOCALITY_EXAMPLE],
+    )
+
+
+def address_list_schema():
+    """Схема для GET /api/addresses/addresses/"""
+    return extend_schema(
+        summary="Получить список адресов",
+        description=(
+            "Возвращает список адресов с возможностью поиска и фильтрации.\n\n"
+            "### Поиск (`search`)\n"
+            "Ищет по ВСЕМ компонентам адреса одновременно:\n"
+            "страна, область, город, улица, дом, строение, индекс, квартира, доп. информация.\n\n"
+            "**Как работает:**\n"
+            "- Слова в запросе объединяются по И (все должны быть найдены)\n"
+            "- Слова короче 2 букв игнорируются\n"
+            "- Регистр не учитывается\n\n"
+            "Пример: `?search=Москва Ленина 1` найдёт адреса где есть И Москва, И Ленина, И 1.\n\n"
+            "### Фильтры\n"
+            "- `country` — адреса в стране\n"
+            "- `administrative_division` — в области\n"
+            "- `locality` — в городе\n"
+            "- `street` — на улице\n"
+            "- `postal_code` — по индексу\n"
+            "- `is_active` — активные (true) или неактивные (false)"
+        ),
+        parameters=COMMON_PARAMETERS
+        + PAGINATION_PARAMETERS
+        + [
+            OpenApiParameter(
+                "country",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID страны",
+            ),
+            OpenApiParameter(
+                "administrative_division",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID адм. единицы",
+            ),
+            OpenApiParameter(
+                "locality",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID нас. пункта",
+            ),
+            OpenApiParameter(
+                "street",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="ID улицы",
+            ),
+            OpenApiParameter(
+                "postal_code",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="Почтовый индекс",
+            ),
+            OpenApiParameter(
+                "is_active",
+                OpenApiTypes.BOOL,
+                OpenApiParameter.QUERY,
+                description="Активность (true/false)",
+            ),
+        ],
+        examples=[ADDRESS_FULL, ADDRESS_MINIMAL],
+    )
+
+
+def address_create_schema():
+    """Схема для POST /api/addresses/addresses/"""
+    return extend_schema(
+        summary="Создать адрес",
+        description=(
+            "Создание нового адреса. Поддерживается два способа.\n\n"
+            "### Способ 1: С вложенными объектами (рекомендуемый)\n"
+            "Передаёте данные компонентов. Сервер сам создаст недостающие "
+            "или найдёт существующие по уникальным полям.\n"
+            "```json\n"
+            "{\n"
+            '  "country": {"name": "Россия", "iso_code_2": "RU"},\n'
+            '  "locality": {"name": "Москва"},\n'
+            '  "street": {"name": "Ленина"},\n'
+            '  "house": {"number": "1"},\n'
+            '  "postal_code": "101000"\n'
+            "}\n"
+            "```\n\n"
+            "### Способ 2: По ID существующих объектов\n"
+            "Быстрее, но ВСЕ компоненты должны уже существовать в базе.\n"
+            "```json\n"
+            "{\n"
+            '  "country_id": "550e8400-...",\n'
+            '  "locality_id": "550e8400-...",\n'
+            '  "street_id": "550e8400-...",\n'
+            '  "house_id": "550e8400-..."\n'
+            "}\n"
+            "```\n\n"
+            "### Правила иерархии (проверки)\n"
+            "- Строение → требует Дом\n"
+            "- Дом → требует Улицу\n"
+            "- Улица → требует Нас. пункт\n"
+            "- Нас. пункт → требует Страну\n\n"
+            "### Возможные ошибки\n"
+            "- **400** — нарушена иерархия, неверный формат данных\n"
+            "- **401** — не авторизован\n"
+            "- **404** — указанный ID не найден (для способа 2)"
+        ),
+        examples=[
+            ADDRESS_CREATE_NESTED_REQUEST,
+            ADDRESS_CREATE_BY_ID_REQUEST,
+            ADDRESS_CREATE_COUNTRY_ONLY_REQUEST,
+            ADDRESS_CREATED,
+            ERROR_400_VALIDATION,
+            ERROR_401,
+            ERROR_404,
+        ],
+    )
+
+
+def address_search_schema():
+    """Схема для POST /api/addresses/addresses/search/"""
+    return extend_schema(
+        summary="Поиск адресов (расширенный)",
+        description=(
+            "Расширенный поиск адресов через POST запрос.\n\n"
+            "### Отличие от GET /addresses/\n"
+            "Параметры передаются в теле запроса (JSON), а не в URL.\n"
+            "Удобно для сложных поисковых запросов.\n\n"
+            "### Параметры\n"
+            "| Параметр | Тип | Описание |\n"
+            "|----------|-----|----------|\n"
+            "| query | string | Поисковый запрос |\n"
+            "| country | UUID | ID страны |\n"
+            "| administrative_division | UUID | ID области |\n"
+            "| locality | UUID | ID города |\n"
+            "| street | UUID | ID улицы |\n"
+            "| postal_code | string | Индекс |\n"
+            "| limit | integer | Сколько результатов (1-1000, по умолч. 100) |\n"
+            "| offset | integer | Сколько пропустить (по умолч. 0) |\n\n"
+            "**Хотя бы один параметр поиска обязателен!**\n\n"
+            "### Примеры\n"
+            "Простой поиск:\n"
+            '{"query": "Москва Ленина", "limit": 10}\n\n'
+            "С фильтром по стране:\n"
+            '{"query": "Ленина", "country": "uuid-страны", "limit": 50}'
+        ),
+        examples=[SEARCH_REQUEST_EXAMPLE, SEARCH_RESPONSE, ERROR_400_SEARCH_EMPTY],
+    )
+
+
+def address_bulk_create_schema():
+    """Схема для POST /api/addresses/addresses/bulk_create/"""
+    return extend_schema(
+        summary="Массовое создание адресов",
+        description=(
+            "Создание нескольких адресов за один запрос.\n\n"
+            "### Как работает\n"
+            "- Принимает JSON-массив адресов\n"
+            "- Каждый адрес проверяется и сохраняется НЕЗАВИСИМО\n"
+            "- Успешные → `created[]`\n"
+            "- Ошибочные → `errors[]` с описанием что не так\n"
+            "- Даже если часть с ошибками — успешные всё равно сохраняются\n\n"
+            "### Формат ответа\n"
+            "```json\n"
+            "{\n"
+            '  "created": [{"index": 0, "id": "uuid", "address": "Россия, г. Москва"}],\n'
+            '  "errors": [{"index": 1, "errors": {"country": ["Обязательное поле."]}}],\n'
+            '  "total": 2,\n'
+            '  "success_count": 1,\n'
+            '  "error_count": 1\n'
+            "}\n"
+            "```\n\n"
+            "### Возможные ответы\n"
+            "- **201** — все адреса созданы (или часть создана, часть с ошибками)\n"
+            "- **400** — ни один не создан (все с ошибками, или передан не массив)\n"
+            "- **401** — не авторизован"
+        ),
+        examples=[
+            BULK_REQUEST_EXAMPLE,
+            BULK_RESPONSE_ALL_OK,
+            BULK_RESPONSE_PARTIAL,
+            BULK_RESPONSE_ALL_ERRORS,
+            ERROR_400_NOT_LIST,
+            ERROR_401,
+        ],
     )
 
 
 def city_list_schema():
-    """Декоратор для документации списка городов."""
+    """Схема для GET /api/addresses/cities/"""
     return extend_schema(
-        summary="Список городов",
-        description="""
-        Получение списка городов.
-        
-        ДОСТУПНЫЕ ФИЛЬТРЫ:
-        • search - поиск по названию города, региона или федерального округа
-        • ids - фильтр по ID через запятую
-        • regions - фильтр по регионам (UUID через запятую)
-        • federal_districts - фильтр по федеральным округам (UUID через запятую)
-        • ordering - сортировка
-        • page, page_size - пагинация (опционально)
-        
-        ПРИМЕРЫ:
-        ```http
-        GET /api/addresses/cities/ → все города
-        GET /api/addresses/cities/?search=Моск → поиск городов
-        GET /api/addresses/cities/?ids=uuid1,uuid2,uuid3 → фильтр по ID
-        GET /api/addresses/cities/?regions=uuid1,uuid2 → города регионов
-        GET /api/addresses/cities/?federal_districts=uuid-цфо → города ЦФО
-        GET /api/addresses/cities/?page=2 → пагинация
-        ```
-        
-        ОСОБЕННОСТИ ПОИСКА:
-        • Ищет по названию города
-        • Ищет по названию региона
-        • Ищет по названию федерального округа
-        """,
-        parameters=CITY_FILTER_PARAMETERS,
-        examples=[
-            OpenApiExample(
-                'Пример фильтрации',
-                value={
-                    'regions': 'uuid1,uuid2',
-                    'ordering': 'name',
-                    'page': 1,
-                    'page_size': 50
-                },
-                description='Города двух регионов, отсортированные по названию, страница 1, 50 записей'
-            ),
-        ]
+        summary="Получить список городов",
+        description=(
+            "Возвращает список городов с количеством номенклатур.\n\n"
+            "### Поиск\n"
+            "Параметр `search` ищет по названию города, региона или федерального округа.\n\n"
+            "### Фильтры\n"
+            "- `regions` — фильтр по регионам (UUID через запятую)\n"
+            "- `federal_districts` — фильтр по федеральным округам (UUID через запятую)\n\n"
+            "### Пагинация\n"
+            "Без `?page=` — все города сразу.\n"
+            "С `?page=1` — по 100 на странице.\n"
+        ),
+        parameters=COMMON_PARAMETERS + PAGINATION_PARAMETERS,
     )
 
 
 def street_list_schema():
-    """Декоратор для документации списка улиц."""
+    """Схема для GET /api/addresses/streets/"""
     return extend_schema(
-        summary="Список улиц",
-        description="""
-        Получение списка улиц.
-        
-        ДОСТУПНЫЕ ФИЛЬТРЫ:
-        • search - поиск по названию улицы или города
-        • ids - фильтр по ID через запятую
-        • cities - фильтр по городам (UUID через запятую)
-        • ordering - сортировка
-        • page, page_size - пагинация (опционально)
-        
-        ПРИМЕРЫ:
-        ```http
-        GET /api/addresses/streets/ → все улицы
-        GET /api/addresses/streets/?search=Ленина → поиск улиц
-        GET /api/addresses/streets/?ids=uuid1,uuid2 → фильтр по ID
-        GET /api/addresses/streets/?cities=uuid1,uuid2 → улицы городов
-        GET /api/addresses/streets/?page=2&page_size=100 → пагинация
-        ```
-        
-        ОСОБЕННОСТИ ПОИСКА:
-        • Ищет по названию улицы
-        • Ищет по названию города
-        """,
-        parameters=STREET_FILTER_PARAMETERS,
-        examples=[
-            OpenApiExample(
-                'Пример с фильтрами',
-                value={
-                    'cities': 'uuid1,uuid2',
-                    'search': 'проспект',
-                    'ordering': 'city__name,name',
-                    'page': 1,
-                    'page_size': 100
-                },
-                description='Проспекты в двух городах, отсортированные по городу и названию, страница 1'
-            ),
-        ]
+        summary="Получить список улиц",
+        description=(
+            "Возвращает список улиц.\n\n"
+            "### Поиск\n"
+            "Параметр `search` ищет по названию улицы или города.\n\n"
+            "### Фильтры\n"
+            "- `cities` — фильтр по городам (UUID через запятую)\n\n"
+            "### Пагинация\n"
+            "Без `?page=` — все улицы сразу.\n"
+            "С `?page=1` — по 100 на странице.\n"
+        ),
+        parameters=COMMON_PARAMETERS + PAGINATION_PARAMETERS,
     )
-
-
-# ====================================================================================
-# МОДУЛЬ 5: ПАРАМЕТРЫ ДЛЯ ОСТАЛЬНЫХ МОДЕЛЕЙ (БАЗОВЫЕ)
-# ====================================================================================
-
-# Для всех остальных моделей используются только базовые параметры:
-# FederalDistrict, TypeRegion, Timezone, Region, LocalityType,
-# AdministrativeTerritory, AdministrativeTerritorialUnit, StreetType,
-# House, Building, Coordinates
-
-BASIC_FILTER_PARAMETERS = COMMON_FILTER_PARAMETERS + PAGINATION_PARAMETERS + [
-    OpenApiParameter(
-        name='search',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='Поиск по названию (или основному текстовому полю)',
-        required=False
-    ),
-    OpenApiParameter(
-        name='ids',
-        type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-        description='Фильтрация по нескольким ID через запятую',
-        required=False
-    ),
-]
