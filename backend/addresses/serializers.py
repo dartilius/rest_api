@@ -1509,6 +1509,7 @@ class AddressWebResultSerializer(serializers.ModelSerializer):
     )
 
     coordinates = CoordinatesSerializers(read_only=True)
+    fullAddress = serializers.CharField(source="full_address", read_only=True)
 
     class Meta:
         model = Address
@@ -1521,7 +1522,8 @@ class AddressWebResultSerializer(serializers.ModelSerializer):
             "streetType",
             "house",
             "building",
-            "coordinates"
+            "coordinates",
+            "fullAddress"
         )
         read_only_fields = fields
 
