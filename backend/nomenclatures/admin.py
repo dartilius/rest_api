@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 from django.contrib import admin
 from django.contrib import messages
+from django.contrib.admin.widgets import AutocompleteSelect, RelatedFieldWidgetWrapper
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch, Count, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce
@@ -42,6 +43,41 @@ from nomenclatures.models import (
     StationInstallation,
 )
 from nomenclatures.tasks import maintenance_mode_task
+from users.models import CustomUser
+
+
+class SelectedLabelAutocompleteSelect(AutocompleteSelect):
+    """Render already loaded selected labels without one SQL query per field."""
+
+    def __init__(self, *args, selected_labels=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.selected_labels = selected_labels or {}
+
+    def optgroups(self, name, value, attrs=None):
+        selected_choices = {
+            str(item) for item in value if str(item) not in self.choices.field.empty_values
+        }
+        if not selected_choices <= self.selected_labels.keys():
+            # Preserve Django's normal behavior for an invalid POSTed value.
+            return super().optgroups(name, value, attrs)
+
+        default = (None, [], 0)
+        if not self.is_required and not self.allow_multiple_selected:
+            default[1].append(self.create_option(name, "", "", False, 0))
+        for index, option_value in enumerate(value, start=len(default[1])):
+            option_key = str(option_value)
+            if option_key not in selected_choices:
+                continue
+            default[1].append(
+                self.create_option(
+                    name,
+                    option_value,
+                    self.selected_labels[option_key],
+                    True,
+                    index,
+                )
+            )
+        return [default]
 
 
 class DiscountRuleInline(admin.TabularInline):
@@ -246,6 +282,13 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "responsible_placement_marketing",
         "typeOfPlace",
     ]
+    responsible_fields = (
+        "responsible_radio",
+        "responsible_ad",
+        "responsible_technic",
+        "responsible_technic_on_address",
+        "responsible_placement_marketing",
+    )
     readonly_fields = ("hw_info", "runtime_state")
 
     # =========================================================================
@@ -277,6 +320,54 @@ class NomenclatureAdmin(admin.ModelAdmin):
             )
             .annotate(tenants_count=Coalesce(Subquery(tenant_counts), 0))
         )
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None:
+            return form
+
+        selected_user_ids = {
+            str(user_id)
+            for field_name in self.responsible_fields
+            if (user_id := getattr(obj, f"{field_name}_id")) is not None
+        }
+        if not selected_user_ids:
+            return form
+
+        cache = getattr(request, "_nomenclature_responsible_label_cache", {})
+        cache_key = frozenset(selected_user_ids)
+        selected_labels = cache.get(cache_key)
+        if selected_labels is None:
+            selected_labels = {
+                str(user.pk): str(user)
+                for user in CustomUser.objects.filter(pk__in=selected_user_ids)
+                .only("id", "last_name", "first_name", "middle_name")
+                .order_by()
+            }
+            cache[cache_key] = selected_labels
+            request._nomenclature_responsible_label_cache = cache
+        for field_name in self.responsible_fields:
+            field = form.base_fields.get(field_name)
+            if field is None:
+                continue
+            wrapper = field.widget
+            widget = wrapper.widget if isinstance(wrapper, RelatedFieldWidgetWrapper) else wrapper
+            if not isinstance(widget, AutocompleteSelect):
+                continue
+            cached_widget = SelectedLabelAutocompleteSelect(
+                widget.field,
+                widget.admin_site,
+                attrs=widget.attrs,
+                choices=widget.choices,
+                using=widget.db,
+                selected_labels=selected_labels,
+            )
+            if isinstance(wrapper, RelatedFieldWidgetWrapper):
+                wrapper.widget = cached_widget
+                wrapper.attrs = cached_widget.attrs
+            else:
+                field.widget = cached_widget
+        return form
 
     def get_search_results(self, request, queryset, search_term):
         if not search_term:

@@ -80,11 +80,21 @@ def _station_audio_devices(nomenclature):
 
 def _audio_device_choices(nomenclature=None):
     """Offer published choices; clean() still authorizes against selected station."""
-    choices = [("", "Сначала выберите точку вещания")]
-    if nomenclature is not None:
-        for device in _station_audio_devices(nomenclature):
-            choices.append((device["id"], f"{device.get('name', device['id'])} — {nomenclature.name}"))
-    return choices
+    if nomenclature is None:
+        return [("", "Сначала выберите точку вещания")]
+
+    devices = _station_audio_devices(nomenclature)
+    if devices:
+        return [("", "Выберите аудиоустройство")] + [
+            (device["id"], f"{device.get('name', device['id'])} — {nomenclature.name}")
+            for device in devices
+        ]
+
+    capabilities = nomenclature.station_capabilities
+    audio = capabilities.get("audio") if isinstance(capabilities, dict) else None
+    if not isinstance(audio, dict) or "devices" not in audio:
+        return [("", "Player ещё не передал список аудиоустройств")]
+    return [("", "У этой точки нет доступных аудиоустройств")]
 
 
 def _station_displays(nomenclature):
@@ -99,11 +109,20 @@ def _station_displays(nomenclature):
 
 
 def _display_choices(nomenclature=None):
-    choices = [("", "Сначала выберите точку вещания")]
-    if nomenclature is not None:
-        for display in _station_displays(nomenclature):
-            choices.append((display["id"], f"{display.get('name', display['id'])} — {nomenclature.name}"))
-    return choices
+    if nomenclature is None:
+        return [("", "Сначала выберите точку вещания")]
+
+    displays = _station_displays(nomenclature)
+    if displays:
+        return [("", "Выберите монитор")] + [
+            (display["id"], f"{display.get('name', display['id'])} — {nomenclature.name}")
+            for display in displays
+        ]
+
+    capabilities = nomenclature.station_capabilities
+    if not isinstance(capabilities, dict) or "displays" not in capabilities:
+        return [("", "Player ещё не передал список мониторов")]
+    return [("", "У этой точки нет доступных мониторов")]
 
 
 class StationVolumeCommandForm(forms.ModelForm):
@@ -184,7 +203,8 @@ class StationVolumeCommandForm(forms.ModelForm):
         self.fields["display_id"].choices = _display_choices(station)
 
     class Media:
-        js = ("nomenclatures/station_devices.js",)
+        # django.jQuery is initialized by this file, not by jquery itself.
+        js = ("admin/js/jquery.init.js", "nomenclatures/station_devices.js")
 
     def clean(self):
         cleaned_data = super().clean()

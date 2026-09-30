@@ -10,6 +10,7 @@
             choices.forEach(function (choice) {
                 field.append(new Option(choice[1], choice[0]));
             });
+            field.trigger("change");
         }
         station.on("change", function () {
             if (pending) pending.abort();
