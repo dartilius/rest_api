@@ -1,0 +1,15 @@
+{% load i18n %}
+<details data-filter-title="{{ title }}" open>
+  <summary>{% blocktranslate with filter_title=title %} By {{ filter_title }} {% endblocktranslate %}</summary>
+  {% for choice in choices %}
+    <form method="get">
+      {% for key, value in choice.query_parts %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+      {% endfor %}
+      <label for="id_station_uuid">UUID номенклатуры</label>
+      <input id="id_station_uuid" type="text" name="{{ spec.parameter_name }}" value="{{ choice.value }}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+      <button type="submit">Применить</button>
+      <a href="{{ choice.reset_url }}">Сбросить</a>
+    </form>
+  {% endfor %}
+</details>

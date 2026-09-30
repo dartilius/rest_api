@@ -5,21 +5,22 @@
 ───────────────────────────────────────────────────────────────────────────────
 1. Использование select_related для всех FK связей (1 запрос вместо N)
 2. Использование prefetch_related для всех M2M связей (1 запрос вместо N)
-3. Кеширование ID результатов для уменьшения размера кеша
+3. Пагинация без материализации всего каталога и без лишних полных COUNT
 4. Оптимизация list_display для исключения отдельных запросов к БД
 5. Поиск без search_vector для ускорения админки
 6. Устранение дублирующихся запросов в get_form и render_change_form
 """
 
+from datetime import UTC, datetime, time
+from uuid import UUID
+from zoneinfo import ZoneInfo
+
 from django.contrib import admin
 from django.contrib import messages
-from django.core.cache import cache
-from django.db.models import Prefetch, Count, Q
-from django.db.models import prefetch_related_objects
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-from django.http import HttpResponseNotAllowed, JsonResponse
 from django.core.exceptions import PermissionDenied
+from django.db.models import Prefetch, Count, OuterRef, Q, Subquery
+from django.db.models.functions import Coalesce
+from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.dateparse import parse_date
@@ -27,7 +28,6 @@ from django.utils.html import format_html
 
 from brands.models import Brand
 from ch_statistic.models import MusicStat
-from nomenclatures.tasks import maintenance_mode_task
 from nomenclatures.models import (
     Nomenclature,
     NomenclatureAvailability,
@@ -41,6 +41,7 @@ from nomenclatures.models import (
     DiscountRule,
     StationInstallation,
 )
+from nomenclatures.tasks import maintenance_mode_task
 
 
 class DiscountRuleInline(admin.TabularInline):
@@ -64,6 +65,9 @@ class StationInstallationInline(admin.TabularInline):
     readonly_fields = fields
     ordering = ("-created_at",)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("created_by")
+
     def has_add_permission(self, request, obj=None):
         return False
 
@@ -73,6 +77,9 @@ class NomenclatureAdmin(admin.ModelAdmin):
     """
     Административный интерфейс для модели Nomenclature.
     """
+
+    change_form_template = "nomenclatures/nomenclature/change_form.html"
+    show_facets = admin.ShowFacets.NEVER
 
     def get_urls(self):
         from django.urls import path
@@ -138,41 +145,54 @@ class NomenclatureAdmin(admin.ModelAdmin):
         )
 
     def music_stat_view(self, request, object_id):
+        if request.method != "GET":
+            return HttpResponseNotAllowed(["GET"])
+        nomenclature = self.get_object(request, object_id)
+        if nomenclature is None:
+            return JsonResponse({"error": "Номенклатура не найдена"}, status=404)
+        if not self.has_view_permission(request, nomenclature):
+            raise PermissionDenied
+
         date_from = request.GET.get("date_from")
         date_to = request.GET.get("date_to")
 
         if not date_from or not date_to:
             return JsonResponse({"error": "Укажите date_from и date_to"}, status=400)
 
-        parsed_from = parse_date(date_from)
-        parsed_to = parse_date(date_to)
+        try:
+            parsed_from = parse_date(date_from)
+            parsed_to = parse_date(date_to)
+        except ValueError:
+            return JsonResponse({"error": "Неверный формат даты"}, status=400)
 
         if not parsed_from or not parsed_to:
             return JsonResponse({"error": "Неверный формат даты"}, status=400)
+        if parsed_from > parsed_to:
+            return JsonResponse({"error": "Начало периода позже его окончания"}, status=400)
 
         queryset = (
             MusicStat.objects.filter(
                 client=str(object_id),
-                played__date__gte=parsed_from,
-                played__date__lte=parsed_to,
+                played__gte=datetime.combine(parsed_from, time.min, tzinfo=UTC),
+                played__lte=datetime.combine(parsed_to, time.max, tzinfo=UTC),
             )
             .order_by("-played")
             .values("file", "played", "length")[:200]
         )
 
-        results = [
-            {
+        results = []
+        for row in queryset:
+            played = row["played"]
+            if played.tzinfo is None:
+                played = played.replace(tzinfo=UTC)
+            results.append({
                 "file": row["file"],
                 "played": row["played"].strftime("%Y-%m-%d %H:%M:%S"),
-                "played_krasnoyarsk": (
-                    row["played_krasnoyarsk"].strftime("%Y-%m-%d %H:%M:%S")
-                    if row.get("played_krasnoyarsk")
-                    else "—"
-                ),
+                "played_krasnoyarsk": played.astimezone(
+                    ZoneInfo("Asia/Krasnoyarsk")
+                ).strftime("%Y-%m-%d %H:%M:%S"),
                 "length": row["length"],
-            }
-            for row in queryset.values("file", "played", "played_krasnoyarsk", "length")
-        ]
+            })
 
         return JsonResponse({"count": len(results), "results": results})
 
@@ -193,7 +213,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "tenants_count_display",
         "id_rasb",
         "for_web",
-        "typeOfPlace__abbreviation"
+        "typeOfPlace__abbreviation",
     )
 
     inlines = [DiscountRuleInline, StationInstallationInline]
@@ -215,8 +235,17 @@ class NomenclatureAdmin(admin.ModelAdmin):
     show_full_result_count = False
     list_per_page = 50
 
-    autocomplete_fields = ["owner", "brand", "legalEntity", "responsible_radio", "typeOfPlace"]
-    raw_id_fields = ("owner", "brand", "legalEntity", "responsible_radio", "typeOfPlace")
+    autocomplete_fields = [
+        "owner",
+        "brand",
+        "legalEntity",
+        "responsible_radio",
+        "responsible_ad",
+        "responsible_technic",
+        "responsible_technic_on_address",
+        "responsible_placement_marketing",
+        "typeOfPlace",
+    ]
     readonly_fields = ("hw_info", "runtime_state")
 
     # =========================================================================
@@ -224,160 +253,43 @@ class NomenclatureAdmin(admin.ModelAdmin):
     # =========================================================================
 
     def get_queryset(self, request):
-        """
-        Оптимизированный запрос для списка номенклатур.
-
-        Пагинация Django Admin ограничивает итоговую выборку. Не материализуем
-        все ID таблицы ради кэша: на большой базе это дороже, чем сам список.
-        """
+        """Load display relations without deferring fields needed by the edit form."""
+        queryset = super().get_queryset(request)
+        if getattr(getattr(request, "resolver_match", None), "url_name", None) == "autocomplete":
+            # Autocomplete renders only the station name, not its list columns.
+            return queryset.only("id", "name").order_by("name", "pk")
+        tenant_counts = (
+            NomenclatureTenant.objects.filter(nomenclature_id=OuterRef("pk"))
+            .order_by()
+            .values("nomenclature_id")
+            .annotate(total=Count("tenant_id", distinct=True))
+            .values("total")
+        )
         return (
-            Nomenclature.objects.select_related(
-                "owner",
-                "availability",
-                "brand",
-                "legalEntity",
-                "responsible_radio",
-                "responsible_ad",
-                "responsible_technic",
-                "responsible_technic_on_address",
-                "responsible_placement_marketing",
-                "typeOfPlace",
-            )
+            queryset
+            .select_related("owner", "availability", "brand", "legalEntity", "typeOfPlace")
             .prefetch_related(
-                "tenants",
                 Prefetch(
                     "legalEntity__brands",
                     queryset=Brand.objects.only("id", "name"),
                     to_attr="_prefetched_brands",
                 ),
-                Prefetch(
-                    "images",
-                    queryset=NomenclatureImage.objects.filter(type="exterior")[:1],
-                    to_attr="prefetched_exterior",
-                ),
-                Prefetch(
-                    "discount_rules",
-                    queryset=DiscountRule.objects.all(),
-                    to_attr="prefetched_discount_rules",
-                ),
             )
-            .annotate(
-                tenants_count=Count("tenants", distinct=True),
-            )
-            .only(
-                "id",
-                "name",
-                "timezone",
-                "is_active",
-                "code1c",
-                "article",
-                "id_rasb",
-                "for_web",
-                "owner__email",
-                "owner__first_name",
-                "owner__middle_name",
-                "owner__last_name",
-                "availability__status",
-                "availability__last_answer_date",
-                "brand__name",
-                "brand__id",
-                "legalEntity__first_name",
-                "legalEntity__middle_name",
-                "legalEntity__last_name",
-                "legalEntity__keyword",
-                "legalEntity__description",
-                "legalEntity__opf",
-                "responsible_radio__email",
-                "responsible_radio__first_name",
-                "responsible_radio__last_name",
-                "responsible_ad__email",
-                "responsible_ad__first_name",
-                "responsible_ad__last_name",
-                "responsible_technic__email",
-                "responsible_technic__first_name",
-                "responsible_technic__last_name",
-                "responsible_technic_on_address__email",
-                "responsible_technic_on_address__first_name",
-                "responsible_technic_on_address__last_name",
-                "responsible_placement_marketing__email",
-                "responsible_placement_marketing__first_name",
-                "responsible_placement_marketing__last_name",
-                "typeOfPlace__name",
-                "typeOfPlace__abbreviation",
-            )
+            .annotate(tenants_count=Coalesce(Subquery(tenant_counts), 0))
         )
 
     def get_search_results(self, request, queryset, search_term):
-        """
-        Оптимизированный поиск для админки без search_vector.
-        """
         if not search_term:
             return queryset, False
-
-        queryset = queryset.filter(
+        # All searched relations are FK: they cannot multiply the station rows.
+        return queryset.filter(
             Q(name__icontains=search_term)
             | Q(code1c__icontains=search_term)
             | Q(article__icontains=search_term)
             | Q(id_rasb__icontains=search_term)
             | Q(brand__name__icontains=search_term)
             | Q(id__icontains=search_term)
-        ).distinct()
-
-        return queryset, False
-
-    # =========================================================================
-    # ОПТИМИЗИРОВАННОЕ ПОЛУЧЕНИЕ ОБЪЕКТА
-    # =========================================================================
-
-    def get_object(self, request, object_id, from_field=None):
-        obj = super().get_object(request, object_id, from_field)
-
-        if obj:
-            prefetch_related_objects(
-                [obj],
-                "owner",
-                "brand",
-                "legalEntity",
-                Prefetch(
-                    "legalEntity__brands",
-                    queryset=Brand.objects.only("id", "name"),
-                    to_attr="_prefetched_brands",
-                ),
-                "responsible_radio",
-                "responsible_ad",
-                "responsible_technic",
-                "responsible_technic_on_address",
-                "responsible_placement_marketing",
-                "availability",
-                "tenants",
-                "nomenclature_tenants",
-                "nomenclature_tenants__tenant",
-                "nomenclature_tenants__brand",
-                Prefetch(
-                    "images",
-                    queryset=NomenclatureImage.objects.order_by("-created")[:5],
-                    to_attr="prefetched_images",
-                ),
-                Prefetch(
-                    "discount_rules",
-                    queryset=DiscountRule.objects.all().order_by("days_from"),
-                    to_attr="prefetched_discount_rules",
-                ),
-            )
-
-        return obj
-
-    def get_form(self, request, obj=None, **kwargs):
-        if obj and not hasattr(obj, "_prefetched_objects_cache"):
-            obj = self.get_object(request, obj.pk)
-        return super().get_form(request, obj, **kwargs)
-
-    def render_change_form(
-        self, request, context, add=False, change=False, form_url="", obj=None
-    ):
-        if obj and hasattr(obj, "_prefetched_objects_cache"):
-            context["cached_fields"] = list(obj._prefetched_objects_cache.keys())
-        return super().render_change_form(request, context, add, change, form_url, obj)
+        ), False
 
     # =========================================================================
     # ПОЛЯ ДЛЯ LIST_DISPLAY
@@ -427,19 +339,17 @@ class NomenclatureAdmin(admin.ModelAdmin):
     def brand_name(self, obj):
         return obj.brand.name if obj.brand else "-"
 
-    @admin.display(description="Юр.лицо", ordering="legalEntity__name")
+    @admin.display(description="Юр.лицо", ordering="legalEntity__keyword")
     def legal_entity_name(self, obj):
         if not obj.legalEntity:
             return "-"
-        if hasattr(obj.legalEntity, "name"):
-            return obj.legalEntity.name
-        return f"ID:{str(obj.legalEntity.id)[:8]}"
+        return obj.legalEntity.name or f"ID:{str(obj.legalEntity.id)[:8]}"
 
     @admin.display(description="Арендаторы", ordering="tenants_count")
     def tenants_count_display(self, obj):
         count = getattr(obj, "tenants_count", 0)
         if count > 0:
-            url = f"/admin/nomenclatures/nomenclature/{obj.id}/change/"
+            url = reverse("admin:nomenclatures_nomenclature_change", args=[obj.pk])
             return format_html('<a href="{}">{}</a>', url, f"{count} шт.")
         return "0"
 
@@ -447,27 +357,19 @@ class NomenclatureAdmin(admin.ModelAdmin):
     # ДЕЙСТВИЯ
     # =========================================================================
 
-    actions = ["activate", "deactivate", "clear_cache"]
+    actions = ["activate", "deactivate"]
 
     def activate(self, request, queryset):
         updated = queryset.update(is_active=True)
         self.message_user(request, f"Активировано {updated} номенклатур")
-        cache.delete_pattern("nomenclature_admin_qs_*")
 
     activate.short_description = "Активировать выбранные"
 
     def deactivate(self, request, queryset):
         updated = queryset.update(is_active=False)
         self.message_user(request, f"Деактивировано {updated} номенклатур")
-        cache.delete_pattern("nomenclature_admin_qs_*")
 
     deactivate.short_description = "Деактивировать выбранные"
-
-    def clear_cache(self, request, queryset):
-        cache.delete_pattern("nomenclature_admin_qs_*")
-        self.message_user(request, "Кэш очищен")
-
-    clear_cache.short_description = "Очистить кэш"
 
 
 @admin.register(NomenclatureTenant)
@@ -476,7 +378,8 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
     search_fields = ("floor",)
     list_filter = ("atm", "brand", "floor")
     autocomplete_fields = ("nomenclature", "tenant", "brand")
-    show_full_result_count = True
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
     list_per_page = 50
 
     def get_queryset(self, request):
@@ -487,6 +390,13 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
                 "nomenclature",
                 "tenant",
                 "brand",
+            )
+            .prefetch_related(
+                Prefetch(
+                    "tenant__brands",
+                    queryset=Brand.objects.only("id", "name"),
+                    to_attr="_prefetched_brands",
+                )
             )
         )
 
@@ -506,7 +416,7 @@ class NomenclatureTenantAdmin(admin.ModelAdmin):
             | Q(nomenclature__article__icontains=search_term)
             | Q(nomenclature__id_rasb__icontains=search_term)
             | Q(brand__name__icontains=search_term)
-        ).distinct()
+        )
 
         return queryset, False
 
@@ -516,10 +426,11 @@ class TypeOfPlaceAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "abbreviation", "code1c", "is_mall", "is_active")
     list_filter = ("is_mall", "is_active")
     search_fields = ("name", "abbreviation", "code1c")
-    show_full_result_count = True
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
 
     def get_queryset(self, request):
-        return TypeOfPlace.objects.all()
+        return super().get_queryset(request)
 
 
 @admin.register(NomenclatureAvailability)
@@ -527,8 +438,9 @@ class NomenclatureAvailabilityAdmin(admin.ModelAdmin):
     list_display = ("client_name", "last_answer_date", "status_display")
     list_filter = ("status",)
     search_fields = ("client__name", "client__code1c")
-    show_full_result_count = True
-    raw_id_fields = ("client",)
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
+    autocomplete_fields = ("client",)
 
     def get_queryset(self, request):
         return (
@@ -555,8 +467,9 @@ class StatusHistoryAdmin(admin.ModelAdmin):
     list_display = ("client_name", "change_time", "status_display")
     list_filter = ("status", "change_time")
     search_fields = ("client__name",)
-    show_full_result_count = True
-    raw_id_fields = ("client",)
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
+    autocomplete_fields = ("client",)
     list_per_page = 100
 
     def get_queryset(self, request):
@@ -581,8 +494,9 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
     list_display = ("id_short", "nomenclature_name", "type", "created", "hash_short")
     list_filter = ("type", "created")
     search_fields = ("nomenclature__name", "hash")
-    show_full_result_count = True
-    raw_id_fields = ("nomenclature",)
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
+    autocomplete_fields = ("nomenclature",)
     list_per_page = 50
 
     def get_queryset(self, request):
@@ -595,6 +509,7 @@ class NomenclatureImageAdmin(admin.ModelAdmin):
                 "type",
                 "created",
                 "hash",
+                "source",
                 "nomenclature__name",
                 "nomenclature__id",
             )
@@ -627,8 +542,10 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
         "address__street__name",
         "address__house__number",
     )
-    show_full_result_count = True
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
     list_per_page = 50
+    autocomplete_fields = ("nomenclature", "address")
 
     def get_queryset(self, request):
         return (
@@ -638,18 +555,14 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
                 "nomenclature",
                 "address",
                 "address__city",
+                "address__city__locality_type",
                 "address__street",
+                "address__street__street_type",
                 "address__house",
                 "address__building",
-            )
-            .only(
-                "nomenclature__name",
-                "nomenclature__id",
-                "address__id",
-                "address__city__name",
-                "address__street__name",
-                "address__house__number",
-                "address__building__number",
+                "address__region",
+                "address__region__type_region",
+                "address__administrative_unit",
             )
         )
 
@@ -664,6 +577,46 @@ class NomenclatureAddressAdmin(admin.ModelAdmin):
         return str(obj.address)[:50]
 
 
+class DiscountStationFilter(admin.SimpleListFilter):
+    """Filter by station UUID without loading the complete station directory."""
+
+    title = "Номенклатура (UUID)"
+    parameter_name = "station_uuid"
+    template = "admin/nomenclatures/station_uuid_filter.html"
+
+    def __init__(self, request, params, model, model_admin):
+        self.query_parts = [
+            (key, value)
+            for key, values in request.GET.lists()
+            if key not in (self.parameter_name, "p")
+            for value in values
+        ]
+        super().__init__(request, params, model, model_admin)
+
+    def lookups(self, request, model_admin):
+        return ()
+
+    def has_output(self):
+        return True
+
+    def choices(self, changelist):
+        yield {
+            "query_parts": self.query_parts,
+            "value": self.value() or "",
+            "reset_url": changelist.get_query_string(remove=[self.parameter_name]),
+        }
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if not value:
+            return queryset
+        try:
+            station_id = UUID(value)
+        except (ValueError, AttributeError):
+            return queryset.none()
+        return queryset.filter(nomenclature_id=station_id)
+
+
 @admin.register(DiscountRule)
 class DiscountRuleAdmin(admin.ModelAdmin):
     list_display = (
@@ -673,10 +626,12 @@ class DiscountRuleAdmin(admin.ModelAdmin):
         "coefficient",
         "discount_percent",
     )
-    list_filter = ("nomenclature",)
+    list_filter = (DiscountStationFilter,)
     search_fields = ("nomenclature__name", "nomenclature__code1c")
     list_per_page = 50
-    raw_id_fields = ("nomenclature",)
+    autocomplete_fields = ("nomenclature",)
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
 
     def get_queryset(self, request):
         return (
@@ -708,11 +663,3 @@ class DiscountRuleAdmin(admin.ModelAdmin):
             color,
             f"{percent:.1f}",
         )
-
-
-@receiver(post_save, sender=Nomenclature)
-@receiver(post_delete, sender=Nomenclature)
-def invalidate_nomenclature_cache(sender, **kwargs):
-    cache.delete_pattern("nomenclature_admin_qs_*")
-    if "instance" in kwargs:
-        cache.delete(f"nomenclature_obj_full_{kwargs['instance'].pk}")

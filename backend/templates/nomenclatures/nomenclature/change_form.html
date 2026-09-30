@@ -1,9 +1,19 @@
 {% extends "admin/change_form.html" %}
 
+{% block content %}
+	{{ block.super }}
+	{% if not add and has_change_permission %}
+		<form id="maintenance-command-form" method="post" action="{% url 'admin:nomenclature_maintenance' original.pk %}">
+			{% csrf_token %}
+		</form>
+	{% endif %}
+{% endblock %}
+
 {% block after_related_objects %}
 	{{ block.super }}
 
 	{% if not add %}
+		{% if has_change_permission %}
 		<div class="module" id="maintenance-mode-section" style="margin-top: 20px;">
 			<h2 style="padding: 8px 12px; background: #8b3a3a; color: white; margin: 0;">
 				🛠 Сервисный режим
@@ -14,21 +24,21 @@
 				{% else %}
 					<p style="margin-top: 0;">Включение остановит весь эфир, включая рекламу. Станция останется доступной для синхронизации и диагностики.</p>
 				{% endif %}
-				<form method="post" action="{% url 'admin:nomenclature_maintenance' original.pk %}">
-					{% csrf_token %}
+				<div>
 					<label for="maintenance-enabled">Команда</label>
-					<select id="maintenance-enabled" name="enabled" style="margin: 0 12px 8px 4px;">
+					<select id="maintenance-enabled" name="enabled" form="maintenance-command-form" style="margin: 0 12px 8px 4px;">
 						<option value="true">Включить сервисный режим</option>
 						<option value="false">Выключить сервисный режим</option>
 					</select>
 					<label for="maintenance-reason">Причина входа</label>
-					<input id="maintenance-reason" name="reason" type="text" maxlength="500"
+					<input id="maintenance-reason" name="reason" type="text" maxlength="500" form="maintenance-command-form"
 						placeholder="Например: замена монитора" style="min-width: 260px; margin: 0 12px 8px 4px;">
-					<button type="submit" class="button">Отправить команду</button>
-				</form>
+					<button type="submit" class="button" form="maintenance-command-form">Отправить команду</button>
+				</div>
 				<p class="help" style="margin-bottom: 0;">Причина обязательна при включении. Команда будет применена при ближайшей синхронизации станции.</p>
 			</div>
 		</div>
+		{% endif %}
 
 		<div class="module" id="music-stat-section" style="margin-top: 20px;">
 			<h2 style="padding: 8px 12px; background: #417690; color: white; margin: 0;">
@@ -84,7 +94,7 @@
 
 		<script>
 			(function() {
-				const apiUrl = "/admin/nomenclatures/nomenclature/{{ object_id }}/music-stat/"
+				const apiUrl = "{% url 'admin:nomenclature_music_stat' original.pk %}"
 
 				function today() {
 					return new Date().toISOString().slice(0, 10)

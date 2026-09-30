@@ -2,6 +2,9 @@
 
 from django import forms
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import JsonResponse, HttpResponseNotAllowed
+from django.urls import path, reverse
 
 from nomenclatures.models import (
     Nomenclature,
@@ -55,8 +58,8 @@ def _latest_saved_revision(nomenclature) -> int:
         nomenclature=nomenclature,
         status=StationCommandV2.Status.APPLIED,
     ).order_by("-updated_at")
-    for command in commands:
-        revision = (command.result or {}).get("saved_revision")
+    for result in commands.values_list("result", flat=True).iterator(chunk_size=100):
+        revision = (result or {}).get("saved_revision")
         if isinstance(revision, int) and not isinstance(revision, bool) and revision >= 0:
             return revision
     return 0
@@ -75,12 +78,10 @@ def _station_audio_devices(nomenclature):
     ]
 
 
-def _audio_device_choices():
+def _audio_device_choices(nomenclature=None):
     """Offer published choices; clean() still authorizes against selected station."""
     choices = [("", "Сначала выберите точку вещания")]
-    for nomenclature in Nomenclature.objects.exclude(station_capabilities__isnull=True).only(
-        "name", "station_capabilities"
-    ):
+    if nomenclature is not None:
         for device in _station_audio_devices(nomenclature):
             choices.append((device["id"], f"{device.get('name', device['id'])} — {nomenclature.name}"))
     return choices
@@ -97,11 +98,9 @@ def _station_displays(nomenclature):
     ]
 
 
-def _display_choices():
+def _display_choices(nomenclature=None):
     choices = [("", "Сначала выберите точку вещания")]
-    for nomenclature in Nomenclature.objects.exclude(station_capabilities__isnull=True).only(
-        "name", "station_capabilities"
-    ):
+    if nomenclature is not None:
         for display in _station_displays(nomenclature):
             choices.append((display["id"], f"{display.get('name', display['id'])} — {nomenclature.name}"))
     return choices
@@ -169,8 +168,23 @@ class StationVolumeCommandForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["audio_device_id"].choices = _audio_device_choices()
-        self.fields["display_id"].choices = _display_choices()
+        station_id = (
+            self.data.get(self.add_prefix("nomenclature"))
+            if self.is_bound else self.initial.get("nomenclature")
+        )
+        station = None
+        if station_id:
+            try:
+                station = Nomenclature.objects.only("name", "station_capabilities").filter(
+                    pk=getattr(station_id, "pk", station_id)
+                ).first()
+            except (ValidationError, ValueError, TypeError):
+                pass  # The ModelChoiceField reports an invalid station during validation.
+        self.fields["audio_device_id"].choices = _audio_device_choices(station)
+        self.fields["display_id"].choices = _display_choices(station)
+
+    class Media:
+        js = ("nomenclatures/station_devices.js",)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -179,17 +193,19 @@ class StationVolumeCommandForm(forms.ModelForm):
         if nomenclature is None:
             return cleaned_data
         if setting_group == "volume":
-            for field in ("source", "channel", "volume"):
-                if cleaned_data.get(field) is None:
+            for field in ("source", "channel"):
+                if not cleaned_data.get(field):
                     self.add_error(field, "Заполните поле для изменения громкости.")
+            if cleaned_data.get("volume") is None:
+                self.add_error("volume", "Заполните поле для изменения громкости.")
         elif setting_group == "background":
             background_setting = cleaned_data.get("background_setting")
-            if background_setting is None:
+            if not background_setting:
                 self.add_error("background_setting", "Выберите параметр фона.")
             elif background_setting == "img_duration":
                 if cleaned_data.get("image_duration") is None:
                     self.add_error("image_duration", "Укажите время показа картинки.")
-            elif cleaned_data.get("background_enabled") is None:
+            elif not cleaned_data.get("background_enabled"):
                 self.add_error("background_enabled", "Выберите, включить или выключить параметр.")
         elif setting_group == "worktime" and not cleaned_data.get("full_day"):
             start = cleaned_data.get("worktime_start")
@@ -231,7 +247,33 @@ class StationVolumeCommandForm(forms.ModelForm):
                 "У этой точки уже есть ожидающее изменение настроек. "
                 "Дождитесь результата Player перед созданием следующего."
             )
+        if not self.errors and pending_kind == "apply_settings_patch":
+            try:
+                apply_settings_operations(nomenclature.settings, self._settings_operations(cleaned_data))
+            except SettingsPatchError as exc:
+                raise forms.ValidationError(
+                    "Невозможно подготовить изменение: сохранённые настройки точки некорректны."
+                ) from exc
         return cleaned_data
+
+    @staticmethod
+    def _settings_operations(data):
+        days = tuple(key for key, _ in DAY_CHOICES) if data["all_days"] else (data["day"],)
+        group = data["setting_group"]
+        if group == "background":
+            setting = data["background_setting"]
+            value = data["image_duration"] if setting == "img_duration" else data["background_enabled"] == "true"
+            return [{"op": "set", "path": f"/days/{day}/background/{setting}", "value": value} for day in days]
+        if group == "worktime":
+            value = "00:00:00-23:59:59" if data["full_day"] else (
+                f"{data['worktime_start'].strftime('%H:%M:%S')}-"
+                f"{data['worktime_end'].strftime('%H:%M:%S')}"
+            )
+            return [{"op": "set", "path": f"/days/{day}/worktime", "value": value} for day in days]
+        return [{
+            "op": "set", "path": f"/days/{day}/default_volume/{data['source']}/{data['channel']}",
+            "value": data["volume"],
+        } for day in days]
 
     def save(self, commit=True):
         command = super().save(commit=False)
@@ -255,61 +297,11 @@ class StationVolumeCommandForm(forms.ModelForm):
                 command.save()
             return command
         command.kind = "apply_settings_patch"
-        target_days = (
-            tuple(day_key for day_key, _ in DAY_CHOICES)
-            if self.cleaned_data["all_days"]
-            else (self.cleaned_data["day"],)
-        )
-        if self.cleaned_data["setting_group"] == "background":
-            background_setting = self.cleaned_data["background_setting"]
-            value = (
-                self.cleaned_data["image_duration"]
-                if background_setting == "img_duration"
-                else self.cleaned_data["background_enabled"] == "true"
-            )
-            operations = [
-                {
-                    "op": "set",
-                    "path": f"/days/{day}/background/{background_setting}",
-                    "value": value,
-                }
-                for day in target_days
-            ]
-        elif self.cleaned_data["setting_group"] == "worktime":
-            worktime = (
-                "00:00:00-23:59:59"
-                if self.cleaned_data["full_day"]
-                else (
-                    f"{self.cleaned_data['worktime_start'].strftime('%H:%M:%S')}-"
-                    f"{self.cleaned_data['worktime_end'].strftime('%H:%M:%S')}"
-                )
-            )
-            operations = [
-                {"op": "set", "path": f"/days/{day}/worktime", "value": worktime}
-                for day in target_days
-            ]
-        else:
-            operations = [
-                {
-                    "op": "set",
-                    "path": (
-                        f"/days/{day}/default_volume/"
-                        f"{self.cleaned_data['source']}/{self.cleaned_data['channel']}"
-                    ),
-                    "value": self.cleaned_data["volume"],
-                }
-                for day in target_days
-            ]
+        operations = self._settings_operations(self.cleaned_data)
         command.body = {
             "base_revision": _latest_saved_revision(nomenclature),
             "operations": operations,
         }
-        try:
-            apply_settings_operations(nomenclature.settings, operations)
-        except SettingsPatchError as exc:
-            raise forms.ValidationError(
-                "Невозможно подготовить изменение: сохранённые настройки точки некорректны."
-            ) from exc
         if commit:
             command.save()
         return command
@@ -317,6 +309,10 @@ class StationVolumeCommandForm(forms.ModelForm):
 
 @admin.register(StationCredential)
 class StationCredentialAdmin(admin.ModelAdmin):
+    list_select_related = ("nomenclature",)
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
+    list_per_page = 50
     list_display = ("nomenclature", "is_active", "rotated_at")
     list_filter = ("is_active",)
     search_fields = ("nomenclature__name", "nomenclature__code1c")
@@ -327,19 +323,17 @@ class StationCredentialAdmin(admin.ModelAdmin):
 
     @admin.action(description="Rotate station tokens")
     def rotate_tokens(self, request, queryset):
-        tokens = [issue_station_token(credential) for credential in queryset]
-        if not tokens:
-            return
-        if len(tokens) == 1:
+        credentials = list(queryset[:2])
+        if len(credentials) != 1:
             self.message_user(
-                request,
-                f"New station token (copy now; it will not be shown again): {tokens[0]}",
-                level=messages.WARNING,
+                request, "Выберите одну станцию, чтобы получить её новый токен.",
+                level=messages.ERROR,
             )
             return
+        token = issue_station_token(credentials[0])
         self.message_user(
             request,
-            f"Rotated {len(tokens)} station tokens. Rotate one station at a time to copy its token.",
+            f"New station token (copy now; it will not be shown again): {token}",
             level=messages.WARNING,
         )
 
@@ -361,6 +355,10 @@ class StationCredentialAdmin(admin.ModelAdmin):
 @admin.register(StationInstallation)
 class StationInstallationAdmin(admin.ModelAdmin):
     """Показывает привязки, созданные автоматически после входа Player."""
+    list_select_related = ("nomenclature", "created_by")
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
+    list_per_page = 50
 
     list_display = (
         "installation_id",
@@ -388,6 +386,10 @@ class StationInstallationAdmin(admin.ModelAdmin):
 @admin.register(StationCommandV2)
 class StationCommandV2Admin(admin.ModelAdmin):
     """Ставит в очередь одну безопасную и понятную оператору команду."""
+    list_select_related = ("nomenclature",)
+    show_full_result_count = False
+    show_facets = admin.ShowFacets.NEVER
+    list_per_page = 50
 
     form = StationVolumeCommandForm
     list_display = ("nomenclature", "kind", "delivery_state", "created_at", "updated_at")
@@ -403,6 +405,41 @@ class StationCommandV2Admin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+
+    def get_urls(self):
+        return [
+            path("station-devices/", self.admin_site.admin_view(self.station_devices_view),
+                 name="nomenclatures_stationcommandv2_devices"),
+        ] + super().get_urls()
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if "nomenclature" in form.base_fields:
+            form.base_fields["nomenclature"].widget.attrs["data-station-devices-url"] = reverse(
+                "admin:nomenclatures_stationcommandv2_devices"
+            )
+        return form
+
+    def station_devices_view(self, request):
+        if request.method != "GET":
+            return HttpResponseNotAllowed(["GET"])
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+        try:
+            station = Nomenclature.objects.only("name", "station_capabilities").filter(
+                pk=request.GET.get("station")
+            ).first()
+        except (ValidationError, ValueError, TypeError):
+            station = None
+        if station is None:
+            return JsonResponse({"error": "Точка не найдена."}, status=404)
+        station_admin = self.admin_site.get_model_admin(Nomenclature)
+        if not station_admin.has_view_or_change_permission(request, station):
+            raise PermissionDenied
+        return JsonResponse({
+            "audio": _audio_device_choices(station),
+            "displays": _display_choices(station),
+        })
 
     @admin.display(description="Состояние доставки", ordering="delivered_at")
     def delivery_state(self, obj):
