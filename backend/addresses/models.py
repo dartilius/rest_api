@@ -1549,10 +1549,7 @@ class Address(models.Model):
             locality_type = getattr(city, 'locality_type', None)
             if locality_type:
                 city_prefix = locality_type.abbreviated_name or locality_type.name
-                if locality_type.show_before_name:
-                    city_name = f"{city_prefix} {city.name}"
-                else:
-                    city_name = f"{city.name} {city_prefix}"
+                city_name = f"{city.name} {city_prefix}"
             else:
                 city_name = city.name
             parts.append(city_name)
