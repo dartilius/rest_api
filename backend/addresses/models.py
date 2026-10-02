@@ -1536,10 +1536,7 @@ class Address(models.Model):
         if region:
             type_region = getattr(region, 'type_region', None)
             if type_region and not type_region.skip_in_name:
-                if type_region.show_before_name:
-                    region_name = f"{type_region.abbreviated_name or type_region.name} {region.name}"
-                else:
-                    region_name = f"{region.name} {type_region.abbreviated_name or type_region.name}"
+                region_name = f"{region.name} {type_region.abbreviated_name or type_region.name}"
             else:
                 region_name = region.name
             parts.append(region_name)
