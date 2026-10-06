@@ -44,6 +44,7 @@ from nomenclatures.models import (
 )
 from nomenclatures.tasks import maintenance_mode_task
 from users.models import CustomUser
+from nomenclatures.playback_admin import PlaybackEventAdmin
 
 
 class SelectedLabelAutocompleteSelect(AutocompleteSelect):
@@ -297,7 +298,12 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Load display relations without deferring fields needed by the edit form."""
-        queryset = super().get_queryset(request)
+        # APIBaseObjectModel's default manager is `active`. Admin must include
+        # inactive stations too; only an explicit list filter may exclude them.
+        queryset = self.model.objects.get_queryset()
+        ordering = self.get_ordering(request)
+        if ordering:
+            queryset = queryset.order_by(*ordering)
         if getattr(getattr(request, "resolver_match", None), "url_name", None) == "autocomplete":
             # Autocomplete renders only the station name, not its list columns.
             return queryset.only("id", "name").order_by("name", "pk")
