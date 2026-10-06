@@ -44,7 +44,6 @@ from nomenclatures.models import (
 )
 from nomenclatures.tasks import maintenance_mode_task
 from users.models import CustomUser
-from nomenclatures.playback_admin import PlaybackEventAdmin
 
 
 class SelectedLabelAutocompleteSelect(AutocompleteSelect):
