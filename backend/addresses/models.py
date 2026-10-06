@@ -1536,10 +1536,7 @@ class Address(models.Model):
         if region:
             type_region = getattr(region, 'type_region', None)
             if type_region and not type_region.skip_in_name:
-                if type_region.show_before_name:
-                    region_name = f"{type_region.abbreviated_name or type_region.name} {region.name}"
-                else:
-                    region_name = f"{region.name} {type_region.abbreviated_name or type_region.name}"
+                region_name = f"{region.name} {type_region.abbreviated_name or type_region.name}"
             else:
                 region_name = region.name
             parts.append(region_name)
@@ -1549,10 +1546,7 @@ class Address(models.Model):
             locality_type = getattr(city, 'locality_type', None)
             if locality_type:
                 city_prefix = locality_type.abbreviated_name or locality_type.name
-                if locality_type.show_before_name:
-                    city_name = f"{city_prefix} {city.name}"
-                else:
-                    city_name = f"{city.name} {city_prefix}"
+                city_name = f"{city.name} {city_prefix}"
             else:
                 city_name = city.name
             parts.append(city_name)
