@@ -474,7 +474,8 @@ class Region(models.Model):
         verbose_name = "Регион"
         verbose_name_plural = "Регионы"
         db_table = "addresses_region"
-        unique_together = ("country", "name")
+        # Legacy regions may share a country/name. Match migration 0005 until
+        # their metadata and references have been reconciled before uniqueness.
         ordering = ['country__name', 'name']
 
         indexes = [
