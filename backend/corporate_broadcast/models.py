@@ -59,7 +59,7 @@ class BroadcastDemoAsset(models.Model):
 
 class TypesOfPlaceBroadcast(APIBaseObjectModel):
     type_of_place = models.ForeignKey(
-            "TypeOfPlace",
+            "nomenclatures.TypeOfPlace",
             on_delete=models.SET_NULL,
             null=True,
             blank=True,
