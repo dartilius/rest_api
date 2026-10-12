@@ -9,6 +9,23 @@ from orders.models import AdOrder, BgOrder
 from tasks.models import Task
 
 
+@pytest.mark.parametrize(
+    ("order_type", "action", "expected_task_type"),
+    (
+        (0, "cancel", 5),
+        (1, "cancel", 6),
+        (2, "cancel", 7),
+        (3, "cancel", 8),
+        (0, "update", 10),
+        (1, "update", 11),
+        (2, "update", 12),
+        (3, "update", 13),
+    ),
+)
+def test_background_task_type_mapping(order_type, action, expected_task_type):
+    assert get_bg_task_type(order_type, action) == expected_task_type
+
+
 @pytest.mark.django_db
 class TestOrders:
 
@@ -130,7 +147,7 @@ class TestOrders:
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
                 'clients': [nomenclature_id],
                 'playlist': playlist_2_id,
-                'order_type': 1,
+                'order_type': 2,
                 'parameters': {'test': 'test'}
             }],
             [{
@@ -138,7 +155,7 @@ class TestOrders:
                 'broadcast_interval': {'lower': today, 'upper': tomorrow},
                 'clients': [nomenclature_id],
                 'playlist': playlist_3_id,
-                'order_type': 2,
+                'order_type': 1,
                 'parameters': {'test': 'test'}
             }],
             [{

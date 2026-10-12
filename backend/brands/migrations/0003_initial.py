@@ -15,8 +15,7 @@ def refill_slugs(apps, schema_editor):
         Nomenclature._base_manager
         .filter(
             is_active=True,
-            for_web=True,
-            typeOfPlace__name="Торговый центр",
+            typeOfPlace__is_mall=True,
         )
     )
 
@@ -69,7 +68,10 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('brands', '0002__initial'),
-        ('nomenclatures', '__first__'),
+        (
+            'nomenclatures',
+            '0006_remove_nomenclaturetenant_unique_nomenclature_tenant_brand_floor_and_more',
+        ),
     ]
 
     operations = [

@@ -215,16 +215,7 @@ if not DEBUG:
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'RMC REST API',
-    'DESCRIPTION': """
-    # API для управления системой RMC
-
-    ## Возможности
-    - Управление номенклатурами (рабочими станциями)
-    - Управление заказами (рекламными и фоновыми)
-    - Управление пользователями и правами доступа
-    - Статистика и аналитика
-    - Управление файлами и контентом
-    """,
+    'DESCRIPTION': 'API управления системой RMC.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 
@@ -277,6 +268,15 @@ CACHES = {
             'IGNORE_EXCEPTIONS': True,
         }
     }
+}
+
+ASGI_APPLICATION = "rmc_rest_api.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [os.environ.get("CHANNEL_REDIS_URL", "redis://redis:6379/2")],
+                   "capacity": 100, "expiry": 10},
+    },
 }
 
 CACHE_TTL = 60 * 5
@@ -364,7 +364,17 @@ if CELERY_BROKER_URL and CELERY_RESULT_BACKEND:
 # 12. БЕЗОПАСНОСТЬ (CORS, JWT)
 # =============================================================================
 
-CORS_ALLOW_ALL_ORIGINS = True
+def _configured_origins(value: str) -> list[str]:
+    """Возвращает нормализованный список разрешённых browser-origin."""
+    return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+
+
+CSRF_TRUSTED_ORIGINS = _configured_origins(os.environ.get("FRONTEND_DOMEN", ""))
+
+# В production браузерный API не должен отвечать произвольному Origin вместе с
+# авторизационными данными. Desktop Player CORS не использует, но его API и
+# web-клиент остаются на одном и том же явно настроенном списке origin.
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
@@ -373,7 +383,6 @@ CORS_ALLOWED_HEADERS = [
     'origin', 'user-agent', 'x-csrftoken', 'x-requested-with'
 ]
 
-CSRF_TRUSTED_ORIGINS = os.environ.get('FRONTEND_DOMEN', '').split(', ')
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
 

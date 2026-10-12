@@ -34,6 +34,9 @@ from django.utils.translation import gettext_lazy as _
 
 from addresses.models import Address as AddressBook
 from api import APIBaseObjectModel, Article, UUIDPKField
+from nomenclatures.player_v2.playback.models import PlaybackEvent
+from nomenclatures.player_v2.runtime.models import StationRuntimeSnapshot
+from nomenclatures.player_v2.sync_state import StationSyncState
 
 TIMEZONES = {
     "Etc/GMT+11": "UTC -11",
@@ -928,6 +931,7 @@ class StationCommandV2(models.Model):
 
     class Status(models.TextChoices):
         PENDING = "pending", "Ожидает"
+        SUPERSEDED = "superseded", "Заменена новой редакцией"
         APPLIED = "applied", "Применена"
         FAILED = "failed", "Ошибка"
 

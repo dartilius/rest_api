@@ -7,8 +7,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from nomenclatures.models import Nomenclature, StationInstallation
-from nomenclatures.station_credentials import generate_station_token, hash_station_token, issue_station_token
-from nomenclatures.station_v2_serializers import StationV2BindingRequestSerializer
+from nomenclatures.player_v2.credentials import (
+    generate_station_token,
+    hash_station_token,
+    issue_station_token,
+)
+from nomenclatures.player_v2.serializers import StationV2BindingRequestSerializer
 
 
 class StationV2BindingView(APIView):

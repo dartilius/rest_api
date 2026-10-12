@@ -22,30 +22,30 @@ class Constants:
 def get_bg_task_type(order_type: int, action: str) -> int:
     """Возвращает соответствующий заказу и действию тип репликации."""
     ORDER_MUSIC = 0
-    ORDER_IMAGE = 1
-    ORDER_VIDEO = 2
+    ORDER_VIDEO = 1
+    ORDER_IMAGE = 2
     ORDER_TICKER = 3
     CANCEL_MUSIC_TASK = 5
-    CANCEL_IMAGE_TASK = 6
-    CANCEL_VIDEO_TASK = 7
+    CANCEL_VIDEO_TASK = 6
+    CANCEL_IMAGE_TASK = 7
     CANCEL_TICKER_TASK = 8
     UPDATE_MUSIC_TASK = 10
-    UPDATE_IMAGE_TASK = 11
-    UPDATE_VIDEO_TASK = 12
+    UPDATE_VIDEO_TASK = 11
+    UPDATE_IMAGE_TASK = 12
     UPDATE_TICKER_TASK = 13
     match action:
         case "cancel":
             order_types_to_task_types = {
                 ORDER_MUSIC: CANCEL_MUSIC_TASK,
-                ORDER_IMAGE: CANCEL_IMAGE_TASK,
                 ORDER_VIDEO: CANCEL_VIDEO_TASK,
+                ORDER_IMAGE: CANCEL_IMAGE_TASK,
                 ORDER_TICKER: CANCEL_TICKER_TASK,
             }
         case "update":
             order_types_to_task_types = {
                 ORDER_MUSIC: UPDATE_MUSIC_TASK,
-                ORDER_IMAGE: UPDATE_IMAGE_TASK,
                 ORDER_VIDEO: UPDATE_VIDEO_TASK,
+                ORDER_IMAGE: UPDATE_IMAGE_TASK,
                 ORDER_TICKER: UPDATE_TICKER_TASK,
             }
         case _:

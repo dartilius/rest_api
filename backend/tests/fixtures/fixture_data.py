@@ -114,7 +114,7 @@ def file_2(user_client, user) -> File:
     file_contents += image_source
     data = {
         'source': file_contents,
-        'type': 1
+        'type': 2
     }
     response = user_client.post('/api/files/', data=data, format='json')
     response_data = response.json()
@@ -130,7 +130,7 @@ def file_3(user_client, user) -> File:
     file_contents += video_source
     data = {
         'source': file_contents,
-        'type': 2
+        'type': 1
     }
     response = user_client.post('/api/files/', data=data, format='json')
     response_data = response.json()

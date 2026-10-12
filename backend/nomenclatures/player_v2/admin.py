@@ -12,12 +12,12 @@ from nomenclatures.models import (
     StationCredential,
     StationInstallation,
 )
-from nomenclatures.settings_patch import SettingsPatchError, apply_settings_operations
-from nomenclatures.station_credentials import (
+from nomenclatures.player_v2.credentials import (
     generate_station_token,
     hash_station_token,
     issue_station_token,
 )
+from nomenclatures.player_v2.settings import SettingsPatchError, apply_settings_operations
 
 
 DAY_CHOICES = (

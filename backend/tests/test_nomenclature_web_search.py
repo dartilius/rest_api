@@ -32,6 +32,7 @@ def test_web_search_returns_catalog_cards(anon_client, nomenclature):
     assert payload["next_page"] is None
     assert payload["results"][0]["id"] == str(nomenclature.id)
     assert payload["results"][0]["oldCatalogSlug"] == "test-place"
+    assert response["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
 
 
 @pytest.mark.django_db
@@ -59,6 +60,7 @@ def test_web_map_returns_compact_public_points(anon_client, nomenclature):
             "old_slug": "test-place",
         }
     ]
+    assert response["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
 
 
 @pytest.mark.django_db

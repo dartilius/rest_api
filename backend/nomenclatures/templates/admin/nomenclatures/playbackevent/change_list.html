@@ -1,0 +1,9 @@
+{% extends "admin/change_list.html" %}
+{% block object-tools-items %}
+<li><a href="{% url 'admin:nomenclatures_playbackevent_daily' %}">Завершённые воспроизведения за день</a></li>
+{{ block.super }}
+{% endblock %}
+{% block content %}
+<p>Это события плеера, сохранённые сервером. Последнее событие не доказывает, что контент играет прямо сейчас.</p>
+{{ block.super }}
+{% endblock %}

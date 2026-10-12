@@ -173,9 +173,22 @@ downloaded_files/
 .vscode
 /node_modules
 .DS_Storeclickhouse-config/
-configs/
 *.dump
 *.backup.*
 *.bak*
 /docs/*
 AGENTS.md
+
+# Local test deployment, reports and assistant tooling
+/.agents/
+/skills-lock.json
+/address-conflicts*.csv
+/db_dumps/
+/prod.clickhouse-local.yml
+/backend/req_temp.txt
+/backend/update_critical.txt
+/backend/docs/*
+!/backend/docs/__init__.py
+!/backend/docs/views.py
+!/backend/docs/integration_documentation.py
+!/backend/docs/ONE_C_API_GUIDE.md

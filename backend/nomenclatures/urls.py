@@ -8,8 +8,8 @@ from nomenclatures.views import (
 )
 from nomenclatures.views.discount import DiscountRuleViewSet  # добавить
 from nomenclatures.views.tenant import grouped_tenants_global, tenant_detail
-from nomenclatures.views.station_v2 import StationV2SyncView
-from nomenclatures.views.station_binding import StationV2BindingView
+from nomenclatures.player_v2.views.binding import StationV2BindingView
+from nomenclatures.player_v2.views.sync import StationV2SyncView
 router = routers.DefaultRouter()
 router.register('nomenclatures', NomenclatureViewSet, basename='nomenclature')
 router.register('orders', NomenclatureOrderViewSet, basename='order')

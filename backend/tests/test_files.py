@@ -43,12 +43,12 @@ class TestFiles:
             },
             {
                 'source': image_source,
-                'type': 1,
+                'type': 2,
                 'tags': [{'name': tag_1}]
             },
             {
                 'source': video_source,
-                'type': 2,
+                'type': 1,
                 'tags': [{'name': tag_2}]
             },
             {
@@ -1399,6 +1399,9 @@ class TestFiles:
         assert 'client' in response_data[0], (
             'В ответе нет информации о номенклатуре.'
         )
+        assert 'ad_block' not in response_data[0], (
+            'Статистика музыки ошибочно содержит рекламный блок.'
+        )
 
     def test_get_stat_image(
         self,
@@ -1422,6 +1425,9 @@ class TestFiles:
         assert 'client' in response_data[0], (
             'В ответе нет информации о номенклатуре.'
         )
+        assert 'ad_block' not in response_data[0], (
+            'Статистика изображения ошибочно содержит рекламный блок.'
+        )
 
     def test_get_stat_video(
         self,
@@ -1444,6 +1450,9 @@ class TestFiles:
         )
         assert 'client' in response_data[0], (
             'В ответе нет информации о номенклатуре.'
+        )
+        assert 'ad_block' not in response_data[0], (
+            'Статистика видео ошибочно содержит рекламный блок.'
         )
 
     def test_get_stat_ticker(

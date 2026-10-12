@@ -1,0 +1,9 @@
+{% extends "admin/change_form.html" %}
+{% block form_top %}
+{{ block.super }}
+<div id="order-form-guide" class="module order-form-guide" data-placement="{{ original.placement|default:'' }}" data-policy="{{ original.playback_policy|default:'' }}" data-permanent="{{ original.is_permanent|yesno:'true,false' }}" role="note">
+  <h2>Настройка заказа</h2>
+  <p>Выберите контент и точки, укажите период, затем настройте расписание и звук. Автор заказа заполняется автоматически.</p>
+  <p id="order-policy-help" aria-live="polite">У каждого поля есть подсказка. При сохранении заказ будет отправлен выбранным точкам.</p>
+</div>
+{% endblock %}

@@ -41,6 +41,7 @@ from orders.tasks import (
     create_ad_order_task,
     create_bg_order_task
 )
+from orders.unified_admin import OrderAdmin
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -133,7 +134,8 @@ class AdOrderAdmin(admin.ModelAdmin):
 
         updated = queryset.update(status=3)
         order_ids = [str(order.id) for order in queryset]
-        cancel_ad_order_task.delay(order_ids)
+        for order_id in order_ids:
+            cancel_ad_order_task.delay(order_id)
         self.message_user(
             request,
             ngettext(
@@ -309,7 +311,8 @@ class BgOrderAdmin(admin.ModelAdmin):
 
         updated = queryset.update(status=3)
         order_ids = [str(order.id) for order in queryset]
-        cancel_bg_order_task.delay(order_ids)
+        for order_id in order_ids:
+            cancel_bg_order_task.delay(order_id)
         self.message_user(
             request,
             ngettext(

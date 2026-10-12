@@ -3,7 +3,28 @@
 from rest_framework import serializers
 
 from nomenclatures.models import StationCommandV2
-from nomenclatures.settings_patch import SettingsPatchError, validate_settings_document
+from nomenclatures.player_v2.playback.serializers import PlaybackEventSerializer
+from nomenclatures.player_v2.runtime.serializers import RuntimeSnapshotSerializer, StrictIntegerField
+from nomenclatures.player_v2.settings import SettingsPatchError, validate_settings_document
+
+
+class OrderProgressSerializer(serializers.Serializer):
+    """A transient observation, never a readiness or playback receipt."""
+
+    command_id = serializers.UUIDField()
+    revision = StrictIntegerField(min_value=1)
+    phase = serializers.ChoiceField(choices=("downloading", "verifying", "applying"))
+    files_verified = StrictIntegerField(min_value=0, max_value=100000)
+    files_total = StrictIntegerField(min_value=1, max_value=100000)
+
+    def validate(self, attrs):
+        if attrs["files_verified"] > attrs["files_total"]:
+            raise serializers.ValidationError("Verified count exceeds the manifest size.")
+        if attrs["phase"] == "downloading" and attrs["files_verified"] != 0:
+            raise serializers.ValidationError("Downloading is not integrity verification.")
+        if attrs["phase"] == "applying" and attrs["files_verified"] != attrs["files_total"]:
+            raise serializers.ValidationError("Applying requires all files to be verified.")
+        return attrs
 
 
 class StationCommandReceiptSerializer(serializers.Serializer):
@@ -12,6 +33,7 @@ class StationCommandReceiptSerializer(serializers.Serializer):
     command_id = serializers.UUIDField()
     status = serializers.ChoiceField(
         choices=(
+            StationCommandV2.Status.SUPERSEDED,
             StationCommandV2.Status.APPLIED,
             StationCommandV2.Status.FAILED,
         )
@@ -22,6 +44,19 @@ class StationCommandReceiptSerializer(serializers.Serializer):
         if not isinstance(value, dict):
             raise serializers.ValidationError("result must be an object.")
         return value
+
+
+class PlaybackEventErrorSerializer(serializers.Serializer):
+    event_id = serializers.UUIDField()
+    code = serializers.ChoiceField(choices=("event_conflict", "station_mismatch", "order_mismatch", "sequence_conflict"))
+
+
+class StationV2SyncResponseSerializer(serializers.Serializer):
+    commands = serializers.ListField(child=serializers.JSONField())
+    playback_events_stored = serializers.ListField(child=serializers.UUIDField(), required=False)
+    playback_event_errors = PlaybackEventErrorSerializer(many=True, required=False)
+    playback_event_storage = serializers.ChoiceField(choices=("postgresql",), required=False)
+    runtime_snapshot_received = serializers.JSONField(required=False)
 
 
 class StationV2SyncRequestSerializer(serializers.Serializer):
@@ -37,6 +72,10 @@ class StationV2SyncRequestSerializer(serializers.Serializer):
     applied_settings_revision = serializers.IntegerField(required=False, min_value=0)
     station_capabilities = serializers.JSONField(required=False)
     applied_visual_output = serializers.JSONField(required=False)
+    station_protocol = serializers.DictField(required=False)
+    playback_events = PlaybackEventSerializer(many=True, required=False, default=list, max_length=100)
+    runtime_snapshot = RuntimeSnapshotSerializer(required=False)
+    order_progress = OrderProgressSerializer(many=True, required=False, default=list, max_length=100)
 
     def validate(self, attrs):
         settings = attrs.get("applied_settings")
@@ -56,6 +95,30 @@ class StationV2SyncRequestSerializer(serializers.Serializer):
         visual_output = attrs.get("applied_visual_output")
         if visual_output is not None:
             _validate_visual_output(visual_output)
+        protocol = attrs.get("station_protocol")
+        if protocol is not None and (
+            "unified_orders_version" not in protocol
+            or not set(protocol) <= {"unified_orders_version", "advertising_options_version", "background_visual_queue_version", "continuous_advertising_version", "playback_events_version"}
+            or type(protocol["unified_orders_version"]) is not int
+            or protocol["unified_orders_version"] != 1
+            or ("advertising_options_version" in protocol and (
+                type(protocol["advertising_options_version"]) is not int
+                or protocol["advertising_options_version"] != 1
+            ))
+            or ("background_visual_queue_version" in protocol and (
+                type(protocol["background_visual_queue_version"]) is not int
+                or protocol["background_visual_queue_version"] != 1
+            ))
+            or ("continuous_advertising_version" in protocol and (
+                type(protocol["continuous_advertising_version"]) is not int
+                or protocol["continuous_advertising_version"] != 1
+            ))
+            or ("playback_events_version" in protocol and (
+                type(protocol["playback_events_version"]) is not int
+                or protocol["playback_events_version"] != 1
+            ))
+        ):
+            raise serializers.ValidationError({"station_protocol": "Неподдерживаемая версия команд заказов."})
         return attrs
 
 
@@ -90,7 +153,13 @@ def _validate_station_capabilities(value):
         raise serializers.ValidationError("Некорректный список аудиовыходов.")
     _validate_capability_items(value["displays"], {"id", "name", "is_primary", "width", "height", "supported_rotations"})
     _validate_capability_items(value["audio"]["devices"], {"id", "name", "is_default"})
-    _validate_capability_items([value["audio"]["selected_device"]], {"id", "name", "is_default"})
+    # Audio enumeration is asynchronous in the desktop player.  Its first
+    # polling request can therefore report an honest, as-yet-undiscovered
+    # selected output as JSON null.  It is not a device item and must not be
+    # validated as one.
+    selected_device = value["audio"]["selected_device"]
+    if selected_device is not None:
+        _validate_capability_items([selected_device], {"id", "name", "is_default"})
 
 
 def _validate_capability_items(items, allowed_fields):

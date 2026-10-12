@@ -1,0 +1,9 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<form method="get"><label for="report-day">День</label> <input type="date" id="report-day" name="day" value="{{ day }}"> <input type="submit" value="Показать"></form>
+<p>Считаются только полные завершения с подтверждённым началом. Паузы, ошибки и прерывания не увеличивают число выходов. Это факт, а не отчёт план/факт. Дата определяется временем плеера; часы машины должны быть настроены правильно. Показаны первые 1000 групп.</p>
+<table>
+<thead><tr><th>Точка</th><th>Контент</th><th>Заказ</th><th>Файл</th><th>Полных воспроизведений</th></tr></thead>
+<tbody>{% for row in rows %}<tr><td>{{ row.nomenclature__name }}</td><td>{{ row.media_label }}</td><td>{{ row.order_name }}</td><td>{{ row.file_name }}</td><td>{{ row.completed_count }}</td></tr>{% empty %}<tr><td colspan="5">Подтверждённых полных воспроизведений за этот день нет.</td></tr>{% endfor %}</tbody>
+</table>
+{% endblock %}

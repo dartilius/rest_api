@@ -7,7 +7,7 @@ from drf_spectacular.views import (
 )
 from rest_framework import permissions
 
-from docs.views import docs, openapi_scheme
+from docs.views import docs, integration_guide, openapi_scheme
 from users.views import LogoutView
 
 
@@ -22,9 +22,9 @@ urlpatterns = [
     path('docs/', docs),
     path('docs/openapi-schema.yml', openapi_scheme),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/integration-guide.md', integration_guide, name='integration-guide'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='docs'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='docs'),
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('api/', include('addresses.urls')),
     path('api/', include('nomenclatures.urls')),
