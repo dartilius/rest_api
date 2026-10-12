@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'promotions',
     'placement_order',
     'feedback.apps.FeedbackConfig',
+    'corporate_broadcast.apps.CorporateBroadcastConfig',
     'services.apps.ServicesConfig',
 ]
 

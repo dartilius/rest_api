@@ -7,6 +7,16 @@ from api import UUIDPKField
 
 class Feedback(models.Model):
     id = UUIDPKField()
+    class RequestType(models.TextChoices):
+        GENERAL = "general", "Общее обращение"
+        CORPORATE_BROADCAST = "corporate_broadcast", "Корпоративное вещание"
+
+    request_type = models.CharField(max_length=32, choices=RequestType.choices, default=RequestType.GENERAL, db_index=True)
+    company = models.CharField("Компания", max_length=250, blank=True, default="")
+    request_data = models.JSONField("Параметры заявки", blank=True, default=dict)
+    consent = models.BooleanField("Согласие на обработку данных", default=False)
+    consent_at = models.DateTimeField("Дата согласия", null=True, blank=True, editable=False)
+    consent_version = models.CharField("Версия текста согласия", max_length=50, blank=True, default="", editable=False)
     code1c = models.CharField(
         verbose_name="Код 1с",
         null=True,

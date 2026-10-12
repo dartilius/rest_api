@@ -1,6 +1,10 @@
 import pytest
 from http import HTTPStatus
+from unittest.mock import patch
 
+from django.contrib.auth.hashers import check_password
+from django.core import mail
+from django.test import override_settings
 from users.models import CustomUser
 
 
@@ -9,21 +13,65 @@ class TestEmailCheck:
     url = '/api/users/check-email/'
 
     def test_returns_empty_200_when_email_is_available(self, anon_client):
-        response = anon_client.get(self.url, {'email': 'available@example.com'})
+        response = anon_client.post(self.url, {'email': 'available@example.com'}, format='json')
 
         assert response.status_code == HTTPStatus.OK
         assert response.content == b''
 
     def test_returns_204_when_email_already_exists(self, anon_client, user):
-        response = anon_client.get(self.url, {'email': user.email})
+        response = anon_client.post(self.url, {'email': user.email}, format='json')
 
         assert response.status_code == HTTPStatus.NO_CONTENT
         assert response.content == b''
 
     def test_rejects_missing_or_invalid_email(self, anon_client):
         for params in ({}, {'email': 'not-an-email'}):
-            response = anon_client.get(self.url, params)
+            response = anon_client.post(self.url, params, format='json')
             assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestPasswordResetByCode:
+    request_code_url = '/api/users/request-reset-password-code/'
+    reset_url = '/api/users/reset-password/'
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        DEFAULT_FROM_EMAIL='robot@example.com',
+        PASSWORD_RESET_CODE_AUDIT_EMAIL='info@krasrm.com',
+    )
+    @patch('users.services.secrets.randbelow', return_value=123456)
+    def test_sends_code_to_user_and_audit_mailbox_then_resets_password(
+        self, _, anon_client, user
+    ):
+        response = anon_client.post(
+            self.request_code_url, {'email': user.email}, format='json'
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert len(mail.outbox) == 2
+        assert mail.outbox[0].to == [user.email]
+        assert '123456' in mail.outbox[0].body
+        assert 'Не сообщайте этот код никому' in mail.outbox[0].body
+        assert 'свяжитесь с вашим менеджером' in mail.outbox[0].body
+        assert mail.outbox[1].to == ['info@krasrm.com']
+        assert user.email in mail.outbox[1].body
+        assert '123456' in mail.outbox[1].body
+
+        response = anon_client.post(
+            self.reset_url,
+            {
+                'email': user.email,
+                'code': '123456',
+                'new_password': 'new-secure-password',
+                'new_password_confirm': 'new-secure-password',
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        user.refresh_from_db()
+        assert check_password('new-secure-password', user.password)
 
 
 @pytest.mark.django_db

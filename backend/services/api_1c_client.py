@@ -29,9 +29,10 @@ class APIClient1C:
         if self._initialized:
             return
 
-        self.base_url = os.getenv("URL_1C")
-        if not self.base_url:
+        base_url = os.getenv("URL_1C")
+        if not base_url:
             raise ValueError("Переменная окружения URL_1C не задана")
+        self.base_url = base_url.rstrip("/")
 
         self.session = requests.Session()
         self._initialized = True
@@ -47,68 +48,95 @@ class APIClient1C:
     def _user(self) -> 'CustomUser':
         return self._get_service_user()
 
-    def _save_token(self, xrmccookie: str) -> None:
+    def _url(self, path: str) -> str:
+        return f"{self.base_url}/{path.lstrip('/')}"
+
+    def _save_tokens(self, access: str, refresh: str | None = None) -> None:
         user = self._get_service_user()
-        user.token_1c_access = xrmccookie
-        user.save(update_fields=["token_1c_access"])
+        user.token_1c_access = access
+        fields = ["token_1c_access"]
+        if refresh is not None:
+            user.token_1c_refresh = refresh
+            fields.append("token_1c_refresh")
+        user.save(update_fields=fields)
 
     def _auth_headers(self) -> dict:
         token = self._user.token_1c_access
         if not token:
             raise RuntimeError("Токен 1С не инициализирован. Выполните: python manage.py auth_1c")
-        return {"xrmccookie": token}
+        return {"Authorization": f"access_token {token}"}
 
-    def _reauthenticate(self) -> bool:
-        password = os.getenv("SERVICE_1C_PASSWORD")
-        if not password:
-            logger.error("SERVICE_1C_PASSWORD не задан")
-            return False
-        return self.authenticate(password)
-
-    def authenticate(self, password: str) -> bool:
-        user = self._get_service_user()
-        url = f"{self.base_url}/ControlUser"
-        payload = {"Почта": user.email, "Пароль": password}
-
+    def _token_request(self, path: str, payload: dict) -> dict | None:
         try:
-            response = self.session.post(url, json=payload, timeout=10)
+            response = self.session.post(self._url(path), json=payload, timeout=10)
             response.raise_for_status()
             data = response.json()
-        except requests.RequestException as e:
-            logger.error("Ошибка авторизации в 1С: %s", e)
-            return False
+        except (requests.RequestException, ValueError) as e:
+            logger.error("Ошибка JWT-запроса в 1С (%s): %s", path, type(e).__name__)
+            return None
+        if not isinstance(data, dict):
+            logger.error("1С вернул некорректный формат JWT-ответа (%s)", path)
+            return None
+        return data
 
-        if not data.get("Результат"):
-            logger.error("1С: ошибка авторизации — %s", data.get("Ответ"))
-            return False
+    @staticmethod
+    def _valid_token(token) -> bool:
+        return isinstance(token, str) and bool(token.strip())
 
-        if data.get("Блокировка"):
-            logger.error("1С: пользователь заблокирован до %s", data["Блокировка"])
+    def authenticate(self, password: str) -> bool:
+        if not password:
+            logger.error("Пароль сервисного пользователя 1С не задан")
             return False
-
-        xrmccookie = data.get("xrmccookie")
-        if not xrmccookie:
-            logger.error("1С не вернул xrmccookie. Ответ: %s", data)
+        user = self._get_service_user()
+        data = self._token_request(
+            "/auth/jwt/create", {"email": user.email, "password": password}
+        )
+        if data is None:
             return False
-
-        self._save_token(xrmccookie)
+        access, refresh = data.get("access"), data.get("refresh")
+        if not self._valid_token(access) or not self._valid_token(refresh):
+            logger.error("1С не вернул access/refresh при авторизации")
+            return False
+        self._save_tokens(access, refresh)
         return True
 
+    def refresh_access(self) -> bool:
+        refresh = self._user.token_1c_refresh
+        if not refresh:
+            logger.error("Refresh-токен 1С не инициализирован. Выполните auth_1c")
+            return False
+        data = self._token_request("/auth/jwt/refresh", {"refresh": refresh})
+        if data is None:
+            return False
+        access = data.get("access")
+        new_refresh = data.get("refresh")
+        if not self._valid_token(access) or (
+            "refresh" in data and not self._valid_token(new_refresh)
+        ):
+            logger.error("1С вернул некорректные токены при обновлении access")
+            return False
+        self._save_tokens(access, new_refresh)
+        return True
+
+    def ping(self) -> requests.Response:
+        """Проверка доступности 1С без авторизации."""
+        return self.session.get(self._url("/ping/open"), timeout=10)
+
     def _request(self, method: str, path: str, **kwargs) -> requests.Response:
-        url = f"{self.base_url}{path}"
-        headers = kwargs.pop("headers", {})
+        url = self._url(path)
+        headers = requests.structures.CaseInsensitiveDict(kwargs.pop("headers", {}) or {})
         timeout = kwargs.pop("timeout", 30)
         headers.update(self._auth_headers())
 
         response = self.session.request(method, url, headers=headers, timeout=timeout, **kwargs)
 
-        if response.status_code == 401:
-            logger.warning("401 от 1С — переавторизация")
-            if self._reauthenticate():
+        if response.status_code == 403:
+            logger.warning("403 от 1С — обновление access-токена")
+            if self.refresh_access():
                 headers.update(self._auth_headers())
                 response = self.session.request(method, url, headers=headers, timeout=timeout, **kwargs)
             else:
-                logger.error("Переавторизация не удалась")
+                logger.error("Обновление access-токена 1С не удалось")
 
         return response
 

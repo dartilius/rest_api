@@ -14,6 +14,7 @@ logger = logging.getLogger('feedback')
 
 _PATHNAME_LABELS = {
     "order": "Заказ",
+    "/corporate-broadcast": "Корпоративное вещание",
     "brands": "Бренд",
     "nomenclatures": "Номенклатура",
 }
@@ -105,6 +106,24 @@ def _build_source_line(
     return " | ".join(parts)
 
 
+def _corporate_lines(request_type, company, request_data, request_id):
+    if request_type != "corporate_broadcast":
+        return []
+    from corporate_broadcast.constants import BroadcastFormat, CONTENT_LABELS
+    data = request_data or {}
+    lines = ["", "Тип заявки: Корпоративное вещание", f"Номер: {request_id or '-'}", f"Компания: {company or '-'}"]
+    labels = {"business_type": "Тип объекта", "object_count": "Количество объектов", "area_per_object": "Площадь одного объекта, м²", "format": "Формат", "screens": "Экраны", "video_content": "Контент для экранов"}
+    values = {**dict(BroadcastFormat.choices), "existing": "Уже есть", "needed": "Нужно подобрать", "own": "Собственный", "production": "Нужно производство", "consultation": "Нужна консультация", "store": "Магазин", "cafe": "Кафе", "restaurant": "Ресторан", "shopping-center": "Торговый центр", "office": "Офис", "fitness": "Фитнес", "hotel": "Отель", "other": "Другое"}
+    for key, label in labels.items():
+        if key in data:
+            value = data[key]
+            lines.append(f"{label}: {values.get(value, value)}")
+    content = ", ".join(CONTENT_LABELS[key] for key, enabled in data.get("content", {}).items() if enabled and key in CONTENT_LABELS)
+    if "content" in data:
+        lines.append(f"Контент: {content or 'Обсудить с менеджером'}")
+    return lines
+
+
 def _send(to: str, subject: str, body: str) -> None:
     msg = MIMEMultipart()
     msg["From"] = f"RMC <{EMAIL_HOST_USER}>"
@@ -133,9 +152,13 @@ def send_feedback_email(
     pathname: Optional[str] = None,
     brand_id: Optional[str] = None,
     nomenclatures_ids: Optional[list[str]] = None,
+    request_type: str = "general",
+    company: str = "",
+    request_data: Optional[dict] = None,
+    request_id: Optional[str] = None,
 ) -> str:
     """Отправка уведомления админу"""
-    logger.info(f"[TASK ADMIN] Sending to {EMAIL_HOST_USER}")
+    logger.info("Feedback manager email: id=%s", request_id)
     try:
         brand_name, nom_names = _resolve_names(pathname, brand_id, nomenclatures_ids)
         source_line = _build_source_line(pathname, brand_name, nom_names)
@@ -150,17 +173,18 @@ def send_feedback_email(
         ]
         if source_line:
             body_lines.append(source_line)
+        body_lines += _corporate_lines(request_type, company, request_data, request_id)
         body_lines += ["", "Сообщение:", message or ""]
 
         _send(
             to=EMAIL_HOST_USER,
-            subject="Новое обращение с сайта",
+            subject="Заявка на корпоративное вещание" if request_type == "corporate_broadcast" else "Новое обращение с сайта",
             body="\n".join(body_lines),
         )
         logger.info(f"[TASK ADMIN] ✅ Sent")
         return "Admin notification sent"
     except Exception as e:
-        logger.error(f"[TASK ADMIN] ❌ Failed: {e}")
+        logger.error("Feedback manager email failed: id=%s error=%s", request_id, type(e).__name__)
         raise self.retry(exc=e)
 
 
@@ -174,9 +198,13 @@ def send_feedback_mail(
     pathname: Optional[str] = None,
     brand_id: Optional[str] = None,
     nomenclatures_ids: Optional[list[str]] = None,
+    request_type: str = "general",
+    company: str = "",
+    request_data: Optional[dict] = None,
+    request_id: Optional[str] = None,
 ) -> str:
     """Отправка подтверждения пользователю"""
-    logger.info(f"[TASK USER] Sending to {email}")
+    logger.info("Feedback confirmation email: id=%s", request_id)
     try:
         brand_name, nom_names = _resolve_names(pathname, brand_id, nomenclatures_ids)
         source_line = _build_source_line(pathname, brand_name, nom_names)
@@ -184,10 +212,11 @@ def send_feedback_mail(
         body_lines = [
             f"Здравствуйте, {name}!",
             "",
-            "Ваше обращение принято. Мы свяжемся с вами в ближайшее время.",
+            "Ваша заявка на корпоративное вещание сохранена. Менеджер уточнит детали." if request_type == "corporate_broadcast" else "Ваше обращение принято. Мы свяжемся с вами в ближайшее время.",
         ]
         if source_line:
             body_lines.append(source_line)
+        body_lines += _corporate_lines(request_type, company, request_data, request_id)
         body_lines += ["", "Текст вашего сообщения:", message or ""]
 
         _send(
@@ -196,7 +225,7 @@ def send_feedback_mail(
             body="\n".join(body_lines),
         )
         logger.info(f"[TASK USER] ✅ Sent")
-        return f"Письмо отправлено для {email}"
+        return "User confirmation sent"
     except Exception as e:
-        logger.error(f"[TASK USER] ❌ Failed: {e}")
+        logger.error("Feedback confirmation email failed: id=%s error=%s", request_id, type(e).__name__)
         raise self.retry(exc=e)
