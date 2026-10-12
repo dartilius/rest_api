@@ -192,3 +192,8 @@ AGENTS.md
 !/backend/docs/views.py
 !/backend/docs/integration_documentation.py
 !/backend/docs/ONE_C_API_GUIDE.md
+
+# Tests are retained locally and excluded from production sources.
+/backend/tests/
+/backend/*/tests.py
+/backend/pytest.ini

@@ -11,12 +11,12 @@ class Feedback(models.Model):
         GENERAL = "general", "Общее обращение"
         CORPORATE_BROADCAST = "corporate_broadcast", "Корпоративное вещание"
 
-    request_type = models.CharField(max_length=32, choices=RequestType.choices, default=RequestType.GENERAL, db_index=True)
-    company = models.CharField("Компания", max_length=250, blank=True, default="")
-    request_data = models.JSONField("Параметры заявки", blank=True, default=dict)
-    consent = models.BooleanField("Согласие на обработку данных", default=False)
+    request_type = models.CharField(max_length=32, choices=RequestType.choices, default=RequestType.GENERAL, db_default=RequestType.GENERAL, db_index=True)
+    company = models.CharField("Компания", max_length=250, blank=True, default="", db_default="")
+    request_data = models.JSONField("Параметры заявки", blank=True, default=dict, db_default={})
+    consent = models.BooleanField("Согласие на обработку данных", default=False, db_default=False)
     consent_at = models.DateTimeField("Дата согласия", null=True, blank=True, editable=False)
-    consent_version = models.CharField("Версия текста согласия", max_length=50, blank=True, default="", editable=False)
+    consent_version = models.CharField("Версия текста согласия", max_length=50, blank=True, default="", db_default="", editable=False)
     code1c = models.CharField(
         verbose_name="Код 1с",
         null=True,

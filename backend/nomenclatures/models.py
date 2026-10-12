@@ -476,6 +476,7 @@ class Nomenclature(APIBaseObjectModel):
         max_length=512,
         blank=True,
         default="",
+        db_default="",
         verbose_name="Старый URL slug (каталог)",
         help_text="Slug из старой версии каталога для редиректов",
         db_index=True,
