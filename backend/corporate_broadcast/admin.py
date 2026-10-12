@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 
-from .models import BroadcastDemo, BroadcastDemoAsset
+from .models import BroadcastDemo, BroadcastDemoAsset, TypesOfPlaceBroadcast, TypeOfFormats, BroadcastLanding
 
 
 class DemoAssetFormSet(BaseInlineFormSet):
@@ -29,3 +29,27 @@ class BroadcastDemoAdmin(admin.ModelAdmin):
     search_fields = ("title", "description")
     readonly_fields = ("id", "created", "modified")
     inlines = (DemoAssetInline,)
+
+@admin.register(TypesOfPlaceBroadcast)
+class TypesOfPlaceBroadcastAdmin(admin.ModelAdmin):
+    list_display = ("type_of_place", "format_type", "description")
+    list_filter = ("type_of_place", "format_type")
+    search_fields = ("description",)
+    readonly_fields = ("id",)
+
+
+
+@admin.register(TypeOfFormats)
+class TypeOfFormatsAdmin(admin.ModelAdmin):
+    list_display = ("format_type", "description")
+    list_filter = ("format_type",)
+    search_fields = ("description",)
+    readonly_fields = ("id",)
+
+
+@admin.register(BroadcastLanding)
+class BroadcastLandingAdmin(admin.ModelAdmin):
+    list_display = ("format_type", "description", "demo")
+    list_filter = ("format_type",)
+    search_fields = ("description",)
+    readonly_fields = ("id",)

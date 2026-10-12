@@ -1,7 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .models import BroadcastDemo, BroadcastDemoAsset
+from .models import BroadcastDemo, BroadcastDemoAsset, BroadcastLanding, TypesOfPlaceBroadcast, TypeOfFormats
 
 
 class DemoAssetSerializer(serializers.ModelSerializer):
@@ -34,3 +34,24 @@ class BroadcastDemoSerializer(serializers.ModelSerializer):
     @extend_schema_field(DemoAssetSerializer(many=True))
     def get_assets(self, obj):
         return DemoAssetSerializer([asset for asset in obj.assets.all() if asset.is_playable], many=True).data
+
+
+class BroadcastDemoListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BroadcastDemo
+        fields = ("id", "title", "format", "description", "sort_order")
+
+class BroadcastLandingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BroadcastLanding
+        fields = ("id", "format_type", "description", "demo")
+
+class TypeOfFormatsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TypeOfFormats
+        fields = ("id", "format_type", "description", "demo")
+
+class TypesOfPlaceBroadcastSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TypesOfPlaceBroadcast
+        fields = ("id", "type_of_place", "format_type", "description")
