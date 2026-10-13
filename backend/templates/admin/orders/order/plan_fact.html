@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Главная</a> ›
+  <a href="{% url 'admin:orders_order_changelist' %}">Заказы эфира</a> ›
+  <a href="{{ order_url }}">{{ original }}</a> › План/факт
+</div>
+{% endblock %}
+{% block content %}
+<div class="module">
+  <h2>{{ original.name }} · {{ original.nomenclature.name }} · редакция {{ original.revision }}</h2>
+  <form method="get">
+    {{ form.as_p }}
+    <p><input type="submit" value="Показать отчёт"> <a href="{{ order_url }}">Вернуться к заказу</a></p>
+  </form>
+</div>
+{% if report %}
+  <p>Отправленная редакция в отчёте: {{ report.revision }}. Текущий момент для расчёта: {{ report_now|date:"d.m.Y H:i:s" }} ({{ server_timezone }}).</p>
+  {% for note in report.notes %}<p>{{ note }}</p>{% endfor %}
+  <div class="module" style="overflow-x: auto;">
+    <h2>Всего выходов роликов</h2>
+    <table>
+      <thead><tr><th scope="col">План на день</th><th scope="col">План к текущему моменту</th><th scope="col">Полных выходов</th><th scope="col">Пока не подтверждено</th><th scope="col">Ещё запланировано</th><th scope="col">Сверх дневного плана</th></tr></thead>
+      <tbody><tr><td>{{ report.summary.planned|default_if_none:"—" }}</td><td>{{ report.summary.due|default_if_none:"—" }}</td><td>{{ report.summary.completed }}</td><td>{{ report.summary.missing|default_if_none:"—" }}</td><td>{{ report.summary.future|default_if_none:"—" }}</td><td>{{ report.summary.extra|default_if_none:"—" }}</td></tr></tbody>
+    </table>
+  </div>
+  <p>Частота в заказе задаёт число выходов заказа. На каждом выходе плеер выбирает один ролик плейлиста по очереди; итог — сумма этих выходов.</p>
+  <div class="module" style="overflow-x: auto;">
+    <h2>Выходы роликов за выбранный день</h2>
+    <table>
+      <caption>Полный выход учитывается только при подтверждённых начале и завершении одного воспроизведения.</caption>
+      <thead><tr>
+        <th scope="col">Ролик</th><th scope="col">План на день</th>
+        <th scope="col">План к текущему моменту</th><th scope="col">Полных выходов</th>
+        <th scope="col">Пока не подтверждено</th><th scope="col">Ещё запланировано</th>
+        <th scope="col">Сверх дневного плана</th>
+      </tr></thead>
+      <tbody>{% for row in report.rows %}<tr>
+        <th scope="row">{{ row.file_name }}</th>
+        <td>{{ row.planned|default_if_none:"—" }}</td><td>{{ row.due|default_if_none:"—" }}</td>
+        <td>{{ row.completed }}</td><td>{{ row.missing|default_if_none:"—" }}</td>
+        <td>{{ row.future|default_if_none:"—" }}</td><td>{{ row.extra|default_if_none:"—" }}</td>
+      </tr>{% empty %}<tr><td colspan="7">В этой редакции нет доступного состава роликов и подтверждённых выходов за выбранный день.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <p>«Пока не подтверждено» — разница между планом к текущему моменту и полными выходами. Она может уменьшиться после завершения ролика или доставки накопленной статистики. Это не доказательство пропуска.</p>
+  <p>Факт относится к дню начала воспроизведения на машине, даже если ролик завершился после полуночи. Паузы, ошибки и прерывания не считаются полными выходами.</p>
+{% endif %}
+{% endblock %}

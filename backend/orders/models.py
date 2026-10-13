@@ -4,6 +4,8 @@ from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
 from django.utils import timezone
 
+from orders.unified_models import Order, OrderStationState, ORDER_PLACEMENTS, PLAYBACK_POLICIES
+
 from api import APIBaseObjectModel
 from nomenclatures.models import Nomenclature
 from files.models import Playlist
@@ -76,7 +78,7 @@ class BaseOrder(APIBaseObjectModel):
 
     broadcast_interval = DateTimeRangeField(
         verbose_name='Интервал работы заказа',
-        null=False,
+        null=True,
         blank=True,
     )
 

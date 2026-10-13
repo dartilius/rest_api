@@ -4,7 +4,21 @@ from django.db.models import Q
 from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
 
 from api.constants import filter_by_owner_name
-from orders.models import AdOrder, BgOrder
+from orders.models import AdOrder, BgOrder, Order
+
+
+class UnifiedOrderFilter(FilterSet):
+    """Filters for the documented unified broadcast-order endpoint."""
+
+    name = CharFilter(field_name="name", lookup_expr="icontains")
+    placement = CharFilter(field_name="placement")
+    playback_policy = CharFilter(field_name="playback_policy")
+    status = CharFilter(field_name="status")
+    nomenclature = CharFilter(field_name="nomenclature_id")
+
+    class Meta:
+        model = Order
+        fields = ("name", "placement", "playback_policy", "status", "nomenclature")
 
 
 class AdOrderFilter(FilterSet):

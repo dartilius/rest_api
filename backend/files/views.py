@@ -1,10 +1,10 @@
-import copy
 from http import HTTPStatus
+from collections.abc import Mapping
 from itertools import chain
 from uuid import UUID
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import QuerySet
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import (
     extend_schema,
@@ -13,7 +13,7 @@ from drf_spectacular.utils import (
 )
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.status import (
@@ -25,11 +25,11 @@ from rest_framework.status import (
 
 from api.constants import (
     get_instance_or_404,
-    restricted_update,
     DEFAULT_SCHEMA_RESPONSES,
     DEFAULT_SCHEMA_EXAMPLES,
     DetailSerializer,
 )
+from docs import integration_documentation as integration_docs
 from ch_statistic.models import (
     ADStat,
     MusicStat,
@@ -46,10 +46,13 @@ from ch_statistic.serializers import (
     BaseFileSerializer,
 )
 from files.filters import FileFilter, PlaylistFilter
+from files.playlist_api import PlaylistFilesChangeSerializer
 from files.models import Playlist, File, Tag, TYPES
+from files.playlist_mutations import set_playlist_files, refresh_playlist_orders
 from files.serializers import (
     PlaylistSerializer,
     PlaylistListSerializer,
+    PlaylistReadSerializer,
     FileSerializer,
     FileListSerializer,
     TagSerializer,
@@ -506,9 +509,6 @@ class FileViewSet(NoUpdateViewSet):
                 statistics = MusicStat.objects.filter(file=pk)
                 data = FileMusicStatSerializer(statistics, many=True).data
             case 1:
-                statistics = ImageStat.objects.filter(file=pk)
-                data = FileImageStatSerializer(statistics, many=True).data
-            case 2:
                 statistics_bg = VideoStat.objects.filter(file=pk)
                 statistics_ad = ADStat.objects.filter(file=pk)
                 data_bg = FileVideoStatSerializer(
@@ -516,6 +516,9 @@ class FileViewSet(NoUpdateViewSet):
                 ).data
                 data_ad = FileAdStatSerializer(statistics_ad, many=True).data
                 data = data_ad + data_bg
+            case 2:
+                statistics = ImageStat.objects.filter(file=pk)
+                data = FileImageStatSerializer(statistics, many=True).data
             case 3:
                 statistics = TickerStat.objects.filter(file=pk)
                 data = FileTickerStatSerializer(statistics, many=True).data
@@ -531,6 +534,7 @@ class FileViewSet(NoUpdateViewSet):
 @extend_schema_view(
     list=extend_schema(
         summary="Получить пагинированный список плейлистов",
+        description=integration_docs.PLAYLIST_LIST_DESCRIPTION,
         responses={HTTP_200_OK: PlaylistListSerializer}
         | DEFAULT_SCHEMA_RESPONSES,
         examples=[
@@ -550,7 +554,8 @@ class FileViewSet(NoUpdateViewSet):
     ),
     retrieve=extend_schema(
         summary="Получить расшифровку плейлиста",
-        responses={HTTP_200_OK: PlaylistSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        description=integration_docs.PLAYLIST_RETRIEVE_DESCRIPTION,
+        responses={HTTP_200_OK: PlaylistReadSerializer} | DEFAULT_SCHEMA_RESPONSES,
         examples=[
             OpenApiExample(
                 "Плейлист",
@@ -579,6 +584,53 @@ class FileViewSet(NoUpdateViewSet):
         ]
         + DEFAULT_SCHEMA_EXAMPLES,
     ),
+)
+@extend_schema_view(create=extend_schema(
+    summary="Создать плейлист",
+    responses={HTTP_201_CREATED: PlaylistReadSerializer} | DEFAULT_SCHEMA_RESPONSES,
+    description=integration_docs.PLAYLIST_CREATE_DESCRIPTION,
+    examples=[
+        OpenApiExample("Музыкальный плейлист", value={"name": "Фоновая музыка", "files": [
+            "11111111-1111-4111-8111-111111111111", "33333333-3333-4333-8333-333333333333",
+        ]}, request_only=True),
+        OpenApiExample("Видео", value={"name": "Видеоплейлист", "items": [
+            {"file": "44444444-4444-4444-8444-444444444444"},
+            {"file": "55555555-5555-4555-8555-555555555555"},
+        ]}, request_only=True),
+        OpenApiExample("Картинки", value={"name": "Слайдшоу", "items": [
+            {"file": "22222222-2222-4222-8222-222222222222"},
+            {"file": "66666666-6666-4666-8666-666666666666"},
+        ]}, request_only=True),
+        OpenApiExample("Видео и картинки в одной очереди", value={"name": "Смешанный визуальный контент", "items": [
+            {"file": "44444444-4444-4444-8444-444444444444"},
+            {"file": "22222222-2222-4222-8222-222222222222"},
+        ]}, request_only=True),
+        OpenApiExample("Рекламное аудио с картинками", value={"name": "Рекламный плейлист", "items": [
+            {"file": "11111111-1111-4111-8111-111111111111", "images": [
+                "22222222-2222-4222-8222-222222222222", "66666666-6666-4666-8666-666666666666",
+            ]},
+            {"file": "33333333-3333-4333-8333-333333333333", "images": []},
+        ]}, request_only=True),
+    ],
+))
+@extend_schema_view(
+    partial_update=extend_schema(
+        summary="Изменить плейлист: название, состав и картинки аудио",
+        description=integration_docs.PLAYLIST_UPDATE_DESCRIPTION,
+        request=PlaylistSerializer,
+        responses={200: PlaylistReadSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        examples=[OpenApiExample("Замена состава и порядка", request_only=True, value={
+            "items": [{"file": "11111111-1111-4111-8111-111111111111", "images": [
+                "22222222-2222-4222-8222-222222222222"]},
+                {"file": "33333333-3333-4333-8333-333333333333", "images": []}]
+        })],
+    ),
+    add_files=extend_schema(summary="Добавить основные файлы в плейлист",
+        description=integration_docs.PLAYLIST_ADD_FILES_DESCRIPTION,
+        request=PlaylistFilesChangeSerializer),
+    remove_files=extend_schema(summary="Убрать основные файлы из плейлиста",
+        description=integration_docs.PLAYLIST_REMOVE_FILES_DESCRIPTION,
+        request=PlaylistFilesChangeSerializer),
 )
 @extend_schema(tags=["Плейлисты"])
 class PlaylistViewSet(viewsets.ModelViewSet):
@@ -620,6 +672,12 @@ class PlaylistViewSet(viewsets.ModelViewSet):
     filterset_class = PlaylistFilter
     permission_classes = [StaffCUDAuthRetrieve]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action != "list":
+            queryset = queryset.prefetch_related("items__file", "items__visuals__file")
+        return queryset
+
     def get_serializer(self, *args, **kwargs):
         if self.action == "list":
             serializer = PlaylistListSerializer
@@ -633,6 +691,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
 
         return serializer(*args, **kwargs)
 
+    @transaction.atomic
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
@@ -664,66 +723,43 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         return orders if orders else None
 
     @staticmethod
-    def perform_remove_files(
-        playlists: Playlist | list[Playlist], files: list[str]
-    ) -> None:
-        """
-        Удаляем файлы из плейлиста или из списка плейлистов и обновляем
-        связанные с ним(и) заказы.
-
-        1. Если пришёл один плейлист, убираем файл(ы) из него.
-        2. Иначе делаем то же самое с каждым плейлистом из списка.
-        """
-
-        def _remove_files_and_update_orders(playlist, file_list) -> None:
-            """
-            Убираем из плейлиста только те файлы, которые реально в нём есть.
-
-            1. Собираем список айди файлов плейлиста.
-            2. Создаём независимую копию списка на удаление, в которой
-                останутся только актуальные файлы.
-            3.1 Если файл есть в плейлисте, удаляем его.
-            3.2 Иначе удаляем его из списка актуальных файлов.
-            4. Фильтруем список актуальных заказов с данным плейлистом.
-            5. Если заказы нашлись, обновляем их списком актуальных файлов.
-            """
-            # 1
-            playlist_files = list(
-                map(
-                    str,
-                    [
-                        file_id
-                        for file_id in playlist.files.values_list(
-                            "id", flat=True
+    @transaction.atomic
+    def perform_remove_files(playlists, files):
+        identifiers = (
+            [playlists.pk]
+            if isinstance(playlists, Playlist)
+            else [playlist.pk for playlist in playlists]
+        )
+        removed = {UUID(value) for value in files}
+        locked = (
+            Playlist.objects.select_for_update(no_key=True)
+            .filter(pk__in=identifiers)
+            .order_by("pk")
+        )
+        for playlist in locked:
+            current = PlaylistViewSet.primary_files(playlist)
+            actual = [str(file.pk) for file in current if file.pk in removed]
+            if not actual:
+                continue
+            try:
+                set_playlist_files(playlist, [file for file in current if file.pk not in removed])
+                refresh_playlist_orders(playlist)
+            except DjangoValidationError as exc:
+                raise ValidationError(exc.messages) from exc
+            legacy = PlaylistViewSet.check_for_orders(playlist)
+            if legacy:
+                transaction.on_commit(
+                    lambda legacy=legacy, actual=actual: (
+                        PlaylistViewSet.perform_update_orders(
+                            legacy, actual, "remove_files"
                         )
-                    ],
-                )
-            )
-            # 2
-            actual_file_list = copy.deepcopy(file_list)
-            for file in file_list:
-                # 3.1
-                if file in playlist_files:
-                    playlist.files.remove(file)
-                # 3.2
-                else:
-                    actual_file_list.remove(file)
-            playlist.save()
-            # 4
-            orders = PlaylistViewSet.check_for_orders(playlists)
-            # 5
-            if orders:
-                PlaylistViewSet.perform_update_orders(
-                    orders, actual_file_list, action_type="remove_files"
+                    )
                 )
 
-        # 1
-        if isinstance(playlists, Playlist):
-            _remove_files_and_update_orders(playlists, files)
-        # 2
-        else:
-            for playlist in playlists:
-                _remove_files_and_update_orders(playlist, files)
+    @staticmethod
+    def primary_files(playlist):
+        items = list(playlist.items.select_related("file").order_by("position", "pk"))
+        return [item.file for item in items] if items else list(playlist.files.all())
 
     @staticmethod
     def perform_update_orders(order_list: list, files: list, action_type: str):
@@ -772,23 +808,38 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             raise ValidationError(f"Значение {e} не является верным UUID-ом.")
 
+    @staticmethod
+    def validate_object_body(data):
+        if not isinstance(data, Mapping):
+            raise ValidationError("Тело запроса должно быть JSON-объектом.")
+
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
-        error_message = (
-            'Изменить методом "PATCH" можно только название и описание. '
-            "Лишние ключи: {keys}.\n"
-            "Для добавления файлов в плейлист используйте "
-            "эндпоинт /add_files, а для удаления /remove_files."
-        )
-        updatable_fields = ("name", "description")
-        kwargs.update(
-            updatable_fields=updatable_fields, error_message=error_message
-        )
-        response = restricted_update(self, request, *args, **kwargs)
-        return response
+        if request.method != "PATCH":
+            raise MethodNotAllowed(request.method)
+        self.validate_object_body(request.data)
+        extra = set(request.data) - {"name", "description", "items", "files"}
+        if extra:
+            raise ValidationError(
+                "Неизвестные поля: " + ", ".join(sorted(extra))
+            )
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     def perform_destroy(self, instance):
         """Запрет на удаление плейлиста, если он сейчас где-то играет."""
         orders = self.check_for_orders(instance)
+        unified_orders = list(
+            instance.broadcast_orders.filter(
+                is_active=True,
+                status__in=(0, 1),
+            )
+        )
+        if unified_orders:
+            orders = [*(orders or []), *unified_orders]
         if orders:
             orders_names = [order.name for order in orders]
             raise ValidationError(
@@ -797,89 +848,55 @@ class PlaylistViewSet(viewsets.ModelViewSet):
             )
 
     @action(detail=True, methods=["POST"])
+    @transaction.atomic
     def add_files(self, request, pk):
-        """
-        Добавить файлы в плейлист.
-
-        0. Проверяем формат полученных данных.
-        1. Проверяем, что объект запроса существует.
-        2. Проверяем, что в запросе нет ранее добавленных в плейлист файлов.
-        3. Проверяем, что тип файлов в запросе соответствует типу файлов
-            в плейлисте.
-        4. Если всё ок - добавляем файлы в плейлист, иначе
-            выбрасываем исключение.
-        5. Проверяем наличие активных заказов с данным плейлистом.
-        6. Если заказы нашлись, создаём репликации на обновление
-            соответствущего типа.
-        """
-
-        def _validate_no_duplicates(files: set, pls_files: set) -> None:
-            """Проверяем, что файлы не будут дублироваться."""
-            duplicates = pls_files & files
-            if duplicates:
-                raise ValidationError(
-                    "Плейлист уже содержит данные файлы: " f"{duplicates}"
-                )
-
-        # TODO: оптимизировать с использованием множеств
-        # files_types = {TYPES[file.type] for file in files}
-        #    if files_types.difference_update(
-        #            {file_type
-        #             for file_type
-        #             in files_types
-        #             if file_type != pls_type}
-        #    ):
-        def _validate_file_types(files: QuerySet, pls_type: str) -> None:
-            """Проверяем, что тип файлов соответствует плейлисту."""
-            bad_types = set()
-            file_objs = File.objects.filter(id__in=files)
-            for file in file_objs:
-                file_type = TYPES[file.type]
-                if file_type != pls_type:
-                    bad_types.add(file_type)
-            if bad_types:
-                raise ValidationError(
-                    "Вы пытаетесь добавить в плейлист файлы "
-                    "не соответствующего типа.\n"
-                    f"Тип файлов в плейлисте: {pls_type}.\n"
-                    f"Среди ваших файлов есть: {bad_types}"
-                )
-
-        # 0
+        self.validate_object_body(request.data)
         new_files = request.data.get("files")
         self._validate_request_data_format(new_files)
-        # 1
-        playlist = get_instance_or_404(Playlist, pk)
-        playlist_files = set(
-            map(
-                str,
-                [
-                    file_id
-                    for file_id in playlist.files.values_list("id", flat=True)
-                ],
+        permitted = self.get_object()
+        playlist = Playlist.objects.select_for_update(no_key=True).get(pk=permitted.pk)
+        current = self.primary_files(playlist)
+        ids = list(dict.fromkeys(UUID(identity) for identity in new_files))
+        if {file.pk for file in current}.intersection(ids):
+            raise ValidationError(
+                "Некоторые файлы уже находятся в плейлисте."
             )
-        )
-        # 2
-        _validate_no_duplicates(set(new_files), playlist_files)
-        # 3
-        file_objs = File.objects.filter(id__in=new_files)
-        playlist_type = TYPES[playlist.files.first().type]
-        _validate_file_types(file_objs, playlist_type)
-        # 4
-        playlist.files.add(*new_files)
-        # 5
-        orders = PlaylistViewSet.check_for_orders(playlist)
-        # 6
-        if orders:
-            files_list = [
-                {"id": str(file.id), "hash": file.hash} for file in file_objs
-            ]
-            self.perform_update_orders(
-                orders, files_list, action_type="add_files"
+        resolved = {file.pk: file for file in File.active.filter(pk__in=ids)}
+        if set(resolved) != set(ids):
+            raise ValidationError(
+                "Некоторые файлы не существуют или неактивны."
             )
-
+        additions = [resolved[identity] for identity in ids]
+        if (
+            not playlist.items.exists()
+            and len({file.type for file in [*current, *additions]}) > 1
+        ):
+            raise ValidationError(
+                "Простой плейлист может содержать файлы только одного типа; "
+                "для смешанного используйте items."
+            )
+        if additions:
+            try:
+                set_playlist_files(playlist, [*current, *additions])
+                refresh_playlist_orders(playlist)
+            except DjangoValidationError as exc:
+                raise ValidationError(exc.messages) from exc
+            legacy = self.check_for_orders(playlist)
+            if legacy:
+                payload = [
+                    {"id": str(file.pk), "hash": file.hash}
+                    for file in additions
+                ]
+                transaction.on_commit(
+                    lambda legacy=legacy, payload=payload: (
+                        self.perform_update_orders(
+                            legacy, payload, "add_files"
+                        )
+                    )
+                )
         return Response(
-            data={"message": "Файлы успешно добавлены в плейлист."}
+            {"detail": "Файлы добавлены в плейлист."},
+            status=HTTP_200_OK,
         )
 
     @action(detail=True, methods=["POST"])
@@ -898,10 +915,11 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         5. Оповещаем пользователя, если выполнился пункт 2.1.
         """
         # 0
+        self.validate_object_body(request.data)
         remove_files: list[str] = request.data.get("files")
         self._validate_request_data_format(remove_files)
         # 1
-        playlist = get_instance_or_404(Playlist, pk)
+        playlist = self.get_object()
         # 2
         self.perform_remove_files(playlist, remove_files)
         return Response(data={"message": "Файлы успешно убраны из плейлиста."})

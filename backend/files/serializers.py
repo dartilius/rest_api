@@ -1,12 +1,22 @@
 import base64
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files.base import ContentFile
+from django.db import transaction
+from django.db.models import prefetch_related_objects
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 from drf_spectacular.types import OpenApiTypes
 
 from api.constants import Constants
-from files.models import File, Playlist, Tag, TYPES
+from files.models import File, Playlist, PlaylistItem, PlaylistItemVisual, Tag, TYPES
+from files.playlist_api import PlaylistContentSerializer, create_playlist_items, resolve_playlist_items
+from files.playlist_mutations import (
+    ensure_structured_editable,
+    refresh_playlist_orders,
+    replace_playlist_items,
+    set_playlist_files,
+)
 
 
 class Base64FileField(serializers.FileField):
@@ -164,14 +174,26 @@ class FileListSerializer(serializers.ModelSerializer):
         return repr_
 
 
+def playlist_composition_signature(playlist):
+    rows = list(PlaylistItem.objects.filter(playlist=playlist).order_by("position", "pk").values_list("pk", "file_id"))
+    if not rows:
+        return ("files", tuple(sorted(str(pk) for pk in playlist.files.values_list("pk", flat=True))))
+    images = {}
+    for item_id, file_id in PlaylistItemVisual.objects.filter(playlist_item__playlist=playlist).order_by("playlist_item_id", "position", "pk").values_list("playlist_item_id", "file_id"):
+        images.setdefault(item_id, []).append(str(file_id))
+    return ("items", tuple((str(file_id), tuple(images.get(item_id, ()))) for item_id, file_id in rows))
+
+
 class PlaylistSerializer(serializers.ModelSerializer):
     """Сериализация одного плейлиста."""
 
+    items = PlaylistContentSerializer(many=True, required=False, max_length=1000)
     files = serializers.SlugRelatedField(
         slug_field='id',
         queryset=File.active.all(),
         write_only=True,
-        many=True
+        many=True,
+        required=False,
     )
 
     class Meta:
@@ -181,6 +203,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
             'description',
             'owner',
             'files',
+            'items',
             'created'
         )
         read_only_fields = (
@@ -192,15 +215,22 @@ class PlaylistSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Проверяем, что все файлы в плейлисте актуальны и одного типа."""
-        if 'files' in self.initial_data:
-            files_ids: list = self.initial_data.get('files')
-            all_files_count = File.objects.filter(id__in=files_ids).count()
-            active_files_count = File.active.filter(id__in=files_ids).count()
-            if all_files_count != active_files_count:
-                raise serializers.ValidationError(
-                    'Плейлист не должен содержать удалённых файлов'
+        if "items" in data:
+            if "files" in data:
+                raise serializers.ValidationError("Используйте либо files, либо items, не оба поля одновременно.")
+            try:
+                data["items"] = resolve_playlist_items(
+                    data["items"],
+                    allow_empty=self.instance is not None,
+                    playlist=self.instance,
                 )
-            files = File.active.filter(id__in=files_ids)
+            except serializers.ValidationError as exc:
+                raise serializers.ValidationError({"items": exc.detail}) from exc
+            return data
+        if self.instance is None and "files" not in data:
+            raise serializers.ValidationError({"files": "Укажите files или структурированный список items."})
+        if 'files' in data:
+            files = data['files']
             playlist_files_types = {TYPES[file.type] for file in files}
             if len(playlist_files_types) > 1:
                 raise serializers.ValidationError(
@@ -208,6 +238,37 @@ class PlaylistSerializer(serializers.ModelSerializer):
                     f'{playlist_files_types}'
                 )
         return data
+
+    @transaction.atomic
+    def create(self, validated_data):
+        items = validated_data.pop("items", None)
+        playlist = super().create(validated_data)
+        if items is not None:
+            create_playlist_items(playlist, items)
+        prefetch_related_objects([playlist], "files", "items__file", "items__visuals__file")
+        return playlist
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        # The view checks permissions; no-key lock remains compatible with FK
+        # key-share locks acquired by concurrent order creation/update.
+        instance = Playlist.objects.select_for_update(no_key=True).get(pk=instance.pk)
+        items_present, files_present = "items" in validated_data, "files" in validated_data
+        items = validated_data.pop("items", None)
+        files = validated_data.pop("files", None)
+        before = playlist_composition_signature(instance) if items_present or files_present else None
+        try:
+            instance = super().update(instance, validated_data)
+            if items_present:
+                replace_playlist_items(instance, items)
+            elif files_present:
+                ensure_structured_editable(instance)
+                set_playlist_files(instance, list(dict.fromkeys(files)))
+            if before is not None and before != playlist_composition_signature(instance):
+                refresh_playlist_orders(instance)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"items" if items_present else "files": exc.messages}) from exc
+        return Playlist.objects.select_related("owner").prefetch_related("files", "items__file", "items__visuals__file").get(pk=instance.pk)
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
@@ -224,10 +285,15 @@ class PlaylistSerializer(serializers.ModelSerializer):
 class PlaylistListSerializer(serializers.ModelSerializer):
     """Сериализация списка плейлистов."""
 
+    owner = serializers.CharField(source="owner.full_name", read_only=True)
+    files_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         fields = (
             'id',
             'name',
+            'owner',
+            'files_count',
             'created'
         )
         read_only_fields = fields
@@ -239,6 +305,26 @@ class PlaylistListSerializer(serializers.ModelSerializer):
         repr_['files_count'] = value.files.count()
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
+
+
+class PlaylistFileReferenceSerializer(serializers.Serializer):
+    id = serializers.UUIDField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    url = serializers.URLField(read_only=True)
+
+
+class PlaylistReadSerializer(serializers.ModelSerializer):
+    """Describe the response independently of the UUID-based write format."""
+
+    owner = serializers.CharField(source="owner.full_name", read_only=True)
+    files = PlaylistFileReferenceSerializer(many=True, read_only=True)
+    items = PlaylistContentSerializer(many=True, read_only=True)
+    created = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
+
+    class Meta:
+        model = Playlist
+        fields = ("id", "name", "description", "owner", "files", "items", "created")
+        read_only_fields = fields
 
 
 class TagsFileSerializer(serializers.Serializer):

@@ -1,0 +1,6 @@
+# Keep local test suites out of application images.
+tests/
+**/tests.py
+pytest.ini
+.pytest_cache/
+**/__pycache__/

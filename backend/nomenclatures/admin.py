@@ -23,9 +23,11 @@ from django.db.models import Prefetch, Count, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.dateparse import parse_date
 from django.utils.html import format_html
+from django.utils import timezone
 
 from brands.models import Brand
 from ch_statistic.models import MusicStat
@@ -44,6 +46,10 @@ from nomenclatures.models import (
 )
 from nomenclatures.tasks import maintenance_mode_task
 from users.models import CustomUser
+from nomenclatures.player_v2.playback.admin import PlaybackEventAdmin
+from nomenclatures.player_v2.presence import get_station_presence, load_station_presence
+from nomenclatures.player_v2.runtime.presentation import broadcast_context
+from nomenclatures.player_v2.runtime.service import display_snapshot
 
 
 class SelectedLabelAutocompleteSelect(AutocompleteSelect):
@@ -117,11 +123,19 @@ class NomenclatureAdmin(admin.ModelAdmin):
     change_form_template = "nomenclatures/nomenclature/change_form.html"
     show_facets = admin.ShowFacets.NEVER
 
+    class Media:
+        js = ("nomenclatures/runtime_live.js",)
+
     def get_urls(self):
         from django.urls import path
 
         urls = super().get_urls()
         custom = [
+            path(
+                "<uuid:object_id>/runtime-state/",
+                self.admin_site.admin_view(self.runtime_state_view),
+                name="nomenclature_runtime_state",
+            ),
             path(
                 "<uuid:object_id>/music-stat/",
                 self.admin_site.admin_view(self.music_stat_view),
@@ -134,6 +148,20 @@ class NomenclatureAdmin(admin.ModelAdmin):
             ),
         ]
         return custom + urls
+
+    def runtime_state_view(self, request, object_id):
+        if request.method != "GET":
+            return HttpResponseNotAllowed(["GET"])
+        obj = self.model.objects.select_related("availability").filter(pk=object_id).first()
+        if obj is None:
+            return JsonResponse({"error": "Точка не найдена"}, status=404)
+        if not self.has_view_permission(request, obj):
+            raise PermissionDenied
+        try:
+            received = obj.availability.last_answer_date
+        except AttributeError:
+            received = None
+        return JsonResponse(display_snapshot(obj.pk, legacy_state=obj.runtime_state, legacy_received=received))
 
     def maintenance_mode_view(self, request, object_id):
         """Queue a service-mode command from the station card in Django Admin."""
@@ -243,6 +271,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "timezone",
         "active_status_display",
         "status_display",
+        "player_v2_connection",
         "code1c",
         "brand_name",
         "legal_entity_name",
@@ -289,7 +318,36 @@ class NomenclatureAdmin(admin.ModelAdmin):
         "responsible_technic_on_address",
         "responsible_placement_marketing",
     )
-    readonly_fields = ("hw_info", "runtime_state")
+    exclude = ("runtime_state",)
+    readonly_fields = (
+        "hw_info", "current_broadcast_state", "player_v2_connection",
+        "visual_output_settings",
+    )
+
+    def get_fieldsets(self, request, obj=None):
+        fields = list(self.get_fields(request, obj))
+        broadcast_fields = ("current_broadcast_state", "player_v2_connection")
+        separated = set(broadcast_fields)
+        return (
+            (None, {"fields": [field for field in fields if field not in separated]}),
+            ("Текущее состояние эфира", {
+                "fields": broadcast_fields,
+                "description": "Что сообщает Player о воспроизведении. Связь со станцией сама по себе не подтверждает выход контента в эфир.",
+            }),
+        )
+
+    @admin.display(description="Сейчас на станции")
+    def current_broadcast_state(self, obj):
+        initial = render_to_string(
+            "admin/nomenclatures/runtime_state.html",
+            broadcast_context(obj.runtime_state if obj else None),
+        )
+        pk = getattr(obj, "pk", None)
+        return render_to_string("admin/nomenclatures/runtime_widget.html", {
+            "initial": initial,
+            "poll_url": reverse("admin:nomenclature_runtime_state", args=[pk]) if pk else "",
+            "ws_path": f"/ws/admin/nomenclatures/{pk}/runtime/" if pk else "",
+        })
 
     # =========================================================================
     # ОПТИМИЗИРОВАННЫЙ QUERYSET ДЛЯ СПИСКА
@@ -303,7 +361,8 @@ class NomenclatureAdmin(admin.ModelAdmin):
         ordering = self.get_ordering(request)
         if ordering:
             queryset = queryset.order_by(*ordering)
-        if getattr(getattr(request, "resolver_match", None), "url_name", None) == "autocomplete":
+        view_name = getattr(getattr(request, "resolver_match", None), "url_name", None)
+        if view_name == "autocomplete":
             # Autocomplete renders only the station name, not its list columns.
             return queryset.only("id", "name").order_by("name", "pk")
         tenant_counts = (
@@ -373,6 +432,42 @@ class NomenclatureAdmin(admin.ModelAdmin):
             else:
                 field.widget = cached_widget
         return form
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context=extra_context)
+        context = getattr(response, "context_data", None)
+        if context and (changelist := context.get("cl")) is not None:
+            # Only the current page: one Redis read, not one per station and
+            # not a scan of the entire catalogue. QuerySet keeps these objects.
+            rows = list(changelist.result_list)
+            presence = load_station_presence(row.pk for row in rows)
+            for row in rows:
+                row._player_v2_presence = presence[str(row.pk)]
+        return response
+
+    @admin.display(description="Связь с Player v2")
+    def player_v2_connection(self, obj):
+        if obj is None or not obj.pk:
+            return "Связь неизвестна"
+        presence = getattr(obj, "_player_v2_presence", None)
+        if presence is None:
+            presence = get_station_presence(obj.pk)
+        labels = {
+            "fresh": "Связь подтверждена",
+            "stale": "Данные о связи устарели",
+            "unknown": "Связь неизвестна",
+        }
+        label = labels[presence["status"]]
+        last_seen = presence["last_seen"]
+        if last_seen is None:
+            return label
+        if timezone.is_aware(last_seen):
+            last_seen = timezone.localtime(last_seen)
+        return format_html(
+            "{}<br><small>Последняя синхронизация: {} (время сервера)</small>",
+            label,
+            last_seen.strftime("%d.%m.%Y %H:%M:%S"),
+        )
 
     def get_search_results(self, request, queryset, search_term):
         if not search_term:

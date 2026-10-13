@@ -4,6 +4,7 @@ from uuid import UUID
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
+from nomenclatures.player_v2.runtime.service import publish_legacy_runtime
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -806,7 +807,11 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
                     accepted_statistics[stat_type] = len(stat_list)
 
                 for stat_type, stat_list in statistics_to_dispatch.items():
-                    create_statistic.delay(stat_type, pk, stat_list)
+                    transaction.on_commit(
+                        lambda stat_type=stat_type, stat_list=stat_list: create_statistic.delay(
+                            stat_type, pk, stat_list
+                        )
+                    )
 
             if accepted_statistics:
                 data["statistics_accepted"] = accepted_statistics
@@ -829,6 +834,8 @@ class NomenclatureTaskViewSet(viewsets.ModelViewSet):
         NomenclatureAvailability.objects.update_or_create(
             client=nomenclature, defaults={"last_answer_date": timezone.now()}
         )
+        if "runtime_state" in request.data:
+            transaction.on_commit(lambda: publish_legacy_runtime(nomenclature.pk, request.data["runtime_state"]))
         pending_tasks = sorted(
             Task.objects.filter(client=pk, status=0), key=lambda t: t.priority
         )

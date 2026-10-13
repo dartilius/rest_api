@@ -1,0 +1,34 @@
+{% if has_state %}
+  <div class="broadcast-state">
+    <p><strong>Режим работы:</strong> {{ mode }}</p>
+    <p><strong>Сервисный режим:</strong> {{ maintenance }}</p>
+    {% if error %}<p class="errornote">Последняя ошибка: {{ error }}</p>{% endif %}
+    <h4>Реклама</h4>
+    {% if advertisement %}
+      <p><strong>{{ advertisement.name }}</strong> — {{ advertisement.type }}, {{ advertisement.status }}.</p>
+      <p>Длительность: {{ advertisement.duration }}.</p>
+    {% else %}
+      <p>Текущая реклама не передана.</p>
+    {% endif %}
+    <h4>Фоновый контент</h4>
+    {% if background %}
+      <div style="max-width: 100%; overflow-x: auto;">
+        <table>
+          <thead><tr>
+            <th scope="col">Контент</th><th scope="col">Тип</th>
+            <th scope="col">Состояние</th><th scope="col">Проиграно</th>
+            <th scope="col">Длительность</th>
+          </tr></thead>
+          <tbody>{% for item in background %}<tr>
+            <td style="overflow-wrap: anywhere;">{{ item.name }}</td><td>{{ item.type }}</td>
+            <td>{{ item.status }}</td><td>{{ item.position }}</td><td>{{ item.duration }}</td>
+          </tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    {% else %}
+      <p>Текущий фоновый контент не передан.</p>
+    {% endif %}
+  </div>
+{% else %}
+  Player ещё не передал состояние воспроизведения.
+{% endif %}

@@ -37,6 +37,8 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django_minio_backend import MinioBackend
 
+from files.playlist_items import PlaylistItem, PlaylistItemVisual
+
 from api import APIBaseObjectModel
 from api.constants import get_minio_client
 from files.file_info import GetFileInfo
