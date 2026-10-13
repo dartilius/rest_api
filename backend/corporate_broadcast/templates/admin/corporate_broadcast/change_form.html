@@ -1,0 +1,31 @@
+{% extends "admin/change_form.html" %}
+{% block form_top %}
+  {{ block.super }}
+  {% if opts.model_name == "broadcastlanding" %}
+    <aside class="cb-guide" aria-label="Как заполнить блок">
+      <p class="cb-kicker">Корпоративное вещание</p>
+      <h2>{% if add %}Новый блок страницы{% else %}Редактирование блока{% endif %}</h2>
+      <p>Заполните текст, выберите бренды, формат и демо. Связанные записи можно создавать и менять в окнах поверх этой формы.</p>
+      <p class="cb-guide-note">После сохранения блок доступен сайту. Страница сайта обновляется при следующем обновлении кэша; обычно после минуты и нового посещения.</p>
+    </aside>
+  {% endif %}
+{% endblock %}
+{% block after_field_sets %}
+  {{ block.super }}
+  {% if cb_selected_brands %}
+    <section class="cb-brand-section" aria-labelledby="cb-brand-heading">
+      <h2 id="cb-brand-heading">Выбранные бренды</h2>
+      <p>Это сохранённый выбор. Изменения списка появятся здесь после сохранения. Новый логотип загрузите в карточке бренда.</p>
+      <div class="cb-brand-grid">
+        {% for brand in cb_selected_brands %}
+          <article class="cb-brand-card">
+            {% if brand.logo_url %}<img src="{{ brand.logo_url }}" alt="{{ brand.name }}" width="180" height="64" loading="lazy">{% endif %}
+            <strong>{{ brand.name }}</strong>
+            {% if brand.deleted %}<span class="cb-badge cb-badge-warning">Удалён — скрыт на сайте</span>{% elif not brand.has_logo %}<span class="cb-badge cb-badge-warning">Нет логотипа — скрыт на сайте</span>{% endif %}
+            {% if brand.edit_url %}<a href="{{ brand.edit_url }}" data-cb-edit-brand>Изменить бренд и логотип</a>{% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

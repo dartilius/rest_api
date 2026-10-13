@@ -75,6 +75,9 @@ class TypesOfPlaceBroadcast(APIBaseObjectModel):
         verbose_name_plural = "Форматы размещения"
         constraints = [models.UniqueConstraint(fields=("type_of_place", "format_type"), name="types_of_place_broadcast_unique")]
 
+    def __str__(self):
+        return self.title
+
 class TypeOfFormats(APIBaseObjectModel):
     format_type = models.CharField("Тип формата", max_length=32, choices=DEMO_FORMAT_CHOICES)
     description = models.TextField("Описание", blank=True, max_length=5000)
@@ -91,6 +94,9 @@ class TypeOfFormats(APIBaseObjectModel):
         verbose_name = "Тип формата"
         verbose_name_plural = "Типы форматов"
         constraints = [models.UniqueConstraint(fields=("format_type",), name="type_of_formats_unique")]
+
+    def __str__(self):
+        return self.get_format_type_display()
 
 class BroadcastLanding(models.Model):
     title = models.CharField("Заголовок", max_length=250)

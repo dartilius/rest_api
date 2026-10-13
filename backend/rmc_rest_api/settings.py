@@ -250,6 +250,9 @@ SPECTACULAR_SETTINGS = {
     'SORT_PARAMETERS': False,
     'COMPONENT_SPLIT_REQUEST': True,
     'COMPONENT_SPLIT_RESPONSE': True,
+    'ENUM_NAME_OVERRIDES': {
+        'BroadcastFormatEnum': 'corporate_broadcast.constants.DEMO_FORMAT_CHOICES',
+    },
 }
 
 # =============================================================================
