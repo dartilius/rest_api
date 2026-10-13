@@ -128,6 +128,9 @@ class TypeOfPlace(models.Model):
         verbose_name = "Тип места"
         verbose_name_plural = "Типы мест"
 
+    def __str__(self):
+        return self.name
+
 
 class NomenclatureTenant(models.Model):
     """
