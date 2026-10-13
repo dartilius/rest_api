@@ -49,7 +49,8 @@ class TypeOfFormatsAdmin(admin.ModelAdmin):
 
 @admin.register(BroadcastLanding)
 class BroadcastLandingAdmin(admin.ModelAdmin):
-    list_display = ("format_type", "description", "demo")
+    fields = ("title", "description", "logo_brands", "format_type", "demo")
+    list_display = ("title", "format_type", "demo")
     list_filter = ("format_type",)
-    search_fields = ("description",)
-    readonly_fields = ("id",)
+    search_fields = ("title", "description")
+    filter_horizontal = ("logo_brands",)

@@ -2,7 +2,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import BroadcastDemo, BroadcastDemoAsset, BroadcastLanding, TypesOfPlaceBroadcast, TypeOfFormats
-
+from brands.models import Brand
 
 class DemoAssetSerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
@@ -41,11 +41,6 @@ class BroadcastDemoListSerializer(serializers.ModelSerializer):
         model = BroadcastDemo
         fields = ("id", "title", "format", "description", "sort_order")
 
-class BroadcastLandingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BroadcastLanding
-        fields = ("id", "format_type", "description", "demo")
-
 class TypeOfFormatsSerializer(serializers.ModelSerializer):
     class Meta:
         model = TypeOfFormats
@@ -55,3 +50,17 @@ class TypesOfPlaceBroadcastSerializer(serializers.ModelSerializer):
     class Meta:
         model = TypesOfPlaceBroadcast
         fields = ("id", "type_of_place", "format_type", "description")
+
+
+class LandingBrandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Brand
+        fields = ("id", "name", "logotype")
+
+
+class BroadcastLandingSerializer(serializers.ModelSerializer):
+    logo_brands = LandingBrandSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = BroadcastLanding
+        fields = "__all__"

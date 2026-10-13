@@ -95,7 +95,12 @@ class TypeOfFormats(APIBaseObjectModel):
 class BroadcastLanding(models.Model):
     title = models.CharField("Заголовок", max_length=250)
     description = models.TextField("Описание", blank=True, max_length=5000)
-    logo_brands = models.ManyToManyField("files.File", verbose_name="Логотипы брендов", blank=True, related_name="broadcast_landing_logos")
+    logo_brands = models.ManyToManyField(
+        "brands.Brand",
+        verbose_name="Бренды для блока логотипов",
+        blank=True,
+        related_name="broadcast_landings",
+    )
     format_type = models.ForeignKey(
         TypesOfPlaceBroadcast,
         on_delete=models.SET_NULL,
@@ -116,3 +121,6 @@ class BroadcastLanding(models.Model):
         db_table = "broadcast_landing"
         verbose_name = "Лендинг корп вещания"
         verbose_name_plural = "Лендинги корп вещания"
+
+    def __str__(self):
+        return self.title
