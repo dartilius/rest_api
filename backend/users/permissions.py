@@ -1,11 +1,11 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
-class RegistrationEndpointOnly(BasePermission):
+class DjoserUserCreatePermission(BasePermission):
     message = 'Используйте /api/users/register/ с подтверждением email и согласием.'
 
     def has_permission(self, request, view):
-        return False
+        return request.user.is_authenticated and request.user.is_superuser
 
 MUTATE_METHODS = ("PUT", "PATCH")
 MUTATE_DELETE_METHODS = (*MUTATE_METHODS, "DELETE")

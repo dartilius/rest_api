@@ -93,8 +93,8 @@ EMAIL_BACKEND = os.environ.get(
 
 EMAIL_TIMEOUT = 10
 PRIVACY_TECHNICAL_LOG_RETENTION_DAYS = 30
-# Prevent Djoser's alternate public create action bypassing the registration workflow.
-DJOSER = {'PERMISSIONS': {'user_create': ['users.permissions.RegistrationEndpointOnly']}}
+# Allow trusted superuser integrations; public registration uses /api/users/register/.
+DJOSER = {'PERMISSIONS': {'user_create': ['users.permissions.DjoserUserCreatePermission']}}
 PASSWORD_RESET_CODE_AUDIT_EMAIL = os.environ.get(
     'PASSWORD_RESET_CODE_AUDIT_EMAIL', 'info@krasrm.com'
 )
