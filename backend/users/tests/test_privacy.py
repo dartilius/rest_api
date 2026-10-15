@@ -189,6 +189,35 @@ class PrivacyAPITests(TestCase):
         response = self.client.post('/auth/users/', self.user_data(), format='json')
         self.assertIn(response.status_code, (401, 403))
 
+    def test_djoser_create_denies_non_superusers(self):
+        for is_staff in (False, True):
+            with self.subTest(is_staff=is_staff):
+                caller = CustomUser.objects.create(
+                    email=f'caller-{is_staff}@example.test', is_staff=is_staff,
+                )
+                self.client.force_authenticate(caller)
+                response = self.client.post('/auth/users/', {
+                    'email': 'imported@example.test', 'password': 'Integration-pass-928!',
+                }, format='json')
+                self.assertEqual(response.status_code, 403)
+                self.assertFalse(CustomUser.objects.filter(email='imported@example.test').exists())
+
+    def test_djoser_superuser_can_create_without_public_registration_and_patch(self):
+        caller = CustomUser.objects.create(
+            email='integration@example.test', is_superuser=True, is_staff=True,
+        )
+        self.client.force_authenticate(caller)
+        response = self.client.post('/auth/users/', {
+            'email': 'imported@example.test', 'password': 'Integration-pass-928!',
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        user = CustomUser.objects.get(email='imported@example.test')
+        self.assertTrue(user.check_password('Integration-pass-928!'))
+        self.assertFalse(PersonalDataConsent.objects.filter(user=user).exists())
+        self.assertFalse(RegistrationEmailVerification.objects.filter(email=user.email).exists())
+        response = self.client.patch(f'/auth/users/{user.pk}/', {}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+
 
 class PrivacyCleanupTests(TestCase):
     def make_feedback(self, **extra):
