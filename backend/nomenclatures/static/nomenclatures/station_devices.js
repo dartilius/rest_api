@@ -88,6 +88,7 @@
                 setChoices("#id_audio_device_id", empty);
                 setChoices("#id_display_id", empty);
                 resetVolumeFields();
+                $("#id_settings_revision").val("");
                 if (intervals()) intervals().reset();
             }
             if (!stationId) return;
@@ -100,6 +101,7 @@
                         setChoices("#id_display_id", data.displays);
                     }
                     defaultVolumes = data.default_volumes || {};
+                    if (!preserveFormValues) $("#id_settings_revision").val(data.settings_revision);
                     setDefaultVolumes();
                     if (intervals()) intervals().load(data.custom_volumes || {}, preserveFormValues);
                     updateVisibleSection();

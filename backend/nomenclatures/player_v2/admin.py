@@ -7,7 +7,8 @@ import re
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse, HttpResponseNotAllowed
+from django.db import transaction
+from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponseRedirect
 from django.urls import path, reverse
 
 from nomenclatures.models import (
@@ -21,7 +22,7 @@ from nomenclatures.player_v2.credentials import (
     hash_station_token,
     issue_station_token,
 )
-from nomenclatures.player_v2.settings import SettingsPatchError, apply_settings_operations
+from nomenclatures.player_v2.settings import SettingsPatchError, apply_settings_operations, validate_settings_document
 
 
 DAY_CHOICES = (
@@ -55,6 +56,11 @@ BACKGROUND_SETTING_CHOICES = (
     ("img_random", "Случайный порядок фоновых картинок"),
 )
 BACKGROUND_BOOLEAN_VALUES = (("true", "Включено"), ("false", "Выключено"))
+BACKGROUND_SWITCHES = tuple((key, label) for key, label in BACKGROUND_SETTING_CHOICES if key != "img_duration")
+
+
+def _background_switch(label):
+    return forms.ChoiceField(label=label, required=False, choices=(("", "Не изменять"),) + BACKGROUND_BOOLEAN_VALUES)
 
 
 def _latest_saved_revision(nomenclature) -> int:
@@ -206,6 +212,7 @@ class StationVolumeCommandForm(forms.ModelForm):
     # новом интерфейсе эти два поля не выводятся.
     setting_group = forms.ChoiceField(choices=SETTING_GROUP_CHOICES, required=False, widget=forms.HiddenInput)
     day = forms.ChoiceField(choices=DAY_CHOICES, required=False, widget=forms.HiddenInput)
+    settings_revision = forms.IntegerField(min_value=0, required=False, widget=forms.HiddenInput)
 
     volume_day = forms.ChoiceField(label="День", choices=DAY_CHOICES, required=False)
     background_left_volume = forms.IntegerField(
@@ -230,16 +237,24 @@ class StationVolumeCommandForm(forms.ModelForm):
     )
 
     background_day = forms.ChoiceField(label="День", choices=DAY_CHOICES, required=False)
+    background_video_enabled = _background_switch("Показывать фоновое видео")
+    background_video_muted = _background_switch("Выключить звук фонового видео")
+    background_img_enabled = _background_switch("Показывать фоновые картинки")
+    background_music_random = _background_switch("Случайный порядок фоновой музыки")
+    background_video_random = _background_switch("Случайный порядок фонового видео")
+    background_img_random = _background_switch("Случайный порядок фоновых картинок")
     background_setting = forms.ChoiceField(
         label="Параметр фона",
         choices=BACKGROUND_SETTING_CHOICES,
         required=False,
+        widget=forms.HiddenInput,
         help_text="Для времени показа используйте поле ниже; для остальных — «Значение». ",
     )
     background_enabled = forms.ChoiceField(
         label="Значение",
         choices=BACKGROUND_BOOLEAN_VALUES,
         required=False,
+        widget=forms.HiddenInput,
     )
     background_all_days = forms.BooleanField(label="Применить настройку фона ко всем дням", required=False)
     image_duration = forms.IntegerField(
@@ -315,6 +330,9 @@ class StationVolumeCommandForm(forms.ModelForm):
         cleaned_data["selected_setting_groups"] = groups
         if nomenclature is None or not groups:
             return cleaned_data
+        revision = cleaned_data.get("settings_revision")
+        if revision is not None and revision != _latest_saved_revision(nomenclature):
+            raise forms.ValidationError("Настройки Player изменились. Обновите страницу точки перед отправкой.")
 
         self._validate_selected_groups(cleaned_data, groups, nomenclature)
         if self.errors:
@@ -323,12 +341,18 @@ class StationVolumeCommandForm(forms.ModelForm):
         operations = []
         if any(group in SETTINGS_PATCH_GROUPS for group in groups):
             try:
-                operations = self._settings_operations(cleaned_data)
-                if operations:
-                    apply_settings_operations(nomenclature.settings, operations)
+                validate_settings_document(nomenclature.settings)
             except SettingsPatchError as exc:
                 raise forms.ValidationError(
                     "Невозможно подготовить изменение: сохранённые настройки точки некорректны."
+                ) from exc
+            try:
+                operations = self._settings_operations(cleaned_data)
+                if operations:
+                    apply_settings_operations(nomenclature.settings, operations)
+            except (SettingsPatchError, KeyError, TypeError) as exc:
+                raise forms.ValidationError(
+                    f"Не удалось подготовить настройки: {exc}"
                 ) from exc
 
         prepared_commands = []
@@ -357,7 +381,7 @@ class StationVolumeCommandForm(forms.ModelForm):
             })
         if not prepared_commands:
             raise forms.ValidationError(
-                "Нет новых значений для отправки: выбранные настройки уже подтверждены Player."
+                "Нет новых значений для отправки: выбранные настройки уже подтверждены Player. Команда не создана."
             )
 
         pending_kinds = {command["kind"] for command in prepared_commands}
@@ -381,15 +405,16 @@ class StationVolumeCommandForm(forms.ModelForm):
                 "advertisement_left_volume",
                 "advertisement_right_volume",
             )
-            if not any(data.get(field) is not None for field in volume_fields):
-                self.add_error("background_left_volume", "Укажите хотя бы один канал громкости для изменения.")
+            if len(groups) == 1 and not any(data.get(field) is not None for field in volume_fields):
+                self.add_error(None, "Укажите хотя бы один канал громкости для изменения.")
             self._require_target_day(data, "volume")
         if "interval_volume" in groups:
             self._validate_interval_rows(data)
         if "background" in groups:
             background_setting = data.get("background_setting")
             if not background_setting:
-                self.add_error("background_setting", "Выберите параметр фона.")
+                if data.get("image_duration") is None and not any(data.get(f"background_{key}") for key, _ in BACKGROUND_SWITCHES):
+                    self.add_error(None, "Измените хотя бы один параметр фонового контента.")
             elif background_setting == "img_duration":
                 if data.get("image_duration") is None:
                     self.add_error("image_duration", "Укажите время показа картинки.")
@@ -460,6 +485,8 @@ class StationVolumeCommandForm(forms.ModelForm):
 
     @classmethod
     def _parsed_interval_rows(cls, rows):
+        if len(rows) > 128:
+            raise forms.ValidationError("Можно редактировать не более 128 строк за одну отправку.")
         parsed_rows = []
         seen_origins = set()
         for index, row in enumerate(rows, start=1):
@@ -472,7 +499,7 @@ class StationVolumeCommandForm(forms.ModelForm):
             original_interval = row.get("original_interval")
             has_original = original_day is not None or original_interval is not None
             if has_original:
-                if original_day not in DAY_KEYS or not isinstance(original_interval, str):
+                if not isinstance(original_day, str) or original_day not in DAY_KEYS or not isinstance(original_interval, str):
                     raise forms.ValidationError(f"Строка {index}: исходный интервал некорректен.")
                 original_start, separator, original_end = original_interval.partition("-")
                 if not separator:
@@ -490,7 +517,7 @@ class StationVolumeCommandForm(forms.ModelForm):
                 continue
 
             day = row.get("day")
-            if day != "all" and day not in DAY_KEYS:
+            if not isinstance(day, str) or (day != "all" and day not in DAY_KEYS):
                 raise forms.ValidationError(f"Строка {index}: выберите день или «Все дни».")
             interval = cls._normalise_interval(row.get("start"), row.get("end"))
             values = {}
@@ -548,14 +575,23 @@ class StationVolumeCommandForm(forms.ModelForm):
                 raise SettingsPatchError("исходный интервал уже изменён Player; обновите страницу точки")
             del desired_by_day[origin_day][origin_interval]
 
+        assigned = {}
         for row in parsed_rows:
             if row["deleted"]:
                 continue
             for day in row["days"]:
                 interval = row["interval"]
-                if interval in desired_by_day[day]:
-                    raise SettingsPatchError("в расписании нельзя указать один интервал дважды")
+                key = (day, interval)
+                if key in assigned and assigned[key] != row["value"]:
+                    raise forms.ValidationError("В строках заданы разные уровни для одного дня и интервала.")
+                assigned[key] = row["value"]
                 desired_by_day[day][interval] = row["value"]
+
+        for day, label in DAY_CHOICES:
+            intervals = sorted(desired_by_day[day])
+            for previous, following in zip(intervals, intervals[1:]):
+                if previous.split("-")[1] > following.split("-")[0]:
+                    raise forms.ValidationError(f"{label}: интервалы громкости пересекаются. Исправьте время.")
 
         operations = []
         for day, _ in DAY_CHOICES:
@@ -602,12 +638,20 @@ class StationVolumeCommandForm(forms.ModelForm):
         if "interval_volume" in groups:
             candidates.extend(cls._interval_operations(data))
         if "background" in groups:
-            setting = data["background_setting"]
-            value = data["image_duration"] if setting == "img_duration" else data["background_enabled"] == "true"
+            values = {
+                key: data[f"background_{key}"] == "true"
+                for key, _ in BACKGROUND_SWITCHES if data.get(f"background_{key}")
+            }
+            if data.get("image_duration") is not None:
+                values["img_duration"] = data["image_duration"]
+            if data.get("background_setting"):
+                setting = data["background_setting"]
+                values[setting] = data["image_duration"] if setting == "img_duration" else data["background_enabled"] == "true"
             for day in cls._target_days(data, "background"):
-                operation = {"op": "set", "path": f"/days/{day}/background/{setting}", "value": value}
-                if apply_settings_operations(nomenclature.settings, [operation]) != nomenclature.settings:
-                    candidates.append(operation)
+                for setting, value in values.items():
+                    operation = {"op": "set", "path": f"/days/{day}/background/{setting}", "value": value}
+                    if apply_settings_operations(nomenclature.settings, [operation]) != nomenclature.settings:
+                        candidates.append(operation)
         if "worktime" in groups:
             value = "00:00:00-23:59:59" if data["full_day"] else (
                 f"{data['worktime_start'].strftime('%H:%M:%S')}-"
@@ -621,18 +665,32 @@ class StationVolumeCommandForm(forms.ModelForm):
 
     def save(self, commit=True):
         command = super().save(commit=False)
-        first, *additional = self._prepared_commands
+        first = self._prepared_commands[0]
         command.kind = first["kind"]
         command.body = first["body"]
         if commit:
-            command.save()
-            for prepared in additional:
-                StationCommandV2.objects.create(
-                    nomenclature=self.cleaned_data["nomenclature"],
-                    kind=prepared["kind"],
-                    body=prepared["body"],
-                )
+            self.save_commands(command)
         return command
+
+    def save_commands(self, command):
+        """Сохраняет весь пакет вместе и перепроверяет состояние под блокировкой."""
+        with transaction.atomic():
+            station = Nomenclature.objects.select_for_update().get(pk=command.nomenclature_id)
+            kinds = [prepared["kind"] for prepared in self._prepared_commands]
+            if StationCommandV2.objects.filter(
+                nomenclature=station, status=StationCommandV2.Status.PENDING, kind__in=kinds,
+            ).exists():
+                raise ValidationError("У точки уже есть ожидающая команда. Обновите страницу.")
+            for prepared in self._prepared_commands:
+                if prepared["kind"] == "apply_settings_patch":
+                    if prepared["body"]["base_revision"] != _latest_saved_revision(station):
+                        raise ValidationError("Настройки Player изменились. Обновите страницу перед отправкой.")
+                    apply_settings_operations(station.settings, prepared["body"]["operations"])
+            command.save()
+            for prepared in self._prepared_commands[1:]:
+                StationCommandV2.objects.create(
+                    nomenclature=station, kind=prepared["kind"], body=prepared["body"],
+                )
 
 
 @admin.register(StationCredential)
@@ -734,7 +792,7 @@ class StationInstallationAdmin(admin.ModelAdmin):
 
 @admin.register(StationCommandV2)
 class StationCommandV2Admin(admin.ModelAdmin):
-    """Ставит в очередь одну безопасную и понятную оператору команду."""
+    """Ставит выбранные настройки в очередь одной отправкой формы."""
     list_select_related = ("nomenclature",)
     show_full_result_count = False
     show_facets = admin.ShowFacets.NEVER
@@ -789,6 +847,8 @@ class StationCommandV2Admin(admin.ModelAdmin):
             "audio": _audio_device_choices(station),
             "displays": _display_choices(station),
             "default_volumes": _station_default_volumes(station),
+            "custom_volumes": _station_custom_volumes(station),
+            "settings_revision": _latest_saved_revision(station),
         })
 
     @admin.display(description="Состояние доставки", ordering="delivered_at")
@@ -806,12 +866,13 @@ class StationCommandV2Admin(admin.ModelAdmin):
             return (
                 (
                     "Область изменения",
-                    {"fields": ("nomenclature", "setting_group", "day")},
+                    {"fields": ("nomenclature", "setting_groups", "settings_revision"), "classes": ("station-command-choices",)},
                 ),
                 (
                     "Громкость канала",
                     {
                         "fields": (
+                            "volume_day",
                             "background_left_volume",
                             "background_right_volume",
                             "advertisement_left_volume",
@@ -822,11 +883,15 @@ class StationCommandV2Admin(admin.ModelAdmin):
                     },
                 ),
                 (
+                    "Громкость по времени",
+                    {"fields": ("interval_volume_rows",), "classes": ("station-command-interval_volume",)},
+                ),
+                (
                     "Фоновый контент",
                     {
                         "fields": (
-                            "background_setting",
-                            "background_enabled",
+                            "background_day",
+                            *(f"background_{key}" for key, _ in BACKGROUND_SWITCHES),
                             "image_duration",
                             "background_all_days",
                         ),
@@ -836,7 +901,7 @@ class StationCommandV2Admin(admin.ModelAdmin):
                 (
                     "Рабочее время",
                     {
-                        "fields": ("full_day", "worktime_start", "worktime_end", "worktime_all_days"),
+                        "fields": ("worktime_day", "full_day", "worktime_start", "worktime_end", "worktime_all_days"),
                         "classes": ("station-command-worktime",),
                     },
                 ),
@@ -857,3 +922,15 @@ class StationCommandV2Admin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    def add_view(self, request, form_url="", extra_context=None):
+        try:
+            return super().add_view(request, form_url, extra_context)
+        except (ValidationError, SettingsPatchError) as exc:
+            # Между проверкой формы и сохранением Player мог подтвердить
+            # другую команду. Транзакция уже откатила весь пакет.
+            self.message_user(request, f"Настройки не отправлены: {exc}", level=messages.ERROR)
+            return HttpResponseRedirect(request.path)
+
+    def save_model(self, request, obj, form, change):
+        form.save_commands(obj)
