@@ -1,13 +1,18 @@
 from django.db.models import Prefetch, Q
+from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import mixins, serializers, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
 from rest_framework.negotiation import DefaultContentNegotiation
 from rest_framework.settings import APISettings, DEFAULTS
 
 from .constants import DEMO_FORMAT_CHOICES, MEDIA_RULES
-from .models import BroadcastDemo, BroadcastDemoAsset
-from .serializers import BroadcastDemoSerializer
+from brands.models import Brand
+from .models import BroadcastDemo, BroadcastDemoAsset, BroadcastLanding
+from .serializers import BroadcastDemoSerializer, BroadcastLandingSerializer
 
 
 def valid_asset_query():
@@ -48,5 +53,31 @@ class BroadcastDemoViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
+        response["Cache-Control"] = "no-store"
+        return response
+
+
+@extend_schema(tags=["Лендинги корпоративного вещания"])
+class BroadcastLandingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    serializer_class = BroadcastLandingSerializer
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+    pagination_class = None
+    queryset = BroadcastLanding.objects.select_related("format_type", "demo").prefetch_related(
+        Prefetch("logo_brands", queryset=Brand.objects.exclude(logotype="").exclude(logotype__isnull=True).order_by("name", "pk"), to_attr="public_brands")
+    ).order_by("pk")
+
+    @extend_schema(responses={302: None})
+    @action(detail=True, url_path=r"brands/(?P<brand_id>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/logo", url_name="brand-logo")
+    def brand_logo(self, request, pk=None, brand_id=None):
+        landing = self.get_object()
+        brand = get_object_or_404(landing.logo_brands.filter(is_deleted=False), pk=brand_id)
+        if not brand.logotype:
+            raise NotFound()
+        return HttpResponseRedirect(brand.logotype.url)
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        # Next.js owns ISR caching; redirects must always issue fresh signatures.
         response["Cache-Control"] = "no-store"
         return response

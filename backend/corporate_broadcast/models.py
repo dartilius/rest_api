@@ -75,6 +75,9 @@ class TypesOfPlaceBroadcast(APIBaseObjectModel):
         verbose_name_plural = "Форматы размещения"
         constraints = [models.UniqueConstraint(fields=("type_of_place", "format_type"), name="types_of_place_broadcast_unique")]
 
+    def __str__(self):
+        return self.title
+
 class TypeOfFormats(APIBaseObjectModel):
     format_type = models.CharField("Тип формата", max_length=32, choices=DEMO_FORMAT_CHOICES)
     description = models.TextField("Описание", blank=True, max_length=5000)
@@ -92,10 +95,18 @@ class TypeOfFormats(APIBaseObjectModel):
         verbose_name_plural = "Типы форматов"
         constraints = [models.UniqueConstraint(fields=("format_type",), name="type_of_formats_unique")]
 
+    def __str__(self):
+        return self.get_format_type_display()
+
 class BroadcastLanding(models.Model):
     title = models.CharField("Заголовок", max_length=250)
     description = models.TextField("Описание", blank=True, max_length=5000)
-    logo_brands = models.ManyToManyField("files.File", verbose_name="Логотипы брендов", blank=True, related_name="broadcast_landing_logos")
+    logo_brands = models.ManyToManyField(
+        "brands.Brand",
+        verbose_name="Бренды для блока логотипов",
+        blank=True,
+        related_name="broadcast_landings",
+    )
     format_type = models.ForeignKey(
         TypesOfPlaceBroadcast,
         on_delete=models.SET_NULL,
@@ -116,3 +127,6 @@ class BroadcastLanding(models.Model):
         db_table = "broadcast_landing"
         verbose_name = "Лендинг корп вещания"
         verbose_name_plural = "Лендинги корп вещания"
+
+    def __str__(self):
+        return self.title
