@@ -1,0 +1,25 @@
+.station-interval-editor { max-width: 76rem; }
+.station-interval-editor .help { margin-left: 0; padding-left: 0; max-width: 65rem; }
+.station-interval-card {
+    margin: 1rem 0; padding: 1rem;
+    border: 1px solid var(--border-color); border-radius: 4px;
+    color: var(--body-fg); background: var(--body-bg);
+}
+.station-interval-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.station-interval-header h3 { margin: 0; padding: 0; font-size: 1rem; background: none; color: var(--body-fg); }
+.station-interval-grid { display: grid; grid-template-columns: repeat(4, minmax(8rem, 1fr)); gap: .75rem 1rem; }
+.station-interval-days { grid-column: span 2; }
+.station-interval-editor label { display: block; float: none; width: auto; padding: 0 0 .35rem; font-weight: normal; }
+.station-interval-editor input, .station-interval-editor select { box-sizing: border-box; width: 100%; min-height: 2.4rem; max-width: 100%; }
+.station-interval-editor button { min-height: 2.4rem; cursor: pointer; }
+.station-interval-deleted .station-interval-grid { display: none; }
+.station-interval-deleted h3 { color: var(--body-quiet-color); }
+.station-command-choices ul { margin: 0; padding: 0; list-style: none; }
+.station-command-choices label { display: inline-flex; align-items: center; gap: .4rem; }
+@media (max-width: 900px) {
+    .station-interval-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+    .station-interval-grid { grid-template-columns: minmax(0, 1fr); }
+    .station-interval-days { grid-column: auto; }
+}

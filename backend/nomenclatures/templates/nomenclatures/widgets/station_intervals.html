@@ -1,0 +1,8 @@
+{% include "django/forms/widgets/hidden.html" %}
+<div class="station-interval-editor" data-station-interval-editor>
+  <p class="help" id="station-interval-help">Внутри интервала действует указанная громкость, после окончания — обычная громкость дня. Можно добавить несколько интервалов. Пересекаться в одном дне они не должны.</p>
+  <div id="station-interval-rows" aria-describedby="station-interval-help"></div>
+  <button type="button" class="button station-interval-add">Добавить интервал</button>
+  <p class="help station-interval-status" role="status" aria-live="polite"></p>
+  <noscript><p class="errornote">Для редактора интервалов включите JavaScript. Остальные настройки можно отправить отдельно.</p></noscript>
+</div>
