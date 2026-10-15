@@ -1,11 +1,11 @@
-"""Structured playlist content for the new broadcast-order flow."""
+"""Позиции основных файлов плейлиста и модель из ранее применённой схемы."""
 
 from django.core.exceptions import ValidationError
 from django.db import models
 
 
 class PlaylistItem(models.Model):
-    """A primary media item in a playlist."""
+    """Основной файл и его позиция. items — обратная связь Django, не обёртка API."""
 
     playlist = models.ForeignKey(
         "files.Playlist", on_delete=models.CASCADE, related_name="items", verbose_name="Плейлист"
@@ -14,6 +14,7 @@ class PlaylistItem(models.Model):
         "files.File", on_delete=models.PROTECT, related_name="playlist_items", verbose_name="Основной файл"
     )
     position = models.PositiveIntegerField(default=0, verbose_name="Позиция")
+    # Поле старой схемы. Приоритет эфира теперь задаёт parameters.weight заказа.
     weight = models.PositiveSmallIntegerField(
         default=100, verbose_name="Вес", help_text="От 0 до 100; используется для случайного выбора."
     )
@@ -46,7 +47,11 @@ class PlaylistItem(models.Model):
 
 
 class PlaylistItemVisual(models.Model):
-    """An image shown with one primary playlist item."""
+    """Устаревшая модель из миграции 0005; новые привязки здесь не создаются.
+
+    Сопровождение рекламного аудио хранится в Order.parameters.audio_images.
+    Определение оставлено для соответствия уже применённой схеме базы.
+    """
 
     playlist_item = models.ForeignKey(
         PlaylistItem, on_delete=models.CASCADE, related_name="visuals", verbose_name="Элемент плейлиста"

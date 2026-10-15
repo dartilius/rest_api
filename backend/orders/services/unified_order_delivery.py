@@ -9,6 +9,10 @@ from django.utils import timezone
 from nomenclatures.models import StationCommandV2
 from nomenclatures.player_v2.sync_state import station_protocol
 from orders.models import Order, OrderStationState
+from orders.services.order_audio_images import (
+    public_order_parameters,
+    resolve_order_audio_image_files,
+)
 from tasks.models import Task
 
 
@@ -21,6 +25,33 @@ AD_POLICY_TO_TASK_TYPE = {
 
 def requires_continuous_advertising(order: Order) -> bool:
     return order.placement == "advertising" and order.playback_policy == "continuous"
+
+
+def requires_order_schedule(order: Order) -> bool:
+    """Weekday schedules must never leak to a Player that ignores them."""
+    parameters = order.parameters or {}
+    weekdays = parameters.get("weekdays")
+    return "weekdays" in parameters and not (
+        isinstance(weekdays, list)
+        and len(weekdays) == 7
+        and all(type(day) is int for day in weekdays)
+        and set(weekdays) == set(range(7))
+    )
+
+
+def validate_order_schedule(order: Order) -> None:
+    if not requires_order_schedule(order):
+        return
+    protocol = station_protocol(order.nomenclature)
+    if (
+        type(protocol.get("unified_orders_version")) is not int
+        or protocol.get("unified_orders_version") != 1
+        or type(protocol.get("order_schedule_version")) is not int
+        or protocol.get("order_schedule_version") != 1
+    ):
+        raise ValidationError(
+            "Обновите Player точки: выбранные дни недели поддерживаются протоколом расписания заказов версии 1."
+        )
 
 
 def validate_continuous_advertising(order: Order) -> None:
@@ -61,22 +92,24 @@ def _format_local_datetime(value):
 
 
 def _playlist_payload(order: Order) -> tuple[list[dict[str, object]], dict[str, list[str]], list[object]]:
-    items = list(order.playlist.items.select_related("file").prefetch_related("visuals__file"))
+    items = list(order.playlist.items.select_related("file"))
     if not items:
         legacy_files = list(order.playlist.files.all())
         if not legacy_files:
             raise ValidationError("Плейлист заказа не содержит файлов.")
-        return ([{"id": str(file.id), "hash": file.hash} for file in legacy_files], {}, legacy_files)
-    files, slides, media_files = [], {}, []
-    for item in items:
-        files.append({"id": str(item.file_id), "hash": item.file.hash})
-        media_files.append(item.file)
-        visuals = list(item.visuals.all()) if order.placement == "advertising" else []
-        image_ids = [str(visual.file_id) for visual in visuals]
-        media_files.extend(visual.file for visual in visuals)
-        if image_ids:
-            slides[str(item.file_id)] = image_ids
-    return files, slides, media_files
+        files = [{"id": str(file.id), "hash": file.hash} for file in legacy_files]
+        media_files = legacy_files
+    else:
+        files = [
+            {"id": str(item.file_id), "hash": item.file.hash}
+            for item in items
+        ]
+        media_files = [item.file for item in items]
+
+    if order.placement != "advertising":
+        return files, {}, media_files
+    slides, image_files = resolve_order_audio_image_files(order)
+    return files, slides, [*media_files, *image_files]
 
 
 def requires_visual_queue(order: Order) -> bool:
@@ -113,6 +146,7 @@ def _background_type(order: Order) -> int:
 
 def build_task(order: Order) -> Task:
     """Build a legacy-compatible task without saving it."""
+    validate_order_schedule(order)
     validate_continuous_advertising(order)
     validate_advertising_options(order)
     validate_visual_queue(order)
@@ -122,7 +156,7 @@ def build_task(order: Order) -> Task:
             broadcast_type = AD_POLICY_TO_TASK_TYPE[order.playback_policy]
         except KeyError as exc:
             raise ValidationError("Выбранное правило недоступно для рекламного заказа.") from exc
-        order_parameters = dict(order.parameters or {})
+        order_parameters = public_order_parameters(order.parameters)
         order_parameters.update({
             "suppress_background_audio": getattr(order, "suppress_background_audio", False),
             "suppress_background_visual": getattr(order, "suppress_background_visual", False),
@@ -155,7 +189,7 @@ def build_task(order: Order) -> Task:
             file["media_type"] = item_types[file["id"]]
             if file["media_type"] == 2 and "image_duration_seconds" in (order.parameters or {}):
                 file["duration_seconds"] = order.parameters["image_duration_seconds"]
-    parameters = dict(order.parameters or {})
+    parameters = public_order_parameters(order.parameters)
     if order.is_permanent and background_type in (1, 2) and order.created is not None:
         # Stable generation across resends/revisions, independent of arrival order.
         parameters["permanent_generation"] = order.created.isoformat(timespec="microseconds")
@@ -169,7 +203,11 @@ def build_task(order: Order) -> Task:
 
 def _supports_v2_orders(order: Order) -> bool:
     protocol = station_protocol(order.nomenclature)
-    return protocol.get("unified_orders_version") == 1 or OrderStationState.objects.filter(order=order).exists()
+    return (
+        requires_order_schedule(order)
+        or protocol.get("unified_orders_version") == 1
+        or OrderStationState.objects.filter(order=order).exists()
+    )
 
 
 def validate_order_delivery(order: Order) -> None:
@@ -212,6 +250,8 @@ def _enqueue_v2(order: Order, *, action: str) -> StationCommandV2:
             body["requires_advertising_options_version"] = 1
         if requires_continuous_advertising(order):
             body["requires_continuous_advertising_version"] = 1
+        if requires_order_schedule(order):
+            body["requires_order_schedule_version"] = 1
         if requires_visual_queue(order):
             body["requires_background_visual_queue_version"] = 1
             if order.is_permanent:

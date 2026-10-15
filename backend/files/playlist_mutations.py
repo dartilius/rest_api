@@ -1,8 +1,7 @@
-"""Transactional mutations for legacy and structured playlist content."""
+"""Атомарное изменение основных файлов плейлиста."""
 
 from __future__ import annotations
 
-from collections import defaultdict, deque
 from collections.abc import Iterator, Sequence
 from typing import TypedDict
 
@@ -12,10 +11,9 @@ from files.models import File, Playlist, PlaylistItem, PlaylistItemVisual
 
 
 class ResolvedPlaylistItem(TypedDict):
-    """Validated playlist input resolved to model instances."""
+    """Проверенные основные файлы плейлиста."""
 
     file: File
-    images: list[File]
 
 
 _ACTIVE_STATUSES = (0, 1)
@@ -56,11 +54,10 @@ def _has_active_orders(playlist: Playlist) -> bool:
 
 
 def ensure_structured_editable(playlist: Playlist) -> None:
-    """Reject a full structured edit while legacy orders use the playlist.
+    """Не заменяем полностью состав, пока плейлист используется legacy-заказами.
 
-    The caller must lock ``playlist`` and own ``transaction.atomic()``. Legacy
-    add/remove endpoints have their own replication protocol and deliberately do
-    not use this guard.
+    Вызывающий код блокирует плейлист внутри transaction.atomic(). Старые
+    add/remove сохраняют собственный протокол доставки изменений.
     """
 
     if _active_legacy_orders(playlist):
@@ -72,10 +69,30 @@ def _ensure_can_be_empty(playlist: Playlist, has_primary_files: bool) -> None:
         raise ValidationError(_EMPTY_PLAYLIST_ERROR)
 
 
+def _historical_visuals_error() -> str:
+    # Ленивый импорт предотвращает цикл с сервисом админки.
+    from files.playlist_admin_service import HISTORICAL_VISUALS_ERROR
+
+    return HISTORICAL_VISUALS_ERROR
+
+
+def _prune_order_audio_images(
+    playlist: Playlist, primary_files: Sequence[File]
+) -> None:
+    from orders.services.order_audio_images import (
+        prune_order_audio_images_for_playlist,
+    )
+
+    prune_order_audio_images_for_playlist(
+        playlist,
+        remaining_primary_ids=(file.pk for file in primary_files),
+    )
+
+
 def _temporary_positions(
     positions: Sequence[int], target_count: int
 ) -> Iterator[int]:
-    # Avoid overflow when an old manually assigned position is near int32 max.
+    # Временные позиции не должны переполняться возле границы int32.
     occupied = set(positions) | set(range(target_count))
     candidate = target_count
     for _ in positions:
@@ -95,67 +112,15 @@ def _move_items_to_temporary_positions(
     PlaylistItem.objects.bulk_update(items, ("position",))
 
 
-def _replace_visuals(
-    playlist_item: PlaylistItem,
-    images: Sequence[File],
-    existing: Sequence[PlaylistItemVisual],
-) -> None:
-    """Keep matching visual occurrences, including their duration and PK."""
-
-    available: dict[object, deque[PlaylistItemVisual]] = defaultdict(deque)
-    for visual in existing:
-        available[visual.file_id].append(visual)
-
-    if existing:
-        for visual, position in zip(existing, _temporary_positions([visual.position for visual in existing], len(images))):
-            visual.position = position
-        PlaylistItemVisual.objects.bulk_update(existing, ("position",))
-
-    retained: list[PlaylistItemVisual] = []
-    additions: list[PlaylistItemVisual] = []
-    for position, image in enumerate(images):
-        matching = available[image.pk]
-        if matching:
-            visual = matching.popleft()
-            visual.position = position
-            retained.append(visual)
-        else:
-            additions.append(
-                PlaylistItemVisual(
-                    playlist_item=playlist_item,
-                    file=image,
-                    position=position,
-                )
-            )
-
-    removed_ids = [visual.pk for rows in available.values() for visual in rows]
-    if removed_ids:
-        PlaylistItemVisual.objects.filter(pk__in=removed_ids).delete()
-    if additions:
-        PlaylistItemVisual.objects.bulk_create(additions)
-    if retained:
-        PlaylistItemVisual.objects.bulk_update(retained, ("position",))
-
-
 def _sync_primary_items(
     playlist: Playlist,
     primary_files: Sequence[File],
-    images_by_file: dict[object, Sequence[File]] | None,
 ) -> None:
     existing = list(
         PlaylistItem.objects.select_for_update()
         .filter(playlist=playlist)
         .order_by("position", "pk")
     )
-    visuals_by_item: dict[int, list[PlaylistItemVisual]] = defaultdict(list)
-    if images_by_file is not None:
-        visuals = (
-            PlaylistItemVisual.objects.select_for_update()
-            .filter(playlist_item__playlist=playlist)
-            .order_by("playlist_item_id", "position", "pk")
-        )
-        for visual in visuals:
-            visuals_by_item[visual.playlist_item_id].append(visual)
     retained_by_file: dict[object, PlaylistItem] = {}
     duplicate_ids: list[int] = []
     for item in existing:
@@ -169,6 +134,11 @@ def _sync_primary_items(
         item.pk for file_id, item in retained_by_file.items()
         if file_id not in desired_ids
     ]
+    if removed_ids and PlaylistItemVisual.objects.filter(
+        playlist_item_id__in=removed_ids
+    ).exists():
+        raise ValidationError(_historical_visuals_error())
+
     _move_items_to_temporary_positions(existing, len(primary_files))
     if removed_ids:
         PlaylistItem.objects.filter(pk__in=removed_ids).delete()
@@ -184,50 +154,22 @@ def _sync_primary_items(
             continue
         item.position = position
         retained.append(item)
-        if images_by_file is not None:
-            _replace_visuals(
-                item,
-                images_by_file[file.pk],
-                visuals_by_item[item.pk],
-            )
-
     if additions:
         PlaylistItem.objects.bulk_create(additions)
-        if images_by_file is not None:
-            created = {
-                item.file_id: item
-                for item in PlaylistItem.objects.filter(
-                    playlist=playlist,
-                    file_id__in=[item.file_id for item in additions],
-                )
-            }
-            visuals = [
-                PlaylistItemVisual(
-                    playlist_item=created[file.pk],
-                    file=image,
-                    position=position,
-                )
-                for file in primary_files
-                if file.pk in created
-                for position, image in enumerate(images_by_file[file.pk])
-            ]
-            if visuals:
-                PlaylistItemVisual.objects.bulk_create(visuals)
     if retained:
         PlaylistItem.objects.bulk_update(retained, ("position",))
 
     playlist.files.set(primary_files)
+    _prune_order_audio_images(playlist, primary_files)
 
 
 def replace_playlist_items(
     playlist: Playlist, resolved_items: Sequence[ResolvedPlaylistItem]
 ) -> None:
-    """Replace ordered structured content while retaining matching row IDs.
+    """Обновляем основные файлы и порядок, сохраняя идентификаторы строк.
 
-    ``resolved_items`` must already be validated and resolved by the API input
-    boundary. The caller must lock ``playlist`` and own
-    ``transaction.atomic()`` so graph changes and order refreshes roll back
-    together.
+    Файлы уже проверены сериализатором. Вызывающий код блокирует плейлист
+    внутри transaction.atomic(), чтобы состав и отправка заказов откатились вместе.
     """
 
     ensure_structured_editable(playlist)
@@ -235,19 +177,16 @@ def replace_playlist_items(
     if len({file.pk for file in primary_files}) != len(primary_files):
         raise ValidationError("Основной файл не должен повторяться в плейлисте.")
     _ensure_can_be_empty(playlist, bool(primary_files))
-    images_by_file = {
-        item["file"].pk: item["images"] for item in resolved_items
-    }
-    _sync_primary_items(playlist, primary_files, images_by_file)
+    _sync_primary_items(playlist, primary_files)
 
 
 def set_playlist_files(
     playlist: Playlist, ordered_files: Sequence[File]
 ) -> None:
-    """Set primary files and adapt a structured graph only when it exists.
+    """Обновляем файлы; позиции синхронизируем только у структурированного плейлиста.
 
-    A legacy playlist without ``PlaylistItem`` rows stays legacy. The caller
-    must lock ``playlist`` and own ``transaction.atomic()``.
+    Старый плейлист без строк PlaylistItem остаётся в формате M2M.
+    Вызывающий код блокирует плейлист внутри transaction.atomic().
     """
 
     primary_files = list(ordered_files)
@@ -256,16 +195,16 @@ def set_playlist_files(
     _ensure_can_be_empty(playlist, bool(primary_files))
     if not PlaylistItem.objects.filter(playlist=playlist).exists():
         playlist.files.set(primary_files)
+        _prune_order_audio_images(playlist, primary_files)
         return
-    _sync_primary_items(playlist, primary_files, images_by_file=None)
+    _sync_primary_items(playlist, primary_files)
 
 
 def refresh_playlist_orders(playlist: Playlist) -> list[object]:
-    """Increment and enqueue every active unified order in stable lock order.
+    """Отправляем новую версию каждому действующему заказу в стабильном порядке.
 
-    The caller decides whether composition changed. It must own
-    ``transaction.atomic()``; database commands produced by ``enqueue_order``
-    then roll back with the playlist and revisions if any refresh fails.
+    Вызывающий код определяет, изменился ли состав, и открывает transaction.atomic().
+    Ошибка отправки откатывает изменение плейлиста и версий заказов.
     """
 
     from orders.models import Order

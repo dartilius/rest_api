@@ -1,24 +1,26 @@
 from uuid import UUID
 
 from django.db.models import Q
-from django_filters import CharFilter, DateFromToRangeFilter, FilterSet
+from django_filters import CharFilter, ChoiceFilter, DateFromToRangeFilter, FilterSet, UUIDFilter
 
 from api.constants import filter_by_owner_name
 from orders.models import AdOrder, BgOrder, Order
 
 
 class UnifiedOrderFilter(FilterSet):
-    """Filters for the documented unified broadcast-order endpoint."""
+    """Фильтры публичного метода единых заказов."""
 
     name = CharFilter(field_name="name", lookup_expr="icontains")
-    placement = CharFilter(field_name="placement")
-    playback_policy = CharFilter(field_name="playback_policy")
+    type = ChoiceFilter(choices=(("ad", "Реклама"), ("bg", "Фон")), method="filter_type")
+    clients = UUIDFilter(field_name="nomenclature_id")
     status = CharFilter(field_name="status")
-    nomenclature = CharFilter(field_name="nomenclature_id")
 
     class Meta:
         model = Order
-        fields = ("name", "placement", "playback_policy", "status", "nomenclature")
+        fields = ("name", "type", "clients", "status")
+
+    def filter_type(self, queryset, name, value):
+        return queryset.filter(placement={"ad": "advertising", "bg": "background"}[value])
 
 
 class AdOrderFilter(FilterSet):

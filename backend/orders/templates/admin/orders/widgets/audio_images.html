@@ -1,0 +1,38 @@
+<div class="order-audio-images" data-order-audio-images data-options-url="{% url 'admin:orders_order_audio_image_options' %}">
+  <input type="hidden" name="{{ widget.name }}__present" value="1">
+  {% for group in widget.groups %}
+    <div class="order-audio-image-group" data-audio-group="{{ group.id }}">
+      <h3>{{ group.name }}</h3>
+      <div class="order-image-columns">
+        <div class="order-image-column">
+          <label for="{{ widget.attrs.id }}_{{ group.id }}_search">Найти картинку</label>
+          <input type="search" id="{{ widget.attrs.id }}_{{ group.id }}_search" data-image-search placeholder="Название картинки">
+          <label for="{{ widget.attrs.id }}_{{ group.id }}_available">Доступные картинки</label>
+          <select id="{{ widget.attrs.id }}_{{ group.id }}_available" data-images-available multiple size="6">
+            {% for choice in group.choices %}
+              <option value="{{ choice.id }}">{{ choice.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" data-image-action="add">Добавить выбранные →</button>
+        </div>
+        <div class="order-image-column">
+          <label for="{{ widget.attrs.id }}_{{ group.id }}">Порядок показа — сверху вниз</label>
+          <select id="{{ widget.attrs.id }}_{{ group.id }}" name="{{ widget.name }}__{{ group.id }}" data-audio-id="{{ group.id }}" data-images-chosen multiple size="6">
+            {% for choice in group.selected_images %}
+              <option value="{{ choice.id }}" selected>{{ choice.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="order-image-actions">
+            <button type="button" data-image-action="up">↑ Выше</button>
+            <button type="button" data-image-action="down">↓ Ниже</button>
+            <button type="button" data-image-action="remove">Убрать</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <p class="order-audio-images-status help">Выберите плейлист с аудиофайлами.</p>
+  {% endfor %}
+  <p class="help">Добавьте картинки справа. Выберите картинку и нажмите «Выше» или «Ниже», чтобы изменить порядок. Одна занимает всё аудио; несколько делят его длительность поровну.</p>
+  <p class="order-audio-images-feedback help" role="status" aria-live="polite"></p>
+</div>

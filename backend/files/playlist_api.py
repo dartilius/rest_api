@@ -1,108 +1,123 @@
-"""Ordered primary files and attached audio visuals in the existing REST API."""
+"""API плейлистов: основные файлы и порядок воспроизведения."""
 
-from collections import Counter
-
+from pathlib import PurePosixPath
+from collections.abc import Mapping
 from rest_framework import serializers
 
-from files.models import File, Playlist, PlaylistItem, PlaylistItemVisual
+from files.models import File, Playlist, PlaylistItem, TYPES
 from files.playlist_content import is_audio_file
 
 
 class PlaylistFilesChangeSerializer(serializers.Serializer):
-    """Schema of the existing add/remove primary-file operations."""
+    """Формат добавления и удаления основных файлов."""
 
-    files = serializers.ListField(child=serializers.UUIDField(), help_text=(
-        "**files** — UUID основных файлов. Картинки, прикреплённые к аудио, "
-        "изменяются через **items[].images**, а не этим методом."
-    ))
-
-
-class PlaylistImageDetailSerializer(serializers.Serializer):
-    id = serializers.UUIDField(read_only=True)
-    name = serializers.CharField(read_only=True)
-    url = serializers.URLField(read_only=True)
-    position = serializers.IntegerField(read_only=True)
+    files = serializers.ListField(
+        child=serializers.UUIDField(),
+        help_text="**files** — UUID основных файлов.",
+    )
 
 
 class PlaylistContentSerializer(serializers.Serializer):
-    file = serializers.UUIDField(help_text="**file** — UUID основного ролика. Обязательное поле; один основной файл не повторяется.")
-    images = serializers.ListField(child=serializers.UUIDField(), required=False, default=list, max_length=1000,
-        help_text="**images** — UUID картинок к этому аудио в порядке показа. Необязательно, по умолчанию []; только изображения. Время рассчитывает Player по длительности аудио.")
-    position = serializers.IntegerField(read_only=True)
-    file_name = serializers.CharField(read_only=True)
-    file_url = serializers.URLField(read_only=True)
-    image_files = PlaylistImageDetailSerializer(many=True, read_only=True)
+    """Совместимый экспериментальный ввод файлов; основное поле API — files."""
+
+    file = serializers.UUIDField(
+        help_text="**file** — UUID основного файла."
+    )
+    def to_internal_value(self, data):
+        # Не игнорируем устаревший параметр молча: настройка теперь в заказе.
+        if isinstance(data, Mapping) and "images" in data:
+            raise serializers.ValidationError({
+                "images": "Картинки рекламного аудио настраиваются в едином заказе эфира."
+            })
+        return super().to_internal_value(data)
 
     def validate(self, attrs):
-        # Parent PATCH skips required/default fields even in nested serializers.
-        # Each item is a complete composition row, not a partial child update.
+        # При PATCH вложенный сериализатор тоже пропускает обязательные поля.
         if "file" not in attrs:
-            raise serializers.ValidationError({"file": "Укажите UUID основного файла."})
+            raise serializers.ValidationError(
+                {"file": "Укажите UUID основного файла."}
+            )
         return attrs
 
-    def to_representation(self, item):
-        visuals = list(item.visuals.all())
-        return {"file": str(item.file_id), "images": [str(visual.file_id) for visual in visuals],
-            "position": item.position, "file_name": item.file.name, "file_url": item.file.url,
-            "image_files": [{"id": str(visual.file_id), "name": visual.file.name,
-                "url": visual.file.url, "position": visual.position} for visual in visuals]}
+
+def normalise_playlist_composition(attrs, *, playlist: Playlist | None):
+    """Проверяем только основные файлы; сопровождение принадлежит заказу."""
+    has_items = "items" in attrs
+    has_files = "files" in attrs
+    if "audio_images" in attrs:
+        raise serializers.ValidationError({
+            "audio_images": "Картинки рекламного аудио настраиваются в едином заказе эфира."
+        })
+    if has_items and has_files:
+        raise serializers.ValidationError("Передайте files без дополнительной обёртки items.")
+    if not has_items and not has_files:
+        if playlist is None:
+            raise serializers.ValidationError({"files": "Укажите упорядоченный список UUID файлов."})
+        return None
+    # Старый экспериментальный ввод принимаем только для файлов, без картинок.
+    # В документации и ответах используется обычный массив files.
+    raw_files = attrs.pop("items") if has_items else [
+        {"file": identifier} for identifier in attrs.pop("files")
+    ]
+    try:
+        return resolve_playlist_items(raw_files, allow_empty=playlist is not None)
+    except serializers.ValidationError as exc:
+        raise serializers.ValidationError({"files": exc.detail}) from exc
 
 
-def resolve_playlist_items(items, *, allow_empty=False, playlist: Playlist | None = None):
-    if (not items and not allow_empty) or len(items) > 1000:
-        raise serializers.ValidationError("Укажите от 1 до 1000 основных роликов.")
-    primary_ids = [item["file"] for item in items]
-    if len(set(primary_ids)) != len(primary_ids):
+def resolve_playlist_items(playlist_files, *, allow_empty=False):
+    """Разрешаем UUID файлов одним запросом, сохраняя переданный порядок."""
+    if (not playlist_files and not allow_empty) or len(playlist_files) > 1000:
+        raise serializers.ValidationError("Укажите от 1 до 1000 основных файлов.")
+    if any("images" in entry for entry in playlist_files):
+        raise serializers.ValidationError("Картинки рекламного аудио настраиваются в едином заказе эфира.")
+    identifiers = [entry["file"] for entry in playlist_files]
+    if len(set(identifiers)) != len(identifiers):
         raise serializers.ValidationError("Основной файл не должен повторяться в плейлисте.")
-    identities = set(primary_ids)
-    references = len(primary_ids)
-    for item in items:
-        identities.update(item.get("images", []))
-        references += len(item.get("images", []))
-    if references > 10000:
-        raise serializers.ValidationError("Слишком много файлов и картинок в одном плейлисте.")
-    files = {file.pk: file for file in File.objects.filter(pk__in=identities)}
-    if set(files) != identities:
+    files = File.objects.filter(pk__in=identifiers).in_bulk()
+    if set(files) != set(identifiers):
         raise serializers.ValidationError("Некоторые файлы не существуют.")
-    retained_inactive = Counter()
-    if playlist is not None:
-        retained_inactive.update(
-            PlaylistItemVisual.objects.filter(
-                playlist_item__playlist=playlist,
-                file__is_active=False,
-            ).values_list("playlist_item__file_id", "file_id")
-        )
-    resolved = []
-    for index, item in enumerate(items):
-        primary = files[item["file"]]
-        images = [files[identity] for identity in item.get("images", [])]
-        if not primary.is_active:
-            raise serializers.ValidationError(
-                {index: {"file": "Основной файл не существует или неактивен."}}
-            )
-        for image in images:
-            if image.is_active:
-                continue
-            retained_key = (primary.pk, image.pk)
-            if retained_inactive[retained_key] <= 0:
-                raise serializers.ValidationError(
-                    {index: {"images": "Нельзя добавить новую неактивную картинку."}}
-                )
-            retained_inactive[retained_key] -= 1
-        if images and not is_audio_file(primary):
-            raise serializers.ValidationError({index: {"images": "Сопровождение можно прикрепить только к аудиофайлу."}})
-        if any(image.type != 2 for image in images):
-            raise serializers.ValidationError({index: {"images": "Сопровождение должно содержать только картинки."}})
-        resolved.append({"file": primary, "images": images})
-    return resolved
+    if any(not file.is_active for file in files.values()):
+        raise serializers.ValidationError("Основной файл не существует или неактивен.")
+    return [{"file": files[identifier]} for identifier in identifiers]
 
 
-def create_playlist_items(playlist, items):
-    """Caller owns the transaction; image files are never primary members."""
-    for position, item in enumerate(items):
-        primary = PlaylistItem.objects.create(playlist=playlist, file=item["file"], position=position)
-        PlaylistItemVisual.objects.bulk_create([
-            PlaylistItemVisual(playlist_item=primary, file=image, position=index)
-            for index, image in enumerate(item["images"])
-        ])
-    playlist.files.set(item["file"] for item in items)
+def create_playlist_items(playlist, playlist_files):
+    """Храним позицию каждого файла. Картинки к аудио здесь не создаём."""
+    PlaylistItem.objects.bulk_create([
+        PlaylistItem(playlist=playlist, file=entry["file"], position=position)
+        for position, entry in enumerate(playlist_files)
+    ])
+    playlist.files.set(entry["file"] for entry in playlist_files)
+
+def _file_reference(file):
+    media_type = TYPES[file.type]
+    if is_audio_file(file):
+        media_type = "audio"
+    elif file.type == 4:
+        suffix = PurePosixPath(file.source.name or "").suffix.lower()
+        if suffix in {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".webm", ".mpeg", ".mpg", ".m4v", ".flv", ".ts"}:
+            media_type = "video"
+        elif suffix in {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}:
+            media_type = "image"
+    return {
+        "id": str(file.pk),
+        "name": file.name,
+        "type": media_type,
+        "url": file.url,
+    }
+
+
+def playlist_api_composition(playlist):
+    """Возвращаем только основные файлы в порядке воспроизведения."""
+
+    items = list(playlist.items.all())
+    if not items:
+        return {
+            "files": [
+                _file_reference(file) for file in playlist.files.all()
+            ],
+        }
+    return {
+        "files": [_file_reference(item.file) for item in items],
+    }

@@ -408,11 +408,8 @@ SIMPLE_JWT = {
 # =============================================================================
 
 if DEBUG:
-    def show_toolbar(request):
-        return True
-
     DEBUG_TOOLBAR_CONFIG = {
-        'SHOW_TOOLBAR_CALLBACK': show_toolbar,
+        'SHOW_TOOLBAR_CALLBACK': 'rmc_rest_api.debug_toolbar.show_toolbar',
         'SQL_QUERY_TIME_THRESHOLD': 0.1,
         'ENABLE_STACKTRACES': True,
         'RESULTS_CACHE_SIZE': 25,

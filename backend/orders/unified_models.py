@@ -26,6 +26,35 @@ PLAYBACK_POLICIES = {
     "start_to_close": "Реклама с указанного времени",
     "event": "По событию",
 }
+UNTIMED_PLAYBACK_POLICIES = {"event"}
+
+
+def validate_order_weekdays(parameters, *, is_permanent, playback_policy):
+    """Validate the optional recurring local-calendar schedule."""
+    if not isinstance(parameters, dict):
+        raise ValidationError({"parameters": "Параметры должны быть JSON-объектом."})
+    if "weekdays" not in parameters:
+        return
+
+    weekdays = parameters["weekdays"]
+    if is_permanent:
+        raise ValidationError({
+            "parameters": "Для бессрочного резервного фона дни недели не задаются: он доступен каждый день."
+        })
+    if playback_policy in UNTIMED_PLAYBACK_POLICIES:
+        raise ValidationError({
+            "parameters": "Дни недели можно задать только для заказа с календарным расписанием."
+        })
+    if not isinstance(weekdays, list) or not weekdays:
+        raise ValidationError({
+            "parameters": "weekdays должен быть непустым JSON-массивом дней от 0 (понедельник) до 6 (воскресенье)."
+        })
+    if any(type(day) is not int or not 0 <= day <= 6 for day in weekdays):
+        raise ValidationError({
+            "parameters": "Каждый день в weekdays должен быть целым числом от 0 (понедельник) до 6 (воскресенье)."
+        })
+    if len(set(weekdays)) != len(weekdays):
+        raise ValidationError({"parameters": "Дни недели в weekdays не должны повторяться."})
 
 
 class Order(APIBaseObjectModel):
@@ -63,6 +92,12 @@ class Order(APIBaseObjectModel):
 
     def clean(self):
         super().clean()
+        parameters = self.parameters
+        validate_order_weekdays(
+            parameters,
+            is_permanent=self.is_permanent,
+            playback_policy=self.playback_policy,
+        )
         if self.starts_at and self.ends_at and self.starts_at >= self.ends_at:
             raise ValidationError({"ends_at": "Окончание должно быть позднее начала."})
         if self.is_permanent and self.ends_at is not None:
@@ -73,7 +108,7 @@ class Order(APIBaseObjectModel):
             raise ValidationError({"playback_policy": "Непрерывный режим сейчас доступен только рекламе."})
         if self.placement == "background" and self.playback_policy != "workday":
             raise ValidationError({"playback_policy": "Для фонового заказа сейчас доступно только workday."})
-        if self.playback_policy == "start_to_close" and not (self.parameters or {}).get("start_time"):
+        if self.playback_policy == "start_to_close" and not parameters.get("start_time"):
             raise ValidationError({
                 "parameters": "Для режима «Реклама с указанного времени» укажите первый выход."
             })

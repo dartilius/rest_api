@@ -544,7 +544,7 @@ class FileViewSet(NoUpdateViewSet):
                     "id": "57c42879-2a80-4304-9551-1c02011f559b",
                     "name": "Наименование плейлиста",
                     "created": "2025-03-07 15:10:25",
-                    "owner": {"full_name": " Фамилия Имя"},
+                    "owner": {"id": "00000000-0000-0000-0000-000000000401", "full_name": "Фамилия Имя"},
                     "files_count": 2,
                 },
                 status_codes=[HTTP_200_OK],
@@ -564,17 +564,19 @@ class FileViewSet(NoUpdateViewSet):
                     "name": "Наименование плейлиста",
                     "description": "Описание плейлиста",
                     "created": "2025-03-07 15:10:25",
-                    "owner": {"full_name": " Фамилия Имя"},
+                    "owner": {"id": "00000000-0000-0000-0000-000000000401", "full_name": "Фамилия Имя"},
                     "files_count": 2,
                     "files": [
                         {
                             "id": "be326d46-281f-40fd-b8f4-2534cf4afa25",
                             "name": "9_est_novosti_kadrovi_proekt_306514_1000.mp4",
+                            "type": "video",
                             "url": "ССЫЛКА НА ФАЙЛ",
                         },
                         {
                             "id": "66f77962-5c5e-4d41-b1ec-9579b5715f97",
                             "name": "8_est_novosti_ambassador_306363_1000.mp4",
+                            "type": "video",
                             "url": "ССЫЛКА НА ФАЙЛ",
                         },
                     ],
@@ -593,37 +595,43 @@ class FileViewSet(NoUpdateViewSet):
         OpenApiExample("Музыкальный плейлист", value={"name": "Фоновая музыка", "files": [
             "11111111-1111-4111-8111-111111111111", "33333333-3333-4333-8333-333333333333",
         ]}, request_only=True),
-        OpenApiExample("Видео", value={"name": "Видеоплейлист", "items": [
-            {"file": "44444444-4444-4444-8444-444444444444"},
-            {"file": "55555555-5555-4555-8555-555555555555"},
+        OpenApiExample("Видео", value={"name": "Видеоплейлист", "files": [
+            "44444444-4444-4444-8444-444444444444",
+            "55555555-5555-4555-8555-555555555555",
         ]}, request_only=True),
-        OpenApiExample("Картинки", value={"name": "Слайдшоу", "items": [
-            {"file": "22222222-2222-4222-8222-222222222222"},
-            {"file": "66666666-6666-4666-8666-666666666666"},
+        OpenApiExample("Картинки", value={"name": "Слайдшоу", "files": [
+            "22222222-2222-4222-8222-222222222222",
+            "66666666-6666-4666-8666-666666666666",
         ]}, request_only=True),
-        OpenApiExample("Видео и картинки в одной очереди", value={"name": "Смешанный визуальный контент", "items": [
-            {"file": "44444444-4444-4444-8444-444444444444"},
-            {"file": "22222222-2222-4222-8222-222222222222"},
+        OpenApiExample("Видео и картинки в одной очереди", value={"name": "Смешанный визуальный контент", "files": [
+            "44444444-4444-4444-8444-444444444444",
+            "22222222-2222-4222-8222-222222222222",
         ]}, request_only=True),
-        OpenApiExample("Рекламное аудио с картинками", value={"name": "Рекламный плейлист", "items": [
-            {"file": "11111111-1111-4111-8111-111111111111", "images": [
-                "22222222-2222-4222-8222-222222222222", "66666666-6666-4666-8666-666666666666",
-            ]},
-            {"file": "33333333-3333-4333-8333-333333333333", "images": []},
-        ]}, request_only=True),
+        OpenApiExample("Рекламный аудиоплейлист", value={
+            "name": "Рекламный плейлист",
+            "files": [
+                "11111111-1111-4111-8111-111111111111",
+                "33333333-3333-4333-8333-333333333333",
+            ],
+        }, request_only=True),
     ],
 ))
 @extend_schema_view(
     partial_update=extend_schema(
-        summary="Изменить плейлист: название, состав и картинки аудио",
+        summary="Изменить плейлист: название, состав и порядок файлов",
         description=integration_docs.PLAYLIST_UPDATE_DESCRIPTION,
         request=PlaylistSerializer,
         responses={200: PlaylistReadSerializer} | DEFAULT_SCHEMA_RESPONSES,
-        examples=[OpenApiExample("Замена состава и порядка", request_only=True, value={
-            "items": [{"file": "11111111-1111-4111-8111-111111111111", "images": [
-                "22222222-2222-4222-8222-222222222222"]},
-                {"file": "33333333-3333-4333-8333-333333333333", "images": []}]
-        })],
+        examples=[OpenApiExample(
+            "Замена состава и порядка",
+            request_only=True,
+            value={
+                "files": [
+                    "11111111-1111-4111-8111-111111111111",
+                    "33333333-3333-4333-8333-333333333333",
+                ],
+            },
+        )],
     ),
     add_files=extend_schema(summary="Добавить основные файлы в плейлист",
         description=integration_docs.PLAYLIST_ADD_FILES_DESCRIPTION,
@@ -656,11 +664,13 @@ class PlaylistViewSet(viewsets.ModelViewSet):
     - Автогенерируемый уникальный идентификатор `uuid`
 
     ## Файлы плейлиста `files`
-    - Список файлов плейлиста с минимальной необходимой информацией о них
+    - Упорядоченный список основных файлов плейлиста
         - `id` идентификатор для перехода на страницу файла
         - `name` для отображения наименования фалйа в списке
+        - `type` публичный тип: music, video, image, ticker или ad
         - `url` ссылка на файл в локальном облачном хранилище
         для его возможного воспроизведения
+
     """
 
     queryset = (
@@ -675,7 +685,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         if self.action != "list":
-            queryset = queryset.prefetch_related("items__file", "items__visuals__file")
+            queryset = queryset.prefetch_related("items__file")
         return queryset
 
     def get_serializer(self, *args, **kwargs):
@@ -818,7 +828,13 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         if request.method != "PATCH":
             raise MethodNotAllowed(request.method)
         self.validate_object_body(request.data)
-        extra = set(request.data) - {"name", "description", "items", "files"}
+        extra = set(request.data) - {
+            "name",
+            "description",
+            "items",
+            "files",
+            "audio_images",
+        }
         if extra:
             raise ValidationError(
                 "Неизвестные поля: " + ", ".join(sorted(extra))

@@ -129,6 +129,12 @@ class StationV2SyncView(APIView):
                         body__task__parameters__broadcast_type__isnull=False)
                 )
                 commands = commands.exclude(Q(kind="apply_order_manifest") & requires_continuous)
+            if serializer.validated_data.get("station_protocol", {}).get("order_schedule_version") != 1:
+                commands = commands.exclude(
+                    kind="apply_order_manifest",
+                    body__requires_order_schedule_version=1,
+                    body__requires_order_schedule_version__isnull=False,
+                )
             commands = commands.order_by("created_at")[:100]
 
             command_payloads = []

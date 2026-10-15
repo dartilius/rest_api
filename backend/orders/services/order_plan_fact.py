@@ -55,7 +55,11 @@ def report_for_order(order, day: date, *, now: datetime | None = None) -> dict[s
         return _unplanned_report(order, day, files, completed, reason, revision)
 
     try:
-        occurrences, uses_current_worktime = _occurrences(parameters, order.nomenclature, day)
+        occurrences, uses_current_worktime, schedule_excluded = _occurrences(
+            parameters,
+            order.nomenclature,
+            day,
+        )
     except ValueError as exc:
         return _unavailable_report(order, day, str(exc), files, completed, revision)
 
@@ -92,6 +96,8 @@ def report_for_order(order, day: date, *, now: datetime | None = None) -> dict[s
         notes.append(
             "Исторического снимка рабочего времени нет: план реконструирован по текущим настройкам точки."
         )
+    if schedule_excluded:
+        notes.append("Выбранный день недели исключён из расписания заказа: план на этот день равен нулю.")
     if cancelled_revision:
         notes.append(
             "Для отмены показано последнее отправленное расписание. Время фактической остановки в этом плане не учтено."
@@ -171,7 +177,7 @@ def _manifest_files(manifest: dict[str, Any], playlist_files: list[dict[str, Any
 
 def _occurrences(
     parameters: dict[str, Any], nomenclature, day: date
-) -> tuple[list[tuple[datetime, int]], bool]:
+) -> tuple[list[tuple[datetime, int]], bool, bool]:
     broadcast_type = parameters.get("broadcast_type")
     options = parameters["order_parameters"]
     times = options.get("times_in_hour")
@@ -181,6 +187,8 @@ def _occurrences(
     order_end = _parse_datetime(parameters.get("broadcast_end"), "окончания заказа")
     if order_start >= order_end:
         raise ValueError("В неизменяемом манифесте указан некорректный период заказа.")
+    if not _weekday_is_selected(options, day):
+        return [], False, True
 
     windows = _windows_for_day(
         broadcast_type, options, nomenclature, day, order_start, order_end
@@ -196,7 +204,21 @@ def _occurrences(
             index += 1
             # Indexed construction matches Player's fractional-slot clock.
             occurrence = window_start + timedelta(seconds=index * interval_seconds)
-    return occurrences, broadcast_type in _WORKTIME_BROADCAST_TYPES
+    return occurrences, broadcast_type in _WORKTIME_BROADCAST_TYPES, False
+
+
+def _weekday_is_selected(options: dict[str, Any], day: date) -> bool:
+    weekdays = options.get("weekdays")
+    if weekdays is None:
+        return True
+    if (
+        not isinstance(weekdays, list)
+        or not weekdays
+        or any(type(value) is not int or not 0 <= value <= 6 for value in weekdays)
+        or len(set(weekdays)) != len(weekdays)
+    ):
+        raise ValueError("В неизменяемом манифесте нет корректного списка дней недели.")
+    return day.weekday() in weekdays
 
 
 def _windows_for_day(

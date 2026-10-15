@@ -5,17 +5,20 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import prefetch_related_objects
 from rest_framework import serializers
-from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from drf_spectacular.types import OpenApiTypes
 
 from api.constants import Constants
-from files.models import File, Playlist, PlaylistItem, PlaylistItemVisual, Tag, TYPES
-from files.playlist_api import PlaylistContentSerializer, create_playlist_items, resolve_playlist_items
+from files.models import File, Playlist, PlaylistItem, Tag, TYPES
+from files.playlist_api import (
+    PlaylistContentSerializer,
+    create_playlist_items,
+    normalise_playlist_composition,
+    playlist_api_composition,
+)
 from files.playlist_mutations import (
-    ensure_structured_editable,
     refresh_playlist_orders,
     replace_playlist_items,
-    set_playlist_files,
 )
 
 
@@ -178,23 +181,41 @@ def playlist_composition_signature(playlist):
     rows = list(PlaylistItem.objects.filter(playlist=playlist).order_by("position", "pk").values_list("pk", "file_id"))
     if not rows:
         return ("files", tuple(sorted(str(pk) for pk in playlist.files.values_list("pk", flat=True))))
-    images = {}
-    for item_id, file_id in PlaylistItemVisual.objects.filter(playlist_item__playlist=playlist).order_by("playlist_item_id", "position", "pk").values_list("playlist_item_id", "file_id"):
-        images.setdefault(item_id, []).append(str(file_id))
-    return ("items", tuple((str(file_id), tuple(images.get(item_id, ()))) for item_id, file_id in rows))
+    # Значимы только файлы и порядок. Сопровождение хранится в заказе.
+    return ("items", tuple(str(file_id) for _, file_id in rows))
 
 
+class PlaylistOwnerSerializer(serializers.Serializer):
+    """Автор плейлиста: UUID пользователя и отображаемое ФИО."""
+
+    id = serializers.UUIDField(read_only=True)
+    full_name = serializers.CharField(read_only=True)
+
+
+@extend_schema_serializer(exclude_fields=("items",))
 class PlaylistSerializer(serializers.ModelSerializer):
     """Сериализация одного плейлиста."""
 
-    items = PlaylistContentSerializer(many=True, required=False, max_length=1000)
-    files = serializers.SlugRelatedField(
-        slug_field='id',
-        queryset=File.active.all(),
-        write_only=True,
+    owner = PlaylistOwnerSerializer(read_only=True, allow_null=True)
+
+    items = PlaylistContentSerializer(
         many=True,
         required=False,
+        write_only=True,
+        max_length=1000,
     )
+    files = serializers.ListField(
+        child=serializers.UUIDField(),
+        required=False,
+        write_only=True,
+        max_length=1000,
+    )
+    def to_internal_value(self, data):
+        if isinstance(data, dict) and "audio_images" in data:
+            raise serializers.ValidationError({
+                "audio_images": "Картинки рекламного аудио настраиваются в едином заказе эфира."
+            })
+        return super().to_internal_value(data)
 
     class Meta:
         fields = (
@@ -214,70 +235,57 @@ class PlaylistSerializer(serializers.ModelSerializer):
         model = Playlist
 
     def validate(self, data):
-        """Проверяем, что все файлы в плейлисте актуальны и одного типа."""
-        if "items" in data:
-            if "files" in data:
-                raise serializers.ValidationError("Используйте либо files, либо items, не оба поля одновременно.")
-            try:
-                data["items"] = resolve_playlist_items(
-                    data["items"],
-                    allow_empty=self.instance is not None,
-                    playlist=self.instance,
-                )
-            except serializers.ValidationError as exc:
-                raise serializers.ValidationError({"items": exc.detail}) from exc
-            return data
-        if self.instance is None and "files" not in data:
-            raise serializers.ValidationError({"files": "Укажите files или структурированный список items."})
-        if 'files' in data:
-            files = data['files']
-            playlist_files_types = {TYPES[file.type] for file in files}
-            if len(playlist_files_types) > 1:
-                raise serializers.ValidationError(
-                    'Плейлист не должен содержать файлы разных типов: '
-                    f'{playlist_files_types}'
-                )
+        """Преобразуем ввод в список основных файлов без сопровождения."""
+        composition_input = {key: data[key] for key in ("files", "items") if key in data}
+        composition = normalise_playlist_composition(
+            data,
+            playlist=self.instance,
+        )
+        if composition is not None:
+            data["_playlist_composition"] = composition
+            if self.instance is not None:
+                data["_playlist_input"] = composition_input
         return data
 
     @transaction.atomic
     def create(self, validated_data):
-        items = validated_data.pop("items", None)
+        items = validated_data.pop("_playlist_composition")
         playlist = super().create(validated_data)
-        if items is not None:
-            create_playlist_items(playlist, items)
-        prefetch_related_objects([playlist], "files", "items__file", "items__visuals__file")
+        create_playlist_items(playlist, items)
+        prefetch_related_objects([playlist], "files", "items__file")
         return playlist
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        # The view checks permissions; no-key lock remains compatible with FK
-        # key-share locks acquired by concurrent order creation/update.
+        # Права уже проверены; no_key не мешает созданию связанных заказов.
         instance = Playlist.objects.select_for_update(no_key=True).get(pk=instance.pk)
-        items_present, files_present = "items" in validated_data, "files" in validated_data
-        items = validated_data.pop("items", None)
-        files = validated_data.pop("files", None)
-        before = playlist_composition_signature(instance) if items_present or files_present else None
+        composition = validated_data.pop("_playlist_composition", None)
+        composition_input = validated_data.pop("_playlist_input", None)
+        if composition_input is not None:
+            # Повторно проверяем состав после блокировки строки плейлиста.
+            composition = normalise_playlist_composition(composition_input, playlist=instance)
+        before = (
+            playlist_composition_signature(instance)
+            if composition is not None
+            else None
+        )
         try:
             instance = super().update(instance, validated_data)
-            if items_present:
-                replace_playlist_items(instance, items)
-            elif files_present:
-                ensure_structured_editable(instance)
-                set_playlist_files(instance, list(dict.fromkeys(files)))
+            if composition is not None:
+                replace_playlist_items(instance, composition)
             if before is not None and before != playlist_composition_signature(instance):
                 refresh_playlist_orders(instance)
         except DjangoValidationError as exc:
-            raise serializers.ValidationError({"items" if items_present else "files": exc.messages}) from exc
-        return Playlist.objects.select_related("owner").prefetch_related("files", "items__file", "items__visuals__file").get(pk=instance.pk)
+            raise serializers.ValidationError({"files": exc.messages}) from exc
+        return (
+            Playlist.objects.select_related("owner")
+            .prefetch_related("files", "items__file")
+            .get(pk=instance.pk)
+        )
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = value.owner.full_name
-        repr_['files'] = [
-            {'id': file.id,
-             'name': file.name,
-             'url': file.url} for file in value.files.all()
-        ]
+        repr_.update(playlist_api_composition(value))
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
 
@@ -285,7 +293,7 @@ class PlaylistSerializer(serializers.ModelSerializer):
 class PlaylistListSerializer(serializers.ModelSerializer):
     """Сериализация списка плейлистов."""
 
-    owner = serializers.CharField(source="owner.full_name", read_only=True)
+    owner = PlaylistOwnerSerializer(read_only=True, allow_null=True)
     files_count = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -301,7 +309,6 @@ class PlaylistListSerializer(serializers.ModelSerializer):
 
     def to_representation(self, value):
         repr_ = super().to_representation(value)
-        repr_['owner'] = value.owner.full_name
         repr_['files_count'] = value.files.count()
         repr_['created'] = f'{value.created:%Y-%m-%d %H:%M:%S}'
         return repr_
@@ -310,21 +317,33 @@ class PlaylistListSerializer(serializers.ModelSerializer):
 class PlaylistFileReferenceSerializer(serializers.Serializer):
     id = serializers.UUIDField(read_only=True)
     name = serializers.CharField(read_only=True)
+    type = serializers.CharField(read_only=True)
     url = serializers.URLField(read_only=True)
 
 
 class PlaylistReadSerializer(serializers.ModelSerializer):
     """Describe the response independently of the UUID-based write format."""
 
-    owner = serializers.CharField(source="owner.full_name", read_only=True)
+    owner = PlaylistOwnerSerializer(read_only=True, allow_null=True)
     files = PlaylistFileReferenceSerializer(many=True, read_only=True)
-    items = PlaylistContentSerializer(many=True, read_only=True)
     created = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
 
     class Meta:
         model = Playlist
-        fields = ("id", "name", "description", "owner", "files", "items", "created")
+        fields = (
+            "id",
+            "name",
+            "description",
+            "owner",
+            "files",
+            "created",
+        )
         read_only_fields = fields
+
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        representation.update(playlist_api_composition(value))
+        return representation
 
 
 class TagsFileSerializer(serializers.Serializer):
