@@ -4,8 +4,10 @@
         const station = $("#id_nomenclature");
         const commandForm = station.closest("form");
         const endpoint = station.attr("data-station-devices-url");
-        const day = $("#id_day");
+        const day = $("#id_volume_day").length ? $("#id_volume_day") : $("#id_day");
         const settingGroup = $("#id_setting_group");
+        const settingGroups = commandForm.find("input[name='setting_groups']");
+        const intervalsField = $("#id_interval_volume_rows");
         const volumeFields = {
             background_left: $("#id_background_left_volume"),
             background_right: $("#id_background_right_volume"),
@@ -14,16 +16,30 @@
         };
         const settingSections = [
             "volume",
+            "interval_volume",
             "background",
             "worktime",
             "audio_device",
             "display",
             "visual_output"
         ];
+        const dayTargetFields = {
+            volume: "#id_volume_all_days",
+            background: "#id_background_all_days",
+            worktime: "#id_worktime_all_days"
+        };
         if (!endpoint) return;
         let pending;
         let defaultVolumes = {};
         let requestGeneration = 0;
+
+        function selectedGroups() {
+            return settingGroups.length
+                ? settingGroups.filter(":checked").map(function () { return this.value; }).get()
+                : [settingGroup.val()];
+        }
+
+        function intervals() { return window.RMCStationIntervals; }
 
         function setChoices(selector, choices) {
             const field = $(selector).empty();
@@ -72,6 +88,7 @@
                 setChoices("#id_audio_device_id", empty);
                 setChoices("#id_display_id", empty);
                 resetVolumeFields();
+                if (intervals()) intervals().reset();
             }
             if (!stationId) return;
 
@@ -84,6 +101,8 @@
                     }
                     defaultVolumes = data.default_volumes || {};
                     setDefaultVolumes();
+                    if (intervals()) intervals().load(data.custom_volumes || {}, preserveFormValues);
+                    updateVisibleSection();
                 })
                 .fail(function (_, status) {
                     if (status === "abort" || generation !== requestGeneration || station.val() !== stationId) return;
@@ -97,14 +116,37 @@
         function valueNeedsSubmission(key) {
             const field = volumeFields[key];
             const value = String(field.val());
+            if (value === "") return false;
+            if ($("#id_volume_all_days").prop("checked")) {
+                if (!field.data("volume-dirty")) return false;
+                return ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].some(function (name) {
+                    return !defaultVolumes[name] || String(defaultVolumes[name][key]) !== value;
+                });
+            }
             return field.data("confirmed-value") === undefined || value !== field.data("confirmed-value");
         }
 
         function updateVisibleSection() {
-            const selected = settingGroup.val();
+            const selected = selectedGroups();
             settingSections.forEach(function (name) {
-                $(".station-command-" + name).toggle(name === selected);
+                const section = $(".station-command-" + name);
+                const active = selected.includes(name);
+                section.toggle(active);
+                if (settingGroups.length) {
+                    section.find("input:not([type='hidden']), select, textarea, button").prop("disabled", !active);
+                }
             });
+            if (intervals()) intervals().setEnabled(selected.includes("interval_volume"));
+            if (settingGroups.length) return;
+            const dayRow = day.closest(".form-row");
+            const targetField = dayTargetFields[selected[0]];
+            const allDaysRow = targetField ? $(targetField).closest(".form-row") : $();
+            if (!dayRow.length) return;
+            if (!allDaysRow.length) {
+                dayRow.hide();
+                return;
+            }
+            dayRow.insertBefore(allDaysRow).show();
         }
 
         Object.keys(volumeFields).forEach(function (key) {
@@ -121,13 +163,14 @@
         });
         day.on("change", setDefaultVolumes);
         settingGroup.on("change", updateVisibleSection);
+        settingGroups.on("change", updateVisibleSection);
         commandForm.on("submit", function (event) {
-            if (settingGroup.val() !== "volume") return;
+            if (!selectedGroups().includes("volume")) return;
 
             const fieldsToSubmit = Object.keys(volumeFields).filter(function (key) {
                 return valueNeedsSubmission(key);
             });
-            if (fieldsToSubmit.length === 0) {
+            if (fieldsToSubmit.length === 0 && selectedGroups().length === 1) {
                 event.preventDefault();
                 window.alert("Измените хотя бы один канал громкости перед применением настройки.");
                 return;
@@ -140,7 +183,10 @@
         });
         updateVisibleSection();
         if (station.val()) {
-            loadStation(station.val(), true);
+            const preserve = intervalsField.length
+                ? intervalsField.attr("data-bound") === "true"
+                : true;
+            loadStation(station.val(), preserve);
         }
     });
 })(django.jQuery);
