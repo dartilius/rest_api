@@ -196,6 +196,9 @@ def _station_custom_volumes(nomenclature):
 class StationIntervalScheduleWidget(forms.HiddenInput):
     """Скрыто передаёт JSON; оператор редактирует таблицу в отдельном виджете."""
 
+    # Сам input скрыт шаблоном, но составной редактор видим. Иначе Django
+    # admin добавляет всей строке класс hidden, скрывая также кнопку и поля.
+    is_hidden = False
     template_name = "nomenclatures/widgets/station_intervals.html"
 
 
