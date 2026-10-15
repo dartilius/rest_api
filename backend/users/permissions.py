@@ -1,5 +1,12 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
+
+class RegistrationEndpointOnly(BasePermission):
+    message = 'Используйте /api/users/register/ с подтверждением email и согласием.'
+
+    def has_permission(self, request, view):
+        return False
+
 MUTATE_METHODS = ("PUT", "PATCH")
 MUTATE_DELETE_METHODS = (*MUTATE_METHODS, "DELETE")
 NO_DELETE_METHODS = (*MUTATE_METHODS, *SAFE_METHODS)

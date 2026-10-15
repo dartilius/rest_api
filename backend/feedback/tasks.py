@@ -72,7 +72,7 @@ def _resolve_names(
             nom_names = [_nomenclature_display_name(n) for n in noms] or nomenclatures_ids
 
     except Exception as e:
-        logger.warning(f"[_resolve_names] Не удалось получить названия: {e}")
+        logger.warning('Feedback name resolution failed: %s', type(e).__name__)
 
     return brand_name, nom_names
 
@@ -158,6 +158,9 @@ def send_feedback_email(
     request_id: Optional[str] = None,
 ) -> str:
     """Отправка уведомления админу"""
+    from feedback.models import Feedback
+    if not request_id or not Feedback.objects.filter(pk=request_id, processing_blocked=False).exists():
+        return 'skipped'
     logger.info("Feedback manager email: id=%s", request_id)
     try:
         brand_name, nom_names = _resolve_names(pathname, brand_id, nomenclatures_ids)
@@ -185,7 +188,7 @@ def send_feedback_email(
         return "Admin notification sent"
     except Exception as e:
         logger.error("Feedback manager email failed: id=%s error=%s", request_id, type(e).__name__)
-        raise self.retry(exc=e)
+        raise self.retry(exc=RuntimeError('Feedback email delivery failed')) from None
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -204,6 +207,9 @@ def send_feedback_mail(
     request_id: Optional[str] = None,
 ) -> str:
     """Отправка подтверждения пользователю"""
+    from feedback.models import Feedback
+    if not request_id or not Feedback.objects.filter(pk=request_id, processing_blocked=False).exists():
+        return 'skipped'
     logger.info("Feedback confirmation email: id=%s", request_id)
     try:
         brand_name, nom_names = _resolve_names(pathname, brand_id, nomenclatures_ids)
@@ -228,4 +234,28 @@ def send_feedback_mail(
         return "User confirmation sent"
     except Exception as e:
         logger.error("Feedback confirmation email failed: id=%s error=%s", request_id, type(e).__name__)
-        raise self.retry(exc=e)
+        raise self.retry(exc=RuntimeError('Feedback email delivery failed')) from None
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def deliver_feedback_notification(self, request_id, audience):
+    """Broker/retry payload contains only the row ID, never a copy of the form."""
+    from django.db import transaction
+    from feedback.models import Feedback
+    from feedback.signals import _notification_data
+
+    try:
+        with transaction.atomic():
+            feedback = Feedback.objects.select_for_update().filter(pk=request_id).first()
+            if feedback is None or feedback.processing_blocked:
+                return 'skipped'
+            data = _notification_data(feedback)
+            if audience == 'manager':
+                send_feedback_email.run(phone=feedback.phone, **data)
+            elif audience == 'user' and feedback.email:
+                send_feedback_mail.run(**data)
+            else:
+                return 'skipped'
+        return 'sent'
+    except Exception:
+        raise self.retry(exc=RuntimeError('Feedback notification failed')) from None

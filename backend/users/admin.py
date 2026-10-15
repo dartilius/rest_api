@@ -3,6 +3,8 @@
 from django.contrib import admin
 
 from users.models import CustomUser, ContactInfo
+from users.models import PersonalDataConsent, PrivacyRequest, PrivacyErasure
+from users.privacy_services import resolve_privacy_request
 
 
 class ContactInfoInline(admin.TabularInline):
@@ -25,6 +27,72 @@ class ContactInfoInline(admin.TabularInline):
         "basic",
         "comment",
     )
+
+
+class PrivacyStaffAdmin(admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return (request.user.has_perm('users.manage_privacy')
+                and super().has_module_permission(request))
+
+    def has_view_permission(self, request, obj=None):
+        return (request.user.has_perm('users.manage_privacy')
+                and super().has_view_permission(request, obj))
+
+    def has_change_permission(self, request, obj=None):
+        return (request.user.has_perm('users.manage_privacy')
+                and super().has_change_permission(request, obj))
+
+    def has_add_permission(self, request):
+        return (request.user.has_perm('users.manage_privacy')
+                and super().has_add_permission(request))
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PersonalDataConsent)
+class PersonalDataConsentAdmin(PrivacyStaffAdmin):
+    list_display = ('id', 'purpose', 'document_version', 'accepted_at', 'revoked_at')
+    list_filter = ('purpose', 'document_version')
+    readonly_fields = tuple(field.name for field in PersonalDataConsent._meta.fields)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PrivacyErasure)
+class PrivacyErasureAdmin(PrivacyStaffAdmin):
+    readonly_fields = tuple(field.name for field in PrivacyErasure._meta.fields)
+    list_display = ('subject_type', 'subject_id', 'erased_at')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PrivacyRequest)
+class PrivacyRequestAdmin(PrivacyStaffAdmin):
+    list_display = ('id', 'kind', 'received_at', 'status', 'completed_at')
+    readonly_fields = ('handled_by', 'completed_at', 'delete_after')
+    raw_id_fields = ('user', 'feedback', 'consent')
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.completed_at:
+            return tuple(field.name for field in self.model._meta.fields)
+        return self.readonly_fields
+
+    def has_change_permission(self, request, obj=None):
+        if obj and obj.completed_at:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def save_model(self, request, obj, form, change):
+        resolve_privacy_request(obj, request.user)
 
 
 @admin.register(CustomUser)

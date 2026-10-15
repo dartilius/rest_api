@@ -4,15 +4,14 @@ from urllib.parse import urlsplit
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
+from django.db import transaction
 from rest_framework import serializers
 
 from feedback.models import Feedback
 from feedback.request_data import BroadcastRequestDataSerializer, StrictBooleanField
 from placement_order.serializers import AttributionField
-
-# Bump this when the actual consent wording on the site changes.
-CONSENT_VERSION = "corporate-broadcast-v1"
-
+from users.models import PersonalDataConsent
+from users.privacy import DOCUMENT_VERSION, DOCUMENT_SHA256, validate_consent, ConsentReceiptField
 
 class FeedbackSerializer(serializers.ModelSerializer):
     brandId = serializers.CharField(source="brand_id", required=False, allow_null=True, allow_blank=True)
@@ -20,13 +19,20 @@ class FeedbackSerializer(serializers.ModelSerializer):
     attribution = AttributionField(required=False, allow_null=True)
     request_data = BroadcastRequestDataSerializer(required=False)
     consent = StrictBooleanField(required=False)
+    consent_version = serializers.ChoiceField(choices=[DOCUMENT_VERSION], write_only=True)
+    personal_data_consent = ConsentReceiptField(write_only=True)
+
+    def to_internal_value(self, data):
+        validate_consent(data, 'feedback')
+        return super().to_internal_value(data)
 
     class Meta:
         model = Feedback
         fields = ["id", "code1c", "name", "phone", "email", "message", "pathname",
                   "brandId", "nomenclaturesIds", "attribution", "created",
-                  "request_type", "company", "request_data", "consent", "consent_at", "consent_version"]
-        read_only_fields = ["id", "created", "consent_at", "consent_version"]
+                  "request_type", "company", "request_data", "consent", "consent_at", "consent_version",
+                  "personal_data_consent"]
+        read_only_fields = ["id", "created", "consent_at"]
 
     def validate(self, attrs):
         request_type = attrs.get("request_type", Feedback.RequestType.GENERAL)
@@ -38,7 +44,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
         # Prevent silently dropping typos and client-supplied consent metadata.
         for key in self.initial_data.keys() - self.fields.keys():
             errors[key] = "Неизвестное поле."
-        for key in ("id", "created", "consent_at", "consent_version"):
+        for key in ("id", "created", "consent_at"):
             if key in self.initial_data:
                 errors[key] = "Поле заполняется сервером."
         for key, limit in {"name": 150, "phone": 40, "email": 254, "message": 5000, "pathname": 500}.items():
@@ -75,12 +81,14 @@ class FeedbackSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
-        if validated_data.get("consent") is True:
-            validated_data["consent_at"] = timezone.now()
-            validated_data["consent_version"] = (
-                CONSENT_VERSION
-                if validated_data.get("request_type") == Feedback.RequestType.CORPORATE_BROADCAST
-                else "feedback-v1"
-            )
-        return super().create(validated_data)
+        validated_data.pop('personal_data_consent')
+        validated_data['consent_at'] = timezone.now()
+        feedback = super().create(validated_data)
+        PersonalDataConsent.objects.create(
+            feedback=feedback, purpose='feedback', document_version=DOCUMENT_VERSION,
+            document_sha256=DOCUMENT_SHA256, accepted_at=feedback.consent_at,
+            subject_reference=f'feedback:{feedback.pk}',
+        )
+        return feedback

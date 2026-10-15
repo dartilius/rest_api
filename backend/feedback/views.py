@@ -5,6 +5,8 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from feedback.models import Feedback
 from feedback.serializers import FeedbackSerializer
+from users.privacy import validate_consent
+from rest_framework.exceptions import APIException
 
 class FeedbackErrorSerializer(serializers.Serializer):
     detail = serializers.CharField(required=False)
@@ -12,11 +14,15 @@ class FeedbackErrorSerializer(serializers.Serializer):
 
 @extend_schema_view(create=extend_schema(
     tags=['Обратная связь'],
-    description="Публичная общая ручка. Без request_type создаёт прежнее общее обращение. Для corporate_broadcast обязательны имя, телефон или email и consent=true. request_data необязателен. 201 означает сохранение заявки; доставка письма выполняется отдельно.",
+    description="Для любого обращения обязательны boolean consent=true, consent_version=2026-10-14 и согласованный personal_data_consent с purpose=feedback. Время и источник фиксирует Django. 201 означает атомарное сохранение обращения и согласия; уведомление выполняется отдельно.",
     responses={201: FeedbackSerializer, 400: OpenApiResponse(description="Ошибки по полям; ошибки конструктора вложены в request_data."), 429: FeedbackErrorSerializer},
     examples=[
-        OpenApiExample("Общее обращение", value={"name": "Посетитель", "message": "Вопрос об услуге"}, request_only=True),
-        OpenApiExample("Корпоративное вещание", value={"request_type": "corporate_broadcast", "name": "Посетитель", "phone": "+7 000 000-00-00", "company": "Пример компании", "pathname": "/corporate-broadcast", "consent": True, "request_data": {"object_count": 5, "format": "audio", "content": {"music": True, "announcements": True}}}, request_only=True),
+        OpenApiExample("Общее обращение", value={
+            "name": "Посетитель", "message": "Вопрос об услуге", "consent": True,
+            "consent_version": "2026-10-14", "personal_data_consent": {
+                "accepted": True, "purpose": "feedback", "version": "2026-10-14",
+            },
+        }, request_only=True),
     ],
 ))
 class FeedbackViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -28,3 +34,12 @@ class FeedbackViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        validate_consent(request.data, 'feedback')
+        try:
+            return super().create(request, *args, **kwargs)
+        except APIException:
+            raise
+        except Exception:
+            raise APIException('Не удалось сохранить обращение. Попробуйте позже.') from None

@@ -84,6 +84,11 @@ def setup_celery_task_logger(logger, *args, **kwargs):
 
 
 app.conf.beat_schedule = {
+    'cleanup_personal_data_daily': {
+        'task': 'users.tasks.cleanup_personal_data',
+        'schedule': crontab(hour=3, minute=15),
+        'kwargs': {'dry_run': False, 'batch_size': 500},
+    },
     'update_nomenclature_statuses_5_sec': {
         'task': 'nomenclatures.tasks.update_nomenclature_status',
         'schedule': 5.0,

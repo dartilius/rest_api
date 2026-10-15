@@ -3,6 +3,8 @@ import re
 from users.models import CustomUser, ROLES, ContactInfo
 from django.db import transaction
 from files.serializers import Base64FileField
+from users.privacy import ConsentFieldsSerializer
+from phonenumber_field.serializerfields import PhoneNumberField
 
 class UserContactInfoSerializer(serializers.ModelSerializer):
     """Сериализация и валидация контактной информации."""
@@ -241,23 +243,24 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'role')
 
 
-class RegisterUserSerializer(serializers.Serializer):
+class RegisterUserSerializer(ConsentFieldsSerializer):
     email = serializers.EmailField(required=True)
-    first_name = serializers.CharField(required=True)
-    last_name = serializers.CharField(required=True)
-    phone_number = serializers.CharField(required=True)
-    password = serializers.CharField(write_only=True, required=True)
+    first_name = serializers.CharField(required=True, max_length=150)
+    last_name = serializers.CharField(required=True, max_length=150)
+    phone_number = PhoneNumberField(required=True, region='RU')
+    password = serializers.CharField(write_only=True, required=True, max_length=256)
 
 
-class RegistrationEmailSerializer(serializers.Serializer):
+class RegistrationEmailSerializer(ConsentFieldsSerializer):
     email = serializers.EmailField(required=True)
 
 
-class RegistrationEmailCodeSerializer(RegistrationEmailSerializer):
+class RegistrationEmailCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
     code = serializers.RegexField(r'^\d{6}$', required=True)
 
 
-class EmailCheckSerializer(serializers.Serializer):
+class EmailCheckSerializer(ConsentFieldsSerializer):
     """Валидация email, передаваемого для проверки доступности."""
 
     email = serializers.EmailField(required=True)

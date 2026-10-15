@@ -50,6 +50,7 @@ class RegistrationEmailVerification(models.Model):
     verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_consent_at = models.DateTimeField(default=timezone.now, null=True, blank=True)
 
     class Meta:
         db_table = 'registration_email_verification'
@@ -244,4 +245,112 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.full_name
+
+
+class PersonalDataConsent(models.Model):
+    """No duplicate contact details; evidence follows its subject's lifetime."""
+
+    purpose = models.CharField(max_length=20, choices=[
+        ('feedback', 'Обращение'), ('registration', 'Регистрация'),
+    ])
+    document_version = models.CharField(max_length=50)
+    document_sha256 = models.CharField(max_length=64)
+    accepted_at = models.DateTimeField(default=timezone.now, editable=False)
+    source = models.CharField(max_length=40, default='django-public-api', editable=False)
+    subject_reference = models.CharField(max_length=64, blank=True, editable=False)
+    feedback = models.OneToOneField(
+        'feedback.Feedback', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='personal_data_consent',
+    )
+    registration = models.ForeignKey(
+        RegistrationEmailVerification, null=True, blank=True,
+        on_delete=models.CASCADE, related_name='consents',
+    )
+    user = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='personal_data_consents',
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True, editable=False)
+    evidence_delete_after = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        permissions = [('manage_privacy', 'Обрабатывать запросы субъектов данных')]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['registration', 'purpose', 'document_version'],
+                condition=models.Q(revoked_at__isnull=True),
+                name='unique_active_registration_consent',
+            ),
+        ]
+
+
+class PrivacyRequest(models.Model):
+    """Staff records verification and execution without copying form/contact data."""
+
+    kind = models.CharField(max_length=20, choices=[
+        ('withdraw', 'Отзыв'), ('correct', 'Исправление'), ('delete', 'Удаление'),
+    ])
+    received_at = models.DateTimeField(default=timezone.now)
+    identity_verified_at = models.DateTimeField(null=True, blank=True)
+    identity_check_reference = models.CharField(max_length=120, blank=True)
+    consent = models.ForeignKey(
+        PersonalDataConsent, null=True, blank=True, on_delete=models.SET_NULL,
+    )
+    feedback = models.ForeignKey(
+        'feedback.Feedback', null=True, blank=True, on_delete=models.SET_NULL,
+    )
+    user = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
+    status = models.CharField(max_length=20, default='pending', choices=[
+        ('pending', 'Получен'), ('completed', 'Исполнен'), ('retained', 'Сохранено по основанию'),
+    ])
+    result = models.TextField(blank=True, help_text='Результат без контактов, паролей и копий документов.')
+    lawful_basis = models.TextField(blank=True)
+    retention_until = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    delete_after = models.DateTimeField(null=True, blank=True)
+    handled_by = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='handled_privacy_requests', editable=False,
+    )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.status != 'pending':
+            if not (self.identity_verified_at and self.identity_check_reference and self.result):
+                raise ValidationError('Нужны проверка личности и результат.')
+            if self.status == 'retained' and not (self.lawful_basis and self.retention_until):
+                raise ValidationError('Укажите основание и срок сохранения данных.')
+            if self.status == 'retained' and self.retention_until <= timezone.now():
+                raise ValidationError('Срок сохранения данных должен быть в будущем.')
+            if self.identity_verified_at > timezone.now():
+                raise ValidationError('Дата проверки личности не может быть в будущем.')
+            if self.delete_after and self.delete_after <= timezone.now():
+                raise ValidationError('Срок хранения запроса должен быть в будущем.')
+            if self.kind == 'withdraw' and not self.consent_id:
+                raise ValidationError('Выберите конкретное согласие для отзыва.')
+            if self.kind == 'delete' and self.feedback_id and self.status == 'completed':
+                if self.feedback.contract_status != 'none':
+                    raise ValidationError('Сначала подтвердите отсутствие договора.')
+                if (self.feedback.lawful_retention_until
+                        and self.feedback.lawful_retention_until > timezone.now()):
+                    raise ValidationError('Действует отдельное законное основание хранения.')
+        if self.consent_id:
+            if self.user_id and self.consent.user_id != self.user_id:
+                raise ValidationError('Согласие не принадлежит выбранному пользователю.')
+            if self.feedback_id and self.consent.feedback_id != self.feedback_id:
+                raise ValidationError('Согласие не относится к выбранному обращению.')
+
+
+class PrivacyErasure(models.Model):
+    """Non-contact tombstone for reapplying erasures after backup restoration."""
+
+    subject_type = models.CharField(max_length=30)
+    subject_id = models.CharField(max_length=64)
+    erased_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['subject_type', 'subject_id'], name='unique_privacy_erasure',
+        )]
 

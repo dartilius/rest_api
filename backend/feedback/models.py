@@ -7,6 +7,18 @@ from api import UUIDPKField
 
 class Feedback(models.Model):
     id = UUIDPKField()
+    status = models.CharField(max_length=12, default='active', choices=[
+        ('active', 'В работе'), ('closed', 'Завершено'),
+    ])
+    contract_status = models.CharField(max_length=12, default='unknown', choices=[
+        ('unknown', 'Не проверено'), ('none', 'Без договора'), ('contract', 'Есть договор'),
+    ])
+    contract_reference = models.CharField(max_length=120, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    delete_after = models.DateTimeField(null=True, blank=True, db_index=True, editable=False)
+    processing_blocked = models.BooleanField(default=False)
+    lawful_retention_until = models.DateTimeField(null=True, blank=True)
+    lawful_retention_basis = models.TextField(blank=True)
     class RequestType(models.TextChoices):
         GENERAL = "general", "Общее обращение"
         CORPORATE_BROADCAST = "corporate_broadcast", "Корпоративное вещание"
@@ -90,3 +102,28 @@ class Feedback(models.Model):
             models.Index(fields=["name"]),
             models.Index(fields=["code1c"]),
         ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone
+
+        if self.status == 'closed' and not self.closed_at:
+            raise ValidationError({'closed_at': 'Укажите фактическую дату завершения.'})
+        if self.closed_at and self.closed_at > timezone.now():
+            raise ValidationError({'closed_at': 'Дата не может быть в будущем.'})
+        if self.contract_status == 'contract' and not self.contract_reference:
+            raise ValidationError({'contract_reference': 'Укажите ссылку на договор.'})
+        if self.lawful_retention_until and not self.lawful_retention_basis:
+            raise ValidationError({'lawful_retention_basis': 'Укажите законное основание хранения.'})
+
+    def save(self, *args, **kwargs):
+        from datetime import timedelta
+
+        self.delete_after = (
+            self.closed_at + timedelta(days=30)
+            if self.status == 'closed' and self.closed_at and self.contract_status == 'none'
+            else None
+        )
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {'delete_after'}
+        super().save(*args, **kwargs)

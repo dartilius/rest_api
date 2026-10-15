@@ -4,7 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from feedback.models import Feedback
-from feedback.tasks import send_feedback_email, send_feedback_mail
+from feedback.tasks import deliver_feedback_notification
 
 logger = logging.getLogger("feedback")
 
@@ -31,10 +31,12 @@ def _notification_data(instance):
 @receiver(post_save, sender=Feedback)
 def on_feedback_created(sender, instance, created, **kwargs):
     if created:
-        _enqueue(send_feedback_email, feedback_id=instance.id, phone=instance.phone, **_notification_data(instance))
+        _enqueue(deliver_feedback_notification, feedback_id=instance.id,
+                 request_id=str(instance.id), audience='manager')
 
 
 @receiver(post_save, sender=Feedback)
 def on_feedback_user(sender, instance, created, **kwargs):
     if created and instance.email:
-        _enqueue(send_feedback_mail, feedback_id=instance.id, **_notification_data(instance))
+        _enqueue(deliver_feedback_notification, feedback_id=instance.id,
+                 request_id=str(instance.id), audience='user')

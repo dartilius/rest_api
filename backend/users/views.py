@@ -1,12 +1,13 @@
 from uuid import UUID
 
 from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, APIException
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import (
@@ -16,6 +17,7 @@ from rest_framework.status import (
 from rest_framework.views import APIView
 
 from api.constants import DEFAULT_SCHEMA_RESPONSES, DEFAULT_SCHEMA_EXAMPLES
+from users.privacy import validate_consent, registration_consent
 from users.filters import CustomUserFilter
 from users.models import CustomUser, RegistrationEmailVerification
 from users.permissions import SuperuserCUDAuthRetrieve
@@ -191,6 +193,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     )
     def check_email(self, request, *args, **kwargs):
         """Возвращает 204, если email уже зарегистрирован, иначе пустой 200."""
+        validate_consent(request.data, 'registration')
         serializer = EmailCheckSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -198,6 +201,10 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             email__iexact=serializer.validated_data['email']
         ).exists():
             return Response(status=HTTP_204_NO_CONTENT)
+        try:
+            registration_consent(serializer.validated_data['email'].lower())
+        except Exception:
+            raise APIException('?? ??????? ????????? ????????. ?????????? ?????.') from None
         return Response(status=HTTP_200_OK)
 
     @extend_schema(
@@ -236,35 +243,40 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     )
     @action(methods=['post'], url_path="register", url_name="register", detail=False, permission_classes=[AllowAny])
     def register(self, request, *args, **kwargs):
+        validate_consent(request.data, 'registration')
         serializer = RegisterUserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         validated = serializer.validated_data
-
-        verification = RegistrationEmailVerification.objects.filter(
-            email=validated['email'],
-        ).first()
-        if verification and not verification.is_verified:
-            return Response(
-                {'email': ['Подтвердите email кодом из письма.']},
-                status=400,
-            )
-
-        user = CustomUser(
-            email=validated["email"],
-            first_name=validated["first_name"],
-            last_name=validated["last_name"],
-            phone_number=validated["phone_number"],
-        )
-        user.set_password(validated["password"])
-        user.save()
-
-        if verification:
-            verification.delete()
-
+        email = validated['email'].lower()
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            return Response({'email': ['Пользователь с таким email уже существует.']}, status=400)
+        try:
+            with transaction.atomic():
+                verification = RegistrationEmailVerification.objects.select_for_update().filter(
+                    email=email,
+                ).first()
+                if not verification or not verification.is_verified:
+                    return Response({'email': ['Подтвердите email кодом из письма.']}, status=400)
+                verification, consent = registration_consent(email)
+                user = CustomUser(
+                    email=email, first_name=validated['first_name'],
+                    last_name=validated['last_name'], phone_number=validated['phone_number'],
+                )
+                user.set_password(validated['password'])
+                user.full_clean(exclude=['password'])
+                user.save()
+                consent.user = user
+                consent.registration = None
+                consent.subject_reference = f'user:{user.pk}'
+                consent.save(update_fields=['user', 'registration', 'subject_reference'])
+                verification.delete()
+        except DjangoValidationError as exc:
+            return Response(exc.message_dict, status=400)
+        except Exception:
+            raise APIException('Не удалось завершить регистрацию. Проверьте данные или попробуйте позже.') from None
         return Response(
-            {"detail": "Регистрация успешна", "id": str(user.id)},
-            status=HTTP_201_CREATED
+            {'detail': 'Регистрация успешна', 'id': str(user.id)},
+            status=HTTP_201_CREATED,
         )
 
     @extend_schema(
@@ -278,14 +290,18 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         permission_classes=[AllowAny],
     )
     def send_registration_code(self, request, *args, **kwargs):
+        validate_consent(request.data, 'registration')
         serializer = RegistrationEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data['email']
-
+        email = serializer.validated_data['email'].lower()
         if CustomUser.objects.filter(email__iexact=email).exists():
             return Response({'email': ['Пользователь с таким email уже существует.']}, status=400)
-
-        send_registration_verification_code(email)
+        try:
+            with transaction.atomic():
+                registration_consent(email)
+                send_registration_verification_code(email)
+        except Exception:
+            raise APIException('Не удалось отправить код. Попробуйте позже.') from None
         return Response({'detail': 'Код подтверждения отправлен на email.'})
 
     @extend_schema(
@@ -301,7 +317,10 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def confirm_registration_code(self, request, *args, **kwargs):
         serializer = RegistrationEmailCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        if not confirm_registration_verification_code(**serializer.validated_data):
+        if not confirm_registration_verification_code(
+            email=serializer.validated_data['email'].lower(),
+            code=serializer.validated_data['code'],
+        ):
             return Response({'code': ['Неверный или просроченный код.']}, status=400)
         return Response({'detail': 'Email подтверждён.'})
 

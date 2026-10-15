@@ -92,6 +92,9 @@ EMAIL_BACKEND = os.environ.get(
 )
 
 EMAIL_TIMEOUT = 10
+PRIVACY_TECHNICAL_LOG_RETENTION_DAYS = 30
+# Prevent Djoser's alternate public create action bypassing the registration workflow.
+DJOSER = {'PERMISSIONS': {'user_create': ['users.permissions.RegistrationEndpointOnly']}}
 PASSWORD_RESET_CODE_AUDIT_EMAIL = os.environ.get(
     'PASSWORD_RESET_CODE_AUDIT_EMAIL', 'info@krasrm.com'
 )
@@ -251,6 +254,7 @@ SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True,
     'COMPONENT_SPLIT_RESPONSE': True,
     'ENUM_NAME_OVERRIDES': {
+        'PrivacyDocumentVersionEnum': ['2026-10-14'],
         'BroadcastFormatEnum': 'corporate_broadcast.constants.DEMO_FORMAT_CHOICES',
     },
 }
