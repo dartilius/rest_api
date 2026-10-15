@@ -6,22 +6,24 @@ import logging
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.html import format_html
 
+from files.models import Playlist
 from orders.models import Order, OrderStationState
-from orders.admin_forms import UnifiedOrderAdminForm
+from orders.admin_forms import UnifiedOrderAdminForm, order_audio_image_options
 from orders.services.unified_order_delivery import enqueue_cancellation, enqueue_order
 
 
 logger = logging.getLogger(__name__)
+_WEEKDAY_LABELS = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
 
 
 class OrderReportDayForm(forms.Form):
@@ -93,13 +95,13 @@ class OrderAdmin(admin.ModelAdmin):
 
     list_display = (
         "name", "placement", "nomenclature", "playlist", "schedule_summary",
-        "period_summary", "delivery_state", "actual_playback_state", "plan_fact_link",
+        "period_summary", "status", "delivery_state", "first_air_confirmation", "plan_fact_link",
     )
     list_filter = ("placement", "playback_policy", "is_permanent", OrderDeliveryFilter)
     search_fields = ("id", "name", "nomenclature__name", "playlist__name")
     raw_id_fields = ("nomenclature",)
     autocomplete_fields = ("playlist",)
-    readonly_fields = ("owner", "revision", "created", "status", "delivery_state", "playback_evidence", "actual_playback_state", "plan_fact_link")
+    readonly_fields = ("owner", "revision", "created", "status", "delivery_state", "playback_evidence", "first_air_confirmation", "plan_fact_link")
     form = UnifiedOrderAdminForm
     change_form_template = "admin/orders/order/change_form.html"
 
@@ -109,11 +111,13 @@ class OrderAdmin(admin.ModelAdmin):
     show_full_result_count = False
     fieldsets = (
         ("1. Что и где воспроизводить", {"fields": ("name", "placement", "nomenclature", "playlist", "description")}),
-        ("2. Когда воспроизводить", {"fields": ("starts_at", "is_permanent", "ends_at")}),
+        ("2. Когда воспроизводить", {"fields": (
+            "starts_at", "is_permanent", "ends_at", "all_days", "weekdays", "weekdays_control_present",
+        )}),
         ("3. Расписание рекламы", {"fields": ("playback_policy", "times_in_hour", "offset_minutes", "offset_seconds", "start_time", "end_time"), "classes": ("order-ad-schedule",)}),
         ("4. Звук и фоновый контент", {"fields": ("advertising_audio", "suppress_background_audio", "suppress_background_visual"), "classes": ("order-ad-options",)}),
-        ("5. Очерёдность и картинки", {"fields": ("order_weight", "image_duration_seconds")}),
-        ("Доставка и эфир", {"fields": ("delivery_state", "actual_playback_state", "plan_fact_link")}),
+        ("5. Очерёдность и картинки", {"fields": ("order_weight", "image_duration_seconds", "audio_images")}),
+        ("Доставка и первый выход", {"fields": ("delivery_state", "first_air_confirmation", "plan_fact_link")}),
         ("История заказа", {"fields": ("status", "playback_evidence", "owner", "revision", "created"), "classes": ("collapse",)}),
     )
 
@@ -127,9 +131,30 @@ class OrderAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         return [
+            path(
+                "audio-image-options/",
+                self.admin_site.admin_view(self.audio_image_options),
+                name="orders_order_audio_image_options",
+            ),
             path("<path:object_id>/plan-fact/", self.admin_site.admin_view(self.plan_fact_report),
                  name="orders_order_plan_fact"),
         ] + super().get_urls()
+
+    def audio_image_options(self, request):
+        if not (
+            self.has_change_permission(request)
+            or self.has_add_permission(request)
+        ):
+            raise PermissionDenied
+        playlist_id = request.GET.get("playlist")
+        try:
+            playlist = Playlist.objects.get(pk=playlist_id)
+        except (Playlist.DoesNotExist, ValidationError, ValueError, TypeError):
+            return JsonResponse(
+                {"error": "Выберите существующий плейлист."},
+                status=400,
+            )
+        return JsonResponse(order_audio_image_options(playlist))
 
     def _order_parameter(self, obj, key, default="Не задано"):
         parameters = obj.parameters if isinstance(obj.parameters, dict) else {}
@@ -137,12 +162,21 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.display(description="Расписание")
     def schedule_summary(self, obj):
+        weekdays = self._weekdays_summary(obj)
         if obj.placement == "background":
-            return "По рабочему времени точки"
+            return f"По рабочему времени точки; {weekdays}"
         label = obj.get_playback_policy_display()
         if obj.playback_policy not in ("continuous", "event"):
-            return f"{label}; {self._order_parameter(obj, 'times_in_hour', '—')} выходов/час"
+            return f"{label}; {self._order_parameter(obj, 'times_in_hour', '—')} выходов/час; {weekdays}"
         return label
+
+    def _weekdays_summary(self, obj):
+        weekdays = self._order_parameter(obj, "weekdays", None)
+        if weekdays is None or weekdays == list(range(7)):
+            return "каждый день"
+        if not isinstance(weekdays, list) or any(type(day) is not int or not 0 <= day <= 6 for day in weekdays):
+            return "дни указаны некорректно"
+        return ", ".join(_WEEKDAY_LABELS[day] for day in weekdays)
 
     @admin.display(description="Период")
     def period_summary(self, obj):
@@ -297,29 +331,18 @@ class OrderAdmin(admin.ModelAdmin):
         ordering = self.get_ordering(request)
         if ordering:
             queryset = queryset.order_by(*ordering)
-        from orders.services.order_air_state import with_playback_evidence
         from orders.services.order_progress import with_order_progress
-        return with_order_progress(with_playback_evidence(queryset.select_related("nomenclature", "playlist", "owner", "station_state")))
+        return with_order_progress(queryset.select_related("nomenclature", "playlist", "owner", "station_state"))
 
-    def changelist_view(self, request, extra_context=None):
-        response = super().changelist_view(request, extra_context=extra_context)
-        context = getattr(response, "context_data", None)
-        if context and context.get("cl"):
-            from nomenclatures.player_v2.runtime.service import load_runtime_documents
-            rows = list(context["cl"].result_list)
-            documents = load_runtime_documents(row.nomenclature_id for row in rows)
-            for row in rows:
-                row._runtime_document = documents.get(str(row.nomenclature_id))
-        return response
-
-    @admin.display(description="Фактическое воспроизведение")
-    def actual_playback_state(self, obj):
+    @admin.display(description="Первый выход подтверждён")
+    def first_air_confirmation(self, obj):
         if obj is None or not obj.pk:
             return "Заказ ещё не создан"
-        from orders.services.order_air_state import actual_order_state
-        if hasattr(obj, "_runtime_document"):
-            return actual_order_state(obj, obj._runtime_document)["label"]
-        return actual_order_state(obj)["label"]
+        try:
+            revision = obj.station_state.on_air_revision
+        except OrderStationState.DoesNotExist:
+            revision = None
+        return f"Да, версия {revision}" if revision is not None else "Ожидается первый запуск Player"
 
     def get_readonly_fields(self, request, obj=None):
         fields = super().get_readonly_fields(request, obj)
@@ -349,16 +372,25 @@ class OrderAdmin(admin.ModelAdmin):
 
     actions = ("resend_orders", "cancel_orders")
 
-    @admin.display(description="Последнее полученное событие эфира")
+    @admin.display(description="Подтверждённый запуск")
     def playback_evidence(self, obj):
         if obj is None or not obj.pk:
             return "Событий ещё нет"
         from nomenclatures.player_v2.playback.models import PlaybackEvent
-        event = PlaybackEvent.objects.filter(order_id=obj.pk, nomenclature_id=obj.nomenclature_id).first()
+        try:
+            revision = obj.station_state.on_air_revision
+        except OrderStationState.DoesNotExist:
+            revision = None
+        if revision is None:
+            return "Первый запуск ещё не подтверждён"
+        event = PlaybackEvent.objects.filter(
+            order_id=obj.pk, nomenclature_id=obj.nomenclature_id,
+            order_revision=revision, event_type="started", event_sequence=1,
+        ).order_by("occurred_at", "pk").first()
         if event is None:
             return "Плеер ещё не передал подтверждённых событий"
         return (
             f"{event.get_event_type_display()}, редакция {event.order_revision}; "
             f"время плеера {event.occurred_at:%d.%m.%Y %H:%M:%S}. "
-            "Это последнее полученное событие, а не подтверждение текущего эфира."
+            "Последующие выходы доступны в статистике и плане/факте."
         )

@@ -125,21 +125,47 @@ def _display_choices(nomenclature=None):
     return [("", "У этой точки нет доступных мониторов")]
 
 
+def _station_default_volumes(nomenclature):
+    """Читаем подтверждённую громкость четырёх каналов для каждого дня."""
+
+    settings = nomenclature.settings if isinstance(nomenclature.settings, dict) else {}
+    result = {}
+    for day, _ in DAY_CHOICES:
+        day_settings = settings.get(day)
+        values = day_settings.get("default_volume") if isinstance(day_settings, dict) else None
+        if (
+            not isinstance(values, list)
+            or len(values) != 4
+            or any(type(value) is not int or not 0 <= value <= 100 for value in values)
+        ):
+            continue
+        result[day] = {
+            "background_left": values[0],
+            "advertisement_left": values[1],
+            "background_right": values[2],
+            "advertisement_right": values[3],
+        }
+    return result
+
+
 class StationVolumeCommandForm(forms.ModelForm):
     """Понятная оператору форма для одного безопасного изменения Player."""
 
     setting_group = forms.ChoiceField(label="Что изменить", choices=SETTING_GROUP_CHOICES)
     day = forms.ChoiceField(label="День", choices=DAY_CHOICES)
-    all_days = forms.BooleanField(label="Применить ко всем дням", required=False)
-    source = forms.ChoiceField(
-        label="Контент",
-        choices=(("background", "Фон"), ("advertisement", "Реклама")),
-        required=False,
+    background_left_volume = forms.IntegerField(
+        label="Фон — левый канал, %", min_value=0, max_value=100, required=False
     )
-    channel = forms.ChoiceField(
-        label="Канал", choices=(("left", "Левый"), ("right", "Правый")), required=False
+    background_right_volume = forms.IntegerField(
+        label="Фон — правый канал, %", min_value=0, max_value=100, required=False
     )
-    volume = forms.IntegerField(label="Громкость, %", min_value=0, max_value=100, required=False)
+    advertisement_left_volume = forms.IntegerField(
+        label="Реклама — левый канал, %", min_value=0, max_value=100, required=False
+    )
+    advertisement_right_volume = forms.IntegerField(
+        label="Реклама — правый канал, %", min_value=0, max_value=100, required=False
+    )
+    volume_all_days = forms.BooleanField(label="Применить громкость ко всем дням", required=False)
     background_setting = forms.ChoiceField(
         label="Параметр фона",
         choices=BACKGROUND_SETTING_CHOICES,
@@ -151,6 +177,7 @@ class StationVolumeCommandForm(forms.ModelForm):
         choices=BACKGROUND_BOOLEAN_VALUES,
         required=False,
     )
+    background_all_days = forms.BooleanField(label="Применить настройку фона ко всем дням", required=False)
     image_duration = forms.IntegerField(
         label="Время показа картинки, сек.",
         min_value=1,
@@ -179,6 +206,7 @@ class StationVolumeCommandForm(forms.ModelForm):
         input_formats=("%H:%M", "%H:%M:%S"),
         required=False,
     )
+    worktime_all_days = forms.BooleanField(label="Применить рабочее время ко всем дням", required=False)
 
     class Meta:
         model = StationCommandV2
@@ -213,11 +241,14 @@ class StationVolumeCommandForm(forms.ModelForm):
         if nomenclature is None:
             return cleaned_data
         if setting_group == "volume":
-            for field in ("source", "channel"):
-                if not cleaned_data.get(field):
-                    self.add_error(field, "Заполните поле для изменения громкости.")
-            if cleaned_data.get("volume") is None:
-                self.add_error("volume", "Заполните поле для изменения громкости.")
+            volume_fields = (
+                "background_left_volume",
+                "background_right_volume",
+                "advertisement_left_volume",
+                "advertisement_right_volume",
+            )
+            if not any(cleaned_data.get(field) is not None for field in volume_fields):
+                raise forms.ValidationError("Укажите хотя бы один канал громкости для изменения.")
         elif setting_group == "background":
             background_setting = cleaned_data.get("background_setting")
             if not background_setting:
@@ -269,7 +300,10 @@ class StationVolumeCommandForm(forms.ModelForm):
             )
         if not self.errors and pending_kind == "apply_settings_patch":
             try:
-                apply_settings_operations(nomenclature.settings, self._settings_operations(cleaned_data))
+                self._prepared_operations = self._settings_operations(cleaned_data)
+                if not self._prepared_operations:
+                    raise forms.ValidationError("Выбранные значения уже подтверждены Player. Команда не создана.")
+                apply_settings_operations(nomenclature.settings, self._prepared_operations)
             except SettingsPatchError as exc:
                 raise forms.ValidationError(
                     "Невозможно подготовить изменение: сохранённые настройки точки некорректны."
@@ -277,23 +311,46 @@ class StationVolumeCommandForm(forms.ModelForm):
         return cleaned_data
 
     @staticmethod
-    def _settings_operations(data):
-        days = tuple(key for key, _ in DAY_CHOICES) if data["all_days"] else (data["day"],)
+    def _target_days(data, group):
+        all_days_field = {
+            "volume": "volume_all_days",
+            "background": "background_all_days",
+            "worktime": "worktime_all_days",
+        }[group]
+        return tuple(key for key, _ in DAY_CHOICES) if data[all_days_field] else (data["day"],)
+
+    @classmethod
+    def _settings_operations(cls, data):
+        nomenclature = data["nomenclature"]
         group = data["setting_group"]
+        days = cls._target_days(data, group)
         if group == "background":
             setting = data["background_setting"]
             value = data["image_duration"] if setting == "img_duration" else data["background_enabled"] == "true"
-            return [{"op": "set", "path": f"/days/{day}/background/{setting}", "value": value} for day in days]
-        if group == "worktime":
+            candidates = [{"op": "set", "path": f"/days/{day}/background/{setting}", "value": value} for day in days]
+        elif group == "worktime":
             value = "00:00:00-23:59:59" if data["full_day"] else (
                 f"{data['worktime_start'].strftime('%H:%M:%S')}-"
                 f"{data['worktime_end'].strftime('%H:%M:%S')}"
             )
-            return [{"op": "set", "path": f"/days/{day}/worktime", "value": value} for day in days]
-        return [{
-            "op": "set", "path": f"/days/{day}/default_volume/{data['source']}/{data['channel']}",
-            "value": data["volume"],
-        } for day in days]
+            candidates = [{"op": "set", "path": f"/days/{day}/worktime", "value": value} for day in days]
+        else:
+            channels = (
+                ("background", "left", data["background_left_volume"]),
+                ("background", "right", data["background_right_volume"]),
+                ("advertisement", "left", data["advertisement_left_volume"]),
+                ("advertisement", "right", data["advertisement_right_volume"]),
+            )
+            candidates = [
+                {"op": "set", "path": f"/days/{day}/default_volume/{source}/{channel}", "value": value}
+                for day in days
+                for source, channel, value in channels
+                if value is not None
+            ]
+        return [
+            operation for operation in candidates
+            if apply_settings_operations(nomenclature.settings, [operation]) != nomenclature.settings
+        ]
 
     def save(self, commit=True):
         command = super().save(commit=False)
@@ -317,7 +374,7 @@ class StationVolumeCommandForm(forms.ModelForm):
                 command.save()
             return command
         command.kind = "apply_settings_patch"
-        operations = self._settings_operations(self.cleaned_data)
+        operations = self._prepared_operations
         command.body = {
             "base_revision": _latest_saved_revision(nomenclature),
             "operations": operations,
@@ -391,8 +448,17 @@ class StationInstallationAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("id", "nomenclature__name", "nomenclature__code1c", "created_by__email")
     autocomplete_fields = ("nomenclature", "created_by")
-    readonly_fields = ("id", "token_hash", "created_at", "rotated_at")
+    readonly_fields = (
+        "id",
+        "nomenclature",
+        "created_by",
+        "is_active",
+        "token_hash",
+        "created_at",
+        "rotated_at",
+    )
     fields = ("id", "nomenclature", "created_by", "is_active", "token_hash", "created_at", "rotated_at")
+    actions = ("revoke_installations",)
 
     @admin.display(description="ID установки", ordering="id")
     def installation_id(self, obj):
@@ -401,6 +467,18 @@ class StationInstallationAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """Установки создаёт только защищённый endpoint привязки Player."""
         return False
+
+    def has_delete_permission(self, request, obj=None):
+        """История привязок нужна для аудита и не удаляется из admin."""
+        return False
+
+    @admin.action(description="Отозвать выбранные установки Player")
+    def revoke_installations(self, request, queryset):
+        revoked = queryset.filter(is_active=True).update(is_active=False)
+        if revoked:
+            self.message_user(request, f"Отозвано установок: {revoked}.", level=messages.SUCCESS)
+            return
+        self.message_user(request, "Среди выбранных установок нет активных.", level=messages.WARNING)
 
 
 @admin.register(StationCommandV2)
@@ -446,7 +524,7 @@ class StationCommandV2Admin(admin.ModelAdmin):
         if not self.has_add_permission(request):
             raise PermissionDenied
         try:
-            station = Nomenclature.objects.only("name", "station_capabilities").filter(
+            station = Nomenclature.objects.only("name", "station_capabilities", "settings").filter(
                 pk=request.GET.get("station")
             ).first()
         except (ValidationError, ValueError, TypeError):
@@ -459,6 +537,7 @@ class StationCommandV2Admin(admin.ModelAdmin):
         return JsonResponse({
             "audio": _audio_device_choices(station),
             "displays": _display_choices(station),
+            "default_volumes": _station_default_volumes(station),
         })
 
     @admin.display(description="Состояние доставки", ordering="delivered_at")
@@ -476,11 +555,20 @@ class StationCommandV2Admin(admin.ModelAdmin):
             return (
                 (
                     "Область изменения",
-                    {"fields": ("nomenclature", "setting_group", "day", "all_days")},
+                    {"fields": ("nomenclature", "setting_group", "day")},
                 ),
                 (
                     "Громкость канала",
-                    {"fields": ("source", "channel", "volume")},
+                    {
+                        "fields": (
+                            "background_left_volume",
+                            "background_right_volume",
+                            "advertisement_left_volume",
+                            "advertisement_right_volume",
+                            "volume_all_days",
+                        ),
+                        "classes": ("station-command-volume",),
+                    },
                 ),
                 (
                     "Фоновый контент",
@@ -489,18 +577,29 @@ class StationCommandV2Admin(admin.ModelAdmin):
                             "background_setting",
                             "background_enabled",
                             "image_duration",
-                        )
+                            "background_all_days",
+                        ),
+                        "classes": ("station-command-background",),
                     },
                 ),
                 (
                     "Рабочее время",
-                    {"fields": ("full_day", "worktime_start", "worktime_end")},
+                    {
+                        "fields": ("full_day", "worktime_start", "worktime_end", "worktime_all_days"),
+                        "classes": ("station-command-worktime",),
+                    },
                 ),
-                ("Аудиовыход Player", {"fields": ("audio_device_id",)}),
-                ("Экран вывода Player", {"fields": ("display_id",)}),
+                (
+                    "Аудиовыход Player",
+                    {"fields": ("audio_device_id",), "classes": ("station-command-audio_device",)},
+                ),
+                (
+                    "Экран вывода Player",
+                    {"fields": ("display_id",), "classes": ("station-command-display",)},
+                ),
                 (
                     "Поворот визуального вывода",
-                    {"fields": ("visual_output_rotation",)},
+                    {"fields": ("visual_output_rotation",), "classes": ("station-command-visual_output",)},
                 ),
             )
         return (("Команда", {"fields": ("nomenclature",) + self.readonly_fields}),)

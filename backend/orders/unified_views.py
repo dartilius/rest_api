@@ -1,9 +1,10 @@
-"""Documented REST endpoints for unified broadcast orders."""
+"""REST-методы единых заказов фона и рекламы."""
 
 from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.openapi import AutoSchema
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -13,23 +14,35 @@ from rest_framework.exceptions import ValidationError
 from api.constants import DEFAULT_SCHEMA_RESPONSES, DetailSerializer
 from docs import integration_documentation as integration_docs
 from orders.filters import UnifiedOrderFilter
+from files.models import Playlist
 from orders.models import Order
-from orders.services.order_air_state import with_playback_evidence
-from orders.services.order_progress import with_order_progress
+from orders.services.order_audio_images import (
+    get_order_audio_images,
+    validate_order_audio_images,
+    with_order_audio_images,
+)
 from orders.services.unified_order_delivery import enqueue_cancellation, enqueue_order
-from orders.unified_serializers import UnifiedOrderResendSerializer, UnifiedOrderSerializer
+from orders.services.unified_order_input import validate_prepared_orders
+from orders.unified_serializers import (
+    UnifiedOrderResendSerializer,
+    UnifiedOrderResponseSerializer,
+    UnifiedOrderSerializer,
+    public_order_errors,
+)
 from users.permissions import StaffCUDAuthRetrieve
 
 
 AD_EXAMPLE = {
     "name": "Осенняя рекламная кампания",
     "description": "Аудиоролики с привязанными картинками",
-    "placement": "advertising",
-    "playback_policy": "workday",
-    "nomenclature": "5778e050-454d-4e5e-ae0f-bb584979552c",
+    "type": "ad",
+    "clients": ["5778e050-454d-4e5e-ae0f-bb584979552c"],
     "playlist": "3d29a71c-1cfc-4f4b-8f90-3d736bf15f6c",
-    "starts_at": "2026-09-25 09:00:00",
-    "ends_at": "2026-10-01 21:00:00",
+    "broadcast_interval": {
+        "lower": "2026-09-25 09:00:00",
+        "upper": "2026-10-01 21:00:00",
+    },
+    "broadcast_type": 0,
     "parameters": {"times_in_hour": 4},
     "suppress_background_audio": False,
     "suppress_background_visual": False,
@@ -37,55 +50,121 @@ AD_EXAMPLE = {
 
 BACKGROUND_EXAMPLE = {
     "name": "Музыка торгового зала",
-    "placement": "background",
-    "playback_policy": "workday",
-    "nomenclature": "5778e050-454d-4e5e-ae0f-bb584979552c",
+    "type": "bg",
+    "clients": ["5778e050-454d-4e5e-ae0f-bb584979552c"],
     "playlist": "3d29a71c-1cfc-4f4b-8f90-3d736bf15f6c",
     "is_permanent": True,
     "parameters": {},
 }
 
-HOURLY_EXAMPLE = {**AD_EXAMPLE, "playback_policy": "hourly_slots", "parameters": {"times_in_hour": 8}}
+AUDIO_IMAGES_EXAMPLE = {
+    **AD_EXAMPLE,
+    "name": "Аудиореклама с картинками этого заказа",
+    "audio_images": {
+        "11111111-1111-4111-8111-111111111111": [
+            "22222222-2222-4222-8222-222222222222",
+            "66666666-6666-4666-8666-666666666666",
+        ],
+    },
+}
+
+HOURLY_EXAMPLE = {
+    **AD_EXAMPLE,
+    "parameters": {"times_in_hour": 8},
+}
+WEEKDAY_AD_EXAMPLE = {
+    **AD_EXAMPLE,
+    "name": "Реклама по понедельникам, средам и пятницам",
+    "parameters": {"times_in_hour": 4, "weekdays": [0, 2, 4]},
+}
+WEEKDAY_BACKGROUND_EXAMPLE = {
+    **BACKGROUND_EXAMPLE,
+    "name": "Временный фон по будням поверх резервного",
+    "is_permanent": False,
+    "broadcast_interval": {
+        "lower": "2026-10-13 09:00:00",
+        "upper": "2026-11-01 18:00:00",
+    },
+    "parameters": {"weekdays": [0, 1, 2, 3, 4], "weight": 70},
+}
 CONTINUOUS_EXAMPLE = {
     **AD_EXAMPLE,
     "name": "Непрерывная реклама без звука",
-    "playback_policy": "continuous",
+    "broadcast_type": 7,
     "parameters": {"weight": 70, "audio_muted": True, "image_duration_seconds": 12},
     "suppress_background_audio": False,
     "suppress_background_visual": True,
 }
-OPEN_OFFSET_EXAMPLE = {**AD_EXAMPLE, "playback_policy": "open_offset", "parameters": {"times_in_hour": 4, "timedelta": "00:30:00"}}
-CLOSE_OFFSET_EXAMPLE = {**AD_EXAMPLE, "playback_policy": "close_offset", "parameters": {"times_in_hour": 4, "timedelta": "00:15:00"}}
-FIXED_TIME_EXAMPLE = {**AD_EXAMPLE, "playback_policy": "fixed_time", "parameters": {"times_in_hour": 4, "start_time": "10:00:00", "end_time": "18:00:00"}}
-OPEN_TO_FIXED_EXAMPLE = {**AD_EXAMPLE, "playback_policy": "open_to_fixed", "parameters": {"times_in_hour": 4, "end_time": "14:00:00"}}
-FIXED_TO_CLOSE_EXAMPLE = {**AD_EXAMPLE, "playback_policy": "fixed_to_close", "parameters": {"times_in_hour": 4, "start_time": "16:00:00"}}
-START_TO_CLOSE_EXAMPLE = {**AD_EXAMPLE, "playback_policy": "start_to_close", "parameters": {"times_in_hour": 4, "start_time": "09:07:30"}}
-EVENT_EXAMPLE = {**AD_EXAMPLE, "playback_policy": "event", "parameters": {"times_in_hour": 1, "event": "door_open", "active_ad": "wait_until_end"}}
-
+OPEN_OFFSET_EXAMPLE = {**AD_EXAMPLE, "broadcast_type": 1, "parameters": {"times_in_hour": 4, "timedelta": "00:30:00"}}
+CLOSE_OFFSET_EXAMPLE = {**AD_EXAMPLE, "broadcast_type": 2, "parameters": {"times_in_hour": 4, "timedelta": "00:15:00"}}
+FIXED_TIME_EXAMPLE = {**AD_EXAMPLE, "broadcast_type": 3, "parameters": {"times_in_hour": 4, "start_time": "10:00:00", "end_time": "18:00:00"}}
+OPEN_TO_FIXED_EXAMPLE = {**AD_EXAMPLE, "broadcast_type": 4, "parameters": {"times_in_hour": 4, "end_time": "14:00:00"}}
+FIXED_TO_CLOSE_EXAMPLE = {**AD_EXAMPLE, "broadcast_type": 5, "parameters": {"times_in_hour": 4, "start_time": "16:00:00"}}
+START_TO_CLOSE_EXAMPLE = {**AD_EXAMPLE, "broadcast_type": 5, "parameters": {"times_in_hour": 4, "start_time": "09:07:30"}}
+EVENT_EXAMPLE = {**AD_EXAMPLE, "broadcast_type": 6, "parameters": {"times_in_hour": 1, "event": "door_open", "active_ad": "wait_until_end"}}
+BATCH_EXAMPLE = {
+    **AD_EXAMPLE,
+    "clients": [
+        "5778e050-454d-4e5e-ae0f-bb584979552c",
+        "5778e050-454d-4e5e-ae0f-bb584979552d",
+    ],
+}
 CREATED_AD_EXAMPLE = {
-    **AD_EXAMPLE, "id": "00000000-0000-0000-0000-000000000101",
+    **AD_EXAMPLE,
+    "clients": [{"id": AD_EXAMPLE["clients"][0], "name": "Точка на Ленина, 10"}],
+    "id": "00000000-0000-0000-0000-000000000101",
     "description": AD_EXAMPLE["description"], "is_permanent": False,
-    "status": 0, "revision": 1, "owner": "00000000-0000-0000-0000-000000000102",
-    "created": "2026-09-30 13:04:00", "delivery": None,
+    "status": 0, "owner": {"id": "00000000-0000-0000-0000-000000000102", "full_name": "Иванов Иван"},
+    "created": "2026-09-30 13:04:00",
 }
 CREATED_BACKGROUND_EXAMPLE = {
-    **BACKGROUND_EXAMPLE, "id": "00000000-0000-0000-0000-000000000103",
-    "description": None, "starts_at": None, "ends_at": None,
+    **BACKGROUND_EXAMPLE,
+    "clients": [{"id": BACKGROUND_EXAMPLE["clients"][0], "name": "Точка на Ленина, 10"}],
+    "id": "00000000-0000-0000-0000-000000000103",
+    "description": None, "broadcast_interval": {"lower": None, "upper": None},
+    "order_type": 0,
     "suppress_background_audio": False, "suppress_background_visual": False,
-    "status": 0, "revision": 1, "owner": "00000000-0000-0000-0000-000000000102",
-    "created": "2026-09-30 13:04:00", "delivery": None,
+    "status": 0, "owner": {"id": "00000000-0000-0000-0000-000000000102", "full_name": "Иванов Иван"},
+    "created": "2026-09-30 13:04:00",
 }
+
+
+class UnifiedOrderSchema(AutoSchema):
+    """Создание возвращает массив без пагинации; список GET остаётся постраничным."""
+
+    def _get_paginator(self):
+        if getattr(self.view, "action", None) == "create":
+            return None
+        return super()._get_paginator()
 
 
 @extend_schema_view(
-    list=extend_schema(summary="Список единых заказов эфира", description=integration_docs.BROADCAST_ORDER_LIST_DESCRIPTION),
-    retrieve=extend_schema(summary="Получить единый заказ эфира", description=integration_docs.BROADCAST_ORDER_RETRIEVE_DESCRIPTION),
+    list=extend_schema(
+        summary="Список единых заказов эфира",
+        description=integration_docs.BROADCAST_ORDER_LIST_DESCRIPTION,
+        responses={200: UnifiedOrderResponseSerializer(many=True)} | DEFAULT_SCHEMA_RESPONSES,
+    ),
+    retrieve=extend_schema(
+        summary="Получить единый заказ эфира",
+        description=integration_docs.BROADCAST_ORDER_RETRIEVE_DESCRIPTION,
+        responses={200: UnifiedOrderResponseSerializer} | DEFAULT_SCHEMA_RESPONSES,
+    ),
     create=extend_schema(
         summary="Создать единый заказ эфира",
-        description=integration_docs.BROADCAST_ORDER_CREATE_DESCRIPTION,
+        description=(
+            integration_docs.BROADCAST_ORDER_CREATE_DESCRIPTION
+            + "\n\nПередайте массив clients с UUID одной или нескольких номенклатур. "
+              "Ответ всегда содержит массив заказов, включая запрос из одного UUID, "
+              "в том же порядке, что и запрос. Сначала проверяется весь пакет; при любой "
+              "ошибке заказы и команды не создаются."
+        ),
         request=UnifiedOrderSerializer,
         examples=[
             OpenApiExample("Рекламные выходы", value=AD_EXAMPLE, request_only=True),
+            OpenApiExample("Аудио с картинками заказа", value=AUDIO_IMAGES_EXAMPLE, request_only=True),
+            OpenApiExample("Один заказ для нескольких точек", value=BATCH_EXAMPLE, request_only=True),
+            OpenApiExample("Реклама в выбранные дни недели", value=WEEKDAY_AD_EXAMPLE, request_only=True),
+            OpenApiExample("Временный фон по будням", value=WEEKDAY_BACKGROUND_EXAMPLE, request_only=True),
             OpenApiExample("Восемь выходов в час", value=HOURLY_EXAMPLE, request_only=True),
             OpenApiExample("Непрерывная реклама, музыка остаётся", value=CONTINUOUS_EXAMPLE, request_only=True),
             OpenApiExample("Через 30 минут после открытия", value=OPEN_OFFSET_EXAMPLE, request_only=True),
@@ -99,13 +178,26 @@ CREATED_BACKGROUND_EXAMPLE = {
             OpenApiExample("Созданный рекламный заказ", value=CREATED_AD_EXAMPLE, response_only=True, status_codes=["201"]),
             OpenApiExample("Созданный бессрочный фон", value=CREATED_BACKGROUND_EXAMPLE, response_only=True, status_codes=["201"]),
         ],
-        responses={201: UnifiedOrderSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        responses={
+            201: OpenApiResponse(
+                response=UnifiedOrderResponseSerializer(many=True),
+                description="Массив созданных заказов в порядке UUID в clients.",
+            )
+        } | DEFAULT_SCHEMA_RESPONSES,
     ),
     partial_update=extend_schema(
         summary="Изменить единый заказ и отправить новую редакцию Player",
         description=integration_docs.BROADCAST_ORDER_UPDATE_DESCRIPTION,
         request=UnifiedOrderSerializer,
-        responses={200: UnifiedOrderSerializer} | DEFAULT_SCHEMA_RESPONSES,
+        examples=[
+            OpenApiExample(
+                "Изменить только картинки, сохранив расписание",
+                value={"audio_images": AUDIO_IMAGES_EXAMPLE["audio_images"]},
+                request_only=True,
+            ),
+            OpenApiExample("Убрать сопровождение аудио", value={"audio_images": {}}, request_only=True),
+        ],
+        responses={200: UnifiedOrderResponseSerializer} | DEFAULT_SCHEMA_RESPONSES,
     ),
 )
 @extend_schema(tags=["Заказы эфира v2"])
@@ -116,19 +208,85 @@ class UnifiedOrderViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
 ):
-    """CRUD without physical deletion; use the cancel action instead."""
+    """Заказы физически не удаляем: для прекращения эфира используется отмена."""
 
-    queryset = with_order_progress(with_playback_evidence(Order.objects.select_related("owner", "nomenclature", "playlist", "station_state")))
+    queryset = Order.objects.select_related("owner", "nomenclature", "playlist").prefetch_related(
+        "playlist__items__file", "playlist__files",
+    )
     serializer_class = UnifiedOrderSerializer
+    schema = UnifiedOrderSchema()
     permission_classes = [StaffCUDAuthRetrieve]
     filter_backends = [DjangoFilterBackend]
     filterset_class = UnifiedOrderFilter
     http_method_names = ["get", "post", "patch", "head", "options"]
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        """Проверяем все точки, затем атомарно создаём заказы и команды."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        attributes = dict(serializer.validated_data)
+        targets = attributes.pop("clients")
+        orders = [
+            Order(owner=request.user, nomenclature=target, **attributes)
+            for target in targets
+        ]
+        try:
+            validate_prepared_orders(orders)
+        except ValidationError as exc:
+            raise ValidationError(public_order_errors(exc.detail)) from exc
+
         with transaction.atomic():
-            order = serializer.save(owner=self.request.user)
-            self._enqueue(order)
+            self._validate_new_order_media(orders)
+            for order in orders:
+                order.save(force_insert=True)
+                self._enqueue(order)
+
+        by_id = {
+            order.pk: order
+            for order in self.get_queryset().filter(pk__in=[order.pk for order in orders])
+        }
+        ordered = [by_id[order.pk] for order in orders]
+        response_serializer = UnifiedOrderResponseSerializer(
+            ordered,
+            many=True,
+            context=self.get_serializer_context(),
+        )
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _validate_new_order_media(orders) -> None:
+        """Повторно проверяем привязки внутри транзакции перед созданием заказов.
+
+        Между проверкой запроса и записью файлы могли измениться. Блокируем
+        плейлисты в стабильном порядке, затем проверяем и блокируем картинки.
+        """
+        playlist_ids = sorted({order.playlist_id for order in orders}, key=str)
+        playlists = {
+            playlist.pk: playlist
+            for playlist in (
+                Playlist.objects.select_for_update(no_key=True)
+                .filter(pk__in=playlist_ids)
+                .order_by("pk")
+            )
+        }
+        if len(playlists) != len(playlist_ids):
+            raise ValidationError({"playlist": "Выбранный плейлист больше не существует."})
+
+        for order in orders:
+            playlist = playlists[order.playlist_id]
+            order.playlist = playlist
+            mapping = get_order_audio_images(order)
+            if not mapping:
+                continue
+            try:
+                mapping = validate_order_audio_images(
+                    mapping,
+                    playlist=playlist,
+                    placement=order.placement,
+                )
+            except DjangoValidationError as exc:
+                raise ValidationError(exc.message_dict) from exc
+            order.parameters = with_order_audio_images(order.parameters, mapping)
 
     @staticmethod
     def _enqueue(order, *, cancel=False):
@@ -142,8 +300,14 @@ class UnifiedOrderViewSet(
             order = Order.objects.select_for_update().get(pk=serializer.instance.pk)
             if not order.is_active:
                 raise ValidationError("Отменённый заказ нельзя редактировать; создайте новый заказ.")
+            # После блокировки проверяем PATCH по актуальным настройкам,
+            # чтобы не затереть параллельное изменение картинок заказа.
+            locked_serializer = self.get_serializer(
+                order, data=self.request.data, partial=True
+            )
+            locked_serializer.is_valid(raise_exception=True)
+            order = locked_serializer.save(revision=order.revision + 1)
             serializer.instance = order
-            order = serializer.save(revision=order.revision + 1)
             self._enqueue(order)
 
     @extend_schema(

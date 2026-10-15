@@ -2,9 +2,24 @@
 #order-policy-help { font-weight: 500; }
 fieldset[hidden], .form-row[hidden] { display: none !important; }
 .field-target_nomenclatures .selector { max-width: 100%; }
+.order-audio-images { display: grid; gap: 0.8rem; width: min(100%, 64rem); }
+.order-audio-image-group { padding: 1rem; border: 1px solid var(--border-color); border-radius: 4px; }
+.order-audio-image-group h3 { margin: 0 0 0.8rem; padding: 0; color: var(--body-fg); font-size: 1rem; overflow-wrap: anywhere; }
+.order-image-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+.order-image-column { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.order-audio-images .order-image-column label { width: auto; float: none; padding: 0; font-weight: 500; }
+.order-image-column select, .order-image-column input { box-sizing: border-box; width: 100%; max-width: 100%; }
+.order-image-column select { min-height: 9rem; flex: 1; }
+.order-image-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.order-audio-images button { min-height: 2.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: 4px; color: var(--body-fg); background: var(--darkened-bg); cursor: pointer; }
+.order-audio-images button:hover { background: var(--selected-bg); }
+.order-audio-images button:focus-visible { outline: 2px solid var(--link-fg); outline-offset: 2px; }
+.order-audio-images-feedback { max-width: 65ch; }
+.order-audio-images-status { margin: 0; }
 @media (max-width: 900px) {
   .field-target_nomenclatures .selector { width: 100%; }
   .field-target_nomenclatures .selector-available,
   .field-target_nomenclatures .selector-chosen { width: 100%; float: none; }
   .field-target_nomenclatures .selector select { max-width: 100%; }
+  .order-image-columns { grid-template-columns: 1fr; }
 }

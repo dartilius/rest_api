@@ -8,16 +8,25 @@ from __future__ import annotations
 
 from datetime import time, timedelta
 import logging
+from uuid import UUID
 
 from django import forms
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from rest_framework.exceptions import ValidationError as RestValidationError
 
+from files.models import File, Playlist
+from files.playlist_content import is_audio_file
 from nomenclatures.models import Nomenclature
 from orders.models import Order
+from orders.services.order_audio_images import (
+    get_order_audio_images,
+    validate_order_audio_images,
+    with_order_audio_images,
+)
+from orders.services.unified_order_input import validate_unified_order_attributes
 from orders.services.unified_order_delivery import validate_order_delivery
-from orders.unified_serializers import UnifiedOrderSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -37,10 +46,130 @@ _POLICY_FIELDS = {
     "fixed_to_close": ("start_time",),
     "start_to_close": ("start_time",),
 }
+_WEEKDAY_CHOICES = (
+    ("0", "Понедельник"),
+    ("1", "Вторник"),
+    ("2", "Среда"),
+    ("3", "Четверг"),
+    ("4", "Пятница"),
+    ("5", "Суббота"),
+    ("6", "Воскресенье"),
+)
+_ALL_WEEKDAYS = tuple(value for value, _label in _WEEKDAY_CHOICES)
+
+
+def _playlist_primary_files(playlist: Playlist) -> list[File]:
+    items = list(
+        playlist.items.select_related("file").order_by("position", "pk")
+    )
+    if items:
+        return [item.file for item in items]
+    return list(playlist.files.all().order_by("name", "pk"))
+
+
+def order_audio_image_options(
+    playlist: Playlist, *, selected_image_ids=()
+) -> dict[str, list[dict[str, str]]]:
+    """Передаём названия в форму; проверку привязок выполняет сервис."""
+
+    valid_selected_ids = []
+    for value in selected_image_ids:
+        try:
+            valid_selected_ids.append(UUID(str(value)))
+        except (AttributeError, TypeError, ValueError):
+            continue
+
+    audios = [
+        {"id": str(file.pk), "name": file.name}
+        for file in _playlist_primary_files(playlist)
+        if is_audio_file(file)
+    ]
+    images = []
+    if audios:
+        images = [
+            {"id": str(file.pk), "name": file.name}
+            for file in (
+                File.objects.filter(type=2)
+                .filter(Q(is_active=True) | Q(pk__in=valid_selected_ids))
+                .order_by("name", "pk")
+            )
+        ]
+    return {"audios": audios, "images": images}
+
+
+class OrderAudioImagesWidget(forms.Widget):
+    """Выбор картинок по названиям аудиофайлов с сохранением порядка показа."""
+
+    template_name = "admin/orders/widgets/audio_images.html"
+
+    class Media:
+        js = (
+            "admin/js/core.js",
+            "admin/js/SelectBox.js",
+            "admin/js/SelectFilter2.js",
+        )
+
+    def __init__(self, attrs=None):
+        super().__init__(attrs)
+        self.audios: list[dict[str, str]] = []
+        self.images: list[dict[str, str]] = []
+
+    def configure(self, options):
+        self.audios = options["audios"]
+        self.images = options["images"]
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        mapping = value if isinstance(value, dict) else {}
+        groups = []
+        for audio in self.audios:
+            selected_ids = list(mapping.get(audio["id"], ()))
+            selected = set(selected_ids)
+            images_by_id = {image["id"]: image for image in self.images}
+            groups.append(
+                {
+                    **audio,
+                    "choices": [
+                        image
+                        for image in self.images
+                        if image["id"] not in selected
+                    ],
+                    "selected_images": [
+                        images_by_id[image_id]
+                        for image_id in selected_ids
+                        if image_id in images_by_id
+                    ],
+                }
+            )
+        context["widget"]["groups"] = groups
+        return context
+
+    def value_from_datadict(self, data, files, name):
+        marker = f"{name}__present"
+        if marker not in data:
+            return None
+        prefix = f"{name}__"
+        mapping = {}
+        for key in data:
+            if not key.startswith(prefix) or key == marker:
+                continue
+            parent_id = key.removeprefix(prefix)
+            values = (
+                data.getlist(key)
+                if hasattr(data, "getlist")
+                else data.get(key, ())
+            )
+            if isinstance(values, str):
+                values = [values]
+            mapping[parent_id] = [str(value) for value in values if value]
+        return mapping
+
+    def value_omitted_from_data(self, data, files, name):
+        return f"{name}__present" not in data
 
 
 class UnifiedOrderAdminForm(forms.ModelForm):
-    """Admin-only projection of managed JSON parameters into typed fields."""
+    """Показываем параметры заказа обычными полями, без ручного JSON."""
 
     target_nomenclatures = forms.ModelMultipleChoiceField(
         queryset=Nomenclature.objects.none(),
@@ -48,6 +177,16 @@ class UnifiedOrderAdminForm(forms.ModelForm):
         label="Точки вещания",
         help_text="Для каждой выбранной точки будет создан отдельный заказ и команда Player.",
         widget=FilteredSelectMultiple("Точки вещания", is_stacked=False),
+    )
+    audio_images = forms.Field(
+        required=False,
+        label="Картинки для рекламного аудио",
+        help_text=(
+            "Для каждого аудиоролика можно выбрать одну или несколько картинок. "
+            "Одна картинка показывается всё время ролика; несколько делят его "
+            "длительность поровну. Настройка относится только к этому заказу."
+        ),
+        widget=OrderAudioImagesWidget(),
     )
     times_in_hour = forms.IntegerField(
         required=False,
@@ -101,6 +240,29 @@ class UnifiedOrderAdminForm(forms.ModelForm):
         help_text="У непрерывной рекламы без звука фоновая музыка продолжает играть.",
         widget=forms.Select(attrs={"class": "js-ad-option"}),
     )
+    weekdays = forms.MultipleChoiceField(
+        choices=_WEEKDAY_CHOICES,
+        initial=_ALL_WEEKDAYS,
+        required=False,
+        label="Дни недели",
+        help_text=(
+            "По умолчанию выбраны все дни — заказ работает каждый день в пределах периода. "
+            "Если снять дни, в эти даты срочный заказ не выходит, а фоновый резерв остаётся доступен."
+        ),
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "js-order-weekdays"}),
+    )
+    all_days = forms.BooleanField(
+        initial=True,
+        required=False,
+        label="Каждый день",
+        help_text="Оставьте включённым для вещания во все дни недели.",
+        widget=forms.CheckboxInput(attrs={"class": "js-order-all-days"}),
+    )
+    weekdays_control_present = forms.CharField(
+        initial="1",
+        required=False,
+        widget=forms.HiddenInput(),
+    )
 
     class Meta:
         model = Order
@@ -131,9 +293,27 @@ class UnifiedOrderAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if "playback_policy" not in self.fields:
-            return  # The admin can request an entirely read-only form.
+            return  # В режиме просмотра форма может не содержать полей ввода.
         parameters = self.instance.parameters if isinstance(self.instance.parameters, dict) else {}
         adding = self.instance._state.adding
+
+        initial_audio_images = {} if adding else get_order_audio_images(self.instance)
+        selected_playlist = self._selected_playlist()
+        options = (
+            order_audio_image_options(
+                selected_playlist,
+                selected_image_ids={
+                    image_id
+                    for images in initial_audio_images.values()
+                    for image_id in images
+                },
+            )
+            if selected_playlist is not None
+            else {"audios": [], "images": []}
+        )
+        self.fields["audio_images"].widget.configure(options)
+        self.fields["audio_images"].initial = initial_audio_images
+        self.initial["audio_images"] = initial_audio_images
 
         if adding:
             if "nomenclature" in self.fields:
@@ -153,6 +333,18 @@ class UnifiedOrderAdminForm(forms.ModelForm):
         self.fields["order_weight"].initial = parameters.get("weight", 50)
         self.fields["image_duration_seconds"].initial = parameters.get("image_duration_seconds")
         self.fields["advertising_audio"].initial = "muted" if parameters.get("audio_muted") else "sound"
+        stored_weekdays = parameters.get("weekdays")
+        if (
+            isinstance(stored_weekdays, list)
+            and stored_weekdays
+            and all(type(day) is int and 0 <= day <= 6 for day in stored_weekdays)
+            and len(set(stored_weekdays)) == len(stored_weekdays)
+        ):
+            self.fields["weekdays"].initial = [str(day) for day in stored_weekdays]
+            self.fields["all_days"].initial = set(stored_weekdays) == set(range(7))
+        else:
+            self.fields["weekdays"].initial = _ALL_WEEKDAYS
+            self.fields["all_days"].initial = True
         offset = _parse_offset(parameters.get("timedelta"))
         seconds = int(offset.total_seconds()) if offset is not None else 0
         self.fields["offset_minutes"].initial, self.fields["offset_seconds"].initial = divmod(seconds, 60)
@@ -196,6 +388,7 @@ class UnifiedOrderAdminForm(forms.ModelForm):
             return cleaned_data
         parameters = dict(stored)
         targets = list(cleaned_data.get("target_nomenclatures") or ())
+        playlist = cleaned_data.get("playlist")
 
         if self.instance._state.adding:
             if not targets:
@@ -215,18 +408,115 @@ class UnifiedOrderAdminForm(forms.ModelForm):
             parameters.pop("active_ad", None)
             for key in _SCHEDULE_KEYS:
                 parameters.pop(key, None)
+            self._collect_weekdays(
+                cleaned_data,
+                parameters,
+                enabled=not cleaned_data.get("is_permanent"),
+            )
+            parameters = with_order_audio_images(parameters, {})
         elif placement == "advertising" and policy != "event":
             for key in _SCHEDULE_KEYS:
                 parameters.pop(key, None)
+            self._collect_weekdays(
+                cleaned_data,
+                parameters,
+                enabled=True,
+            )
             self._collect_advertising_parameters(cleaned_data, parameters, policy, targets)
+            parameters = self._collect_audio_images(
+                cleaned_data,
+                parameters,
+                playlist=playlist,
+                placement=placement,
+            )
         elif placement == "advertising" and policy == "event":
             cleaned_data["suppress_background_audio"] = self.instance.suppress_background_audio
             cleaned_data["suppress_background_visual"] = self.instance.suppress_background_visual
+            parameters = self._collect_audio_images(
+                cleaned_data,
+                parameters,
+                playlist=playlist,
+                placement=placement,
+            )
 
         self._collect_visual_parameters(cleaned_data, parameters)
         cleaned_data["parameters"] = parameters
         self.instance.parameters = parameters
         return cleaned_data
+
+    def _selected_playlist(self):
+        raw_id = self.data.get(self.add_prefix("playlist")) if self.is_bound else None
+        if raw_id:
+            try:
+                return Playlist.objects.get(pk=raw_id)
+            except (Playlist.DoesNotExist, ValidationError, ValueError):
+                return None
+        if self.instance.playlist_id:
+            return self.instance.playlist
+        return None
+
+    def _collect_audio_images(self, cleaned_data, parameters, *, playlist, placement):
+        if playlist is None:
+            return with_order_audio_images(parameters, {})
+        mapping = cleaned_data.get("audio_images")
+        if mapping is None:
+            mapping = {} if self.instance._state.adding else get_order_audio_images(self.instance)
+        existing = {} if self.instance._state.adding else get_order_audio_images(self.instance)
+        mapping = {
+            str(parent): list(images)
+            for parent, images in mapping.items()
+            if images or str(parent) in existing
+        }
+        if mapping == existing:
+            return with_order_audio_images(parameters, existing)
+
+        retained_historic = {
+            parent: list(images)
+            for parent, images in mapping.items()
+            if existing.get(parent) == images
+        }
+        changed = {
+            parent: images
+            for parent, images in mapping.items()
+            if retained_historic.get(parent) != images
+        }
+        try:
+            validated = validate_order_audio_images(
+                changed,
+                playlist=playlist,
+                placement=placement,
+            )
+        except ValidationError as exc:
+            messages = getattr(exc, "message_dict", {}).get(
+                "audio_images", exc.messages
+            )
+            self.add_error("audio_images", messages)
+            return parameters
+        return with_order_audio_images(parameters, {**retained_historic, **validated})
+
+    def _collect_weekdays(self, cleaned_data, parameters, *, enabled):
+        if not enabled:
+            parameters.pop("weekdays", None)
+            return
+        raw_weekdays = cleaned_data.get("weekdays") or []
+        if cleaned_data.get("all_days"):
+            parameters.pop("weekdays", None)
+            return
+        if not cleaned_data.get("weekdays_control_present") and not raw_weekdays:
+            # Совместимость с формами, созданными до выбора дней недели.
+            parameters.pop("weekdays", None)
+            return
+        weekdays = [int(day) for day in raw_weekdays]
+        if not weekdays:
+            self.add_error("weekdays", "Выберите хотя бы один день недели.")
+            parameters.pop("weekdays", None)
+        elif len(set(weekdays)) != len(weekdays):
+            self.add_error("weekdays", "Один и тот же день недели выбран несколько раз.")
+            parameters.pop("weekdays", None)
+        elif set(weekdays) == set(range(7)):
+            parameters.pop("weekdays", None)
+        else:
+            parameters["weekdays"] = weekdays
 
     def _collect_advertising_parameters(self, cleaned_data, parameters, policy, targets):
         if policy == "continuous":
@@ -283,7 +573,12 @@ class UnifiedOrderAdminForm(forms.ModelForm):
         if self.errors:
             return
         try:
-            validated = UnifiedOrderSerializer(instance=None if self.instance._state.adding else self.instance).validate(self.cleaned_data)
+            # Привязки уже проверены полями формы. Общие правила заказа
+            # проверяем отдельно, без повторного разбора карты картинок.
+            validated = validate_unified_order_attributes(
+                dict(self.cleaned_data),
+                instance=None if self.instance._state.adding else self.instance,
+            )
         except RestValidationError as exc:
             self._add_serializer_errors(exc.detail)
             return

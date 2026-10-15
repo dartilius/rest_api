@@ -1,31 +1,71 @@
-"""REST validation and Swagger field descriptions for unified broadcast orders."""
+"""Сериализаторы единых заказов фона и рекламы."""
 
-import re
-from datetime import time
+from collections.abc import Mapping
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 
 from files.models import Playlist
 from nomenclatures.models import Nomenclature
 from orders.models import Order
+from orders.services.order_audio_images import (
+    AUDIO_IMAGES_PARAMETER,
+    get_order_audio_images,
+    public_order_parameters,
+    validate_order_audio_images,
+    with_order_audio_images,
+)
+from orders.services.unified_order_input import (
+    normalize_public_order_input,
+    validate_unified_order_attributes,
+)
 
 
-ADVERTISING_POLICIES = {
-    "continuous",
-    "workday",
-    "hourly_slots",
-    "fixed_time",
-    "open_offset",
-    "close_offset",
-    "open_to_fixed",
-    "fixed_to_close",
-    "start_to_close",
-    "event",
+AUDIO_IMAGES_SCHEMA = {
+    "type": "object",
+    "description": (
+        "Объект {UUID аудиофайла: [UUID картинки, ...]}. "
+        "Ключ — id аудиофайла из выбранного плейлиста; массив — id картинок в порядке показа. "
+        "additionalProp1, additionalProp2 — автоматические заглушки документации, "
+        "вместо них укажите UUID аудиофайлов."
+    ),
+    "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string", "format": "uuid"},
+    },
+    "example": {
+        "00000000-0000-0000-0000-000000000011": [
+            "00000000-0000-0000-0000-000000000021",
+            "00000000-0000-0000-0000-000000000022",
+        ],
+        "00000000-0000-0000-0000-000000000012": [
+            "00000000-0000-0000-0000-000000000023",
+        ],
+    },
 }
-MIN_TIMES_IN_HOUR = 1
-MAX_TIMES_IN_HOUR = 60
-TIME_VALUE_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}$")
+
+
+@extend_schema_field(AUDIO_IMAGES_SCHEMA)
+class OrderAudioImagesField(serializers.JSONField):
+    """JSON-карта привязок с понятным UUID-примером в документации."""
+
+
+def public_order_errors(detail):
+    """Ошибки общей проверки показываем с именами полей публичного запроса."""
+    if not isinstance(detail, Mapping):
+        return detail
+    aliases = {"placement": "type", "nomenclature": "clients", "playback_policy": "broadcast_type"}
+    result = {}
+    interval = {}
+    for field, errors in detail.items():
+        if field in {"starts_at", "ends_at"}:
+            interval[{"starts_at": "lower", "ends_at": "upper"}[field]] = errors
+        else:
+            result[aliases.get(field, field)] = errors
+    if interval:
+        result["broadcast_interval"] = interval
+    return result
 
 
 @extend_schema_field({
@@ -34,285 +74,318 @@ TIME_VALUE_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}$")
     "example": "2026-09-30 13:04:00",
 })
 class LocalOrderDateTimeField(serializers.DateTimeField):
-    """Keep the local Player timestamp contract identical in JSON and OpenAPI."""
+    """Локальные даты в JSON и OpenAPI имеют один формат."""
 
     def __init__(self, **kwargs):
         super().__init__(format="%Y-%m-%d %H:%M:%S", input_formats=("%Y-%m-%d %H:%M:%S",), **kwargs)
 
 
-def _require_clock_value(parameters, key):
-    """Reject ambiguous schedule values before they reach the Player protocol."""
-    value = parameters.get(key)
-    if not isinstance(value, str) or not TIME_VALUE_PATTERN.fullmatch(value):
-        raise serializers.ValidationError({
-            "parameters": f"{key} должен иметь формат HH:MM:SS, например 09:30:00."
-        })
-
-    hours, minutes, seconds = (int(part) for part in value.split(":"))
-    if minutes > 59 or seconds > 59 or (key != "timedelta" and hours > 23):
-        raise serializers.ValidationError({
-            "parameters": f"{key} содержит недопустимое время: {value}."
-        })
-
-
-def _validate_start_time_in_workday(start_time: str, nomenclature) -> None:
-    """Reject a first advertising run outside a configured point workday."""
-    worktime_start = getattr(nomenclature, "worktime_start", None)
-    worktime_end = getattr(nomenclature, "worktime_end", None)
-    if worktime_start is None or worktime_end is None:
-        return
-
-    first_run = time.fromisoformat(start_time)
-    if worktime_start < worktime_end:
-        is_in_workday = worktime_start <= first_run < worktime_end
-    else:
-        is_in_workday = first_run >= worktime_start or first_run < worktime_end
-    if not is_in_workday:
-        raise serializers.ValidationError({
-            "parameters": "Первый выход должен быть в рабочее время точки."
-        })
-
-
-class OrderPlaybackListSerializer(serializers.ListSerializer):
-    def to_representation(self, data):
-        from nomenclatures.player_v2.runtime.service import load_runtime_documents
-        rows = list(data.all() if hasattr(data, "all") else data)
-        self.context["order_runtime_documents"] = load_runtime_documents(row.nomenclature_id for row in rows)
-        return super().to_representation(rows)
-
-
+@extend_schema_serializer(exclude_fields=("placement", "nomenclature", "playback_policy", "starts_at", "ends_at", "slides"))
 class UnifiedOrderSerializer(serializers.ModelSerializer):
-    """One order for exactly one Player station."""
-    actual_playback = serializers.SerializerMethodField()
+    """Публичный запрос заказа с единым массивом целевых номенклатур."""
 
-    @extend_schema_field({"type": "object", "properties": {
-        "code": {"type": "string"}, "label": {"type": "string"},
-        "revision": {"type": "integer"}, "error": {"type": "string", "nullable": True},
-    }})
-    def get_actual_playback(self, obj):
-        from orders.services.order_air_state import actual_order_state
-        documents = self.context.get("order_runtime_documents")
-        if documents is not None:
-            return actual_order_state(obj, documents.get(str(obj.nomenclature_id)))
-        return actual_order_state(obj)
+    type = serializers.ChoiceField(
+        choices=(("bg", "Фоновый контент"), ("ad", "Реклама")),
+        required=False,
+        write_only=True,
+        help_text="Вид заказа: bg — фон, ad — реклама.",
+    )
+    clients = serializers.ListField(
+        child=serializers.UUIDField(),
+        required=False,
+        write_only=True,
+        min_length=1,
+        help_text="UUID номенклатур: массив из одной или нескольких активных точек.",
+    )
+    broadcast_interval = serializers.JSONField(
+        required=False,
+        write_only=True,
+        help_text="Период заказа: объект {lower, upper} с локальными датами начала и окончания.",
+    )
+    broadcast_type = serializers.IntegerField(
+        required=False,
+        write_only=True,
+        help_text="Тип рекламного расписания от 0 до 7; значение 7 означает непрерывную рекламу.",
+    )
 
-    delivery = serializers.SerializerMethodField()
-
-    @extend_schema_field({"type": "object", "nullable": True, "properties": {
-        "desired_action": {"type": "string"}, "revision": {"type": "integer"},
-        "status": {"type": "string"}, "applied_revision": {"type": "integer", "nullable": True},
-        "on_air_revision": {"type": "integer", "nullable": True}, "last_error": {"type": "string"},
-        "progress": {"type": "object", "nullable": True, "properties": {
-            "revision": {"type": "integer"}, "phase": {"type": "string", "enum": ["downloading", "verifying", "applying"]},
-            "files_verified": {"type": "integer"}, "files_total": {"type": "integer"},
-            "fresh": {"type": "boolean"}, "label": {"type": "string"},
-            "received_at": {"type": "string", "example": "2026-10-06 09:00:00"},
-        }},
-    }})
-    def get_delivery(self, obj):
-        from orders.models import OrderStationState
-        try:
-            state = obj.station_state
-        except OrderStationState.DoesNotExist:
-            return None
-        return {"desired_action": state.desired_action, "revision": state.desired_revision,
-                "status": state.status, "applied_revision": state.applied_revision,
-                "on_air_revision": state.on_air_revision, "last_error": state.last_error,
-                "progress": self._delivery_progress(obj)}
-
-    @staticmethod
-    def _delivery_progress(obj):
-        from orders.services.order_progress import delivery_progress
-        return delivery_progress(obj)
-
+    # Поля модели заполняет преобразование публичного запроса.
     placement = serializers.ChoiceField(
-        choices=(
-            ("background", "Фоновый контент"),
-            ("advertising", "Реклама"),
-        ),
-        help_text=(
-            "background — Player включает фоновую музыку, видео, картинки или ticker из плейлиста; "
-            "advertising — отправляет рекламные выходы по заданному правилу."
-        ),
+        choices=("background", "advertising"), required=False, write_only=True,
     )
-    playback_policy = serializers.ChoiceField(
-        choices=(
-            ("workday", "В рабочее время точки"),
-            ("hourly_slots", "Выходы в течение часа"),
-            ("open_offset", "От открытия со смещением"),
-            ("close_offset", "До закрытия со смещением"),
-            ("fixed_time", "В фиксированные часы"),
-            ("open_to_fixed", "От открытия до фиксированного часа"),
-            ("fixed_to_close", "От фиксированного часа до закрытия"),
-            ("start_to_close", "Реклама с указанного времени"),
-            ("event", "По событию Player"),
-            ("continuous", "Непрерывная реклама вместо фона"),
-        ),
-        help_text=(
-            "Для background сейчас допускается только workday. Для advertising используйте правило "
-            "и соответствующие keys в parameters; их назначение и готовые JSON приведены в примерах операции POST."
-        ),
-    )
-
+    playback_policy = serializers.CharField(required=False, write_only=True)
     nomenclature = serializers.PrimaryKeyRelatedField(
-        queryset=Nomenclature.active.all(),
-        help_text="UUID точки вещания. Один запрос создаёт заказ для одной точки.",
+        queryset=Nomenclature.active.all(), required=False, write_only=True,
     )
     playlist = serializers.PrimaryKeyRelatedField(
         queryset=Playlist.objects.all(),
-        help_text="UUID плейлиста. Если есть PlaylistItem, используется его порядок и картинки.",
+        help_text="UUID плейлиста с роликами и их порядком воспроизведения.",
     )
     created = LocalOrderDateTimeField(read_only=True)
     starts_at = LocalOrderDateTimeField(
         required=False,
         allow_null=True,
+        write_only=True,
         help_text="Локальные дата и время без часового пояса: YYYY-MM-DD HH:MM:SS, например 2026-09-25 09:00:00. Для рекламы обязательно. У фона пусто — начать после доставки заказа Player.",
     )
     ends_at = LocalOrderDateTimeField(
         required=False,
         allow_null=True,
+        write_only=True,
         help_text="Локальные дата и время без часового пояса: YYYY-MM-DD HH:MM:SS. Для рекламы обязательно. Для бессрочного фона можно не передавать или передать null. При переводе в бессрочный фон прежнее окончание очищается, если поле не передано.",
     )
     is_permanent = serializers.BooleanField(
         required=False,
-        help_text="true — бессрочный резервный фоновый заказ; допустим только для background и без ends_at.",
+        help_text="true — бессрочный резервный фон: type=bg, broadcast_interval.upper=null.",
     )
     suppress_background_audio = serializers.BooleanField(
         required=False,
-        help_text="Для рекламного заказа: true — отключить фоновую музыку. Для continuous определяется автоматически: false при audio_muted=true, иначе true.",
+        help_text="Для рекламы: true — отключить фоновую музыку. При broadcast_type=7 определяется по audio_muted.",
     )
     suppress_background_visual = serializers.BooleanField(
         required=False,
-        help_text="Для рекламного заказа: true — скрыть фоновое видео/картинку. Для continuous всегда true.",
+        help_text="Для рекламы: true — скрыть визуальный фон. При broadcast_type=7 всегда true.",
     )
     parameters = serializers.JSONField(
         required=False,
         help_text=(
-            "Расписание рекламы. Для continuous times_in_hour не нужен и игнорируется; "
-            "для остальных правил times_in_hour — целое число выходов за час от 1 до 60; "
-            "open_offset/close_offset требуют timedelta, fixed_time — start_time и end_time, "
-            "open_to_fixed — end_time, fixed_to_close и start_to_close — start_time; все времена строго HH:MM:SS."
+            "Расписание рекламы. При broadcast_type=7 times_in_hour не нужен; "
+            "для остальных типов times_in_hour — число выходов за час от 1 до 60. "
+            "Типы 1 и 2 требуют timedelta, тип 3 — start_time и end_time, "
+            "тип 4 — end_time, тип 5 — start_time. Формат времени: HH:MM:SS."
             " audio_muted: true отключает звук рекламного ролика; по умолчанию false. weight — целое число 0–100."
             " Для визуального фона image_duration_seconds — время показа каждой картинки, целое число 1–86400;"
-            " без него используется настройка Player."
+            " без него используется настройка Player. weekdays — выбранные дни недели: JSON-массив уникальных"
+            " целых чисел от 0 (понедельник) до 6 (воскресенье). Если ключ не передан, заказ работает каждый день."
         ),
+    )
+    audio_images = OrderAudioImagesField(
+        required=False,
+        write_only=True,
+        help_text=AUDIO_IMAGES_SCHEMA["description"],
+    )
+    slides = serializers.JSONField(
+        required=False,
+        write_only=True,
+        help_text="Совместимый входной alias поля audio_images. В ответах не возвращается.",
     )
 
     class Meta:
         model = Order
-        list_serializer_class = OrderPlaybackListSerializer
         fields = (
-            "id", "name", "description", "placement", "playback_policy",
+            "id", "name", "description", "type", "clients",
+            "broadcast_interval", "broadcast_type", "placement", "playback_policy",
             "nomenclature", "playlist", "starts_at", "ends_at", "is_permanent",
             "suppress_background_audio", "suppress_background_visual", "parameters",
-            "status", "revision", "owner", "created", "delivery", "actual_playback",
+            "audio_images", "slides",
+            "status", "owner", "created",
         )
-        read_only_fields = ("id", "owner", "created", "revision", "status")
+        read_only_fields = ("id", "owner", "created", "status")
         extra_kwargs = {
             "parameters": {
-                "help_text": "Параметры расписания. Для рекламы, кроме continuous, требуется times_in_hour: целое число от 1 до 60.",
+                "help_text": "Параметры расписания. Для рекламы, кроме broadcast_type=7, требуется times_in_hour от 1 до 60.",
             },
             "status": {
                 "help_text": "0 — ожидает эфира, 1 — в эфире, 2 — завершён, 3 — отменён, 4 — ошибка.",
             },
         }
 
+    def to_internal_value(self, data):
+        normalized = normalize_public_order_input(
+            data,
+            creating=self.instance is None,
+            current_placement=getattr(self.instance, "placement", None),
+        )
+        return super().to_internal_value(normalized)
+
+    def run_validation(self, data=serializers.empty):
+        try:
+            return super().run_validation(data)
+        except serializers.ValidationError as exc:
+            raise serializers.ValidationError(public_order_errors(exc.detail)) from exc
+
+    def validate_clients(self, clients):
+        if len(set(clients)) != len(clients):
+            raise serializers.ValidationError("Одна и та же точка указана несколько раз.")
+        active = Nomenclature.active.in_bulk(clients)
+        missing = [str(identifier) for identifier in clients if identifier not in active]
+        if missing:
+            raise serializers.ValidationError(
+                f"Не найдены активные точки: {', '.join(missing)}."
+            )
+        return [active[identifier] for identifier in clients]
+
     def validate(self, attrs):
-        instance = self.instance
-        if instance is not None:
-            for field in ("nomenclature", "placement"):
-                if field in attrs and attrs[field] != getattr(instance, field):
-                    raise serializers.ValidationError({field: "Для смены точки или размещения отмените старый заказ и создайте новый."})
-        placement = attrs.get("placement", getattr(instance, "placement", None))
-        policy = attrs.get("playback_policy", getattr(instance, "playback_policy", "workday"))
-        starts_at = attrs.get("starts_at", getattr(instance, "starts_at", None))
-        ends_at = attrs.get("ends_at", getattr(instance, "ends_at", None))
-        is_permanent = attrs.get("is_permanent", getattr(instance, "is_permanent", False))
-        parameters = attrs.get("parameters", getattr(instance, "parameters", {}) or {})
-        nomenclature = attrs.get("nomenclature", getattr(instance, "nomenclature", None))
-        if not isinstance(parameters, dict):
-            raise serializers.ValidationError({"parameters": "Параметры должны быть JSON-объектом."})
-        weight = parameters.get("weight", 50)
-        if isinstance(weight, bool) or not isinstance(weight, int) or not 0 <= weight <= 100:
-            raise serializers.ValidationError({"parameters": "weight должен быть целым числом от 0 до 100."})
-        if "audio_muted" in parameters and not isinstance(parameters["audio_muted"], bool):
-            raise serializers.ValidationError({"parameters": "audio_muted должен быть true или false."})
-        if "image_duration_seconds" in parameters:
-            duration = parameters["image_duration_seconds"]
-            if type(duration) is not int or not 1 <= duration <= 86400:
-                raise serializers.ValidationError({"parameters": "image_duration_seconds должен быть целым числом от 1 до 86400."})
-
-        if placement == "background" and is_permanent and "ends_at" not in attrs:
-            ends_at = None
-            attrs["ends_at"] = None
-
-        if starts_at and ends_at and starts_at >= ends_at:
-            raise serializers.ValidationError({"ends_at": "Окончание должно быть позднее начала."})
-        if is_permanent and ends_at is not None:
-            raise serializers.ValidationError({"ends_at": "У бессрочного заказа не может быть окончания."})
-        if placement == "advertising" and is_permanent:
-            raise serializers.ValidationError({"is_permanent": "Бессрочным может быть только фоновый заказ."})
-        if placement == "advertising" and policy not in ADVERTISING_POLICIES:
-            raise serializers.ValidationError({"playback_policy": "Это правило недоступно для рекламы."})
-        if placement == "background" and policy != "workday":
+        if self.instance is not None and "clients" in attrs:
             raise serializers.ValidationError({
-                "playback_policy": "Для фонового заказа сейчас доступно только workday."
+                "clients": "Точки существующего заказа нельзя менять; создайте новый заказ."
             })
-        if placement == "advertising":
-            parameters = dict(parameters)
-            if policy == "continuous":
-                parameters.pop("times_in_hour", None)
-                attrs["suppress_background_audio"] = not parameters.get("audio_muted", False)
-                attrs["suppress_background_visual"] = True
-            else:
+        has_audio_images = "audio_images" in attrs
+        has_slides = "slides" in attrs
+        if has_audio_images and has_slides:
+            raise serializers.ValidationError({
+                "audio_images": "Передайте audio_images или совместимое поле slides, но не оба сразу."
+            })
+        raw_parameters = None
+        initial_data = getattr(self, "initial_data", None)
+        if isinstance(initial_data, Mapping):
+            raw_parameters = initial_data.get("parameters")
+        if isinstance(raw_parameters, Mapping) and AUDIO_IMAGES_PARAMETER in raw_parameters:
+            raise serializers.ValidationError({
+                "parameters": "audio_images передаётся отдельным полем верхнего уровня."
+            })
+
+        supplied_mapping = attrs.pop("audio_images", attrs.pop("slides", None))
+        attrs = validate_unified_order_attributes(attrs, instance=self.instance)
+        playlist = attrs.get("playlist", getattr(self.instance, "playlist", None))
+        placement = attrs.get("placement", getattr(self.instance, "placement", None))
+
+        if has_audio_images or has_slides:
+            try:
+                mapping = validate_order_audio_images(
+                    supplied_mapping,
+                    playlist=playlist,
+                    placement=placement,
+                )
+            except DjangoValidationError as exc:
+                detail = exc.message_dict if hasattr(exc, "message_dict") else {"audio_images": exc.messages}
+                raise serializers.ValidationError(detail) from exc
+        elif self.instance is None:
+            mapping = {}
+        else:
+            mapping = get_order_audio_images(self.instance)
+            if "playlist" in attrs and mapping:
                 try:
-                    raw_times = parameters["times_in_hour"]
-                    if isinstance(raw_times, bool) or not isinstance(raw_times, (int, str)):
-                        raise ValueError("times_in_hour must be an integer")
-                    times_in_hour = int(raw_times)
-                except (KeyError, TypeError, ValueError) as exc:
-                    raise serializers.ValidationError({
-                        "parameters": "Для рекламы обязателен times_in_hour: целое число от 1 до 60."
-                    }) from exc
-                if not MIN_TIMES_IN_HOUR <= times_in_hour <= MAX_TIMES_IN_HOUR:
-                    raise serializers.ValidationError({
-                        "parameters": "times_in_hour может быть только целым числом от 1 до 60."
-                    })
-                parameters["times_in_hour"] = times_in_hour
-            required_by_policy = {
-                "open_offset": ("timedelta",),
-                "close_offset": ("timedelta",),
-                "fixed_time": ("start_time", "end_time"),
-                "open_to_fixed": ("end_time",),
-                "fixed_to_close": ("start_time",),
-                "start_to_close": ("start_time",),
-                "event": ("event", "active_ad"),
-            }
-            missing = [key for key in required_by_policy.get(policy, ()) if not parameters.get(key)]
-            if missing:
-                raise serializers.ValidationError({
-                    "parameters": f"Для правила {policy} обязательны: {', '.join(missing)}."
-                })
-            for key in ("timedelta", "start_time", "end_time"):
-                if key in parameters:
-                    _require_clock_value(parameters, key)
-            if policy == "start_to_close":
-                _validate_start_time_in_workday(parameters["start_time"], nomenclature)
-            if policy == "fixed_time" and parameters["start_time"] >= parameters["end_time"]:
-                raise serializers.ValidationError({"parameters": "start_time должен быть раньше end_time."})
-            attrs["parameters"] = parameters
-            missing_dates = {
-                field: "Для рекламного заказа укажите начало и окончание периода."
-                for field, value in (("starts_at", starts_at), ("ends_at", ends_at))
-                if value is None
-            }
-            if missing_dates:
-                raise serializers.ValidationError(missing_dates)
+                    mapping = validate_order_audio_images(
+                        mapping,
+                        playlist=playlist,
+                        placement=placement,
+                        allow_inactive_images=True,
+                    )
+                except DjangoValidationError as exc:
+                    detail = exc.message_dict if hasattr(exc, "message_dict") else {"audio_images": exc.messages}
+                    raise serializers.ValidationError(detail) from exc
+
+        parameters = attrs.get(
+            "parameters",
+            getattr(self.instance, "parameters", {}) or {},
+        )
+        attrs["parameters"] = with_order_audio_images(parameters, mapping)
         return attrs
+
+    def to_representation(self, instance):
+        return UnifiedOrderResponseSerializer(instance, context=self.context).data
+
+
+class UnifiedOrderResponseSerializer(serializers.ModelSerializer):
+    """Ответ с привычными именами полей и UUID плейлиста."""
+
+    type = serializers.SerializerMethodField()
+    clients = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
+    broadcast_interval = serializers.SerializerMethodField()
+    broadcast_type = serializers.SerializerMethodField()
+    order_type = serializers.SerializerMethodField()
+    parameters = serializers.SerializerMethodField()
+    audio_images = serializers.SerializerMethodField()
+    created = LocalOrderDateTimeField(read_only=True)
+
+    class Meta:
+        model = Order
+        fields = (
+            "id", "name", "description", "type", "clients", "playlist",
+            "broadcast_interval", "broadcast_type", "order_type", "is_permanent",
+            "suppress_background_audio", "suppress_background_visual", "parameters",
+            "audio_images",
+            "status", "owner", "created",
+        )
+        read_only_fields = fields
+
+    @extend_schema_field({"type": "string", "enum": ["ad", "bg"]})
+    def get_type(self, obj):
+        return {"advertising": "ad", "background": "bg"}[obj.placement]
+
+    @extend_schema_field({"type": "array", "items": {
+        "type": "object",
+        "properties": {"id": {"type": "string", "format": "uuid"}, "name": {"type": "string"}},
+    }})
+    def get_clients(self, obj):
+        return [{"id": obj.nomenclature.id, "name": obj.nomenclature.name}]
+
+    @extend_schema_field({"type": "object", "nullable": True, "properties": {
+        "id": {"type": "string", "format": "uuid"}, "full_name": {"type": "string"},
+    }})
+    def get_owner(self, obj):
+        if obj.owner is None:
+            return None
+        return {"id": obj.owner.id, "full_name": obj.owner.full_name}
+
+    @extend_schema_field({
+        "type": "object",
+        "properties": {
+            "lower": {"type": "string", "nullable": True, "pattern": r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", "example": "2026-09-30 13:04:00"},
+            "upper": {"type": "string", "nullable": True, "pattern": r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", "example": "2026-10-09 13:04:00"},
+        },
+    })
+    def get_broadcast_interval(self, obj):
+        field = LocalOrderDateTimeField()
+        return {
+            "lower": field.to_representation(obj.starts_at) if obj.starts_at else None,
+            "upper": field.to_representation(obj.ends_at) if obj.ends_at else None,
+        }
+
+    @extend_schema_field({"type": "integer", "nullable": True, "minimum": 0, "maximum": 7})
+    def get_broadcast_type(self, obj):
+        if obj.placement != "advertising":
+            return None
+        return {
+            "workday": 0,
+            "hourly_slots": 0,
+            "open_offset": 1,
+            "close_offset": 2,
+            "fixed_time": 3,
+            "open_to_fixed": 4,
+            "fixed_to_close": 5,
+            "start_to_close": 5,
+            "event": 6,
+            "continuous": 7,
+        }[obj.playback_policy]
+
+    @extend_schema_field({"type": "integer", "nullable": True, "minimum": 0, "maximum": 3})
+    def get_order_type(self, obj):
+        if obj.placement != "background":
+            return None
+        items = list(obj.playlist.items.all())
+        media_types = {item.file.type for item in items}
+        if not media_types:
+            media_types = {file.type for file in obj.playlist.files.all()}
+        if media_types == {1, 2}:
+            return 1
+        if len(media_types) == 1:
+            media_type = next(iter(media_types))
+            return media_type if media_type in {0, 1, 2, 3} else None
+        return None
+
+    @extend_schema_field({"type": "object"})
+    def get_parameters(self, obj):
+        parameters = public_order_parameters(obj.parameters)
+        parameters.pop("schedule_mode", None)
+        return parameters
+
+    @extend_schema_field(AUDIO_IMAGES_SCHEMA)
+    def get_audio_images(self, obj):
+        return get_order_audio_images(obj)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.placement == "background":
+            representation.pop("broadcast_type", None)
+        else:
+            representation.pop("order_type", None)
+        return representation
 
 
 class UnifiedOrderResendSerializer(serializers.Serializer):
-    """Explicit batch payload for re-sending existing Player orders."""
+    """Список существующих заказов для повторной отправки Player."""
 
     order_ids = serializers.ListField(
         child=serializers.UUIDField(),

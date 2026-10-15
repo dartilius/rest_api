@@ -1,4 +1,4 @@
-"""Atomic playlist graph operations used by Django admin."""
+"""Атомарное редактирование состава плейлиста из админки."""
 
 from __future__ import annotations
 
@@ -9,15 +9,19 @@ from typing import TypedDict
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from files.models import File, Playlist, PlaylistItem, PlaylistItemVisual
+from files.models import File, Playlist, PlaylistItem
 from files.playlist_mutations import (
     ensure_structured_editable,
     refresh_playlist_orders,
     replace_playlist_items,
 )
 
-
 logger = logging.getLogger(__name__)
+
+HISTORICAL_VISUALS_ERROR = (
+    "Нельзя удалить или заменить основной элемент с архивными картинками. "
+    "Проверьте старые данные перед удалением. Новое сопровождение задаётся в заказе."
+)
 
 
 class AdminPlaylistDeliveryError(Exception):
@@ -25,15 +29,15 @@ class AdminPlaylistDeliveryError(Exception):
 
 
 class AdminPlaylistItem(TypedDict):
-    """One resolved primary file and its ordered visual occurrences."""
+    """Один основной файл и его позиция в форме админки."""
 
+    item_id: int | None
     file: File
-    images: list[File]
     position: int
 
 
 def playlist_graph_signature(playlist: Playlist):
-    """Return the Player-relevant ordered graph without loading media URLs."""
+    """Читаем порядок основных файлов без получения ссылок на контент."""
 
     items = list(
         PlaylistItem.objects.filter(playlist=playlist)
@@ -43,67 +47,44 @@ def playlist_graph_signature(playlist: Playlist):
     if not items:
         return (
             "files",
-            tuple(sorted(str(pk) for pk in playlist.files.values_list("pk", flat=True))),
+            tuple(
+                sorted(str(pk) for pk in playlist.files.values_list("pk", flat=True))
+            ),
         )
 
-    visuals: dict[int, list[object]] = {}
-    visual_rows = (
-        PlaylistItemVisual.objects.filter(playlist_item__playlist=playlist)
-        .order_by("playlist_item_id", "position", "pk")
-        .values_list("playlist_item_id", "file_id")
-    )
-    for item_id, file_id in visual_rows:
-        visuals.setdefault(item_id, []).append(str(file_id))
     return (
         "items",
-        tuple(
-            (str(file_id), tuple(visuals.get(item_id, ())))
-            for item_id, file_id in items
-        ),
+        tuple(str(file_id) for _, file_id in items),
     )
 
 
 def resolved_graph_signature(items: Sequence[AdminPlaylistItem]):
     return (
         "items",
-        tuple(
-            (
-                str(item["file"].pk),
-                tuple(str(image.pk) for image in item["images"]),
-            )
-            for item in items
-        ),
+        tuple(str(item["file"].pk) for item in items),
     )
 
 
 def snapshot_playlist_items(playlist: Playlist) -> list[AdminPlaylistItem]:
-    """Read the canonical graph, falling back to legacy M2M files."""
+    """Читаем позиции файлов; для старых плейлистов используем M2M-связь."""
 
-    rows = list(
-        playlist.items.select_related("file")
-        .prefetch_related("visuals__file")
-        .order_by("position", "pk")
-    )
+    rows = list(playlist.items.select_related("file").order_by("position", "pk"))
     if not rows:
         return [
             {
+                "item_id": None,
                 "file": file,
-                "images": [],
                 "position": position,
             }
-            # Keep the same default File ordering used by Player delivery for
-            # a legacy playlist. UUID sorting would silently reorder playback
-            # when the first structured item is added.
+            # Сохраняем прежний порядок старого плейлиста, затем добавляем
+            # новые файлы в конец. Сортировка по UUID изменила бы эфир.
             for position, file in enumerate(playlist.files.all())
         ]
     return [
         {
+            "item_id": item.pk,
             "file": item.file,
             "position": item.position,
-            "images": [
-                visual.file
-                for visual in item.visuals.all().order_by("position", "pk")
-            ],
         }
         for item in rows
     ]
@@ -113,12 +94,11 @@ def _set_admin_positions(
     playlist: Playlist,
     desired_items: Sequence[AdminPlaylistItem],
 ) -> None:
-    """Persist sparse admin positions through a collision-free staging pass."""
+    """Сохраняем позиции через временную нумерацию без конфликтов уникальности."""
 
     rows = list(playlist.items.select_for_update().order_by("position", "pk"))
     final_positions = [
-        int(item.get("position", index))
-        for index, item in enumerate(desired_items)
+        int(item.get("position", index)) for index, item in enumerate(desired_items)
     ]
     if len(set(final_positions)) != len(final_positions):
         raise ValidationError("Позиции элементов плейлиста не должны повторяться.")
@@ -144,14 +124,73 @@ def _set_admin_positions(
     PlaylistItem.objects.bulk_update(rows, ("position",))
 
 
+def validate_historical_playlist_items(
+    playlist: Playlist,
+    desired_items: Sequence[AdminPlaylistItem],
+) -> None:
+    """Сохраняем старые связи: разрешаем менять только порядок их основных файлов."""
+
+    desired_by_id = {
+        item["item_id"]: item for item in desired_items if item["item_id"] is not None
+    }
+    protected = (
+        PlaylistItem.objects.filter(
+            playlist=playlist,
+            visuals__isnull=False,
+        )
+        .values_list("pk", "file_id")
+        .distinct()
+    )
+    for item_id, file_id in protected:
+        desired = desired_by_id.get(item_id)
+        if desired is None or desired["file"].pk != file_id:
+            raise ValidationError(HISTORICAL_VISUALS_ERROR)
+
+
+def _retain_admin_item_identity(
+    playlist: Playlist,
+    desired_items: Sequence[AdminPlaylistItem],
+) -> None:
+    """Сохраняем идентификаторы строк при обновлении основных файлов."""
+
+    existing = list(PlaylistItem.objects.select_for_update().filter(playlist=playlist))
+    existing_by_id = {item.pk: item for item in existing}
+    desired_ids = {
+        item["item_id"] for item in desired_items if item["item_id"] is not None
+    }
+    if not desired_ids.issubset(existing_by_id):
+        raise ValidationError(
+            "Элемент плейлиста был изменён параллельно. Обновите страницу."
+        )
+
+    removed_ids = set(existing_by_id) - desired_ids
+    if removed_ids:
+        PlaylistItem.objects.filter(pk__in=removed_ids).delete()
+
+    changed = []
+    for item in desired_items:
+        item_id = item["item_id"]
+        if item_id is None:
+            continue
+        current = existing_by_id[item_id]
+        if current.file_id != item["file"].pk:
+            current.file = item["file"]
+            changed.append(current)
+    if changed:
+        PlaylistItem.objects.bulk_update(changed, ("file",))
+
+
 def validate_playlist_graph_change(
     playlist: Playlist,
     *,
+    desired_items: Sequence[AdminPlaylistItem] | None = None,
     will_be_empty: bool = False,
 ) -> None:
-    """Validate an admin graph edit before Django starts saving formsets."""
+    """Проверяем состав до сохранения форм админки."""
 
     ensure_structured_editable(playlist)
+    if desired_items is not None:
+        validate_historical_playlist_items(playlist, desired_items)
     if not will_be_empty:
         return
 
@@ -175,20 +214,31 @@ def sync_playlist_graph(
     *,
     previous_signature=None,
 ) -> bool:
-    """Replace a playlist graph and refresh each active order exactly once."""
+    """Обновляем состав и отправляем одну новую версию каждому действующему заказу."""
 
     playlist = Playlist.objects.select_for_update(no_key=True).get(pk=playlist.pk)
+    # Блокируем строки на время проверки и записи нового состава.
+    list(
+        PlaylistItem.objects.select_for_update()
+        .filter(playlist=playlist)
+        .values_list("pk", flat=True)
+    )
     current = playlist_graph_signature(playlist)
     before = current if previous_signature is None else previous_signature
     desired = resolved_graph_signature(desired_items)
+    validate_historical_playlist_items(playlist, desired_items)
     if current == desired:
-        # Repair a stale legacy projection without producing a Player command.
+        # Исправляем M2M-проекцию и позиции без лишней повторной отправки.
         playlist.files.set(item["file"] for item in desired_items)
-        if current[0] == "items":
-            _set_admin_positions(playlist, desired_items)
     else:
-        replace_playlist_items(playlist, desired_items)
-        _set_admin_positions(playlist, desired_items)
+        validate_playlist_graph_change(
+            playlist,
+            desired_items=desired_items,
+            will_be_empty=not desired_items,
+        )
+        _retain_admin_item_identity(playlist, desired_items)
+        replace_playlist_items(playlist, [{"file": item["file"]} for item in desired_items])
+    _set_admin_positions(playlist, desired_items)
     after = playlist_graph_signature(playlist)
     if before != after:
         try:
@@ -222,11 +272,11 @@ def next_copy_name(source_name: str) -> str:
 
 @transaction.atomic
 def copy_playlist(source: Playlist, *, owner) -> Playlist:
-    """Clone content rows and visuals while sharing immutable media files."""
+    """Clone primary content rows while sharing immutable media files."""
 
     source = (
         Playlist.objects.select_for_update(no_key=True)
-        .prefetch_related("files", "items__file", "items__visuals__file")
+        .prefetch_related("files", "items__file")
         .get(pk=source.pk)
     )
     copy = Playlist.objects.create(
@@ -249,22 +299,6 @@ def copy_playlist(source: Playlist, *, owner) -> Playlist:
         for item in source_items
     ]
     PlaylistItem.objects.bulk_create(item_copies)
-    copied_by_source_id = {
-        source_item.pk: copied_item
-        for source_item, copied_item in zip(source_items, item_copies)
-    }
-    visuals = [
-        PlaylistItemVisual(
-            playlist_item=copied_by_source_id[item.pk],
-            file=visual.file,
-            position=visual.position,
-            duration_seconds=visual.duration_seconds,
-        )
-        for item in source_items
-        for visual in item.visuals.all().order_by("position", "pk")
-    ]
-    if visuals:
-        PlaylistItemVisual.objects.bulk_create(visuals)
     copy.files.set(item.file for item in source_items)
     return copy
 

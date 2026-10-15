@@ -319,7 +319,20 @@ class File(APIBaseObjectModel):
 
         file_path = str(self.source)
         self.is_active = False
-        self.save(update_fields=['is_active', 'modified'])
+        # Меняем только состояние: повторно скачивать и анализировать файл не нужно.
+        super().save(update_fields=['is_active'])
+
+        # JSON-привязки не защищены внешним ключом базы. Не удаляем объект
+        # из MinIO, пока действующий заказ использует его как сопровождение.
+        if self.pk and self.type == 2:
+            from orders.services.order_audio_images import active_order_image_usage
+
+            if self.pk in active_order_image_usage((self.pk,)):
+                logger.warning(
+                    "Файл %s деактивирован, но сохранён в MinIO: его использует активный заказ.",
+                    self.pk,
+                )
+                return
 
         try:
             minio_client = get_minio_client()

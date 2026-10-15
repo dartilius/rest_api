@@ -128,6 +128,8 @@ class AdOrderSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     f'Необходимо указать {missing.get(brc_type, "время")} для данного типа вещания'
                 )
+            if not isinstance(time_string, str):
+                raise serializers.ValidationError('Время должно быть строкой в формате ЧЧ(:ММ:СС)')
             try:
                 return tuple(map(int, time_string.split(':')))
             except ValueError:

@@ -98,7 +98,7 @@ class StationV2SyncRequestSerializer(serializers.Serializer):
         protocol = attrs.get("station_protocol")
         if protocol is not None and (
             "unified_orders_version" not in protocol
-            or not set(protocol) <= {"unified_orders_version", "advertising_options_version", "background_visual_queue_version", "continuous_advertising_version", "playback_events_version"}
+            or not set(protocol) <= {"unified_orders_version", "advertising_options_version", "background_visual_queue_version", "continuous_advertising_version", "playback_events_version", "order_schedule_version"}
             or type(protocol["unified_orders_version"]) is not int
             or protocol["unified_orders_version"] != 1
             or ("advertising_options_version" in protocol and (
@@ -116,6 +116,10 @@ class StationV2SyncRequestSerializer(serializers.Serializer):
             or ("playback_events_version" in protocol and (
                 type(protocol["playback_events_version"]) is not int
                 or protocol["playback_events_version"] != 1
+            ))
+            or ("order_schedule_version" in protocol and (
+                type(protocol["order_schedule_version"]) is not int
+                or protocol["order_schedule_version"] != 1
             ))
         ):
             raise serializers.ValidationError({"station_protocol": "Неподдерживаемая версия команд заказов."})
@@ -173,3 +177,7 @@ class StationV2BindingRequestSerializer(serializers.Serializer):
 
     nomenclature_id = serializers.UUIDField()
     installation_id = serializers.UUIDField(required=False)
+    replace_revoked = serializers.BooleanField(
+        required=False, default=False,
+        help_text="Повторная привязка отозванной установки только после явного действия пользователя.",
+    )

@@ -31,9 +31,12 @@
 Фильтры реализованы через changelist_view() и передаются в контекст шаблона.
 """
 
+import json
+
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.core.exceptions import ValidationError
+from django.db.models.deletion import ProtectedError
 from django.utils.html import format_html
 from django.db import transaction
 from django.db.models import Count
@@ -42,17 +45,14 @@ from django.urls import reverse
 from django.http import HttpResponseRedirect
 from django.utils.safestring import mark_safe
 from .playlist_admin_forms import (
-    PlaylistItemAdminForm,
     PlaylistItemInlineForm,
     PlaylistItemInlineFormSet,
-    PlaylistItemVisualInlineFormSet,
     resolved_formset_items,
 )
 from .playlist_admin_service import (
     AdminPlaylistDeliveryError,
     clear_playlists,
     copy_playlist,
-    playlist_graph_signature,
     snapshot_playlist_items,
     sync_playlist_graph,
     validate_playlist_graph_change,
@@ -62,7 +62,6 @@ from .models import (
     File,
     Playlist,
     PlaylistItem,
-    PlaylistItemVisual,
     Tag,
     TYPES,
     SUBTYPES,
@@ -200,6 +199,48 @@ class FileAdmin(admin.ModelAdmin):
         obj.owner = obj.owner or request.user
         obj.save()
 
+    @staticmethod
+    def _order_image_references(objects):
+        from orders.services.order_audio_images import active_order_image_usage
+
+        candidates = [
+            obj.pk for obj in objects
+            if obj.pk and obj.type == 2
+        ]
+        return active_order_image_usage(candidates)
+
+    def _ensure_not_used_by_active_order(self, objects):
+        protected_ids = self._order_image_references(objects)
+        if protected_ids:
+            protected = [obj for obj in objects if obj.pk in protected_ids]
+            raise ProtectedError(
+                "Нельзя удалить картинку: она используется активным единым заказом.",
+                protected,
+            )
+
+    def get_deleted_objects(self, objs, request):
+        deleted_objects, model_count, perms_needed, protected = super().get_deleted_objects(
+            objs, request
+        )
+        protected = list(protected)
+        protected_ids = self._order_image_references(objs)
+        if protected_ids:
+            protected.extend(
+                f"Картинка {obj.name} используется активным единым заказом"
+                for obj in objs
+                if obj.pk in protected_ids
+            )
+        return deleted_objects, model_count, perms_needed, protected
+
+    def delete_model(self, request, obj):
+        self._ensure_not_used_by_active_order((obj,))
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        objects = list(queryset)
+        self._ensure_not_used_by_active_order(objects)
+        super().delete_queryset(request, queryset)
+
     def changelist_view(self, request, extra_context=None):
         """
         Добавляет быстрые фильтры по типам контента в шапку списка файлов.
@@ -293,15 +334,17 @@ class FileAdmin(admin.ModelAdmin):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class PlaylistAdminForm(forms.ModelForm):
-    """Adds many new playlist files without exposing already selected ones."""
+    """Добавляем файлы в конец очереди в порядке выбора."""
 
     files_to_add = forms.ModelMultipleChoiceField(
         queryset=File.objects.none(),
         required=False,
         label="Добавить файлы",
-        help_text="Можно выбрать несколько файлов. Уже добавленные файлы в список не попадают.",
+        help_text="Удерживайте Ctrl (на macOS — Cmd) и выбирайте файлы по одному: они добавятся в конец в порядке выбора. Уже добавленные файлы исключены.",
         widget=forms.SelectMultiple(attrs={"size": 14}),
     )
+
+    files_to_add_order = forms.CharField(required=False, widget=forms.HiddenInput)
 
     class Meta:
         model = Playlist
@@ -320,6 +363,25 @@ class PlaylistAdminForm(forms.ModelForm):
     def clean(self):
         data = super().clean()
         additions = data.get("files_to_add")
+        if additions is not None:
+            selected = {str(file.pk): file for file in additions}
+            raw_order = data.get("files_to_add_order")
+            try:
+                submitted = self.data.get(self.add_prefix("files_to_add"), [])
+                if hasattr(self.data, "getlist"):
+                    submitted = self.data.getlist(self.add_prefix("files_to_add"))
+                order = json.loads(raw_order) if raw_order else submitted
+            except (ValueError, TypeError):
+                order = None
+            if (
+                not isinstance(order, list)
+                or any(not isinstance(value, str) for value in order)
+                or len(order) != len(selected)
+                or set(order) != set(selected)
+            ):
+                self.add_error("files_to_add", "Порядок выбранных файлов некорректен. Выберите файлы заново.")
+            else:
+                additions = data["files_to_add"] = [selected[value] for value in order]
         if self.instance.pk and additions:
             try:
                 validate_playlist_graph_change(self.instance)
@@ -333,197 +395,17 @@ class PlaylistItemInline(admin.TabularInline):
     form = PlaylistItemInlineForm
     formset = PlaylistItemInlineFormSet
     extra = 0
-    fields = ("position", "file", "images")
+    fields = ("file",)
+    verbose_name = "Файл плейлиста"
+    verbose_name_plural = "Очередь файлов"
     ordering = ("position",)
     autocomplete_fields = ("file",)
 
+    def has_add_permission(self, request, obj=None):
+        return False
+
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("file", "playlist").prefetch_related("visuals")
-
-
-class PlaylistItemVisualInline(admin.TabularInline):
-    model = PlaylistItemVisual
-    formset = PlaylistItemVisualInlineFormSet
-    extra = 0
-    fields = ("position", "file")
-    ordering = ("position",)
-    raw_id_fields = ("file",)
-
-
-@admin.register(PlaylistItem)
-class PlaylistItemAdmin(admin.ModelAdmin):
-    list_display = ("playlist", "position", "file")
-    form = PlaylistItemAdminForm
-    exclude = ("weight",)
-    list_select_related = ("playlist", "file")
-    raw_id_fields = ("playlist", "file")
-    inlines = (PlaylistItemVisualInline,)
-
-    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
-        try:
-            return super().changeform_view(request, object_id, form_url, extra_context)
-        except AdminPlaylistDeliveryError as exc:
-            self.message_user(request, str(exc), level=messages.ERROR)
-            return HttpResponseRedirect(request.path)
-
-    def changelist_view(self, request, extra_context=None):
-        try:
-            return super().changelist_view(request, extra_context)
-        except AdminPlaylistDeliveryError as exc:
-            self.message_user(request, str(exc), level=messages.ERROR)
-            return HttpResponseRedirect(request.path)
-
-    def delete_view(self, request, object_id, extra_context=None):
-        try:
-            return super().delete_view(request, object_id, extra_context)
-        except AdminPlaylistDeliveryError as exc:
-            self.message_user(request, str(exc), level=messages.ERROR)
-            return HttpResponseRedirect(
-                reverse("admin:files_playlistitem_change", args=(object_id,))
-            )
-
-    def save_model(self, request, obj, form, change):
-        original = (
-            PlaylistItem.objects.select_related("playlist").get(pk=obj.pk)
-            if change
-            else None
-        )
-        playlist_ids = {obj.playlist_id}
-        if original is not None:
-            playlist_ids.add(original.playlist_id)
-        states = {}
-        for playlist in Playlist.objects.select_for_update(no_key=True).filter(
-            pk__in=playlist_ids
-        ).order_by("pk"):
-            states[playlist.pk] = {
-                "signature": playlist_graph_signature(playlist),
-                "items": snapshot_playlist_items(playlist),
-            }
-        request._playlist_item_graph_states = states
-        request._playlist_item_source_id = (
-            original.playlist_id if original is not None else None
-        )
-        request._playlist_item_desired_position = obj.position
-
-        occupied = set(
-            PlaylistItem.objects.filter(playlist_id=obj.playlist_id)
-            .exclude(pk=obj.pk)
-            .values_list("position", flat=True)
-        )
-        if obj.position in occupied:
-            candidate = 0
-            forbidden = occupied | {obj.position}
-            while candidate in forbidden:
-                candidate += 1
-            obj.position = candidate
-        super().save_model(request, obj, form, change)
-
-    def save_related(self, request, form, formsets, change):
-        super().save_related(request, form, formsets, change)
-        item = form.instance
-        source_id = getattr(request, "_playlist_item_source_id", None)
-        states = getattr(request, "_playlist_item_graph_states", {})
-        desired_position = getattr(
-            request, "_playlist_item_desired_position", item.position
-        )
-        for playlist_id in sorted({item.playlist_id, source_id} - {None}, key=str):
-            playlist = Playlist.objects.get(pk=playlist_id)
-            state = states[playlist_id]
-            if playlist_id == item.playlist_id and state["signature"][0] == "files":
-                desired = list(state["items"])
-                desired = [row for row in desired if row["file"].pk != item.file_id]
-                visuals = list(
-                    item.visuals.select_related("file").order_by("position", "pk")
-                )
-                desired.append(
-                    {
-                        "file": item.file,
-                        "images": [visual.file for visual in visuals],
-                        "position": desired_position,
-                    }
-                )
-            else:
-                desired = snapshot_playlist_items(playlist)
-                if state["signature"][0] == "items" and not playlist.items.exists():
-                    desired = []
-                for row in desired:
-                    if row["file"].pk == item.file_id and playlist_id == item.playlist_id:
-                        row["position"] = desired_position
-            desired.sort(key=lambda row: row["position"])
-            sync_playlist_graph(
-                playlist,
-                desired,
-                previous_signature=state["signature"],
-            )
-
-    @staticmethod
-    def _delete_plan(queryset):
-        if not hasattr(queryset, "select_related"):
-            queryset = PlaylistItem.objects.filter(
-                pk__in=[item.pk for item in queryset]
-            )
-        selected = list(queryset.select_related("playlist"))
-        selected_ids = {item.pk for item in selected}
-        playlists = {
-            item.playlist_id: item.playlist
-            for item in selected
-        }
-        plan = {}
-        for playlist_id, playlist in playlists.items():
-            before = playlist_graph_signature(playlist)
-            desired = [
-                row
-                for item, row in zip(
-                    playlist.items.order_by("position", "pk"),
-                    snapshot_playlist_items(playlist),
-                )
-                if item.pk not in selected_ids
-            ]
-            plan[playlist_id] = (playlist, before, desired)
-        return plan
-
-    def get_deleted_objects(self, objs, request):
-        result = list(super().get_deleted_objects(objs, request))
-        try:
-            for playlist, _, desired in self._delete_plan(objs).values():
-                validate_playlist_graph_change(
-                    playlist,
-                    will_be_empty=not desired,
-                )
-        except ValidationError as exc:
-            result[3].extend(exc.messages)
-        return tuple(result)
-
-    def log_deletions(self, request, queryset):
-        # Default delete_selected logs before mutation. Delay it so a failed
-        # graph/delivery transaction never leaves a false audit record.
-        request._playlist_item_deletion_log = list(queryset)
-
-    def delete_queryset(self, request, queryset):
-        with transaction.atomic():
-            plan = self._delete_plan(queryset)
-            for playlist, before, desired in plan.values():
-                sync_playlist_graph(
-                    playlist,
-                    desired,
-                    previous_signature=before,
-                )
-            pending = getattr(request, "_playlist_item_deletion_log", ())
-            if pending:
-                super().log_deletions(request, pending)
-
-    def delete_model(self, request, obj):
-        with transaction.atomic():
-            plan = self._delete_plan(PlaylistItem.objects.filter(pk=obj.pk))
-            for playlist, before, desired in plan.values():
-                sync_playlist_graph(
-                    playlist,
-                    desired,
-                    previous_signature=before,
-                )
-            pending = getattr(request, "_playlist_item_deletion_log", ())
-            if pending:
-                super().log_deletions(request, pending)
+        return super().get_queryset(request).select_related("file", "playlist")
 
 
 @admin.register(Playlist)
@@ -556,15 +438,13 @@ class PlaylistAdmin(admin.ModelAdmin):
             'fields': ('name', 'description', 'owner', 'id')
         }),
         ('Файлы плейлиста', {
-            'fields': ('files_to_add',),
-            'description': (
-                '💡 <strong>Добавьте один или несколько новых файлов.</strong><br>'
-                'Уже добавленные файлы исключены из списка. Для удаления или изменения '
-                'состава используйте таблицу «Элементы плейлиста» ниже. '
-                'Для рекламы: добавьте аудио в строку и выберите его картинки '
-                'в колонке «Картинки к этому аудио». Время показа задавать не нужно.'
-            )
-        }),
+            'fields': ('files_to_add', 'files_to_add_order'),
+                'description': (
+                    '💡 <strong>Добавьте один или несколько новых файлов.</strong><br>'
+                    'Уже добавленные файлы исключены из списка. Для удаления или изменения '
+                    'состава используйте таблицу «Очередь файлов» ниже. Позиции задаются автоматически.'
+                )
+            }),
         ('📊 Состав плейлиста', {
             'fields': ('playlist_composition',),
             'description': 'Отображает статистику по типам файлов в плейлисте'
@@ -698,9 +578,8 @@ class PlaylistAdmin(admin.ModelAdmin):
             None,
         )
         if item_formset is not None:
-            # Django's admin change log reads these collections after
-            # ``save_related``. Build them without letting the formset write
-            # rows independently from the atomic graph service.
+            # Журнал Django использует эти коллекции после save_related.
+            # Строки записывает только атомарный сервис изменения плейлиста.
             item_formset.save(commit=False)
             desired = resolved_formset_items(item_formset)
             has_structured_graph = form.instance.items.exists() or bool(desired)
@@ -713,8 +592,8 @@ class PlaylistAdmin(admin.ModelAdmin):
             ) + 1
             desired.extend(
                 {
+                    "item_id": None,
                     "file": file,
-                    "images": [],
                     "position": next_position + index,
                 }
                 for index, file in enumerate(selected_files)
