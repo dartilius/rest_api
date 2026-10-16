@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 from django.db.models import Count, Prefetch
+from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 
 from brands.models import Brand
@@ -11,6 +12,7 @@ from counterparties.models import (
     CounterpartyCategoryAssignment,
     CounterpartyContactInfo,
 )
+from nomenclatures.models import Nomenclature
 
 
 @admin.register(CounterpartyCategory)
@@ -126,22 +128,26 @@ class CounterpartiesAdmin(admin.ModelAdmin):
 
     @admin.display(description="Собственные номенклатуры")
     def show_owned(self, obj):
-        return self._nomenclature_links(obj.owned_nomenclatures, obj.owned_count)
+        return self._nomenclature_links(Nomenclature.objects.filter(legalEntity_id=obj.pk))
 
     @admin.display(description="Арендует")
     def show_rented(self, obj):
-        return self._nomenclature_links(obj.rented_nomenclatures, obj.rented_count)
+        return self._nomenclature_links(Nomenclature.objects.filter(tenants__pk=obj.pk).distinct())
 
     @staticmethod
-    def _nomenclature_links(queryset, total):
-        nomenclatures = list(queryset.only("id", "name")[:20])
+    def _nomenclature_links(queryset):
+        # Загружаем только подписи и UUID одним запросом, включая неактивные
+        # точки. Ограничение высоты блока не ограничивает сам состав списка.
+        nomenclatures = list(queryset.order_by("name", "pk").values_list("pk", "name"))
         if not nomenclatures:
             return "—"
         links = format_html_join(
             "",
-            "<li><a href='/admin/nomenclatures/nomenclature/{}/change/' target='_blank'>{}</a></li>",
-            ((str(nomenclature.id), nomenclature.name) for nomenclature in nomenclatures),
+            '<li><a href="{}" target="_blank" rel="noopener">{}</a></li>',
+            ((reverse("admin:nomenclatures_nomenclature_change", args=[identifier]), name)
+             for identifier, name in nomenclatures),
         )
-        if total > len(nomenclatures):
-            links += format_html("<li><em>... и еще {} записей</em></li>", total - len(nomenclatures))
-        return format_html("<ul style='margin:0; padding-left:20px;'>{}</ul>", links)
+        return format_html(
+            '<div style="max-height:480px; overflow:auto;" tabindex="0" aria-label="Все связанные точки">'
+            '<ul style="margin:0; padding-left:20px;">{}</ul></div>', links,
+        )
