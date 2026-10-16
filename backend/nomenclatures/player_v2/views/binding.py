@@ -2,16 +2,25 @@
 
 from django.db import transaction
 from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from nomenclatures.models import Nomenclature, StationCredential, StationInstallation
+from nomenclatures.player_v2.auth import (
+    HasActiveStationInstallation,
+    HasStationRecoveryClaims,
+    StationRecoveryAuthentication,
+    StationTokenAuthentication,
+)
 from nomenclatures.player_v2.credentials import (
     generate_station_token,
     hash_station_token,
     issue_station_token,
+    rotate_active_station_token,
 )
+from nomenclatures.player_v2.recovery import issue_recovery_token, recovery_claims_match
 from nomenclatures.player_v2.serializers import StationV2BindingRequestSerializer
 
 
@@ -107,6 +116,61 @@ class StationV2BindingView(APIView):
         return Response(
             {
                 "installation_id": str(installation.pk),
+                "nomenclature_id": str(installation.nomenclature_id),
                 "station_token": token,
+                "recovery_token": issue_recovery_token(installation),
             }, headers={"Cache-Control": "no-store"},
+        )
+
+
+class StationV2RecoveryKeyView(APIView):
+    """Выдать recovery-ключ только активной установке, созданной протоколом v2."""
+
+    authentication_classes = [StationTokenAuthentication]
+    permission_classes = [HasActiveStationInstallation]
+
+    def post(self, request):
+        installation = request.auth
+        return Response(
+            {
+                "installation_id": str(installation.pk),
+                "nomenclature_id": str(installation.nomenclature_id),
+                "recovery_token": issue_recovery_token(installation),
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
+
+class StationV2RecoverView(APIView):
+    """Сменить обычный ключ одной всё ещё активной установки."""
+
+    authentication_classes = [StationRecoveryAuthentication]
+    permission_classes = [HasStationRecoveryClaims]
+
+    def post(self, request):
+        claims = request.auth
+        with transaction.atomic():
+            installation = StationInstallation.objects.select_for_update().filter(
+                pk=claims.installation_id,
+            ).first()
+            if installation is None or not recovery_claims_match(installation, claims):
+                raise AuthenticationFailed("Ключ восстановления станции недействителен.")
+            if not installation.is_active:
+                return Response(
+                    {
+                        "detail": "Привязка отозвана. Для восстановления выполните вход и выберите точку.",
+                        "code": "installation_revoked",
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+            token = rotate_active_station_token(installation)
+
+        return Response(
+            {
+                "installation_id": str(installation.pk),
+                "nomenclature_id": str(installation.nomenclature_id),
+                "station_token": token,
+                "recovery_token": issue_recovery_token(installation),
+            },
+            headers={"Cache-Control": "no-store"},
         )

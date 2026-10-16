@@ -28,3 +28,14 @@ def issue_station_token(credential: StationCredential | StationInstallation) -> 
     credential.is_active = True
     credential.save(update_fields=["token_hash", "is_active", "rotated_at"])
     return token
+
+
+def rotate_active_station_token(installation: StationInstallation) -> str:
+    """Сменить секрет активной установки v2, не изменяя её состояние."""
+
+    if not installation.is_active:
+        raise ValueError("Нельзя сменить ключ неактивной установки станции.")
+    token = generate_station_token()
+    installation.token_hash = hash_station_token(token)
+    installation.save(update_fields=["token_hash", "rotated_at"])
+    return token
