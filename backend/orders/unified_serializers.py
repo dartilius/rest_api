@@ -206,13 +206,9 @@ class UnifiedOrderSerializer(serializers.ModelSerializer):
     def validate_clients(self, clients):
         if len(set(clients)) != len(clients):
             raise serializers.ValidationError("Одна и та же точка указана несколько раз.")
-        active = Nomenclature.active.in_bulk(clients)
-        missing = [str(identifier) for identifier in clients if identifier not in active]
-        if missing:
-            raise serializers.ValidationError(
-                f"Не найдены активные точки: {', '.join(missing)}."
-            )
-        return [active[identifier] for identifier in clients]
+        # Наличие и возможности каждой точки проверяет создание заказа:
+        # отказ одного получателя не должен отклонять остальных.
+        return clients
 
     def validate(self, attrs):
         if self.instance is not None and "clients" in attrs:
@@ -274,6 +270,13 @@ class UnifiedOrderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return UnifiedOrderResponseSerializer(instance, context=self.context).data
+
+
+class UnifiedOrderClientErrorSerializer(serializers.Serializer):
+    """Отказ одной точке при массовом создании заказов."""
+
+    client = serializers.UUIDField(help_text="UUID номенклатуры, для которой заказ не создан.")
+    error = serializers.CharField(help_text="Понятная причина отказа этой точке.")
 
 
 class UnifiedOrderResponseSerializer(serializers.ModelSerializer):
